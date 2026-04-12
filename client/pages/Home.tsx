@@ -1,34 +1,44 @@
 import { useState, useRef, useEffect } from "react";
-import { Bell, User, MoreVertical, Search, X } from "lucide-react";
+import { Search, X, Loader2, BookOpen, PlusCircle, MoreVertical, Copy } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 interface ExamRoom {
-  id: string;
+  id: string | number;
   name: string;
   section: string;
+  class_code?: string;
+  owner_id?: number;
 }
 
 const GRADIENTS = [
-  "from-[#5B9CF5] to-[#4A7BC8]",
-  "from-[#4AEDC4] to-[#2AB894]",
-  "from-[#FF8B8B] to-[#E66565]",
-  "from-[#A78BFA] to-[#7C3AED]",
-  "from-[#FCA5A5] to-[#DC2626]",
+  "from-indigo-500 to-purple-600",
+  "from-blue-500 to-cyan-500",
+  "from-rose-400 to-red-500",
+  "from-amber-400 to-orange-500",
+  "from-emerald-400 to-teal-500",
 ];
 
 export default function Home() {
-  const { user, isLoading } = useAuth();
+  const { user, token, isLoading } = useAuth();
   const navigate = useNavigate();
+  const [isFetchingRooms, setIsFetchingRooms] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [joinRoomCode, setJoinRoomCode] = useState("");
   const [subjectName, setSubjectName] = useState("");
   const [sectionClass, setSectionClass] = useState("");
-  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeMenuId, setActiveMenuId] = useState<string | number | null>(null);
   const [editingRoom, setEditingRoom] = useState<ExamRoom | null>(null);
-  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Redirect if not logged in and not loading
@@ -38,28 +48,28 @@ export default function Home() {
     }
   }, [user, isLoading, navigate]);
 
-  if (isLoading || !user) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  const [examRooms, setExamRooms] = useState<ExamRoom[]>([]);
 
-
-  // Initialize with sample data
-  const [examRooms, setExamRooms] = useState<ExamRoom[]>([
-    {
-      id: "1",
-      name: "โครงสร้างข้อมูล",
-      section: "sec.1",
-    },
-    {
-      id: "2",
-      name: "โครงสร้างข้อมูล",
-      section: "sec.7",
-    },
-  ]);
+  useEffect(() => {
+    if (!token || !user) return;
+    const fetchRooms = async () => {
+      try {
+        const res = await fetch("/api/rooms", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setExamRooms(data);
+        }
+      } catch (error) {
+        console.error(error);
+        toast.error("ดึงข้อมูลห้องเรียนไม่สำเร็จ");
+      } finally {
+        setIsFetchingRooms(false);
+      }
+    };
+    fetchRooms();
+  }, [token, user]);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -77,31 +87,66 @@ export default function Home() {
     return GRADIENTS[index % GRADIENTS.length];
   };
 
-  const handleCreateRoom = () => {
+  const filteredRooms = examRooms.filter(room => 
+    room.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (room.class_code && room.class_code.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (room.section && room.section.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const handleCreateRoom = async () => {
     if (!subjectName.trim()) return;
 
-    const newRoom: ExamRoom = {
-      id: Date.now().toString(),
-      name: subjectName,
-      section: sectionClass,
-    };
+    try {
+      const res = await fetch("/api/rooms", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ name: subjectName, section: sectionClass })
+      });
+      
+      if (res.ok) {
+        const newRoom = await res.json();
+        setExamRooms([...examRooms, newRoom]);
+        toast.success(`สร้างห้องสอบสำเร็จ (รหัสเชิญ: ${newRoom.class_code})`);
+      } else {
+        toast.error("สร้างห้องสอบไม่สำเร็จ");
+      }
+    } catch {
+      toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    }
 
-    setExamRooms([...examRooms, newRoom]);
     setShowCreateModal(false);
     setSubjectName("");
     setSectionClass("");
   };
 
-  const handleEditRoom = () => {
+  const handleEditRoom = async () => {
     if (!editingRoom || !subjectName.trim()) return;
 
-    setExamRooms(
-      examRooms.map((room) =>
-        room.id === editingRoom.id
-          ? { ...room, name: subjectName, section: sectionClass }
-          : room,
-      ),
-    );
+    try {
+      const res = await fetch(`/api/rooms/${editingRoom.id}`, {
+        method: "PUT",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ name: subjectName, section: sectionClass })
+      });
+      
+      if (res.ok) {
+        setExamRooms(
+          examRooms.map((room) =>
+            room.id === editingRoom.id ? { ...room, name: subjectName, section: sectionClass } : room
+          )
+        );
+        toast.success("อัปเดตข้อมูลสำเร็จ");
+      }
+    } catch {
+      toast.error("อัปเดตไม่สำเร็จ");
+    }
+
     setShowEditModal(false);
     setEditingRoom(null);
     setSubjectName("");
@@ -109,11 +154,52 @@ export default function Home() {
     setActiveMenuId(null);
   };
 
-  const handleDeleteRoom = (id: string) => {
-    setExamRooms(examRooms.filter((room) => room.id !== id));
+  const handleDeleteRoom = async (id: string | number) => {
+    try {
+      const res = await fetch(`/api/rooms/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (res.ok) {
+        setExamRooms(examRooms.filter((room) => room.id !== id));
+        toast.success("ลบห้องสอบเรียบร้อยแล้ว");
+      }
+    } catch {
+      toast.error("ลบข้อมูลไม่สำเร็จ");
+    }
+
     setShowDeleteConfirm(false);
     setDeleteTargetId(null);
     setActiveMenuId(null);
+  };
+
+  const handleJoinRoom = async () => {
+    if (!joinRoomCode.trim()) return;
+    
+    try {
+      const res = await fetch("/api/rooms/join", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ class_code: joinRoomCode })
+      });
+      
+      if (res.ok) {
+        const joinedRoom = await res.json();
+        setExamRooms([...examRooms, joinedRoom]);
+        toast.success(`เข้าร่วมห้อง ${joinedRoom.name} สำเร็จ!`);
+        setShowJoinModal(false);
+        setJoinRoomCode("");
+      } else {
+        const error = await res.json();
+        toast.error(error.detail || "รหัสห้องไม่ถูกต้อง หรือคุณอยู่ในห้องนี้แล้ว");
+      }
+    } catch {
+      toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    }
   };
 
   const openEditModal = (room: ExamRoom) => {
@@ -124,345 +210,434 @@ export default function Home() {
     setActiveMenuId(null);
   };
 
-  const openDeleteConfirm = (id: string) => {
+  const openDeleteConfirm = (id: string | number) => {
     setDeleteTargetId(id);
     setShowDeleteConfirm(true);
     setActiveMenuId(null);
   };
 
+  const handleCopyCode = (e: React.MouseEvent, code?: string | number) => {
+    e.stopPropagation();
+    if (code) {
+      navigator.clipboard.writeText(String(code));
+      toast.success("คัดลอกรหัสห้องแล้ว");
+    }
+  };
+
+  if (isLoading || !user || isFetchingRooms) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-50">
+        <Loader2 className="animate-spin text-indigo-600 h-12 w-12" />
+      </div>
+    );
+  }
+
+  // Animation variants
+  const staggerContainer = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+  };
+  
+  const fadeUp = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50 font-sans">
       <Navbar />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-          {/* Search Bar in Main Area (since Navbar handles user info) */}
-          <div className="flex-1 max-w-md">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="ค้นหาห้องสอบที่ต้องการ..."
-                className="w-full px-4 py-3 pr-10 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-sm"
-              />
-              <button className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                <Search size={20} />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Welcome Section */}
-        <div className="flex items-start justify-between mb-8">
+        
+        {/* Header & Search Area */}
+        <motion.div 
+          initial="hidden" animate="visible" variants={fadeUp}
+          className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10 mt-4"
+        >
           <div>
-            <h2 className="text-4xl font-bold text-black mb-2">Home</h2>
-            <p className="text-gray-500">ยินดีต้อนรับสู่ Evaly ({user?.role === 'teacher' ? 'อาจารย์' : 'นักศึกษา'})</p>
+            <h2 className="text-4xl font-bold tracking-tight text-slate-900 mb-2">Welcome, {user.name.split(' ')[0]}</h2>
+            <p className="text-slate-500 text-lg">
+              ยินดีต้อนรับสู่แดชบอร์ด ({user.role === 'teacher' ? 'อาจารย์' : 'นักศึกษา'})
+            </p>
           </div>
-          {user?.role === 'teacher' ? (
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="px-6 py-3 bg-[#3B82F6] text-white rounded-lg font-medium hover:bg-[#2563EB] transition-colors shadow-sm whitespace-nowrap"
-            >
-              + สร้างห้องสอบ
-            </button>
-          ) : (
-            <button
-              onClick={() => alert("ระบบเข้าร่วมห้องสอบกำลังพัฒนา...")}
-              className="px-6 py-3 bg-[#10B981] text-white rounded-lg font-medium hover:bg-[#059669] transition-colors shadow-sm whitespace-nowrap"
-            >
-              + เข้าร่วมห้องสอบ
-            </button>
-          )}
-        </div>
-
-        {/* Exam Rooms Section */}
-        <div className="mb-12">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-2xl font-bold text-black">ห้องสอบ</h3>
-            {examRooms.length > 0 && (
-              <Link
-                to="#"
-                className="text-[#3B82F6] font-medium hover:underline"
+          
+          <div className="flex items-center gap-4 w-full md:w-auto flex-col sm:flex-row">
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
+              <Input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="ค้นหาชื่อ หรือ รหัสห้องสอบ..."
+                className="pl-10 h-11 bg-white border-slate-200 focus-visible:ring-indigo-500 shadow-sm"
+              />
+            </div>
+            
+            {user?.role === 'teacher' ? (
+              <Button
+                onClick={() => setShowCreateModal(true)}
+                className="w-full sm:w-auto h-11 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 transition-all active:scale-95"
               >
-                View All
-              </Link>
+                <PlusCircle className="mr-2 h-5 w-5" /> สร้างห้องสอบ
+              </Button>
+            ) : (
+              <Button
+                onClick={() => setShowJoinModal(true)}
+                className="w-full sm:w-auto h-11 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 transition-all active:scale-95"
+              >
+                <BookOpen className="mr-2 h-5 w-5" /> เข้าร่วมห้องเรียน
+              </Button>
+            )}
+          </div>
+        </motion.div>
+
+        {/* Classes Section */}
+        <motion.div 
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+          className="mb-12"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-2xl font-bold text-slate-800">ห้องเรียนของฉัน</h3>
+            {examRooms.length > 0 && (
+              <span className="text-sm font-medium text-slate-500">
+                พบ {filteredRooms.length} ห้อง
+              </span>
             )}
           </div>
 
           {examRooms.length === 0 ? (
-            <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
-              <p className="text-gray-500 text-lg">ยังไม่มีห้องสอบ</p>
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="mt-4 px-6 py-2 bg-[#3B82F6] text-white rounded-lg font-medium hover:bg-[#2563EB] transition-colors"
-              >
-                สร้างห้องสอบที่แรก
-              </button>
-            </div>
+            <motion.div variants={fadeUp} className="bg-white rounded-2xl shadow-sm border border-slate-100 p-16 text-center">
+              <div className="mx-auto w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                <BookOpen className="h-8 w-8 text-slate-400" />
+              </div>
+              <h4 className="text-lg font-semibold text-slate-700 mb-1">ยังไม่มีห้องเรียน</h4>
+              <p className="text-slate-500 mb-6 max-w-sm mx-auto">
+                {user.role === 'teacher' 
+                  ? "เริ่มต้นสร้างห้องเรียนแรกของคุณเพื่อเพิ่มข้อสอบและเชิญนักศึกษา" 
+                  : "คุณยังไม่ได้เข้าร่วมห้องเรียนใดๆ กดเข้าร่วมด้วยรหัสประจำห้องเลย"}
+              </p>
+              {user.role === 'teacher' ? (
+                 <Button onClick={() => setShowCreateModal(true)} className="bg-indigo-600 hover:bg-indigo-700">
+                    <PlusCircle className="mr-2 h-4 w-4" /> สร้างห้องสอบที่แรก
+                 </Button>
+              ) : (
+                 <Button onClick={() => setShowJoinModal(true)} className="bg-indigo-600 hover:bg-indigo-700">
+                    <BookOpen className="mr-2 h-4 w-4" /> กรอกรหัสเข้าร่วมห้อง
+                 </Button>
+              )}
+            </motion.div>
+          ) : filteredRooms.length === 0 ? (
+            <motion.div variants={fadeUp} className="bg-white rounded-2xl shadow-sm border border-slate-100 p-16 text-center">
+              <div className="mx-auto w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                <Search className="h-8 w-8 text-slate-400" />
+              </div>
+              <h4 className="text-lg font-semibold text-slate-700 mb-1">ไม่พบห้องเรียนที่ค้นหา</h4>
+              <p className="text-slate-500 mb-6 max-w-sm mx-auto">
+                ไม่พบข้อมูลที่ตรงกับ "{searchQuery}" ลองค้นหาด้วยคำอื่นหรือตรวจทานตัวสะกดดูอีกครั้ง
+              </p>
+              <Button onClick={() => setSearchQuery("")} variant="outline" className="border-slate-200 text-slate-600 hover:bg-slate-50">
+                ล้างการค้นหา
+              </Button>
+            </motion.div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {examRooms.map((room, index) => (
-                <div
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredRooms.map((room, index) => (
+                <motion.div
+                  variants={fadeUp}
                   key={room.id}
-                  className="bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-md transition-shadow relative cursor-pointer"
-                  onClick={() => (window.location.href = `/room/${room.id}`)}
+                  className="bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer group"
+                  onClick={() => navigate(`/room/${room.id}`)}
                 >
-                  <div
-                    className={`h-32 bg-gradient-to-br ${getGradient(index)} relative`}
-                  ></div>
-                  <div className="p-5">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h4 className="text-lg font-bold text-black mb-1">
-                          {room.name}
-                        </h4>
+                  {/* Card Header */}
+                  <div className={`h-32 bg-gradient-to-br ${getGradient(index)} relative flex items-center justify-center p-6 rounded-t-2xl overflow-hidden`}>
+                    <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors z-0"></div>
+                    <h4 className="text-xl font-bold text-white drop-shadow-md z-10 text-center line-clamp-2">
+                       {room.name}
+                    </h4>
+                  </div>
+
+                  {/* Card Body */}
+                  <div className="p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
                         {room.section && (
-                          <p className="text-sm text-gray-500">
+                          <span className="inline-block px-2.5 py-0.5 bg-slate-100 text-slate-600 text-xs font-semibold tracking-wide rounded-full mb-2">
                             {room.section}
-                          </p>
+                          </span>
                         )}
+                        {/* Copy Code Button */}
+                        <button
+                          onClick={(e) => handleCopyCode(e, room.class_code || room.id)}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-indigo-600 transition-colors"
+                        >
+                          <span className="font-mono font-bold text-sm tracking-widest">{room.class_code || room.id}</span>
+                          <Copy size={13} className="opacity-60 flex-shrink-0" />
+                        </button>
                       </div>
+
+                      {/* 3-dot Menu for Teacher */}
                       {user?.role === 'teacher' && (
-                        <div className="relative" ref={menuRef}>
+                        <div
+                          className="relative flex-shrink-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setActiveMenuId(
-                                activeMenuId === room.id ? null : room.id,
-                              );
+                              setActiveMenuId(activeMenuId === room.id ? null : room.id);
                             }}
-                            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                            className="p-2 hover:bg-slate-100 rounded-full transition-colors"
                           >
-                            <MoreVertical size={20} className="text-gray-600" />
+                            <MoreVertical size={18} className="text-slate-400" />
                           </button>
 
-                          {/* Context Menu */}
-                          {activeMenuId === room.id && (
-                            <div
-                              className="absolute right-0 mt-1 w-40 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openEditModal(room);
-                                }}
-                                className="w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors text-black font-medium first:rounded-t-lg"
+                          <AnimatePresence>
+                            {activeMenuId === room.id && (
+                              <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                                transition={{ duration: 0.1 }}
+                                className="absolute right-0 top-full mt-1 w-36 bg-white rounded-xl shadow-2xl border border-slate-200 z-[9999] overflow-hidden"
+                                onClick={(e) => e.stopPropagation()}
                               >
-                                แก้ไข
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openDeleteConfirm(room.id);
-                                }}
-                                className="w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors text-red-600 font-medium last:rounded-b-lg border-t border-gray-200"
-                              >
-                                ลบ
-                              </button>
-                            </div>
-                          )}
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); openEditModal(room); }}
+                                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 transition-colors text-slate-700 font-medium"
+                                >
+                                  แก้ไขข้อมูล
+                                </button>
+                                <div className="h-px bg-slate-100" />
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); openDeleteConfirm(room.id); }}
+                                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-red-50 transition-colors text-red-600 font-medium"
+                                >
+                                  ลบห้องสอบ
+                                </button>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </div>
                       )}
                     </div>
-                    <div className="mt-4 pt-4 border-t border-gray-100">
-                      {/* Progress bar placeholder */}
-                      <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-[#3B82F6] rounded-full"
-                          style={{ width: "0%" }}
-                        ></div>
-                      </div>
-                    </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           )}
-        </div>
+        </motion.div>
       </main>
 
-      {/* Create Exam Room Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md relative overflow-hidden">
-            {/* Gradient Header */}
-            <div className="h-2 bg-gradient-to-r from-[#3B82F6] to-[#8B5CF6]"></div>
-
-            {/* Modal Content */}
-            <div className="p-8">
-              {/* Close Button */}
-              <button
-                onClick={() => {
-                  setShowCreateModal(false);
-                  setSubjectName("");
-                  setSectionClass("");
-                }}
-                className="absolute top-6 right-6 p-1 hover:bg-gray-100 rounded-full transition-colors"
-              >
-                <X size={24} className="text-gray-600" />
-              </button>
-
-              {/* Title */}
-              <h2 className="text-2xl font-bold text-black mb-8">
-                สร้างห้องสอบ
-              </h2>
-
-              {/* Form Fields */}
-              <div className="space-y-6">
-                {/* Subject Name */}
-                <div>
-                  <label className="block text-base font-medium text-black mb-2">
-                    ชื่อวิชา
-                  </label>
-                  <input
-                    type="text"
-                    value={subjectName}
-                    onChange={(e) => setSubjectName(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-                    placeholder="เช่น วิทยาศาสตร์"
-                  />
-                </div>
-
-                {/* Section/Class */}
-                <div>
-                  <label className="block text-base font-medium text-black mb-2">
-                    เซค.ชั้น{" "}
-                    <span className="text-sm text-gray-400 font-normal">
-                      (ไม่บังคับ)
-                    </span>
-                  </label>
-                  <input
-                    type="text"
-                    value={sectionClass}
-                    onChange={(e) => setSectionClass(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-                    placeholder="เช่น sec.1"
-                  />
-                </div>
-              </div>
-
-              {/* Confirm Button */}
-              <button
-                onClick={handleCreateRoom}
-                disabled={!subjectName.trim()}
-                className="w-full mt-8 py-3.5 bg-[#3B82F6] text-white rounded-xl font-medium text-lg hover:bg-[#2563EB] transition-colors shadow-sm disabled:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                ยืนยัน
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Exam Room Modal */}
-      {showEditModal && editingRoom && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md relative overflow-hidden">
-            {/* Gradient Header */}
-            <div className="h-2 bg-gradient-to-r from-[#3B82F6] to-[#8B5CF6]"></div>
-
-            {/* Modal Content */}
-            <div className="p-8">
-              {/* Close Button */}
-              <button
-                onClick={() => {
-                  setShowEditModal(false);
-                  setEditingRoom(null);
-                  setSubjectName("");
-                  setSectionClass("");
-                }}
-                className="absolute top-6 right-6 p-1 hover:bg-gray-100 rounded-full transition-colors"
-              >
-                <X size={24} className="text-gray-600" />
-              </button>
-
-              {/* Title */}
-              <h2 className="text-2xl font-bold text-black mb-8">
-                แก้ไขห้องสอบ
-              </h2>
-
-              {/* Form Fields */}
-              <div className="space-y-6">
-                {/* Subject Name */}
-                <div>
-                  <label className="block text-base font-medium text-black mb-2">
-                    ชื่อวิชา
-                  </label>
-                  <input
-                    type="text"
-                    value={subjectName}
-                    onChange={(e) => setSubjectName(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-                    placeholder="เช่น วิทยาศาสตร์"
-                  />
-                </div>
-
-                {/* Section/Class */}
-                <div>
-                  <label className="block text-base font-medium text-black mb-2">
-                    เซค.ชั้น{" "}
-                    <span className="text-sm text-gray-400 font-normal">
-                      (ไม่บังคับ)
-                    </span>
-                  </label>
-                  <input
-                    type="text"
-                    value={sectionClass}
-                    onChange={(e) => setSectionClass(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-                    placeholder="เช่น sec.1"
-                  />
-                </div>
-              </div>
-
-              {/* Confirm Button */}
-              <button
-                onClick={handleEditRoom}
-                disabled={!subjectName.trim()}
-                className="w-full mt-8 py-3.5 bg-[#3B82F6] text-white rounded-xl font-medium text-lg hover:bg-[#2563EB] transition-colors shadow-sm disabled:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                บันทึก
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
-            <div className="p-6">
-              <h3 className="text-lg font-bold text-black mb-2">ยืนยันการลบ</h3>
-              <p className="text-gray-600 mb-6">
-                คุณแน่ใจหรือว่าต้องการลบห้องสอบนี้?
-                การกระทำนี้ไม่สามารถยกเลิกได้
-              </p>
-
-              <div className="flex gap-3">
+      {/* Modals for Teacher Actions */}
+      <AnimatePresence>
+        {showCreateModal && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-md relative overflow-hidden"
+            >
+              <div className="h-2 bg-gradient-to-r from-indigo-500 to-purple-600" />
+              <div className="p-8 space-y-6">
                 <button
-                  onClick={() => {
-                    setShowDeleteConfirm(false);
-                    setDeleteTargetId(null);
-                  }}
-                  className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg font-medium text-black hover:bg-gray-50 transition-colors"
+                  onClick={() => { setShowCreateModal(false); setSubjectName(""); setSectionClass(""); }}
+                  className="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600"
                 >
-                  ยกเลิก
+                  <X size={20} />
                 </button>
-                <button
-                  onClick={() =>
-                    deleteTargetId && handleDeleteRoom(deleteTargetId)
-                  }
-                  className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
+                <h2 className="text-2xl font-bold text-slate-900">สร้างห้องสอบใหม่</h2>
+                
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-700">ชื่อวิชา / ชื่อห้อง</label>
+                    <Input
+                      type="text"
+                      value={subjectName}
+                      onChange={(e) => setSubjectName(e.target.value)}
+                      placeholder="เช่น วิทยาการคอมพิวเตอร์ 101"
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-700">ระบุกลุ่ม (Section) <span className="text-slate-400 font-normal">(ไม่บังคับ)</span></label>
+                    <Input
+                      type="text"
+                      value={sectionClass}
+                      onChange={(e) => setSectionClass(e.target.value)}
+                      placeholder="เช่น sec.1"
+                      className="h-11"
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  onClick={handleCreateRoom}
+                  disabled={!subjectName.trim()}
+                  className="w-full h-12 text-base bg-indigo-600 hover:bg-indigo-700 mt-2"
                 >
-                  ลบ
-                </button>
+                  บันทึกข้อมูล
+                </Button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showEditModal && editingRoom && (
+          <motion.div 
+             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+             className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          >
+            <motion.div 
+                initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-white rounded-3xl shadow-2xl w-full max-w-md relative overflow-hidden"
+              >
+              <div className="h-2 bg-gradient-to-r from-indigo-500 to-purple-600" />
+              <div className="p-8 space-y-6">
+                <button
+                  onClick={() => { setShowEditModal(false); setEditingRoom(null); setSubjectName(""); setSectionClass(""); }}
+                  className="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600"
+                >
+                  <X size={20} />
+                </button>
+                <h2 className="text-2xl font-bold text-slate-900">แก้ไขข้อมูลห้องสอบ</h2>
+                
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-700">ชื่อวิชา / ชื่อห้อง</label>
+                    <Input
+                      type="text"
+                      value={subjectName}
+                      onChange={(e) => setSubjectName(e.target.value)}
+                      placeholder="เช่น วิทยาการคอมพิวเตอร์ 101"
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-700">ระบุกลุ่ม (Section) <span className="text-slate-400 font-normal">(ไม่บังคับ)</span></label>
+                    <Input
+                      type="text"
+                      value={sectionClass}
+                      onChange={(e) => setSectionClass(e.target.value)}
+                      placeholder="เช่น sec.1"
+                      className="h-11"
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  onClick={handleEditRoom}
+                  disabled={!subjectName.trim()}
+                  className="w-full h-12 text-base bg-indigo-600 hover:bg-indigo-700 mt-2"
+                >
+                  บันทึกข้อมูล
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          >
+            <motion.div 
+               initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+               className="bg-white rounded-2xl shadow-xl border border-slate-100 w-full max-w-sm overflow-hidden"
+            >
+              <div className="p-6">
+                <h3 className="text-lg font-bold text-slate-900 mb-2">ยืนยันการลบห้องสอบ</h3>
+                <p className="text-sm text-slate-500 mb-6">
+                  คุณแน่ใจหรือว่าต้องการลบห้องเรียนนี้? ข้อมูลเกี่ยวกับแบบทดสอบและคะแนนในห้องนี้จะหายไปทั้งหมด และการกระทำนี้ไม่สามารถยกเลิกได้
+                </p>
+
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => { setShowDeleteConfirm(false); setDeleteTargetId(null); }}
+                    className="flex-1 h-11 border-slate-200 text-slate-600 hover:bg-slate-50"
+                  >
+                    ยกเลิก
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => deleteTargetId && handleDeleteRoom(deleteTargetId)}
+                    className="flex-1 h-11 bg-rose-600 hover:bg-rose-700"
+                  >
+                    ตรวจสอบและลบ
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Join Room Modal (For Students) */}
+      <AnimatePresence>
+        {showJoinModal && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-md relative overflow-hidden"
+            >
+              <div className="h-2 bg-gradient-to-r from-emerald-400 to-teal-500" />
+              <div className="p-8 space-y-6">
+                <button
+                  onClick={() => { setShowJoinModal(false); setJoinRoomCode(""); }}
+                  className="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600"
+                >
+                  <X size={20} />
+                </button>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center">
+                    <BookOpen size={20} />
+                  </div>
+                  <h2 className="text-2xl font-bold text-slate-900">เข้าร่วมห้องสอบ</h2>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-700">รหัสห้องเรียน (Class Code)</label>
+                    <p className="text-xs text-slate-500 mb-2">
+                      โปรดกรอกรหัสประจำห้องเรียนที่ไม่ซ้ำกันที่คุณได้รับจากอาจารย์ผู้สอน
+                    </p>
+                    <Input
+                      type="text"
+                      value={joinRoomCode}
+                      onChange={(e) => setJoinRoomCode(e.target.value)}
+                      placeholder="เช่น j8x9-v2m1"
+                      className="h-12 text-center text-lg tracking-widest font-mono"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  onClick={handleJoinRoom}
+                  disabled={!joinRoomCode.trim()}
+                  className="w-full h-12 text-base bg-teal-600 hover:bg-teal-700 mt-2"
+                >
+                  เข้าร่วมห้องเรียน
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }

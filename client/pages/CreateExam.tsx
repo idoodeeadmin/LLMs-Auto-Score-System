@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { Plus, Trash2, Upload, Calendar, Clock, CheckCircle2, X, ChevronDown, ChevronUp, Image as ImageIcon, Edit3, Save } from "lucide-react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Plus, Trash2, Upload, Calendar, Clock, CheckCircle2, X, ChevronDown, ChevronUp, Image as ImageIcon, Edit3, Save, ArrowLeft, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 interface RubricItem {
   id: number;
@@ -27,6 +29,19 @@ interface Question {
 
 export default function CreateExam() {
   const { roomId } = useParams();
+  const navigate = useNavigate();
+  const { token } = useAuth();
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Exam meta state
+  const [examTitle, setExamTitle] = useState("");
+  const [examDescription, setExamDescription] = useState("");
+  const [totalScore, setTotalScore] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [endTime, setEndTime] = useState("");
+
   const [questions, setQuestions] = useState<Question[]>([
     {
       id: Date.now(),
@@ -122,11 +137,62 @@ export default function CreateExam() {
     setQuestions(questions.filter(q => q.id !== qId));
   }
 
+  const handleSave = async () => {
+    if (!examTitle.trim()) {
+      toast.error("โปรดกรอกชื่อชุดข้อสอบ");
+      return;
+    }
+    const validQs = questions.filter(q => q.text.trim());
+    if (validQs.length === 0) {
+      toast.error("โปรดเพิ่มคำถามอย่างน้อยหนึ่งข้อ");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const payload = {
+        title: examTitle,
+        description: examDescription || null,
+        total_score: parseFloat(totalScore) || 0,
+        start_date: startDate && startTime ? `${startDate}T${startTime}` : null,
+        end_date: endDate && endTime ? `${endDate}T${endTime}` : null,
+        questions: validQs.map((q, i) => ({
+          text: q.text,
+          score: parseFloat(q.score) || 0,
+          answer_key: q.answerKey || null,
+          rubrics: q.rubrics.filter(r => r.name).map(r => ({ name: r.name, description: r.description, score: parseFloat(r.score) || 0 })),
+          order_index: i
+        }))
+      };
+
+      const res = await fetch(`/api/rooms/${roomId}/exams`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        toast.success("สร้างข้อสอบสำเร็จ!");
+        navigate(`/room/${roomId}`);
+      } else {
+        const err = await res.json();
+        toast.error(err.detail || "บันทึกไม่สำเร็จ");
+      }
+    } catch {
+      toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#F4F7F9] pb-24 md:pb-12">
-      <Navbar activeTab={undefined} setActiveTab={() => { }} />
+      <Navbar />
 
       <main className="max-w-[1000px] mx-auto p-4 md:p-8 space-y-6">
+        <button onClick={() => navigate(`/room/${roomId}`)} className="flex items-center gap-2 text-slate-500 hover:text-slate-800 text-sm font-medium">
+          <ArrowLeft size={16} /> กลับหน้าห้อง
+        </button>
 
         {/* NEW Exam Meta Section (Distinct Blue Card) */}
         <section className="bg-gradient-to-br from-[#1E3A8A] to-[#3B82F6] p-6 md:p-8 rounded-3xl shadow-[0_10px_40px_-10px_rgba(59,130,246,0.5)] border border-blue-400/20 text-white relative overflow-hidden">
@@ -138,42 +204,38 @@ export default function CreateExam() {
           </div>
 
           <div className="relative z-10">
-            <h2 className="text-xl md:text-2xl font-bold text-white mb-6 flex items-center gap-2">
+            <h2 className="text-xl md:text-2xl font-bold text-white mb-6">
               ตั้งค่าชุดข้อสอบ
             </h2>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6 items-end">
               <div className="lg:col-span-6 space-y-2">
                 <label className="text-sm font-semibold text-blue-100">ชื่อชุดข้อสอบ</label>
-                <Input className="h-12 text-lg border-blue-400/30 bg-blue-900/40 text-white placeholder:text-blue-300 focus:border-white focus:ring-1 focus:ring-white transition-all shadow-inner hover:bg-blue-900/60" placeholder="เช่น สอบกลางภาควิชา..." />
+                <Input value={examTitle} onChange={e => setExamTitle(e.target.value)} className="h-12 text-lg border-blue-400/30 bg-blue-900/40 text-white placeholder:text-blue-300 focus:border-white focus:ring-1 focus:ring-white transition-all shadow-inner hover:bg-blue-900/60" placeholder="เช่น สอบกลางภาควิชา..." />
               </div>
               <div className="lg:col-span-4 space-y-2">
                 <label className="text-sm font-semibold text-blue-100">รายละเอียดการสอบ</label>
-                <Input className="h-12 text-base border-blue-400/30 bg-blue-900/40 text-white placeholder:text-blue-300 transition-all shadow-inner hover:bg-blue-900/60" placeholder="คำอธิบายเพิ่มเติม..." />
+                <Input value={examDescription} onChange={e => setExamDescription(e.target.value)} className="h-12 text-base border-blue-400/30 bg-blue-900/40 text-white placeholder:text-blue-300 transition-all shadow-inner hover:bg-blue-900/60" placeholder="คำอธิบายเพิ่มเติม..." />
               </div>
               <div className="lg:col-span-2 space-y-2">
                 <label className="text-sm font-semibold text-blue-100 block">คะแนนเต็ม</label>
-                <Input className="h-12 text-center text-xl font-bold text-blue-900 border-none bg-blue-50 shadow-md" placeholder="0" />
+                <Input value={totalScore} onChange={e => setTotalScore(e.target.value)} type="number" className="h-12 text-center text-xl font-bold text-blue-900 border-none bg-blue-50 shadow-md" placeholder="0" />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6 mt-6 pt-6 border-t border-blue-400/30">
               <div className="space-y-3">
-                <label className="text-sm font-medium text-blue-100 flex items-center gap-2">
-                  <Calendar className="w-4 h-4" /> เริ่มสอบ
-                </label>
+                <label className="text-sm font-medium text-blue-100 flex items-center gap-2"><Calendar className="w-4 h-4" /> เริ่มสอบ</label>
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <Input type="date" className="h-11 border-blue-400/30 bg-blue-900/40 text-white flex-1 hover:bg-blue-900/60 [color-scheme:dark]" />
-                  <Input type="time" className="h-11 border-blue-400/30 bg-blue-900/40 text-white sm:w-32 hover:bg-blue-900/60 [color-scheme:dark]" />
+                  <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="h-11 border-blue-400/30 bg-blue-900/40 text-white flex-1 hover:bg-blue-900/60 [color-scheme:dark]" />
+                  <Input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="h-11 border-blue-400/30 bg-blue-900/40 text-white sm:w-32 hover:bg-blue-900/60 [color-scheme:dark]" />
                 </div>
               </div>
               <div className="space-y-3">
-                <label className="text-sm font-medium text-blue-100 flex items-center gap-2">
-                  <Clock className="w-4 h-4" /> สิ้นสุด
-                </label>
+                <label className="text-sm font-medium text-blue-100 flex items-center gap-2"><Clock className="w-4 h-4" /> สิ้นสุด</label>
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <Input type="date" className="h-11 border-blue-400/30 bg-blue-900/40 text-white flex-1 hover:bg-blue-900/60 [color-scheme:dark]" />
-                  <Input type="time" className="h-11 border-blue-400/30 bg-blue-900/40 text-white sm:w-32 hover:bg-blue-900/60 [color-scheme:dark]" />
+                  <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="h-11 border-blue-400/30 bg-blue-900/40 text-white flex-1 hover:bg-blue-900/60 [color-scheme:dark]" />
+                  <Input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="h-11 border-blue-400/30 bg-blue-900/40 text-white sm:w-32 hover:bg-blue-900/60 [color-scheme:dark]" />
                 </div>
               </div>
             </div>
@@ -453,14 +515,16 @@ export default function CreateExam() {
               </span>
             </div>
 
-            <Link to={`/room/${roomId}`} className="w-full md:w-auto order-last md:order-none mt-2 md:mt-0">
-              <Button variant="ghost" className="w-full md:w-auto h-14 md:h-12 px-8 text-gray-500 hover:bg-gray-200 font-bold rounded-xl text-base">
-                กลับไปหน้ารวม
-              </Button>
-            </Link>
+            <button onClick={() => navigate(`/room/${roomId}`)} className="w-full md:w-auto h-14 md:h-12 px-8 text-gray-500 hover:bg-gray-200 font-bold rounded-xl text-base transition-colors">
+              กลับไปหน้ารวม
+            </button>
 
-            <Button className="w-full md:w-auto h-14 md:h-12 px-10 bg-[#3B82F6] text-white hover:bg-blue-600 shadow-lg shadow-blue-500/25 font-black text-lg rounded-xl">
-              บันทึกและพร้อมสอบ
+            <Button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="w-full md:w-auto h-14 md:h-12 px-10 bg-[#3B82F6] text-white hover:bg-blue-600 shadow-lg shadow-blue-500/25 font-black text-lg rounded-xl"
+            >
+              {isSaving ? <><Loader2 size={18} className="mr-2 animate-spin" /> กำลังบันทึก...</> : "บันทึกและพร้อมสอบ"}
             </Button>
           </div>
         </div>

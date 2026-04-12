@@ -27,7 +27,7 @@ export const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/room/:id/create-exam" element={<CreateExam />} />
+            <Route path="/room/:roomId/create-exam" element={<CreateExam />} />
             <Route path="/" element={<Index />} />
             <Route path="/register" element={<Register />} />
             <Route path="/home" element={<Home />} />

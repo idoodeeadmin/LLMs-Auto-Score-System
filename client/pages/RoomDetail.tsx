@@ -1,230 +1,296 @@
 import { useState, useEffect } from "react";
-import { Bell, User, Settings, SlidersHorizontal, BarChart2, Plus } from "lucide-react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { Users, Plus, ArrowLeft, Copy, BookOpen, Loader2, UserCheck, FileText, Calendar } from "lucide-react";
+import { useParams, useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+
+interface RoomInfo {
+  id: number;
+  name: string;
+  section: string;
+  class_code: string;
+  owner_id: number;
+}
+
+interface Member {
+  id: number;
+  name: string;
+  email: string;
+  student_id?: string;
+  joined_at: string;
+}
 
 interface Exam {
-  id: string;
+  id: number;
+  room_id: number;
   title: string;
-  date: string;
-  time: string;
-  status: "incomplete" | "pending" | "approved";
-  statusMessage?: string;
-  totalQuestions?: number;
-  pendingApproval?: number;
-  approved?: number;
+  description?: string;
+  total_score: number;
+  start_date?: string;
+  end_date?: string;
+  created_at: string;
 }
+
+const GRADIENTS = [
+  "from-indigo-500 to-purple-600",
+  "from-blue-500 to-cyan-500",
+  "from-rose-400 to-red-500",
+  "from-amber-400 to-orange-500",
+  "from-emerald-400 to-teal-500",
+];
 
 export default function RoomDetail() {
   const { roomId } = useParams();
   const navigate = useNavigate();
-  const { user, isLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState<"created" | "allReviews" | "statistics">("created");
+  const { user, token, isLoading } = useAuth();
+  const [activeTab, setActiveTab] = useState<"exams" | "members">("exams");
+  const [room, setRoom] = useState<RoomInfo | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [exams, setExams] = useState<Exam[]>([]);
+  const [isFetching, setIsFetching] = useState(true);
 
-  // Redirect if not logged in and not loading
   useEffect(() => {
-    if (!isLoading && !user) {
-      navigate("/");
-    }
+    if (!isLoading && !user) navigate("/");
   }, [user, isLoading, navigate]);
 
-  if (isLoading || !user) {
+  useEffect(() => {
+    if (!token || !roomId) return;
+    const fetchRoom = async () => {
+      try {
+        const [roomRes, examsRes] = await Promise.all([
+          fetch(`/api/rooms/${roomId}`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`/api/rooms/${roomId}/exams`, { headers: { Authorization: `Bearer ${token}` } }),
+        ]);
+        if (roomRes.ok) setRoom(await roomRes.json());
+        else { toast.error("ไม่พบห้องเรียนนี้"); navigate("/home"); }
+        if (examsRes.ok) setExams(await examsRes.json());
+      } catch {
+        toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+      } finally {
+        setIsFetching(false);
+      }
+    };
+    fetchRoom();
+  }, [token, roomId]);
+
+  useEffect(() => {
+    if (!token || !roomId || activeTab !== "members") return;
+    const fetchMembers = async () => {
+      try {
+        const res = await fetch(`/api/rooms/${roomId}/members`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) setMembers(await res.json());
+      } catch {
+        console.error("Failed to fetch members");
+      }
+    };
+    fetchMembers();
+  }, [token, roomId, activeTab]);
+
+  const handleCopyCode = () => {
+    if (room?.class_code) {
+      navigator.clipboard.writeText(room.class_code);
+      toast.success("คัดลอกรหัสห้องแล้ว");
+    }
+  };
+
+  if (isLoading || isFetching || !user) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex h-screen items-center justify-center bg-slate-50">
+        <Loader2 className="animate-spin text-indigo-600 h-12 w-12" />
       </div>
     );
   }
 
-  const isTeacher = user.role === 'teacher';
+  const isTeacher = user.role === "teacher";
+  const gradientIndex = room ? room.id % GRADIENTS.length : 0;
 
-  // Mock data
-  const roomName = "โครงสร้างข้อมูล";
-  const roomSection = "Sec.1";
-
-  const [exams] = useState<Exam[]>([
-    {
-      id: "1",
-      title: "สอบกลางภาค",
-      date: "25 ม.ค.",
-      time: "08:00-12:00",
-      status: "incomplete",
-      statusMessage: "ไม่ส่งเวลา 00:13:52 วินาที",
-      totalQuestions: 20,
-      pendingApproval: 10,
-      approved: 5,
-    },
-    {
-      id: "2",
-      title: "สอบย่อยบทที่ 2",
-      date: "15 ม.ค.",
-      time: "08:00-10:00 น.",
-      status: "pending",
-      statusMessage: "สิ้นสุดแล้ว",
-      totalQuestions: 10,
-      approved: 25,
-    },
-    {
-      id: "3",
-      title: "สอบบทที่ 1",
-      date: "3 ม.ค.",
-      time: "15:00-16:30 น.",
-      status: "approved",
-      statusMessage: "สิ้นสุดแล้ว",
-      approved: 35,
-    },
-  ]);
-
-  const getStatusBadge = (status: Exam["status"]) => {
-    switch (status) {
-      case "incomplete":
-        return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-700">
-            ยังไม่เสร็จ(20)
-          </span>
-        );
-      case "pending":
-        return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
-            รอการอนุมัติ(10)
-          </span>
-        );
-      case "approved":
-        return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-            อนุมัติแล้ว(35)
-          </span>
-        );
-    }
-  };
-
-  const getApprovalBadges = (exam: Exam) => {
-    const badges = [];
-    if (exam.pendingApproval) {
-      badges.push(
-        <span
-          key="pending"
-          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700"
-        >
-          รอการอนุมัติ({exam.pendingApproval})
-        </span>
-      );
-    }
-    if (exam.approved) {
-      badges.push(
-        <span
-          key="approved"
-          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700"
-        >
-          อนุมัติแล้ว({exam.approved})
-        </span>
-      );
-    }
-    return badges;
+  const fadeUp = {
+    hidden: { opacity: 0, y: 16 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.35 } },
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
+    <div className="min-h-screen bg-slate-50 font-sans">
+      <Navbar />
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+        {/* Back Button */}
+        <button
+          onClick={() => navigate("/home")}
+          className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors text-sm font-medium"
+        >
+          <ArrowLeft size={18} /> กลับหน้าหลัก
+        </button>
+
         {/* Room Banner */}
-        <div className="bg-gradient-to-br from-[#5B9CF5] to-[#4A7BC8] rounded-3xl p-8 mb-8 text-white shadow-lg">
-          <h2 className="text-4xl font-bold mb-2">{roomName}</h2>
-          <p className="text-white/90 text-lg">{roomSection}</p>
-        </div>
-
-        {/* Filter and Create Button */}
-        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between mb-8">
-          <button className="flex items-center justify-center w-full sm:w-auto gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl transition-all shadow-sm">
-            <SlidersHorizontal size={18} />
-            <span className="font-semibold text-sm">ตัวกรองข้อสอบ</span>
-          </button>
-
-          <div className="flex gap-3 w-full sm:w-auto">
-            <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-100 hover:text-indigo-700 rounded-xl font-bold transition-all shadow-sm">
-              <BarChart2 size={18} />
-              <span className="text-sm">สถิติรายวิชา</span>
-            </button>
-            {isTeacher && (
-              <Link to={`/room/${roomId}/create-exam`} className="flex-1 sm:flex-none">
-                <button className="w-full h-full flex items-center justify-center gap-2 px-6 py-2.5 bg-[#3B82F6] text-white rounded-xl font-bold hover:bg-[#2563EB] transition-colors shadow-md">
-                  <Plus size={18} />
-                  <span className="text-sm">สร้างข้อสอบ</span>
-                </button>
-              </Link>
+        <motion.div
+          initial="hidden" animate="visible" variants={fadeUp}
+          className={`bg-gradient-to-br ${GRADIENTS[gradientIndex]} rounded-3xl p-8 text-white shadow-xl relative overflow-hidden`}
+        >
+          <div className="absolute inset-0 bg-black/5" />
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div>
+              <p className="text-white/70 text-sm font-medium mb-1 uppercase tracking-wider">ห้องเรียน</p>
+              <h1 className="text-3xl sm:text-4xl font-bold drop-shadow">{room?.name}</h1>
+              {room?.section && (
+                <span className="inline-block mt-2 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-sm font-semibold">
+                  {room.section}
+                </span>
+              )}
+            </div>
+            {/* Class Code */}
+            {isTeacher && room?.class_code && (
+              <button
+                onClick={handleCopyCode}
+                className="flex items-center gap-2 px-4 py-2.5 bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 rounded-2xl transition-colors text-left"
+              >
+                <div>
+                  <p className="text-white/70 text-xs">รหัสเชิญ</p>
+                  <p className="font-mono font-bold text-xl tracking-widest">{room.class_code}</p>
+                </div>
+                <Copy size={16} className="opacity-70 ml-1" />
+              </button>
             )}
           </div>
-        </div>
+        </motion.div>
 
-        {/* Exams List */}
-        <div className="space-y-4">
-          {exams.map((exam) => (
-            <div
-              key={exam.id}
-              // 3. เพิ่ม onClick เพื่อไปหน้า ExamView
-              onClick={() => navigate(`/room/${roomId}/exam/${exam.id}`)}
-              className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-all border border-gray-100 cursor-pointer group"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {getStatusBadge(exam.status)}
-                    {getApprovalBadges(exam)}
+        {/* Tab Bar */}
+        <motion.div initial="hidden" animate="visible" variants={fadeUp} className="flex items-center gap-1 bg-white rounded-2xl p-1.5 shadow-sm border border-slate-100 w-fit">
+          <button
+            onClick={() => setActiveTab("exams")}
+            className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === "exams"
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
+                : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+              }`}
+          >
+            <BookOpen size={15} className="inline mr-1.5 -mt-0.5" />
+            ข้อสอบ
+          </button>
+          <button
+            onClick={() => setActiveTab("members")}
+            className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === "members"
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
+                : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+              }`}
+          >
+            <Users size={15} className="inline mr-1.5 -mt-0.5" />
+            สมาชิก
+          </button>
+        </motion.div>
+
+        <AnimatePresence mode="wait">
+          {/* Exams Tab */}
+          {activeTab === "exams" && (
+            <motion.div key="exams" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }} className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-slate-800">รายการข้อสอบ</h2>
+                {isTeacher && (
+                  <Button onClick={() => navigate(`/room/${roomId}/create-exam`)} className="bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-200">
+                    <Plus size={16} className="mr-1.5" /> สร้างข้อสอบ
+                  </Button>
+                )}
+              </div>
+
+              {exams.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center shadow-sm">
+                  <div className="mx-auto w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                    <BookOpen className="h-8 w-8 text-slate-400" />
                   </div>
-
-                  {/* เพิ่ม group-hover ให้ชื่อข้อสอบเปลี่ยนสีเมื่อเอาเมาส์ชี้การ์ด */}
-                  <h3 className="text-xl font-bold text-black mb-2 group-hover:text-[#3B82F6] transition-colors">
-                    {exam.title}
-                  </h3>
-
-                  <div className="flex items-center gap-2 text-gray-600 mb-2">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                      <line x1="16" y1="2" x2="16" y2="6" />
-                      <line x1="8" y1="2" x2="8" y2="6" />
-                      <line x1="3" y1="10" x2="21" y2="10" />
-                    </svg>
-                    <span>
-                      {exam.date}, {exam.time}
-                    </span>
-                  </div>
-
-                  {exam.statusMessage && (
-                    <p className={`text-sm ${exam.status === "incomplete" ? "text-red-600" : "text-gray-500"}`}>
-                      {exam.statusMessage}
-                    </p>
+                  <h3 className="text-lg font-semibold text-slate-700 mb-1">ยังไม่มีข้อสอบ</h3>
+                  <p className="text-slate-500 text-sm mb-6">{isTeacher ? "กดปุ่ม 'สร้างข้อสอบ' เพื่อเพิ่มข้อสอบแรก" : "อาจารย์ยังไม่ได้สร้างข้อสอบในห้องนี้"}</p>
+                  {isTeacher && (
+                    <Button onClick={() => navigate(`/room/${roomId}/create-exam`)} className="bg-indigo-600 hover:bg-indigo-700">
+                      <Plus size={16} className="mr-1.5" /> สร้างข้อสอบแรก
+                    </Button>
                   )}
                 </div>
-
-                {/* Actions container */}
-                <div className="flex flex-col items-end justify-between h-full z-10 pl-4 border-l border-gray-50 ml-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      console.log("Open settings");
-                    }}
-                    className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-700"
-                  >
-                    <Settings size={20} />
-                  </button>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      console.log("Go to exam statistics");
-                    }}
-                    className="mt-6 flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-indigo-50 text-gray-500 hover:text-indigo-600 text-[11px] md:text-xs font-bold rounded-lg border border-gray-100 hover:border-indigo-100 transition-colors"
-                  >
-                    <BarChart2 size={14} />
-                    <span>สถิติ</span>
-                  </button>
+              ) : (
+                <div className="space-y-3">
+                  {exams.map((exam) => (
+                    <div
+                      key={exam.id}
+                      onClick={() => navigate(`/room/${roomId}/exam/${exam.id}`)}
+                      className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md hover:border-indigo-200 cursor-pointer transition-all group"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex gap-4 items-start">
+                          <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <FileText size={20} className="text-indigo-600" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">{exam.title}</h3>
+                            {exam.description && <p className="text-sm text-slate-500 mt-0.5">{exam.description}</p>}
+                            {exam.start_date && (
+                              <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+                                <Calendar size={12} /> {new Date(exam.start_date).toLocaleDateString('th-TH')}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <span className="text-lg font-bold text-indigo-600">{exam.total_score}</span>
+                          <span className="text-xs text-slate-400 ml-1">คะแนน</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* Members Tab */}
+          {activeTab === "members" && (
+            <motion.div key="members" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }} className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-slate-800">สมาชิกในห้อง</h2>
+                <span className="text-sm text-slate-500">{members.filter(m => (m as any).role === 'student').length} นักศึกษา</span>
               </div>
-            </div>
-          ))}
-        </div>
+
+              {members.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center shadow-sm">
+                  <div className="mx-auto w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                    <Users className="h-8 w-8 text-slate-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-slate-700 mb-1">ยังไม่มีนักศึกษา</h3>
+                  <p className="text-slate-500 text-sm">แชร์รหัส <span className="font-mono font-bold text-indigo-600">{room?.class_code}</span> ให้นักศึกษาเพื่อเข้าร่วม</p>
+                </div>
+              ) : (
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                  {members.map((m, i) => {
+                    const memberRole = (m as any).role;
+                    const isTeacherMember = memberRole === 'teacher';
+                    return (
+                      <div key={m.id} className={`flex items-center gap-4 px-6 py-4 ${i !== 0 ? "border-t border-slate-50" : ""} ${isTeacherMember ? "bg-indigo-50/50" : ""}`}>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${isTeacherMember ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-600"}`}>
+                          {m.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-slate-800 truncate">{m.name}</p>
+                            {isTeacherMember && (
+                              <span className="flex-shrink-0 text-xs font-bold px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full">ผู้สอน</span>
+                            )}
+                          </div>
+                          <p className="text-sm text-slate-500 truncate">{m.email}{m.student_id ? ` · ${m.student_id}` : ""}</p>
+                        </div>
+                        {isTeacherMember
+                          ? <span className="text-indigo-400 flex-shrink-0">👑</span>
+                          : <UserCheck size={16} className="text-emerald-500 flex-shrink-0" />
+                        }
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );
