@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Eye, EyeOff, Mail, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Mail, Loader2, ArrowRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export default function Index() {
   const [showPassword, setShowPassword] = useState(false);
@@ -44,131 +47,164 @@ export default function Index() {
     }
   };
 
+  // Animation variants
+  const fadeIn = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
+  };
+  
+  const staggerContainer = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
   return (
-    <div className="flex min-h-screen">
-      {/* Left Side - Dark Background with Image */}
-      <div className="relative hidden lg:flex lg:w-1/2 bg-gradient-to-b from-[#2F3B48] to-[#445468] items-center justify-center overflow-hidden">
-        {/* Background Image */}
-        <img
-          src="https://api.builder.io/api/v1/image/assets/TEMP/91e324bc3ea2042ded0899862fcec54022cda24a?width=1584"
-          alt="Study desk with books"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-
-        {/* Logo Icon */}
-        <div className="relative z-10 flex flex-col items-center">
-          <img
-            src="https://api.builder.io/api/v1/image/assets/TEMP/eb4441680ef793285669451cd4b222e32d202205?width=568"
-            alt="Evaly Logo"
-            className="w-[284px] h-[284px] opacity-90"
-          />
-          <h1 className="text-white text-[40px] font-medium mt-[-30px] drop-shadow-[0_4px_4px_rgba(0,0,0,0.25)]">
-            Evaly
-          </h1>
-        </div>
-
-        {/* Bottom Text */}
-        <div className="absolute bottom-[110px] left-[37px] text-white">
-          <h2 className="text-2xl font-bold">LLM-AutoScore</h2>
-          <p className="text-base mt-1">ข้อสอบคุณเราตรวจเอง</p>
-        </div>
-      </div>
-
-      {/* Right Side - Login Form */}
-      <div className="flex-1 flex items-center justify-center bg-white px-6 sm:px-8 lg:px-12">
-        <div className="w-full max-w-[540px]">
-          {/* Welcome Text */}
-          <div className="text-center lg:text-left mb-12">
-            <h1 className="text-[40px] font-bold text-black leading-tight">
-              Welcome Back
-            </h1>
-            <p className="text-[15px] text-black/43 mt-4">
-              Please enter your details to access the Evaly.
-            </p>
-          </div>
-
-          <form onSubmit={handleLogin}>
-            {/* Email Input */}
-            <div className="mb-6">
-              <label className="block text-2xl font-medium text-black mb-3">
-                Email
-              </label>
-              <div className="relative">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter yor email"
-                  required
-                  className="w-full px-5 py-4 pr-14 text-2xl font-medium text-black placeholder:text-[#C9C9C9] rounded-[20px] border-[1.5px] border-[#C9C9C9] bg-[rgba(235,234,234,0.50)] shadow-[0_4px_4px_rgba(0,0,0,0.05)] focus:outline-none focus:border-[#3B82F6] transition-colors"
-                />
-                <Mail
-                  className="absolute right-5 top-1/2 -translate-y-1/2 text-[#C9C9C9]"
-                  size={24}
-                />
-              </div>
-            </div>
-
-            {/* Password Input */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <label className="text-2xl font-medium text-black">
-                  Password
-                </label>
-                <a
-                  href="#"
-                  className="text-xl font-medium text-[#3B82F6] hover:underline"
-                >
-                  forgot Password?
-                </a>
-              </div>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter yor password"
-                  required
-                  className="w-full px-5 py-4 pr-14 text-2xl font-medium text-black placeholder:text-[#C9C9C9] rounded-[20px] border-[1.5px] border-[#C9C9C9] bg-[rgba(235,234,234,0.50)] shadow-[0_4px_4px_rgba(0,0,0,0.05)] focus:outline-none focus:border-[#3B82F6] transition-colors"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-5 top-1/2 -translate-y-1/2 text-[#C9C9C9] hover:text-[#3B82F6] transition-colors"
-                >
-                  {showPassword ? <Eye size={24} /> : <EyeOff size={24} />}
-                </button>
-              </div>
-            </div>
-
-            {/* Login Button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-3 text-2xl font-medium text-white bg-[#3B82F6] rounded-[20px] shadow-[0_4px_4px_rgba(0,0,0,0.05)] hover:bg-[#2563EB] transition-colors mb-4 flex items-center justify-center disabled:bg-gray-400 disabled:cursor-not-allowed"
-            >
-              {isLoading ? <Loader2 className="animate-spin mr-2" /> : "Login"}
-            </button>
-          </form>
-
-          {/* Register Button */}
-          <Link
-            to="/register"
-            className="w-full py-3 text-2xl font-medium text-white bg-[rgba(255,88,88,0.79)] rounded-[20px] shadow-[0_4px_4px_rgba(0,0,0,0.05)] hover:bg-[rgba(255,88,88,0.9)] transition-colors flex items-center justify-center"
-          >
-            Register
-          </Link>
-
-          {/* Mobile Logo - Show on smaller screens */}
-          <div className="lg:hidden mt-12 flex flex-col items-center">
+    <div className="flex min-h-screen bg-slate-50">
+      {/* Left Side - Hero / Branding (Hidden on mobile) */}
+      <div className="relative hidden w-1/2 flex-col items-center justify-center overflow-hidden bg-slate-900 lg:flex">
+        {/* Subtle animated background gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/30 via-slate-900 to-slate-900 opacity-80" />
+        
+        {/* Glassmorphism content wrapper */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="relative z-10 flex flex-col items-center justify-center p-12 text-center"
+        >
+          <div className="mb-8 rounded-full bg-white/10 p-6 backdrop-blur-md ring-1 ring-white/20">
             <img
               src="https://api.builder.io/api/v1/image/assets/TEMP/eb4441680ef793285669451cd4b222e32d202205?width=568"
               alt="Evaly Logo"
-              className="w-32 h-32 opacity-90"
+              className="h-32 w-32 drop-shadow-2xl brightness-110"
             />
-            <h2 className="text-2xl font-medium text-gray-700 mt-2">Evaly</h2>
           </div>
-        </div>
+          <h1 className="mb-4 text-5xl font-extrabold tracking-tight text-white">
+            Evaly <span className="text-indigo-400">Score</span>
+          </h1>
+          <p className="max-w-md text-lg text-slate-300">
+            ระบบตรวจข้อสอบอัตโนมัติด้วยพลังของ AI ที่จะช่วยลดภาระงานและเพิ่มความแม่นยำให้กับคุณ
+          </p>
+        </motion.div>
+      </div>
+
+      {/* Right Side - Login Form */}
+      <div className="flex w-full flex-1 items-center justify-center p-8 lg:w-1/2">
+        <motion.div 
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+          className="w-full max-w-md space-y-8"
+        >
+          {/* Mobile Logo */}
+          <div className="flex flex-col items-center pb-4 lg:hidden">
+            <div className="rounded-full bg-slate-100 p-4 shadow-inner">
+               <img
+                src="https://api.builder.io/api/v1/image/assets/TEMP/eb4441680ef793285669451cd4b222e32d202205?width=568"
+                alt="Evaly Logo"
+                className="h-16 w-16"
+              />
+            </div>
+            <h2 className="mt-4 text-2xl font-bold text-slate-800">Evaly</h2>
+          </div>
+
+          <motion.div variants={fadeIn} className="text-center lg:text-left">
+            <h2 className="text-3xl font-bold tracking-tight text-slate-900">
+              Welcome back
+            </h2>
+            <p className="mt-2 text-sm text-slate-500">
+              เข้าสู่ระบบเพื่อจัดการห้องเรียนและข้อสอบของคุณ
+            </p>
+          </motion.div>
+
+          <form onSubmit={handleLogin} className="mt-8 space-y-6">
+            <motion.div variants={fadeIn} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium leading-none text-slate-700">
+                  อีเมล (Email)
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="name@example.com"
+                    required
+                    className="pl-10 h-12 text-base transition-shadow focus-visible:ring-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium leading-none text-slate-700">
+                    รหัสผ่าน (Password)
+                  </label>
+                  <a href="#" className="text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                    ลืมรหัสผ่าน?
+                  </a>
+                </div>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    className="pr-10 h-12 text-base transition-shadow focus-visible:ring-indigo-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    {showPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div variants={fadeIn} className="space-y-4 pt-2">
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white text-base shadow-lg shadow-indigo-200 transition-all active:scale-[0.98]"
+              >
+                {isLoading ? (
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                ) : (
+                  <>
+                    เข้าสู่ระบบ <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
+              </Button>
+              
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-200" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="bg-slate-50 px-2 text-slate-500">หรือ</span>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate('/register')}
+                className="w-full h-12 border-slate-300 text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-all active:scale-[0.98]"
+              >
+                สมัครสมาชิกใหม่
+              </Button>
+            </motion.div>
+          </form>
+        </motion.div>
       </div>
     </div>
   );
