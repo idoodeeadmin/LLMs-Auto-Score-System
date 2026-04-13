@@ -5,3 +5,5 @@ python-jose[cryptography]
 python-multipart
 python-dotenv
 email-validator
+google-genai
+aiofiles

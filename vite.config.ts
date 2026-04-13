@@ -14,6 +14,11 @@ export default defineConfig(({ mode }) => ({
         changeOrigin: true,
         secure: false,
       },
+      "/uploads": {
+        target: "http://localhost:8001",
+        changeOrigin: true,
+        secure: false,
+      },
     },
     fs: {
       allow: [path.resolve(__dirname)],

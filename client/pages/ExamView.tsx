@@ -2,12 +2,14 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Trophy, FileText, ChevronDown, ChevronUp,
-  CheckCircle2, Loader2, Calendar, Clock
+  CheckCircle2, Loader2, Calendar, Clock, ClipboardCheck,
+  Send, AlertCircle
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 interface Rubric {
   name: string;
@@ -22,6 +24,8 @@ interface Question {
   answer_key?: string;
   rubrics?: Rubric[];
   order_index: number;
+  image_path?: string | null;
+  image_paths?: string[];  // multiple images
 }
 
 interface Exam {
@@ -43,6 +47,7 @@ export default function ExamView() {
   const [exam, setExam] = useState<Exam | null>(null);
   const [isFetching, setIsFetching] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [mySubmission, setMySubmission] = useState<{ status: string; total_score?: number } | null>(null);
 
   useEffect(() => {
     if (!isLoading && !user) navigate("/");
@@ -68,6 +73,16 @@ export default function ExamView() {
       }
     };
     fetchExam();
+
+    // Fetch student's own submission status
+    if (user?.role === "student") {
+      fetch(`/api/rooms/${roomId}/exams/${examId}/submissions/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((r) => r.json())
+        .then((d) => setMySubmission(d))
+        .catch(() => { });
+    }
   }, [token, roomId, examId]);
 
   if (isLoading || isFetching || !user) {
@@ -87,13 +102,23 @@ export default function ExamView() {
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
-        {/* Back Button */}
-        <button
-          onClick={() => navigate(`/room/${roomId}`)}
-          className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors text-sm font-medium"
-        >
-          <ArrowLeft size={18} /> กลับหน้าห้อง
-        </button>
+        {/* Back Button + Teacher Action */}
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => navigate(`/room/${roomId}`)}
+            className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors text-sm font-medium"
+          >
+            <ArrowLeft size={18} /> กลับหน้าห้อง
+          </button>
+          {isTeacher && (
+            <Button
+              onClick={() => navigate(`/room/${roomId}/exam/${examId}/review`)}
+              className="bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-100 gap-2"
+            >
+              <ClipboardCheck size={16} /> ตรวจ / อนุมัติผล
+            </Button>
+          )}
+        </div>
 
         {/* Exam Header */}
         <motion.div
@@ -159,6 +184,27 @@ export default function ExamView() {
                 </div>
                 <div className="flex-1">
                   <p className="text-slate-800 font-medium leading-relaxed">{q.text}</p>
+                  {/* Question images attached by teacher — gallery */}
+                  {(q.image_paths && q.image_paths.length > 0) ? (
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      {q.image_paths.map((src, i) => (
+                        <img
+                          key={i}
+                          src={src}
+                          alt={`รูปโจทย์ข้อ ${index + 1} รูปที่ ${i + 1}`}
+                          className="w-full rounded-xl border border-slate-200 shadow-sm object-contain bg-gray-50 max-h-56"
+                        />
+                      ))}
+                    </div>
+                  ) : q.image_path ? (
+                    <div className="mt-3">
+                      <img
+                        src={q.image_path}
+                        alt={`รูปโจทย์ข้อ ${index + 1}`}
+                        className="max-h-72 w-auto rounded-xl border border-slate-200 shadow-sm object-contain bg-gray-50"
+                      />
+                    </div>
+                  ) : null}
                 </div>
                 <span className="flex-shrink-0 text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">
                   {q.score} คะแนน
@@ -224,16 +270,67 @@ export default function ExamView() {
           ))}
         </motion.div>
 
-        {/* Student: placeholder for future upload */}
+        {/* Student: Submit Section */}
         {!isTeacher && (
           <motion.div
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0, transition: { delay: 0.2 } }}
-            className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 text-center"
           >
-            <Trophy className="h-10 w-10 text-amber-400 mx-auto mb-3" />
-            <h3 className="text-lg font-bold text-slate-700 mb-1">ส่งคำตอบ</h3>
-            <p className="text-slate-500 text-sm">ฟีเจอร์การส่งคำตอบกำลังจะมาเร็วๆ นี้</p>
+            {!mySubmission || mySubmission.status === "missing" ? (
+              /* Not submitted yet */
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 text-center">
+                <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Send size={28} className="text-indigo-500" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-700 mb-2">พร้อมทำข้อสอบ?</h3>
+                <p className="text-slate-500 text-sm mb-6 leading-relaxed">
+                  รองรับการตอบแบบ <strong>พิมพ์ข้อความ</strong> และ <strong>ถ่ายรูปคำตอบ</strong><br />
+                  หลังส่งแล้วจะไม่สามารถแก้ไขได้
+                </p>
+                <Button
+                  onClick={() => navigate(`/room/${roomId}/exam/${examId}/submit`)}
+                  className="bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200 px-10 h-12 text-base font-bold"
+                >
+                  <Send size={18} className="mr-2" /> เริ่มทำข้อสอบ
+                </Button>
+              </div>
+            ) : mySubmission.status === "approved" ? (
+              /* Approved */
+              <div className="bg-green-50 rounded-2xl border border-green-200 shadow-sm p-8 text-center">
+                <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-3" />
+                <h3 className="text-xl font-bold text-green-700 mb-1">อนุมัติแล้ว ✅</h3>
+                <p className="text-green-600 text-sm">อาจารย์ตรวจและอนุมัติผลแล้ว</p>
+                <div className="mt-4 bg-white rounded-xl p-4 border border-green-100 inline-block">
+                  <p className="text-3xl font-bold text-green-600">{mySubmission.total_score ?? "-"}</p>
+                  <p className="text-sm text-gray-400">/ {exam?.total_score} คะแนน</p>
+                </div>
+              </div>
+            ) : (
+              /* Submitted / AI graded / Waiting teacher approval — ซ่อนคะแนนทั้งหมด */
+              <div className="bg-blue-50 rounded-2xl border border-blue-200 shadow-sm p-8 text-center">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  {mySubmission.status === "submitted" ? (
+                    <Loader2 size={28} className="text-blue-500 animate-spin" />
+                  ) : (
+                    <Clock size={28} className="text-blue-500" />
+                  )}
+                </div>
+                <h3 className="text-xl font-bold text-blue-700 mb-2">
+                  {mySubmission.status === "submitted"
+                    ? "กำลังประมวลผล AI..."
+                    : "รอการอนุมัติจากอาจารย์"}
+                </h3>
+                <p className="text-blue-500 text-sm leading-relaxed">
+                  {mySubmission.status === "submitted"
+                    ? "โปรดรอสักครู่ ระบบกำลังประเมินคำตอบ"
+                    : "ส่งคำตอบเรียบร้อยแล้ว\nผลคะแนนจะแสดงเมื่ออาจารย์อนุมัติ"}
+                </p>
+                <div className="mt-5 inline-flex items-center gap-2 text-xs text-blue-400 bg-white px-4 py-2 rounded-full border border-blue-100">
+                  <CheckCircle2 size={13} className="text-blue-400" />
+                  ส่งสำเร็จแล้ว — กรุณารอผลการตรวจ
+                </div>
+              </div>
+            )}
           </motion.div>
         )}
 
