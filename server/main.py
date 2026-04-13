@@ -1,5 +1,6 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Header
+from fastapi import FastAPI, Depends, HTTPException, status, Header, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from .database import get_db_connection, init_db
@@ -7,6 +8,12 @@ from .auth import get_password_hash, verify_password, create_access_token, decod
 import sqlite3
 import random
 import string
+import os
+import json as json_module_top
+from dotenv import load_dotenv
+import aiofiles
+
+load_dotenv()
 
 app = FastAPI(title="Evaly API")
 
@@ -23,6 +30,14 @@ app.add_middleware(
 @app.on_event("startup")
 def startup_event():
     init_db()
+    # Mount uploads folder for serving images
+    os.makedirs("uploads", exist_ok=True)
+
+# Serve uploaded images as static files
+try:
+    app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+except Exception:
+    pass  # Directory may not exist yet on first run
 
 # Models
 class UserRegister(BaseModel):
@@ -326,6 +341,7 @@ class QuestionInput(BaseModel):
     answer_key: Optional[str] = None
     rubrics: Optional[list] = None
     order_index: int = 0
+    question_images_base64: Optional[List[str]] = None  # list of base64 data URLs
 
 class ExamCreate(BaseModel):
     title: str
@@ -357,11 +373,38 @@ async def create_exam(room_id: int, exam: ExamCreate, user: dict = Depends(get_c
     exam_id = cursor.lastrowid
 
     # Insert questions
+    import base64, re as _re
     for q in exam.questions:
         rubrics_json = json_module.dumps(q.rubrics, ensure_ascii=False) if q.rubrics else None
+
+        # Handle multiple question images (base64 data URLs)
+        image_paths = []
+        import time as _time
+        for img_idx, img_b64 in enumerate(q.question_images_base64 or []):
+            try:
+                match = _re.match(r'data:(?P<mime>[^;]+);base64,(?P<data>.+)', img_b64)
+                if match:
+                    mime = match.group('mime')
+                    b64data = match.group('data')
+                    img_bytes = base64.b64decode(b64data)
+                    ext = mime.split('/')[-1].replace('jpeg', 'jpg')
+                    q_dir = os.path.join('uploads', 'questions', str(exam_id))
+                    os.makedirs(q_dir, exist_ok=True)
+                    fname = f"q_{q.order_index}_{img_idx}_{int(_time.time())}.{ext}"
+                    fpath = os.path.join(q_dir, fname)
+                    with open(fpath, 'wb') as imgf:
+                        imgf.write(img_bytes)
+                    image_paths.append(f"/uploads/questions/{exam_id}/{fname}")
+            except Exception as img_err:
+                print(f"[Question Image] Failed to save index {img_idx}: {img_err}")
+
+        image_paths_json = json_module.dumps(image_paths) if image_paths else None
+        # Keep single image_path for backward compat (first image)
+        first_image = image_paths[0] if image_paths else None
+
         cursor.execute(
-            "INSERT INTO questions (exam_id, text, score, answer_key, rubrics, order_index) VALUES (?, ?, ?, ?, ?, ?)",
-            (exam_id, q.text, q.score, q.answer_key, rubrics_json, q.order_index)
+            "INSERT INTO questions (exam_id, text, score, answer_key, rubrics, order_index, image_path, image_paths) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (exam_id, q.text, q.score, q.answer_key, rubrics_json, q.order_index, first_image, image_paths_json)
         )
 
     conn.commit()
@@ -416,9 +459,575 @@ async def get_exam(room_id: int, exam_id: int, user: dict = Depends(get_current_
                 qd["rubrics"] = json_module.loads(qd["rubrics"])
             except Exception:
                 qd["rubrics"] = []
+        # Parse image_paths JSON array
+        if qd.get("image_paths"):
+            try:
+                qd["image_paths"] = json_module.loads(qd["image_paths"])
+            except Exception:
+                qd["image_paths"] = [qd.get("image_path")] if qd.get("image_path") else []
+        else:
+            # Backward compat: single image_path
+            qd["image_paths"] = [qd["image_path"]] if qd.get("image_path") else []
         result["questions"].append(qd)
 
     return result
+
+
+# ============================================================
+# Submission & Grading Routes — Gemini AI Scoring
+# ============================================================
+
+import google.genai as genai
+from google.genai import types as genai_types
+
+# Configure Gemini client once at module load
+_GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+if _GEMINI_API_KEY and _GEMINI_API_KEY != "your-gemini-api-key-here":
+    _genai_client = genai.Client(api_key=_GEMINI_API_KEY)
+    _USE_GEMINI = True
+else:
+    _genai_client = None
+    _USE_GEMINI = False
+
+_GEMINI_MODEL = "gemini-flash-latest"
+
+
+def _fallback_score(answer_text: str, max_score: float) -> dict:
+    """Rule-based fallback when Gemini is unavailable."""
+    if not answer_text or len(answer_text.strip()) < 5:
+        return {
+            "score": round(random.uniform(0.0, 0.2) * max_score, 1),
+            "confidence": "low",
+            "feedback": "คำตอบสั้นเกินไปหรือไม่มีเนื้อหา AI ไม่สามารถประเมินได้ โปรดอาจารย์ตรวจสอบด้วยตนเอง",
+        }
+    pct = random.uniform(0.55, 1.0)
+    confidence = "high" if pct >= 0.85 else "medium" if pct >= 0.65 else "low"
+    return {
+        "score": round(pct * max_score, 1),
+        "confidence": confidence,
+        "feedback": "(ระบบ AI ออฟไลน์ — ใช้ผลประมาณการ) โปรดอาจารย์ตรวจทานคะแนนอีกครั้ง",
+    }
+
+
+async def score_with_gemini(
+    question_text: str,
+    answer_text: str,
+    max_score: float,
+    answer_key: Optional[str] = None,
+    rubrics: Optional[list] = None,
+    image_bytes: Optional[bytes] = None,
+    image_mime: str = "image/jpeg",
+) -> dict:
+    """
+    Score a student answer using Gemini AI.
+    Returns: {score: float, confidence: 'high'|'medium'|'low', feedback: str}
+    Falls back to rule-based scoring if Gemini is unavailable.
+    """
+    if not _USE_GEMINI or not _genai_client:
+        return _fallback_score(answer_text, max_score)
+
+    # Build rubric text
+    rubric_text = ""
+    if rubrics:
+        rubric_lines = []
+        for r in rubrics:
+            name = r.get("name") or r.get("label", "")
+            score = r.get("score") or r.get("maxScore", "")
+            desc = r.get("description", "")
+            rubric_lines.append(f"- {name} ({score} คะแนน){': ' + desc if desc else ''}")
+        rubric_text = "\n".join(rubric_lines)
+
+    # Build all optional sections as plain strings first (avoid backslash in f-string)
+    answer_key_section = ""
+    if answer_key:
+        answer_key_section = "## แนวคำตอบ\n" + answer_key + "\n"
+
+    rubric_section = ""
+    if rubric_text:
+        rubric_section = "## เกณฑ์การให้คะแนน\n" + rubric_text + "\n"
+
+    student_answer_section = answer_text.strip() if answer_text and answer_text.strip() else "(ไม่มีคำตอบ)"
+
+    prompt = (
+        "คุณคือระบบตรวจข้อสอบอัตนัยอัตโนมัติ กรุณาประเมินคำตอบของนักเรียนตามเกณฑ์ที่กำหนด\n\n"
+        f"## โจทย์คำถาม\n{question_text}\n\n"
+        f"## คะแนนเต็ม\n{max_score} คะแนน\n\n"
+        + answer_key_section
+        + rubric_section
+        + f"## คำตอบของนักเรียน\n{student_answer_section}\n\n"
+        "## คำสั่ง\n"
+        "ประเมินคำตอบและตอบกลับเป็น JSON ที่มีรูปแบบดังนี้เท่านั้น:\n"
+        "{{\n"
+        f'  "score": <คะแนนที่ให้ เป็นตัวเลขทศนิยม 1 ตำแหน่ง ระหว่าง 0 ถึง {max_score}>,\n'
+        '  "confidence": <"high" หากมั่นใจมาก, "medium" หากปานกลาง, "low" หากไม่มั่นใจ>,\n'
+        '  "feedback": <คำอธิบายการให้คะแนนเป็นภาษาไทย 1-3 ประโยค ที่เป็นประโยชน์ต่อนักเรียน>\n'
+        "}}"
+    )
+
+    try:
+        # Build multimodal contents: text prompt + optional image
+        contents: list = [prompt]
+        if image_bytes:
+            contents.append(
+                genai_types.Part.from_bytes(data=image_bytes, mime_type=image_mime)
+            )
+
+        response = await _genai_client.aio.models.generate_content(
+            model=_GEMINI_MODEL,
+            contents=contents,
+            config=genai_types.GenerateContentConfig(
+                temperature=0.2,
+                response_mime_type="application/json",
+            ),
+        )
+        raw = response.text.strip()
+        # Strip markdown code fences if present
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        data = json_module_top.loads(raw)
+
+        score = float(data.get("score", 0))
+        score = max(0.0, min(float(max_score), score))  # clamp
+        confidence = data.get("confidence", "medium")
+        if confidence not in ("high", "medium", "low"):
+            confidence = "medium"
+        feedback = str(data.get("feedback", ""))
+
+        return {"score": round(score, 1), "confidence": confidence, "feedback": feedback}
+
+    except Exception as e:
+        print(f"[Gemini Error] {e} — falling back to heuristic")
+        return _fallback_score(answer_text, max_score)
+
+
+class SubmitAnswerInput(BaseModel):
+    question_id: int
+    answer_text: str
+
+class SubmitExamRequest(BaseModel):
+    answers: List[SubmitAnswerInput]
+
+class ApproveSubmissionRequest(BaseModel):
+    teacher_scores: Optional[dict] = None   # {question_id: score}
+    teacher_comments: Optional[dict] = None # {question_id: comment}
+
+class BulkApproveRequest(BaseModel):
+    student_ids: List[int]
+
+
+@app.post("/api/rooms/{room_id}/exams/{exam_id}/submit")
+async def submit_exam(
+    room_id: int,
+    exam_id: int,
+    answers: str = Form(...),          # JSON string: [{question_id, answer_text}]
+    user: dict = Depends(get_current_user),
+    **kwargs,                           # Images will be picked up via Request
+):
+    """Student submits answers (lock-once). Supports text + image per question."""
+    raise HTTPException(status_code=500, detail="Use the multipart endpoint below")
+
+
+from fastapi import Request
+
+@app.post("/api/rooms/{room_id}/exams/{exam_id}/submit-multipart")
+async def submit_exam_multipart(
+    request: Request,
+    room_id: int,
+    exam_id: int,
+    user: dict = Depends(get_current_user),
+):
+    """Student submits answers with optional image per question (lock-once, multipart/form-data)."""
+    if user["role"] != "student":
+        raise HTTPException(status_code=403, detail="Only students can submit exams")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Verify exam exists in this room
+    cursor.execute("SELECT * FROM exams WHERE id = ? AND room_id = ?", (exam_id, room_id))
+    exam_row = cursor.fetchone()
+    if not exam_row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Exam not found")
+
+    # LOCK-ONCE: check if already submitted
+    cursor.execute(
+        "SELECT id, status FROM submissions WHERE exam_id = ? AND student_id = ?",
+        (exam_id, user["id"])
+    )
+    existing = cursor.fetchone()
+    if existing and existing["status"] not in ("missing", "submitted"):
+        conn.close()
+        raise HTTPException(
+            status_code=409,
+            detail="คุณส่งคำตอบข้อสอบนี้ไปแล้ว ไม่สามารถส่งซ้ำได้"
+        )
+    if existing and existing["status"] == "submitted":
+        # Allow re-submit only if still in 'submitted' (before AI graded)
+        pass
+    if existing and existing["status"] in ("ready", "needs_review", "approved"):
+        conn.close()
+        raise HTTPException(
+            status_code=409,
+            detail="คุณส่งคำตอบข้อสอบนี้ไปแล้ว ไม่สามารถส่งซ้ำได้"
+        )
+
+    # Parse multipart form
+    form = await request.form()
+    answers_json = form.get("answers", "[]")
+    try:
+        answers_list = json_module_top.loads(answers_json)
+    except Exception:
+        conn.close()
+        raise HTTPException(status_code=400, detail="Invalid answers JSON")
+
+    answers_map = {int(a["question_id"]): a.get("answer_text", "") for a in answers_list}
+
+    # Create or update submission record
+    cursor.execute(
+        """INSERT INTO submissions (exam_id, student_id, status, submitted_at, graded_by_ai)
+           VALUES (?, ?, 'submitted', CURRENT_TIMESTAMP, 0)
+           ON CONFLICT(exam_id, student_id) DO UPDATE SET
+             status='submitted', submitted_at=CURRENT_TIMESTAMP, graded_by_ai=0""",
+        (exam_id, user["id"])
+    )
+    submission_id = cursor.lastrowid
+    if not submission_id:
+        cursor.execute("SELECT id FROM submissions WHERE exam_id = ? AND student_id = ?", (exam_id, user["id"]))
+        submission_id = cursor.fetchone()["id"]
+
+    # Get all questions
+    cursor.execute("SELECT * FROM questions WHERE exam_id = ? ORDER BY order_index", (exam_id,))
+    questions = {q["id"]: dict(q) for q in cursor.fetchall()}
+
+    total_ai_score = 0.0
+
+    for q_id, q in questions.items():
+        answer_text = answers_map.get(q_id, "")
+
+        # Handle multiple images for this question: image_{q_id}_0, image_{q_id}_1, ...
+        img_list: list[bytes] = []
+        img_mime_list: list[str] = []
+        img_paths: list[str] = []
+
+        # Support both image_{q_id} (single, legacy) and image_{q_id}_N (multi)
+        upload_dir = os.path.join("uploads", str(exam_id), str(user["id"]))
+        os.makedirs(upload_dir, exist_ok=True)
+
+        for img_idx in range(10):  # support up to 10 images per question
+            field_name = f"image_{q_id}_{img_idx}" if img_idx > 0 else f"image_{q_id}"
+            file_field = form.get(field_name)
+            if not file_field or not hasattr(file_field, "read"):
+                if img_idx > 0:
+                    break  # no more images
+                continue
+            raw_bytes = await file_field.read()
+            if not raw_bytes:
+                continue
+            mime = file_field.content_type or "image/jpeg"
+            ext = mime.split("/")[-1].replace("jpeg", "jpg")
+            fname = f"q_{q_id}_{img_idx}.{ext}"
+            fpath = os.path.join(upload_dir, fname)
+            async with aiofiles.open(fpath, "wb") as f:
+                await f.write(raw_bytes)
+            url = f"/uploads/{exam_id}/{user['id']}/{fname}"
+            img_list.append(raw_bytes)
+            img_mime_list.append(mime)
+            img_paths.append(url)
+
+        image_paths_json = json_module.dumps(img_paths) if img_paths else None
+        # Use first image for Gemini
+        first_img_bytes = img_list[0] if img_list else None
+        first_img_mime = img_mime_list[0] if img_mime_list else "image/jpeg"
+
+        # Parse rubrics
+        rubrics_data = None
+        if q.get("rubrics"):
+            try:
+                rubrics_data = json_module.loads(q["rubrics"])
+            except Exception:
+                rubrics_data = None
+
+        ai_result = await score_with_gemini(
+            question_text=q["text"],
+            answer_text=answer_text,
+            max_score=q["score"],
+            answer_key=q.get("answer_key"),
+            rubrics=rubrics_data,
+            image_bytes=first_img_bytes,
+            image_mime=first_img_mime,
+        )
+        total_ai_score += ai_result["score"]
+
+        first_image_path = img_paths[0] if img_paths else None
+        cursor.execute(
+            """INSERT INTO submission_answers
+                 (submission_id, question_id, answer_text, ai_score, ai_feedback, ai_confidence, image_path, image_paths)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(submission_id, question_id) DO UPDATE SET
+                 answer_text=excluded.answer_text, ai_score=excluded.ai_score,
+                 ai_feedback=excluded.ai_feedback, ai_confidence=excluded.ai_confidence,
+                 image_path=excluded.image_path, image_paths=excluded.image_paths""",
+            (submission_id, q_id, answer_text,
+             ai_result["score"], ai_result["feedback"], ai_result["confidence"],
+             first_image_path, image_paths_json)
+        )
+
+    # Determine overall status
+    cursor.execute("SELECT ai_confidence FROM submission_answers WHERE submission_id = ?", (submission_id,))
+    confidences = [r["ai_confidence"] for r in cursor.fetchall()]
+    new_status = "needs_review" if "low" in confidences else "ready"
+
+    cursor.execute(
+        "UPDATE submissions SET status = ?, total_score = ?, graded_by_ai = 1 WHERE id = ?",
+        (new_status, round(total_ai_score, 1), submission_id)
+    )
+    conn.commit()
+    conn.close()
+
+    return {
+        "message": "ส่งคำตอบสำเร็จ",
+        "submission_id": submission_id,
+        "status": new_status,
+        "ai_score": round(total_ai_score, 1)
+    }
+
+
+@app.get("/api/rooms/{room_id}/exams/{exam_id}/submissions")
+async def list_submissions(room_id: int, exam_id: int, user: dict = Depends(get_current_user)):
+    """Teacher gets list of all enrolled students with their submission status."""
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can view all submissions")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Verify teacher owns this room
+    cursor.execute("SELECT id FROM rooms WHERE id = ? AND owner_id = ?", (room_id, user["id"]))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    # Get all enrolled students with their submission info (left join)
+    cursor.execute("""
+        SELECT
+            u.id AS student_id, u.name, u.email, u.student_id AS student_code,
+            s.id AS submission_id, s.status, s.total_score, s.submitted_at, s.graded_by_ai
+        FROM enrollments e
+        JOIN users u ON e.user_id = u.id
+        LEFT JOIN submissions s ON s.exam_id = ? AND s.student_id = u.id
+        WHERE e.room_id = ?
+        ORDER BY u.name ASC
+    """, (exam_id, room_id))
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    result = []
+    for r in rows:
+        result.append({
+            "student_id": r["student_id"],
+            "name": r["name"],
+            "email": r["email"],
+            "student_code": r["student_code"],
+            "submission_id": r["submission_id"],
+            "status": r["status"] if r["status"] else "missing",
+            "total_score": r["total_score"],
+            "submitted_at": r["submitted_at"],
+            "graded_by_ai": bool(r["graded_by_ai"]) if r["graded_by_ai"] is not None else False,
+        })
+    return result
+
+
+@app.get("/api/rooms/{room_id}/exams/{exam_id}/submissions/me")
+async def get_my_submission(room_id: int, exam_id: int, user: dict = Depends(get_current_user)):
+    """Student views their own submission result."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM submissions WHERE exam_id = ? AND student_id = ?", (exam_id, user["id"]))
+    submission = cursor.fetchone()
+    if not submission:
+        conn.close()
+        return {"status": "missing"}
+
+    # ซ่อนคะแนนจนกว่าอาจารย์จะอนุมัติ
+    if submission["status"] != "approved":
+        conn.close()
+        return {
+            "status": submission["status"],
+            "submission_id": submission["id"],
+            "submitted_at": submission["submitted_at"],
+        }
+
+    # Approved: return full result including score
+    submission = dict(submission)
+    cursor.execute("""
+        SELECT sa.answer_text, sa.image_path, q.text AS question_text, q.score AS max_score, q.order_index
+        FROM submission_answers sa
+        JOIN questions q ON sa.question_id = q.id
+        WHERE sa.submission_id = ?
+        ORDER BY q.order_index
+    """, (submission["id"],))
+    answers = [dict(a) for a in cursor.fetchall()]
+    conn.close()
+
+    submission["answers"] = answers
+    return submission
+
+
+@app.get("/api/rooms/{room_id}/exams/{exam_id}/submissions/{student_id}")
+async def get_student_submission(room_id: int, exam_id: int, student_id: int, user: dict = Depends(get_current_user)):
+    """Teacher views detailed submission of a specific student."""
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can view student submissions")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Verify room ownership
+    cursor.execute("SELECT id FROM rooms WHERE id = ? AND owner_id = ?", (room_id, user["id"]))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    # Get submission
+    cursor.execute(
+        "SELECT * FROM submissions WHERE exam_id = ? AND student_id = ?",
+        (exam_id, student_id)
+    )
+    submission = cursor.fetchone()
+    if not submission:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Submission not found — student has not submitted yet")
+
+    submission = dict(submission)
+
+    # Get student info
+    cursor.execute("SELECT id, name, email, student_id AS student_code FROM users WHERE id = ?", (student_id,))
+    student_info = dict(cursor.fetchone())
+
+    # Get answers with question details
+    cursor.execute("""
+        SELECT
+            sa.id, sa.question_id, sa.answer_text, sa.ai_score, sa.ai_feedback, sa.ai_confidence,
+            sa.teacher_score, sa.teacher_comment,
+            q.text AS question_text, q.score AS max_score, q.rubrics, q.answer_key, q.order_index
+        FROM submission_answers sa
+        JOIN questions q ON sa.question_id = q.id
+        WHERE sa.submission_id = ?
+        ORDER BY q.order_index
+    """, (submission["id"],))
+
+    answers = []
+    for a in cursor.fetchall():
+        ad = dict(a)
+        if ad.get("rubrics"):
+            try:
+                ad["rubrics"] = json_module.loads(ad["rubrics"])
+            except Exception:
+                ad["rubrics"] = []
+        answers.append(ad)
+
+    conn.close()
+
+    return {
+        "submission": submission,
+        "student": student_info,
+        "answers": answers,
+    }
+
+
+@app.put("/api/rooms/{room_id}/exams/{exam_id}/submissions/{student_id}/approve")
+async def approve_submission(
+    room_id: int, exam_id: int, student_id: int,
+    body: ApproveSubmissionRequest,
+    user: dict = Depends(get_current_user)
+):
+    """Teacher approves a submission, optionally overriding AI scores."""
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can approve submissions")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Verify room ownership
+    cursor.execute("SELECT id FROM rooms WHERE id = ? AND owner_id = ?", (room_id, user["id"]))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    # Get submission
+    cursor.execute("SELECT * FROM submissions WHERE exam_id = ? AND student_id = ?", (exam_id, student_id))
+    submission = cursor.fetchone()
+    if not submission:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Submission not found")
+
+    submission_id = submission["id"]
+
+    # Apply teacher score overrides per question
+    total_teacher_score = 0.0
+    cursor.execute("SELECT * FROM submission_answers WHERE submission_id = ?", (submission_id,))
+    all_answers = cursor.fetchall()
+
+    for ans in all_answers:
+        q_id_str = str(ans["question_id"])
+        t_score = body.teacher_scores.get(q_id_str) if body.teacher_scores else None
+        t_comment = body.teacher_comments.get(q_id_str) if body.teacher_comments else None
+
+        if t_score is not None:
+            cursor.execute(
+                "UPDATE submission_answers SET teacher_score = ?, teacher_comment = ? WHERE id = ?",
+                (t_score, t_comment, ans["id"])
+            )
+            total_teacher_score += float(t_score)
+        else:
+            total_teacher_score += float(ans["ai_score"] or 0)
+            if t_comment:
+                cursor.execute("UPDATE submission_answers SET teacher_comment = ? WHERE id = ?", (t_comment, ans["id"]))
+
+    # Update submission status to approved with final score
+    cursor.execute(
+        "UPDATE submissions SET status = 'approved', total_score = ? WHERE id = ?",
+        (round(total_teacher_score, 1), submission_id)
+    )
+    conn.commit()
+    conn.close()
+
+    return {"message": "Submission approved", "total_score": round(total_teacher_score, 1)}
+
+
+@app.post("/api/rooms/{room_id}/exams/{exam_id}/bulk-approve")
+async def bulk_approve(room_id: int, exam_id: int, body: BulkApproveRequest, user: dict = Depends(get_current_user)):
+    """Teacher bulk-approves multiple students using AI scores as-is."""
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can approve submissions")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Verify room ownership
+    cursor.execute("SELECT id FROM rooms WHERE id = ? AND owner_id = ?", (room_id, user["id"]))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    approved = []
+    for sid in body.student_ids:
+        cursor.execute("SELECT id, total_score FROM submissions WHERE exam_id = ? AND student_id = ? AND status = 'ready'", (exam_id, sid))
+        sub = cursor.fetchone()
+        if sub:
+            cursor.execute("UPDATE submissions SET status = 'approved' WHERE id = ?", (sub["id"],))
+            approved.append(sid)
+
+    conn.commit()
+    conn.close()
+
+    return {"message": f"Approved {len(approved)} submissions", "approved_student_ids": approved}
+
 
 # Demo route
 @app.get("/api/ping")

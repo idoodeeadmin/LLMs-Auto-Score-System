@@ -79,9 +79,84 @@ def init_db():
         FOREIGN KEY (exam_id) REFERENCES exams (id) ON DELETE CASCADE
     )
     ''')
-    
+
+    # Create Submissions table (one per student per exam)
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS submissions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        exam_id INTEGER NOT NULL,
+        student_id INTEGER NOT NULL,
+        status TEXT DEFAULT 'missing',
+        total_score REAL DEFAULT 0,
+        submitted_at DATETIME,
+        FOREIGN KEY (exam_id) REFERENCES exams (id) ON DELETE CASCADE,
+        FOREIGN KEY (student_id) REFERENCES users (id) ON DELETE CASCADE,
+        UNIQUE(exam_id, student_id)
+    )
+    ''')
+
+    # Create Submission Answers table (one per question per submission)
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS submission_answers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        submission_id INTEGER NOT NULL,
+        question_id INTEGER NOT NULL,
+        answer_text TEXT,
+        ai_score REAL DEFAULT 0,
+        ai_feedback TEXT,
+        ai_confidence TEXT DEFAULT 'medium',
+        teacher_score REAL,
+        teacher_comment TEXT,
+        FOREIGN KEY (submission_id) REFERENCES submissions (id) ON DELETE CASCADE,
+        FOREIGN KEY (question_id) REFERENCES questions (id) ON DELETE CASCADE,
+        UNIQUE(submission_id, question_id)
+    )
+    ''')
+
     conn.commit()
+
+    # Migration: add graded_by_ai column to submissions if not exists
+    try:
+        cursor.execute("ALTER TABLE submissions ADD COLUMN graded_by_ai INTEGER DEFAULT 0")
+        conn.commit()
+    except Exception:
+        pass  # Column already exists
+
+    # Migration: add image_path column to submission_answers if not exists
+    try:
+        cursor.execute("ALTER TABLE submission_answers ADD COLUMN image_path TEXT")
+        conn.commit()
+    except Exception:
+        pass  # Column already exists
+
+    # Migration: add image_path column to questions if not exists
+    try:
+        cursor.execute("ALTER TABLE questions ADD COLUMN image_path TEXT")
+        conn.commit()
+    except Exception:
+        pass  # Column already exists
+
+    # Migration: add image_paths (JSON array) column to questions if not exists
+    try:
+        cursor.execute("ALTER TABLE questions ADD COLUMN image_paths TEXT")
+        conn.commit()
+    except Exception:
+        pass  # Column already exists
+
+    # Migration: add image_paths (JSON array) column to submission_answers if not exists
+    try:
+        cursor.execute("ALTER TABLE submission_answers ADD COLUMN image_paths TEXT")
+        conn.commit()
+    except Exception:
+        pass  # Column already exists
+
     conn.close()
+
+    # Ensure uploads directory exists
+    import os
+    os.makedirs("uploads", exist_ok=True)
+    os.makedirs(os.path.join("uploads", "questions"), exist_ok=True)
+
 
 if __name__ == "__main__":
     init_db()

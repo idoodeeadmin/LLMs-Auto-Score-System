@@ -19,12 +19,11 @@ interface Question {
   id: number;
   text: string;
   score: string;
-  questionImage: string | null;
+  questionImages: string[];  // multiple images
   answerKey: string;
-  answerImage: string | null;
   rubrics: RubricItem[];
-  isExpanded: boolean; // For toggling answer/rubrics logic
-  isEditing: boolean;  // For toggling the entire edit form vs compact view
+  isExpanded: boolean;
+  isEditing: boolean;
 }
 
 export default function CreateExam() {
@@ -36,7 +35,6 @@ export default function CreateExam() {
   // Exam meta state
   const [examTitle, setExamTitle] = useState("");
   const [examDescription, setExamDescription] = useState("");
-  const [totalScore, setTotalScore] = useState("");
   const [startDate, setStartDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -47,44 +45,46 @@ export default function CreateExam() {
       id: Date.now(),
       text: "",
       score: "",
-      questionImage: null,
+      questionImages: [],
       answerKey: "",
-      answerImage: null,
       rubrics: [{ id: Date.now() + 1, name: "", description: "", score: "" }],
       isExpanded: false,
       isEditing: true
     }
   ]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, qId: number, type: 'question' | 'answer') => {
-    const file = e.target.files?.[0];
-    if (file) {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, qId: number) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    Array.from(files).forEach(file => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setQuestions(questions.map(q =>
-          q.id === qId ? { ...q, [type === 'question' ? 'questionImage' : 'answerImage']: reader.result as string } : q
+        setQuestions(prev => prev.map(q =>
+          q.id === qId
+            ? { ...q, questionImages: [...q.questionImages, reader.result as string] }
+            : q
         ));
       };
       reader.readAsDataURL(file);
-    }
+    });
   };
 
-  const removeImage = (qId: number, type: 'question' | 'answer') => {
-    setQuestions(questions.map(q =>
-      q.id === qId ? { ...q, [type === 'question' ? 'questionImage' : 'answerImage']: null } : q
+  const removeImage = (qId: number, imgIdx: number) => {
+    setQuestions(prev => prev.map(q =>
+      q.id === qId
+        ? { ...q, questionImages: q.questionImages.filter((_, i) => i !== imgIdx) }
+        : q
     ));
   };
 
   const addQuestion = () => {
-    // Collapse others to make screen clean
     const updatedQs = questions.map(q => ({ ...q, isEditing: false }));
     setQuestions([...updatedQs, {
       id: Date.now(),
       text: "",
       score: "",
-      questionImage: null,
+      questionImages: [],
       answerKey: "",
-      answerImage: null,
       rubrics: [{ id: Date.now() + 1, name: "", description: "", score: "" }],
       isExpanded: false,
       isEditing: true
@@ -118,16 +118,12 @@ export default function CreateExam() {
   const duplicateQuestion = (qId: number) => {
     const qToCopy = questions.find(q => q.id === qId);
     if (!qToCopy) return;
-
-    // Collapse others
     const updatedQs = questions.map(q => ({ ...q, isEditing: false }));
-
-    // Create deep copy of rubrics with new IDs
     const newRubrics = qToCopy.rubrics.map(r => ({ ...r, id: Date.now() + Math.random() }));
-
     setQuestions([...updatedQs, {
       ...qToCopy,
       id: Date.now(),
+      questionImages: [...qToCopy.questionImages],
       rubrics: newRubrics,
       isEditing: true
     }]);
@@ -149,11 +145,13 @@ export default function CreateExam() {
     }
 
     setIsSaving(true);
+    // คำนวณคะแนนรวมจากข้อทั้งหมดอัตโนมัติ
+    const computedTotal = validQs.reduce((sum, q) => sum + (parseFloat(q.score) || 0), 0);
     try {
       const payload = {
         title: examTitle,
         description: examDescription || null,
-        total_score: parseFloat(totalScore) || 0,
+        total_score: computedTotal,
         start_date: startDate && startTime ? `${startDate}T${startTime}` : null,
         end_date: endDate && endTime ? `${endDate}T${endTime}` : null,
         questions: validQs.map((q, i) => ({
@@ -161,7 +159,8 @@ export default function CreateExam() {
           score: parseFloat(q.score) || 0,
           answer_key: q.answerKey || null,
           rubrics: q.rubrics.filter(r => r.name).map(r => ({ name: r.name, description: r.description, score: parseFloat(r.score) || 0 })),
-          order_index: i
+          order_index: i,
+          question_images_base64: q.questionImages.length > 0 ? q.questionImages : null,
         }))
       };
 
@@ -217,9 +216,12 @@ export default function CreateExam() {
                 <label className="text-sm font-semibold text-blue-100">รายละเอียดการสอบ</label>
                 <Input value={examDescription} onChange={e => setExamDescription(e.target.value)} className="h-12 text-base border-blue-400/30 bg-blue-900/40 text-white placeholder:text-blue-300 transition-all shadow-inner hover:bg-blue-900/60" placeholder="คำอธิบายเพิ่มเติม..." />
               </div>
-              <div className="lg:col-span-2 space-y-2">
-                <label className="text-sm font-semibold text-blue-100 block">คะแนนเต็ม</label>
-                <Input value={totalScore} onChange={e => setTotalScore(e.target.value)} type="number" className="h-12 text-center text-xl font-bold text-blue-900 border-none bg-blue-50 shadow-md" placeholder="0" />
+              <div className="lg:col-span-2 flex flex-col items-center justify-center bg-white/10 rounded-xl px-4 py-3 border border-white/20">
+                <span className="text-xs text-blue-200 font-semibold uppercase tracking-wider mb-1">คะแนนรวม</span>
+                <span className="text-3xl font-black text-white">
+                  {questions.reduce((sum, q) => sum + (parseFloat(q.score) || 0), 0)}
+                </span>
+                <span className="text-xs text-blue-300 mt-0.5">คะแนน (อัตโนมัติ)</span>
               </div>
             </div>
 
@@ -297,32 +299,39 @@ export default function CreateExam() {
                       onChange={(e) => setQuestions(questions.map(qx => qx.id === q.id ? { ...qx, text: e.target.value } : qx))}
                     />
 
-                    {q.questionImage && (
-                      <div className="mt-4 relative inline-block group w-full sm:w-auto">
-                        <img src={q.questionImage} alt="Attachment" className="h-48 w-full sm:w-auto rounded-xl border-2 border-gray-200 object-cover shadow-sm" />
-                        <button
-                          onClick={() => removeImage(q.id, 'question')}
-                          className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-2 shadow-lg hover:bg-red-600 transition-transform hover:scale-110"
-                        >
-                          <X size={16} />
-                        </button>
+                    {/* Multi-image gallery */}
+                    {q.questionImages.length > 0 && (
+                      <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {q.questionImages.map((img, imgIdx) => (
+                          <div key={imgIdx} className="relative group rounded-xl overflow-hidden border-2 border-gray-200 aspect-video bg-gray-50">
+                            <img src={img} alt={`รูป ${imgIdx + 1}`} className="w-full h-full object-cover" />
+                            <button
+                              onClick={() => removeImage(q.id, imgIdx)}
+                              className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     )}
 
-                    <div className="mt-6">
+                    <div className="mt-4">
                       <input
                         type="file"
                         id={`q-upload-${q.id}`}
                         className="hidden"
                         accept="image/*"
-                        onChange={(e) => handleImageUpload(e, q.id, 'question')}
+                        multiple
+                        onChange={(e) => handleImageUpload(e, q.id)}
                       />
                       <Button
                         variant="outline"
                         onClick={() => document.getElementById(`q-upload-${q.id}`)?.click()}
                         className="h-12 px-6 border-gray-300 text-gray-700 hover:bg-blue-50 hover:text-[#3B82F6] hover:border-blue-200 font-semibold w-full md:w-auto shadow-sm transition-all rounded-xl"
                       >
-                        <ImageIcon className="w-5 h-5 mr-3" /> {q.questionImage ? "เปลี่ยนรูปภาพโจทย์" : "แนบรูปภาพประกอบคำถาม"}
+                        <ImageIcon className="w-5 h-5 mr-3" />
+                        {q.questionImages.length > 0 ? `เพิ่มรูปภาพ (มีแล้ว ${q.questionImages.length} รูป)` : "แนบรูปภาพประกอบคำถาม"}
                       </Button>
                     </div>
 
@@ -366,34 +375,6 @@ export default function CreateExam() {
                             onChange={(e) => setQuestions(questions.map(qx => qx.id === q.id ? { ...qx, answerKey: e.target.value } : qx))}
                           />
 
-                          {q.answerImage && (
-                            <div className="mt-2 relative inline-block group w-full sm:w-auto">
-                              <img src={q.answerImage} alt="Ans" className="h-40 w-full sm:w-auto rounded-xl border border-gray-200 object-cover shadow-sm" />
-                              <button
-                                onClick={() => removeImage(q.id, 'answer')}
-                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 shadow-md hover:bg-red-600 transition-colors"
-                              >
-                                <X size={16} />
-                              </button>
-                            </div>
-                          )}
-
-                          <div>
-                            <input
-                              type="file"
-                              id={`a-upload-${q.id}`}
-                              className="hidden"
-                              accept="image/*"
-                              onChange={(e) => handleImageUpload(e, q.id, 'answer')}
-                            />
-                            <Button
-                              variant="outline"
-                              onClick={() => document.getElementById(`a-upload-${q.id}`)?.click()}
-                              className="h-10 px-4 border-dashed border-2 border-gray-300 text-gray-600 hover:border-[#3B82F6] hover:text-[#3B82F6] hover:bg-blue-50 font-semibold rounded-lg w-full sm:w-auto"
-                            >
-                              <ImageIcon className="w-4 h-4 mr-2" /> {q.answerImage ? "เปลี่ยนรูปเฉลย" : "แนบรูปประกอบเฉลย"}
-                            </Button>
-                          </div>
                         </div>
 
                         {/* Rubrics */}

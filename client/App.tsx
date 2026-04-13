@@ -14,6 +14,7 @@ import CreateExam from "./pages/CreateExam";
 import ExamView from "./pages/ExamView";
 import RoomReview from "./pages/RoomReview";
 import StudentGrading from "./pages/StudentGrading";
+import ExamSubmit from "./pages/ExamSubmit";
 
 const queryClient = new QueryClient();
 
@@ -31,10 +32,11 @@ export const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/register" element={<Register />} />
             <Route path="/home" element={<Home />} />
+            <Route path="/room/:roomId/exam/:examId/submit" element={<ExamSubmit />} />
             <Route path="/room/:roomId/exam/:examId" element={<ExamView />} />
             <Route path="/room/:roomId/exam/:examId/grading/:studentId" element={<StudentGrading />} />
             <Route path="/room/:roomId" element={<RoomDetail />} />
-            <Route path="/room/:roomId/exam/:examId/review" element={<RoomReview />} /> {/* เพิ่มบรรทัดนี้ */}
+            <Route path="/room/:roomId/exam/:examId/review" element={<RoomReview />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
