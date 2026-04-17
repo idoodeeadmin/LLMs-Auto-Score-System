@@ -7,3 +7,5 @@ python-dotenv
 email-validator
 google-genai
 aiofiles
+openpyxl
+httpx

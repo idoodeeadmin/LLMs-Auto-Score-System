@@ -11,10 +11,14 @@ import Home from "./pages/Home";
 import RoomDetail from "./pages/RoomDetail";
 import NotFound from "./pages/NotFound";
 import CreateExam from "./pages/CreateExam";
+import EditExam from "./pages/EditExam";
 import ExamView from "./pages/ExamView";
 import RoomReview from "./pages/RoomReview";
 import StudentGrading from "./pages/StudentGrading";
 import ExamSubmit from "./pages/ExamSubmit";
+import TeacherAnalytics from "./pages/TeacherAnalytics";
+import RoomAnalytics from "./pages/RoomAnalytics";
+import ExamScoreboard from "./pages/ExamScoreboard";
 
 const queryClient = new QueryClient();
 
@@ -29,11 +33,15 @@ export const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/room/:roomId/create-exam" element={<CreateExam />} />
+            <Route path="/room/:roomId/exam/:examId/edit" element={<EditExam />} />
             <Route path="/" element={<Index />} />
             <Route path="/register" element={<Register />} />
             <Route path="/home" element={<Home />} />
+            <Route path="/room/:roomId/analytics" element={<RoomAnalytics />} />
+            <Route path="/room/:roomId/exam/:examId/scoreboard" element={<ExamScoreboard />} />
             <Route path="/room/:roomId/exam/:examId/submit" element={<ExamSubmit />} />
             <Route path="/room/:roomId/exam/:examId" element={<ExamView />} />
+            <Route path="/room/:roomId/exam/:examId/analytics" element={<TeacherAnalytics />} />
             <Route path="/room/:roomId/exam/:examId/grading/:studentId" element={<StudentGrading />} />
             <Route path="/room/:roomId" element={<RoomDetail />} />
             <Route path="/room/:roomId/exam/:examId/review" element={<RoomReview />} />

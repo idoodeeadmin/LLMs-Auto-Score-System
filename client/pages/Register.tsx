@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
 export default function Register() {
   const [isStudent, setIsStudent] = useState(true);
@@ -177,6 +178,34 @@ export default function Register() {
               <span className="font-semibold">อาจารย์ / ผู้สอน</span>
             </button>
           </motion.div>
+
+          {/* Google Sign-In Button */}
+          <motion.div variants={fadeIn} className="pt-2">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-200" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="bg-slate-50 px-4 text-slate-500">หรือ</span>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div variants={fadeIn}>
+            <GoogleSignInButton 
+              text="ลงทะเบียนด้วย Google"
+              className="border-2 border-slate-200 hover:border-slate-300"
+            />
+          </motion.div>
+
+          <div className="relative flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="bg-slate-50 px-4 text-slate-500">หรือลงทะเบียนด้วยอีเมล</span>
+            </div>
+          </div>
 
           <form onSubmit={handleRegister} className="space-y-5">
             {/* Avatar Upload */}

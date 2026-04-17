@@ -4,6 +4,7 @@ import path from "path";
 
 export default defineConfig(({ mode }) => ({
   root: path.resolve(__dirname, "client"),
+  envDir: "../",
 
   server: {
     host: "0.0.0.0",

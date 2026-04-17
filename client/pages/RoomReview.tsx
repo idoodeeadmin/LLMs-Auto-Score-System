@@ -6,6 +6,8 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -30,6 +32,25 @@ interface ExamInfo {
   total_score: number;
 }
 
+interface Analytics {
+  mean_score: number;
+  median_score: number;
+  approved_submission_count: number;
+  score_distribution: Record<string, number>;
+  submission_counts: {
+    submitted: number;
+    missing: number;
+  };
+  difficulty_analysis: Array<{
+    question_id: number;
+    order_index: number;
+    question_text: string;
+    max_score: number;
+    avg_score: number;
+    percent_correct: number;
+  }>;
+}
+
 export default function RoomReview() {
   const navigate = useNavigate();
   const { roomId, examId } = useParams();
@@ -41,8 +62,12 @@ export default function RoomReview() {
   const [searchQuery, setSearchQuery] = useState("");
   const [students, setStudents] = useState<StudentSubmission[]>([]);
   const [exam, setExam] = useState<ExamInfo | null>(null);
+  const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [isFetching, setIsFetching] = useState(true);
   const [isApproving, setIsApproving] = useState(false);
+  const [isExportingCsv, setIsExportingCsv] = useState(false);
+  const [isExportingXlsx, setIsExportingXlsx] = useState(false);
+  const [bulkMode, setBulkMode] = useState<"ready_only" | "include_needs_review">("ready_only");
 
   useEffect(() => {
     if (!isLoading && !user) navigate("/");
@@ -53,11 +78,14 @@ export default function RoomReview() {
     if (!token || !roomId || !examId) return;
     setIsFetching(true);
     try {
-      const [subRes, examRes] = await Promise.all([
+      const [subRes, examRes, analyticsRes] = await Promise.all([
         fetch(`/api/rooms/${roomId}/exams/${examId}/submissions`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
         fetch(`/api/rooms/${roomId}/exams/${examId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`/api/rooms/${roomId}/exams/${examId}/analytics`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -69,6 +97,9 @@ export default function RoomReview() {
       }
       if (examRes.ok) {
         setExam(await examRes.json());
+      }
+      if (analyticsRes.ok) {
+        setAnalytics(await analyticsRes.json());
       }
     } catch {
       toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
@@ -99,7 +130,10 @@ export default function RoomReview() {
     return false;
   });
 
-  const approvableStudents = filteredStudents.filter((s) => s.status === "ready");
+  const approvableStudents = filteredStudents.filter((s) => {
+    if (bulkMode === "include_needs_review") return s.status === "ready" || s.status === "needs_review";
+    return s.status === "ready";
+  });
   const missingCount = students.filter((s) => s.status === "missing").length;
   const pendingCount = students.filter((s) => s.status === "ready" || s.status === "needs_review").length;
   const approvedCount = students.filter((s) => s.status === "approved").length;
@@ -117,6 +151,37 @@ export default function RoomReview() {
       setSelectedIds(selectedIds.filter((x) => x !== id));
     } else {
       setSelectedIds([...selectedIds, id]);
+    }
+  };
+
+  const handleExport = async (format: "csv" | "xlsx") => {
+    if (!token || !roomId || !examId) return;
+    if (format === "csv") setIsExportingCsv(true);
+    else setIsExportingXlsx(true);
+    try {
+      const res = await fetch(`/api/rooms/${roomId}/exams/${examId}/export?format=${format}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        toast.error(`ไม่สามารถ Export ${format.toUpperCase()} ได้`);
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `exam-${examId}-scores.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success(`Export ${format.toUpperCase()} สำเร็จ`);
+    } catch {
+      toast.error("เกิดข้อผิดพลาดในการ Export");
+    } finally {
+      if (format === "csv") setIsExportingCsv(false);
+      else setIsExportingXlsx(false);
     }
   };
 
@@ -159,9 +224,12 @@ export default function RoomReview() {
       if (res.ok) {
         const data = await res.json();
         toast.success(`อนุมัติ ${data.approved_student_ids?.length || 0} คน สำเร็จ`);
+        if (data.skipped?.length) {
+          toast.info(`ข้าม ${data.skipped.length} คน (สถานะไม่พร้อมอนุมัติ)`);
+        }
         setStudents((prev) =>
           prev.map((s) =>
-            selectedIds.includes(s.student_id) && s.status === "ready"
+            selectedIds.includes(s.student_id) && (s.status === "ready" || s.status === "needs_review")
               ? { ...s, status: "approved" }
               : s
           )
@@ -210,6 +278,13 @@ export default function RoomReview() {
     );
   }
 
+  const distributionData = analytics
+    ? Object.entries(analytics.score_distribution).map(([range, count]) => ({
+        range,
+        students: count,
+      }))
+    : [];
+
   return (
     <div className="min-h-screen bg-[#F8F9FA] pb-20">
       <Navbar activeTab="allReviews" />
@@ -238,8 +313,21 @@ export default function RoomReview() {
             <Button variant="outline" onClick={fetchData} className="bg-white text-gray-700" disabled={isFetching}>
               <RefreshCw className={`mr-2 w-4 h-4 ${isFetching ? "animate-spin" : ""}`} /> รีเฟรช
             </Button>
-            <Button variant="outline" className="bg-white text-gray-700">
+            <Button
+              variant="outline"
+              className="bg-white text-gray-700"
+              onClick={() => handleExport("csv")}
+              disabled={isExportingCsv}
+            >
               <FileText className="mr-2 w-4 h-4" /> Export CSV
+            </Button>
+            <Button
+              variant="outline"
+              className="bg-white text-gray-700"
+              onClick={() => handleExport("xlsx")}
+              disabled={isExportingXlsx}
+            >
+              <FileText className="mr-2 w-4 h-4" /> Export Excel
             </Button>
           </div>
         </div>
@@ -300,10 +388,27 @@ export default function RoomReview() {
 
             <div className="flex gap-3 w-full md:w-auto items-center">
               {activeTab === "pending" && (
-                <div className="flex gap-2 mr-2">
+                <div className="flex gap-2 mr-2 items-center">
                   <button onClick={() => setSubFilter("all")} className={`px-3 py-1.5 text-xs font-bold rounded-full border transition-all ${subFilter === "all" ? "bg-gray-800 text-white border-gray-800" : "bg-white text-gray-500 border-gray-200 hover:border-gray-400"}`}>ทั้งหมด</button>
                   <button onClick={() => setSubFilter("failed")} className={`px-3 py-1.5 text-xs font-bold rounded-full border transition-all ${subFilter === "failed" ? "bg-orange-500 text-white border-orange-500" : "bg-white text-gray-500 border-gray-200 hover:border-orange-300"}`}>ประเมินไม่ได้</button>
                   <button onClick={() => setSubFilter("success")} className={`px-3 py-1.5 text-xs font-bold rounded-full border transition-all ${subFilter === "success" ? "bg-green-500 text-white border-green-500" : "bg-white text-gray-500 border-gray-200 hover:border-green-300"}`}>ประเมินสำเร็จ</button>
+                  <div className="flex items-center bg-gray-100 rounded-full p-1 ml-2">
+                    <button
+                      onClick={() => {
+                        setBulkMode("ready_only");
+                        setSelectedIds((prev) => prev.filter((id) => students.some((s) => s.student_id === id && s.status === "ready")));
+                      }}
+                      className={`px-2.5 py-1 text-xs rounded-full ${bulkMode === "ready_only" ? "bg-white text-gray-800 shadow-sm" : "text-gray-500"}`}
+                    >
+                      Bulk: Ready
+                    </button>
+                    <button
+                      onClick={() => setBulkMode("include_needs_review")}
+                      className={`px-2.5 py-1 text-xs rounded-full ${bulkMode === "include_needs_review" ? "bg-white text-gray-800 shadow-sm" : "text-gray-500"}`}
+                    >
+                      +Needs Review
+                    </button>
+                  </div>
                 </div>
               )}
               <div className="relative flex-1 md:w-64">
@@ -352,9 +457,9 @@ export default function RoomReview() {
                     <div className="flex items-center justify-center w-5">
                       <input
                         type="checkbox"
-                        className={`w-4 h-4 rounded border-gray-300 text-[#3B82F6] focus:ring-[#3B82F6] ${student.status !== "ready" ? "opacity-30 cursor-not-allowed bg-gray-100" : "cursor-pointer"}`}
+                        className={`w-4 h-4 rounded border-gray-300 text-[#3B82F6] focus:ring-[#3B82F6] ${(bulkMode === "include_needs_review" ? (student.status !== "ready" && student.status !== "needs_review") : student.status !== "ready") ? "opacity-30 cursor-not-allowed bg-gray-100" : "cursor-pointer"}`}
                         checked={selectedIds.includes(student.student_id)}
-                        disabled={student.status !== "ready"}
+                        disabled={bulkMode === "include_needs_review" ? (student.status !== "ready" && student.status !== "needs_review") : student.status !== "ready"}
                         onChange={() => toggleSelectOne(student.student_id)}
                       />
                     </div>
@@ -410,6 +515,77 @@ export default function RoomReview() {
             )}
           </div>
         </div>
+
+        {/* Analytics Summary */}
+        {analytics && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <p className="text-sm text-gray-500">คะแนนเฉลี่ย (Approved)</p>
+              <p className="text-2xl font-bold text-[#3B82F6]">
+                {analytics.mean_score} / {exam?.total_score ?? "-"}
+              </p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <p className="text-sm text-gray-500">มัธยฐาน (Approved)</p>
+              <p className="text-2xl font-bold text-violet-600">
+                {analytics.median_score} / {exam?.total_score ?? "-"}
+              </p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <p className="text-sm text-gray-500">ส่งแล้ว / ยังไม่ส่ง</p>
+              <p className="text-2xl font-bold text-emerald-600">
+                {analytics.submission_counts.submitted} / {analytics.submission_counts.missing}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {analytics && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
+            <h2 className="text-lg font-bold text-gray-900 mb-3">Score Distribution</h2>
+            <ChartContainer
+              className="h-[240px] w-full"
+              config={{
+                students: {
+                  label: "จำนวนนักเรียน",
+                  color: "#3B82F6",
+                },
+              }}
+            >
+              <BarChart data={distributionData}>
+                <CartesianGrid vertical={false} />
+                <XAxis dataKey="range" tickLine={false} axisLine={false} />
+                <YAxis allowDecimals={false} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar dataKey="students" radius={8} fill="var(--color-students)" />
+              </BarChart>
+            </ChartContainer>
+          </div>
+        )}
+
+        {/* Difficulty Analysis */}
+        {analytics && analytics.difficulty_analysis.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
+            <h2 className="text-lg font-bold text-gray-900 mb-3">Question Difficulty Analysis</h2>
+            <div className="space-y-2">
+              {analytics.difficulty_analysis.slice(0, 5).map((q) => (
+                <div key={q.question_id} className="border border-gray-100 rounded-lg p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium text-gray-800 truncate">
+                      ข้อ {q.order_index + 1}: {q.question_text}
+                    </p>
+                    <span className="text-xs font-bold px-2 py-1 rounded bg-orange-50 text-orange-600 border border-orange-100">
+                      {q.percent_correct}%
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    คะแนนเฉลี่ย {q.avg_score}/{q.max_score}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Floating Bulk Action Bar */}
@@ -420,6 +596,23 @@ export default function RoomReview() {
             <span className="font-medium">รายการที่เลือก</span>
           </div>
           <div className="flex gap-3">
+            <div className="flex items-center gap-1 bg-gray-800 rounded-lg p-1">
+              <button
+                className={`px-2.5 py-1.5 text-xs rounded ${bulkMode === "ready_only" ? "bg-white text-gray-900 font-semibold" : "text-gray-300"}`}
+                onClick={() => {
+                  setBulkMode("ready_only");
+                  setSelectedIds((prev) => prev.filter((id) => students.some((s) => s.student_id === id && s.status === "ready")));
+                }}
+              >
+                เฉพาะ Ready
+              </button>
+              <button
+                className={`px-2.5 py-1.5 text-xs rounded ${bulkMode === "include_needs_review" ? "bg-white text-gray-900 font-semibold" : "text-gray-300"}`}
+                onClick={() => setBulkMode("include_needs_review")}
+              >
+                รวม Needs Review
+              </button>
+            </div>
             <Button variant="ghost" onClick={() => setSelectedIds([])} className="text-gray-300 hover:text-white h-8">ยกเลิก</Button>
             <Button
               onClick={handleBulkApprove}
