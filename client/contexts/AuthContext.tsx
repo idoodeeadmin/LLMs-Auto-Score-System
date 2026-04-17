@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { toast } from "sonner";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 interface User {
   id: number;
@@ -16,6 +18,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (token: string, userData: User) => void;
   logout: () => void;
+  loginWithFirebase: (firebaseToken: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -70,6 +73,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     toast.info("ออกจากระบบแล้ว");
   };
 
+  const loginWithFirebase = async (firebaseToken: string) => {
+    try {
+      const response = await fetch("/api/auth/firebase-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ firebase_token: firebaseToken }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        login(data.access_token, data.user);
+      } else {
+        toast.error(data.detail || "เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Google");
+        throw new Error(data.detail || "Firebase login failed");
+      }
+    } catch (error) {
+      console.error("Firebase login error:", error);
+      throw error;
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -79,6 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         login,
         logout,
+        loginWithFirebase,
       }}
     >
       {children}

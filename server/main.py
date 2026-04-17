@@ -1,6 +1,7 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Header, UploadFile, File, Form
+from fastapi import FastAPI, Depends, HTTPException, status, Header, UploadFile, File, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import Response
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from .database import get_db_connection, init_db
@@ -10,6 +11,9 @@ import random
 import string
 import os
 import json as json_module_top
+import csv
+import io
+import statistics
 from dotenv import load_dotenv
 import aiofiles
 
@@ -143,6 +147,99 @@ async def get_me(user: dict = Depends(get_current_user)):
         "role": user["role"],
         "studentId": user["student_id"]
     }
+
+class FirebaseLoginRequest(BaseModel):
+    firebase_token: str
+
+# Firebase Admin SDK - verify Firebase tokens
+_FIREBASE_CREDENTIALS_PATH = os.getenv("FIREBASE_CREDENTIALS_PATH", "")
+
+# Initialize Firebase Admin SDK
+_firebase_app = None
+if _FIREBASE_CREDENTIALS_PATH and os.path.exists(_FIREBASE_CREDENTIALS_PATH):
+    import firebase_admin
+    from firebase_admin import credentials, auth
+    try:
+        cred = credentials.Certificate(_FIREBASE_CREDENTIALS_PATH)
+        _firebase_app = firebase_admin.initialize_app(cred)
+        print("[Firebase] Admin SDK initialized successfully")
+    except Exception as e:
+        print(f"[Firebase] Failed to initialize Admin SDK: {e}")
+
+@app.post("/api/auth/firebase-login", response_model=TokenResponse)
+async def firebase_login(request: FirebaseLoginRequest):
+    """
+    Verify Firebase ID token and either:
+    - Find existing user by email and log them in
+    - Create new user account if email doesn't exist (default to 'student' role)
+    """
+    if not _firebase_app:
+        raise HTTPException(status_code=500, detail="Firebase Admin SDK not configured")
+    
+    try:
+        # Verify the Firebase token
+        decoded_token = auth.verify_id_token(request.firebase_token)
+        email = decoded_token.get("email")
+        display_name = decoded_token.get("name", decoded_token.get("display_name", "User"))
+        
+        if not email:
+            raise HTTPException(status_code=400, detail="Email not available from Google account")
+        
+    except auth.InvalidIdTokenError as e:
+        print(f"[Firebase] Invalid token: {e}")
+        raise HTTPException(status_code=401, detail="Invalid Firebase token")
+    except auth.ExpiredIdTokenError:
+        raise HTTPException(status_code=401, detail="Firebase token has expired")
+    except Exception as e:
+        print(f"[Firebase Verify Error] {e}")
+        raise HTTPException(status_code=401, detail="Failed to verify Firebase token")
+    
+    # Check if user exists in our database
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+    user = cursor.fetchone()
+    
+    if user:
+        # User exists - log them in
+        conn.close()
+        access_token = create_access_token(data={"sub": email})
+        
+        user_info = {
+            "id": user["id"],
+            "email": user["email"],
+            "name": user["name"],
+            "role": user["role"],
+            "studentId": user["student_id"]
+        }
+        
+        return {"access_token": access_token, "token_type": "bearer", "user": user_info}
+    
+    # User doesn't exist - create new account as student (default role)
+    try:
+        cursor.execute(
+            "INSERT INTO users (email, password, name, role, student_id) VALUES (?, ?, ?, ?, ?)",
+            (email, f"firebase_{decoded_token.get('uid', '')}", display_name, "student", None)
+        )
+        conn.commit()
+        new_user_id = cursor.lastrowid
+    except sqlite3.IntegrityError:
+        conn.close()
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    user_info = {
+        "id": new_user_id,
+        "email": email,
+        "name": display_name,
+        "role": "student",
+        "studentId": None
+    }
+    
+    access_token = create_access_token(data={"sub": email})
+    conn.close()
+    
+    return {"access_token": access_token, "token_type": "bearer", "user": user_info}
 
 # Room Routes
 def generate_class_code(length=6):
@@ -414,6 +511,103 @@ async def create_exam(room_id: int, exam: ExamCreate, user: dict = Depends(get_c
 
     return new_exam
 
+@app.put("/api/rooms/{room_id}/exams/{exam_id}")
+async def update_exam(room_id: int, exam_id: int, exam: ExamCreate, user: dict = Depends(get_current_user)):
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can update exams")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Verify exam ownership
+    cursor.execute("SELECT id FROM exams WHERE id = ? AND room_id = ?", (exam_id, room_id))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=404, detail="Exam not found")
+
+    # Verify room ownership
+    cursor.execute("SELECT id FROM rooms WHERE id = ? AND owner_id = ?", (room_id, user["id"]))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=404, detail="Room not found or unauthorized")
+
+    # Update exam
+    cursor.execute(
+        "UPDATE exams SET title = ?, description = ?, total_score = ?, start_date = ?, end_date = ? WHERE id = ?",
+        (exam.title, exam.description, exam.total_score, exam.start_date, exam.end_date, exam_id)
+    )
+
+    # Delete existing questions
+    cursor.execute("DELETE FROM questions WHERE exam_id = ?", (exam_id,))
+
+    # Insert new questions
+    import base64, re as _re
+    for q in exam.questions:
+        rubrics_json = json_module.dumps(q.rubrics, ensure_ascii=False) if q.rubrics else None
+
+        # Handle multiple question images (base64 data URLs)
+        image_paths = []
+        import time as _time
+        for img_idx, img_b64 in enumerate(q.question_images_base64 or []):
+            try:
+                match = _re.match(r'data:(?P<mime>[^;]+);base64,(?P<data>.+)', img_b64)
+                if match:
+                    mime = match.group('mime')
+                    b64data = match.group('data')
+                    img_bytes = base64.b64decode(b64data)
+                    ext = mime.split('/')[-1].replace('jpeg', 'jpg')
+                    q_dir = os.path.join('uploads', 'questions', str(exam_id))
+                    os.makedirs(q_dir, exist_ok=True)
+                    fname = f"q_{q.order_index}_{img_idx}_{int(_time.time())}.{ext}"
+                    fpath = os.path.join(q_dir, fname)
+                    with open(fpath, 'wb') as imgf:
+                        imgf.write(img_bytes)
+                    image_paths.append(f"/uploads/questions/{exam_id}/{fname}")
+            except Exception as img_err:
+                print(f"[Question Image] Failed to save index {img_idx}: {img_err}")
+
+        image_paths_json = json_module.dumps(image_paths) if image_paths else None
+        first_image = image_paths[0] if image_paths else None
+
+        cursor.execute(
+            "INSERT INTO questions (exam_id, text, score, answer_key, rubrics, order_index, image_path, image_paths) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (exam_id, q.text, q.score, q.answer_key, rubrics_json, q.order_index, first_image, image_paths_json)
+        )
+
+    conn.commit()
+    cursor.execute("SELECT * FROM exams WHERE id = ?", (exam_id,))
+    updated_exam = dict(cursor.fetchone())
+    conn.close()
+
+    return updated_exam
+
+@app.delete("/api/rooms/{room_id}/exams/{exam_id}")
+async def delete_exam(room_id: int, exam_id: int, user: dict = Depends(get_current_user)):
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can delete exams")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Verify room ownership
+    cursor.execute("SELECT id FROM rooms WHERE id = ? AND owner_id = ?", (room_id, user["id"]))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=404, detail="Room not found or unauthorized")
+
+    # Verify exam exists
+    cursor.execute("SELECT id FROM exams WHERE id = ? AND room_id = ?", (exam_id, room_id))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=404, detail="Exam not found")
+
+    # Delete exam (questions will be cascade deleted due to FK)
+    cursor.execute("DELETE FROM exams WHERE id = ?", (exam_id,))
+    conn.commit()
+    conn.close()
+
+    return {"message": "Exam deleted successfully"}
+
 @app.get("/api/rooms/{room_id}/exams")
 async def list_exams(room_id: int, user: dict = Depends(get_current_user)):
     conn = get_db_connection()
@@ -615,6 +809,23 @@ class ApproveSubmissionRequest(BaseModel):
 
 class BulkApproveRequest(BaseModel):
     student_ids: List[int]
+
+def _distribution_buckets(scores: list[float], total_score: float) -> dict:
+    if total_score <= 0:
+        return {"0-24": 0, "25-49": 0, "50-74": 0, "75-100": 0}
+
+    buckets = {"0-24": 0, "25-49": 0, "50-74": 0, "75-100": 0}
+    for s in scores:
+        pct = max(0.0, min(100.0, (float(s) / float(total_score)) * 100.0))
+        if pct < 25:
+            buckets["0-24"] += 1
+        elif pct < 50:
+            buckets["25-49"] += 1
+        elif pct < 75:
+            buckets["50-74"] += 1
+        else:
+            buckets["75-100"] += 1
+    return buckets
 
 
 @app.post("/api/rooms/{room_id}/exams/{exam_id}/submit")
@@ -840,6 +1051,294 @@ async def list_submissions(room_id: int, exam_id: int, user: dict = Depends(get_
         })
     return result
 
+@app.get("/api/rooms/{room_id}/exams/{exam_id}/analytics")
+async def get_exam_analytics(room_id: int, exam_id: int, user: dict = Depends(get_current_user)):
+    """Teacher analytics for score summary, submission counts, and question difficulty."""
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can view analytics")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT id FROM rooms WHERE id = ? AND owner_id = ?", (room_id, user["id"]))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    cursor.execute("SELECT id, total_score FROM exams WHERE id = ? AND room_id = ?", (exam_id, room_id))
+    exam = cursor.fetchone()
+    if not exam:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Exam not found")
+
+    exam_total_score = float(exam["total_score"] or 0)
+
+    cursor.execute("""
+        SELECT s.total_score
+        FROM submissions s
+        WHERE s.exam_id = ? AND s.status = 'approved'
+    """, (exam_id,))
+    approved_scores = [float(r["total_score"] or 0) for r in cursor.fetchall()]
+
+    mean_score = round(statistics.mean(approved_scores), 2) if approved_scores else 0.0
+    median_score = round(statistics.median(approved_scores), 2) if approved_scores else 0.0
+
+    cursor.execute("""
+        SELECT
+            SUM(CASE WHEN s.status = 'missing' OR s.status IS NULL THEN 1 ELSE 0 END) AS missing_count,
+            SUM(CASE WHEN s.status IS NOT NULL AND s.status != 'missing' THEN 1 ELSE 0 END) AS submitted_count
+        FROM enrollments e
+        LEFT JOIN submissions s ON s.exam_id = ? AND s.student_id = e.user_id
+        WHERE e.room_id = ?
+    """, (exam_id, room_id))
+    submission_counts = cursor.fetchone()
+
+    cursor.execute("""
+        SELECT
+            q.id AS question_id,
+            q.order_index,
+            q.text AS question_text,
+            q.score AS max_score,
+            AVG(
+                CASE
+                    WHEN s.id IS NOT NULL THEN COALESCE(sa.teacher_score, sa.ai_score, 0)
+                    ELSE NULL
+                END
+            ) AS avg_score
+        FROM questions q
+        LEFT JOIN submission_answers sa ON sa.question_id = q.id
+        LEFT JOIN submissions s ON s.id = sa.submission_id AND s.status = 'approved'
+        WHERE q.exam_id = ?
+        GROUP BY q.id, q.order_index, q.text, q.score
+        ORDER BY q.order_index ASC
+    """, (exam_id,))
+    difficulty_rows = cursor.fetchall()
+
+    difficulties = []
+    for row in difficulty_rows:
+        max_score = float(row["max_score"] or 0)
+        avg_score = float(row["avg_score"] or 0)
+        percent_correct = round((avg_score / max_score * 100.0), 2) if max_score > 0 else 0.0
+        difficulties.append({
+            "question_id": row["question_id"],
+            "order_index": row["order_index"],
+            "question_text": row["question_text"],
+            "max_score": max_score,
+            "avg_score": round(avg_score, 2),
+            "percent_correct": percent_correct,
+        })
+
+    conn.close()
+
+    return {
+        "mean_score": mean_score,
+        "median_score": median_score,
+        "approved_submission_count": len(approved_scores),
+        "score_distribution": _distribution_buckets(approved_scores, exam_total_score),
+        "submission_counts": {
+            "submitted": int(submission_counts["submitted_count"] or 0),
+            "missing": int(submission_counts["missing_count"] or 0),
+        },
+        "difficulty_analysis": sorted(difficulties, key=lambda d: d["percent_correct"]),
+    }
+
+@app.get("/api/rooms/{room_id}/analytics")
+async def get_room_analytics(room_id: int, user: dict = Depends(get_current_user)):
+    """Teacher room-level analytics across all exams."""
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can view analytics")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT id FROM rooms WHERE id = ? AND owner_id = ?", (room_id, user["id"]))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    cursor.execute("""
+        SELECT
+            e.id,
+            e.title,
+            e.total_score,
+            COUNT(CASE WHEN s.status IS NOT NULL AND s.status != 'missing' THEN 1 END) AS submitted_count,
+            COUNT(CASE WHEN s.status = 'approved' THEN 1 END) AS approved_count,
+            AVG(CASE WHEN s.status = 'approved' THEN s.total_score ELSE NULL END) AS approved_mean
+        FROM exams e
+        LEFT JOIN submissions s ON s.exam_id = e.id
+        WHERE e.room_id = ?
+        GROUP BY e.id, e.title, e.total_score
+        ORDER BY e.created_at DESC
+    """, (room_id,))
+    exams = cursor.fetchall()
+
+    cursor.execute("SELECT COUNT(*) AS total_students FROM enrollments WHERE room_id = ?", (room_id,))
+    total_students = int(cursor.fetchone()["total_students"] or 0)
+
+    cursor.execute("""
+        SELECT s.total_score, e.total_score AS exam_total_score
+        FROM submissions s
+        JOIN exams e ON e.id = s.exam_id
+        WHERE e.room_id = ? AND s.status = 'approved'
+    """, (room_id,))
+    room_approved_score_rows = cursor.fetchall()
+    room_approved_scores = [float(r["total_score"] or 0) for r in room_approved_score_rows]
+    room_approved_percents = []
+    for r in room_approved_score_rows:
+        exam_total = float(r["exam_total_score"] or 0)
+        score = float(r["total_score"] or 0)
+        pct = (score / exam_total * 100.0) if exam_total > 0 else 0.0
+        room_approved_percents.append(max(0.0, min(100.0, pct)))
+    conn.close()
+
+    exam_summaries = []
+    for e in exams:
+        submitted_count = int(e["submitted_count"] or 0)
+        approved_count = int(e["approved_count"] or 0)
+        total_score = float(e["total_score"] or 0)
+        approved_mean = round(float(e["approved_mean"] or 0), 2)
+        submission_rate = round((submitted_count / total_students) * 100.0, 2) if total_students > 0 else 0.0
+        mean_percent = round((approved_mean / total_score) * 100.0, 2) if total_score > 0 else 0.0
+        exam_summaries.append({
+            "exam_id": e["id"],
+            "title": e["title"],
+            "total_score": total_score,
+            "submitted_count": submitted_count,
+            "approved_count": approved_count,
+            "approved_mean": approved_mean,
+            "missing_count": max(0, total_students - submitted_count),
+            "submission_rate": submission_rate,
+            "mean_percent": mean_percent,
+        })
+
+    return {
+        "total_students": total_students,
+        "exam_count": len(exam_summaries),
+        "overall_mean_score": round(statistics.mean(room_approved_scores), 2) if room_approved_scores else 0.0,
+        "overall_median_score": round(statistics.median(room_approved_scores), 2) if room_approved_scores else 0.0,
+        "overall_distribution": _distribution_buckets(room_approved_percents, 100.0),
+        "exam_summaries": exam_summaries,
+    }
+
+@app.get("/api/rooms/{room_id}/exams/{exam_id}/export")
+async def export_exam_scores(
+    room_id: int,
+    exam_id: int,
+    user: dict = Depends(get_current_user),
+    file_format: str = Query(default="csv", alias="format"),
+):
+    """Export exam results as CSV or XLSX."""
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can export scores")
+    export_fmt = file_format.lower()
+    if export_fmt not in ("csv", "xlsx"):
+        raise HTTPException(status_code=400, detail="Supported export formats are csv and xlsx")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT id FROM rooms WHERE id = ? AND owner_id = ?", (room_id, user["id"]))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    cursor.execute("SELECT id, title, total_score FROM exams WHERE id = ? AND room_id = ?", (exam_id, room_id))
+    exam = cursor.fetchone()
+    if not exam:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Exam not found")
+
+    cursor.execute("""
+        SELECT
+            u.id AS student_id,
+            u.name,
+            u.email,
+            u.student_id AS student_code,
+            COALESCE(s.status, 'missing') AS status,
+            s.total_score,
+            s.submitted_at
+        FROM enrollments e
+        JOIN users u ON u.id = e.user_id
+        LEFT JOIN submissions s ON s.exam_id = ? AND s.student_id = e.user_id
+        WHERE e.room_id = ?
+        ORDER BY u.name ASC
+    """, (exam_id, room_id))
+    rows = cursor.fetchall()
+    conn.close()
+
+    safe_title = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in exam["title"])
+    export_headers = [
+        "Student ID",
+        "Student Code",
+        "Student Name",
+        "Email",
+        "Status",
+        "Score",
+        "Submitted At",
+        "Exam Total Score",
+    ]
+
+    if export_fmt == "csv":
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(export_headers)
+        for r in rows:
+            writer.writerow([
+                r["student_id"], r["student_code"], r["name"], r["email"],
+                r["status"], r["total_score"], r["submitted_at"], exam["total_score"]
+            ])
+
+        csv_content = output.getvalue()
+        output.close()
+        filename = f"exam_{exam_id}_{safe_title}_scores.csv"
+        return Response(
+            content=csv_content,
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    try:
+        from openpyxl import Workbook
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail="XLSX export requires openpyxl. Please install dependencies from server/requirements.txt",
+        )
+
+    wb = Workbook()
+    from openpyxl.styles import Font, PatternFill, Alignment
+    ws = wb.active
+    ws.title = "scores"
+    ws.append(export_headers)
+
+    # Make header row visually explicit.
+    header_fill = PatternFill(start_color="E2E8F0", end_color="E2E8F0", fill_type="solid")
+    for col_idx in range(1, len(export_headers) + 1):
+        cell = ws.cell(row=1, column=col_idx)
+        cell.font = Font(bold=True)
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center")
+
+    for r in rows:
+        ws.append([
+            r["student_id"], r["student_code"], r["name"], r["email"],
+            r["status"], r["total_score"], r["submitted_at"], exam["total_score"]
+        ])
+
+    ws.freeze_panes = "A2"
+    ws.auto_filter.ref = ws.dimensions
+
+    bin_output = io.BytesIO()
+    wb.save(bin_output)
+    xlsx_bytes = bin_output.getvalue()
+    bin_output.close()
+    filename = f"exam_{exam_id}_{safe_title}_scores.xlsx"
+    return Response(
+        content=xlsx_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
 
 @app.get("/api/rooms/{room_id}/exams/{exam_id}/submissions/me")
 async def get_my_submission(room_id: int, exam_id: int, user: dict = Depends(get_current_user)):
@@ -1016,17 +1515,28 @@ async def bulk_approve(room_id: int, exam_id: int, body: BulkApproveRequest, use
         raise HTTPException(status_code=403, detail="Unauthorized")
 
     approved = []
+    skipped = []
     for sid in body.student_ids:
-        cursor.execute("SELECT id, total_score FROM submissions WHERE exam_id = ? AND student_id = ? AND status = 'ready'", (exam_id, sid))
+        cursor.execute("SELECT id, status FROM submissions WHERE exam_id = ? AND student_id = ?", (exam_id, sid))
         sub = cursor.fetchone()
-        if sub:
+        if not sub:
+            skipped.append({"student_id": sid, "reason": "not_submitted"})
+            continue
+
+        if sub["status"] in ("ready", "needs_review"):
             cursor.execute("UPDATE submissions SET status = 'approved' WHERE id = ?", (sub["id"],))
             approved.append(sid)
+        else:
+            skipped.append({"student_id": sid, "reason": f"status_{sub['status']}"})
 
     conn.commit()
     conn.close()
 
-    return {"message": f"Approved {len(approved)} submissions", "approved_student_ids": approved}
+    return {
+        "message": f"Approved {len(approved)} submissions",
+        "approved_student_ids": approved,
+        "skipped": skipped,
+    }
 
 
 # Demo route

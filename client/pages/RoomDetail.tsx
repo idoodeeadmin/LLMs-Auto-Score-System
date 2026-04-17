@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, Plus, ArrowLeft, Copy, BookOpen, Loader2, UserCheck, FileText, Calendar } from "lucide-react";
+import { Users, Plus, ArrowLeft, Copy, BookOpen, Loader2, UserCheck, FileText, Calendar, BarChart3, ChevronDown, ChevronUp } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,6 +34,20 @@ interface Exam {
   created_at: string;
 }
 
+interface RoomAnalytics {
+  total_students: number;
+  exam_count: number;
+  exam_summaries: Array<{
+    exam_id: number;
+    title: string;
+    total_score: number;
+    submitted_count: number;
+    approved_count: number;
+    approved_mean: number;
+    missing_count: number;
+  }>;
+}
+
 const GRADIENTS = [
   "from-indigo-500 to-purple-600",
   "from-blue-500 to-cyan-500",
@@ -50,7 +64,9 @@ export default function RoomDetail() {
   const [room, setRoom] = useState<RoomInfo | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
+  const [roomAnalytics, setRoomAnalytics] = useState<RoomAnalytics | null>(null);
   const [isFetching, setIsFetching] = useState(true);
+  const [showExamSummary, setShowExamSummary] = useState(true);
 
   useEffect(() => {
     if (!isLoading && !user) navigate("/");
@@ -60,13 +76,15 @@ export default function RoomDetail() {
     if (!token || !roomId) return;
     const fetchRoom = async () => {
       try {
-        const [roomRes, examsRes] = await Promise.all([
+        const [roomRes, examsRes, analyticsRes] = await Promise.all([
           fetch(`/api/rooms/${roomId}`, { headers: { Authorization: `Bearer ${token}` } }),
           fetch(`/api/rooms/${roomId}/exams`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`/api/rooms/${roomId}/analytics`, { headers: { Authorization: `Bearer ${token}` } }),
         ]);
         if (roomRes.ok) setRoom(await roomRes.json());
         else { toast.error("ไม่พบห้องเรียนนี้"); navigate("/home"); }
         if (examsRes.ok) setExams(await examsRes.json());
+        if (analyticsRes.ok) setRoomAnalytics(await analyticsRes.json());
       } catch {
         toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
       } finally {
@@ -189,12 +207,83 @@ export default function RoomDetail() {
             <motion.div key="exams" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }} className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold text-slate-800">รายการข้อสอบ</h2>
-                {isTeacher && (
-                  <Button onClick={() => navigate(`/room/${roomId}/create-exam`)} className="bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-200">
-                    <Plus size={16} className="mr-1.5" /> สร้างข้อสอบ
-                  </Button>
-                )}
+                <div className="flex items-center gap-2">
+                  {isTeacher && (
+                    <Button
+                      variant="outline"
+                      onClick={() => navigate(`/room/${roomId}/analytics`)}
+                      className="border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                    >
+                      <BarChart3 size={16} className="mr-1.5" /> วิเคราะห์ทุกชุด
+                    </Button>
+                  )}
+                  {isTeacher && (
+                    <Button onClick={() => navigate(`/room/${roomId}/create-exam`)} className="bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-200">
+                      <Plus size={16} className="mr-1.5" /> สร้างข้อสอบ
+                    </Button>
+                  )}
+                </div>
               </div>
+
+              {isTeacher && roomAnalytics && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="bg-white rounded-xl border border-slate-200 p-4">
+                    <p className="text-xs text-slate-500">นักศึกษาในห้อง</p>
+                    <p className="text-2xl font-bold text-slate-800">{roomAnalytics.total_students}</p>
+                  </div>
+                  <div className="bg-white rounded-xl border border-slate-200 p-4">
+                    <p className="text-xs text-slate-500">จำนวนข้อสอบ</p>
+                    <p className="text-2xl font-bold text-indigo-600">{roomAnalytics.exam_count}</p>
+                  </div>
+                  <div className="bg-white rounded-xl border border-slate-200 p-4">
+                    <p className="text-xs text-slate-500">ค่าเฉลี่ยรวม (Approved)</p>
+                    <p className="text-2xl font-bold text-emerald-600">
+                      {roomAnalytics.exam_summaries.length > 0
+                        ? (
+                            roomAnalytics.exam_summaries.reduce((sum, e) => sum + (e.approved_mean || 0), 0) /
+                            roomAnalytics.exam_summaries.length
+                          ).toFixed(2)
+                        : "0.00"}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {isTeacher && roomAnalytics && roomAnalytics.exam_summaries.length > 0 && (
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                  <div className="px-5 py-3 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-slate-700">ภาพรวมผลสอบรายข้อสอบ</h3>
+                    <button
+                      onClick={() => setShowExamSummary((prev) => !prev)}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-slate-800"
+                    >
+                      {showExamSummary ? (
+                        <>
+                          <ChevronUp size={14} /> ซ่อน
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown size={14} /> แสดง
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  {showExamSummary && (
+                    <div className="divide-y divide-slate-100">
+                      {roomAnalytics.exam_summaries.slice(0, 5).map((item) => (
+                        <div key={item.exam_id} className="px-5 py-3 flex flex-wrap items-center justify-between gap-3">
+                          <p className="font-medium text-slate-700">{item.title}</p>
+                          <div className="text-sm text-slate-500 flex items-center gap-4">
+                            <span>ส่งแล้ว {item.submitted_count}</span>
+                            <span>ยังไม่ส่ง {item.missing_count}</span>
+                            <span className="font-semibold text-indigo-600">Avg {item.approved_mean}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {exams.length === 0 ? (
                 <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center shadow-sm">

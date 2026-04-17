@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Trophy, FileText, ChevronDown, ChevronUp,
   CheckCircle2, Loader2, Calendar, Clock, ClipboardCheck,
-  Send, AlertCircle
+  Send, AlertCircle, BarChart3, Pencil, Trash2
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -48,6 +48,8 @@ export default function ExamView() {
   const [isFetching, setIsFetching] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [mySubmission, setMySubmission] = useState<{ status: string; total_score?: number } | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) navigate("/");
@@ -96,6 +98,29 @@ export default function ExamView() {
   const isTeacher = user.role === "teacher";
   const formatDate = (d?: string) => d ? new Date(d).toLocaleDateString("th-TH", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : null;
 
+  const handleDeleteExam = async () => {
+    if (!token || !roomId || !examId) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/rooms/${roomId}/exams/${examId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        toast.success("ลบข้อสอบเรียบร้อยแล้ว");
+        navigate(`/room/${roomId}`);
+      } else {
+        const err = await res.json();
+        toast.error(err.detail || "ไม่สามารถลบข้อสอบ");
+      }
+    } catch {
+      toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
       <Navbar />
@@ -111,12 +136,35 @@ export default function ExamView() {
             <ArrowLeft size={18} /> กลับหน้าห้อง
           </button>
           {isTeacher && (
-            <Button
-              onClick={() => navigate(`/room/${roomId}/exam/${examId}/review`)}
-              className="bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-100 gap-2"
-            >
-              <ClipboardCheck size={16} /> ตรวจ / อนุมัติผล
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => navigate(`/room/${roomId}/exam/${examId}/edit`)}
+                className="gap-2"
+              >
+                <Pencil size={16} /> แก้ไข
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteModal(true)}
+                className="gap-2 text-red-600 border-red-200 hover:bg-red-50"
+              >
+                <Trash2 size={16} /> ลบ
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate(`/room/${roomId}/exam/${examId}/analytics`)}
+                className="gap-2"
+              >
+                <BarChart3 size={16} /> Analytics
+              </Button>
+              <Button
+                onClick={() => navigate(`/room/${roomId}/exam/${examId}/review`)}
+                className="bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-100 gap-2"
+              >
+                <ClipboardCheck size={16} /> ตรวจ / อนุมัติผล
+              </Button>
+            </div>
           )}
         </div>
 
@@ -332,6 +380,40 @@ export default function ExamView() {
               </div>
             )}
           </motion.div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-white rounded-2xl p-6 max-w-sm w-full mx-4 shadow-xl">
+              <div className="text-center">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Trash2 className="text-red-600" size={24} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">ยืนยันการลบข้อสอบ</h3>
+                <p className="text-gray-500 mb-6">
+                  คุณต้องการลบข้อสอบ "<strong>{exam?.title}</strong>" ใช่หรือไม่?<br />
+                  <span className="text-red-500 text-sm">การกระทำนี้ไม่สามารถย้อนกลับได้</span>
+                </p>
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowDeleteModal(false)}
+                    className="flex-1"
+                  >
+                    ยกเลิก
+                  </Button>
+                  <Button
+                    onClick={handleDeleteExam}
+                    disabled={isDeleting}
+                    className="flex-1 bg-red-600 hover:bg-red-700"
+                  >
+                    {isDeleting ? <Loader2 size={16} className="animate-spin" /> : "ลบข้อสอบ"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
       </main>
