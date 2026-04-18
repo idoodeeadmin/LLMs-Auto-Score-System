@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Camera, Image as ImageIcon, X, Send,
-  Loader2, CheckCircle2, AlertCircle, BookOpen, Trash2
+  Loader2, CheckCircle2, AlertCircle, BookOpen, Trash2, Clock
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -54,8 +54,43 @@ export default function ExamSubmit() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitConfirm, setIsSubmitConfirm] = useState(false);
   const [answers, setAnswers] = useState<Record<number, AnswerState>>({});
+  const answersRef = useRef<Record<number, AnswerState>>({});
+  
+  const [timeLeft, setTimeLeft] = useState<string | null>(null);
+  const [isTimeUp, setIsTimeUp] = useState(false);
 
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+
+  // Sync answers with ref for safe closure access in auto-submit
+  useEffect(() => {
+    answersRef.current = answers;
+  }, [answers]);
+
+  // Countdown timer logic
+  useEffect(() => {
+    if (!exam?.end_date || isSubmitting || isTimeUp) return;
+
+    const interval = setInterval(() => {
+      const now = new Date().getTime();
+      const end = new Date(exam.end_date!).getTime();
+      const diff = end - now;
+
+      if (diff <= 0) {
+        clearInterval(interval);
+        setTimeLeft("00:00:00");
+        setIsTimeUp(true);
+      } else {
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        
+        const format = (n: number) => n.toString().padStart(2, "0");
+        setTimeLeft(`${format(hours)}:${format(minutes)}:${format(seconds)}`);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [exam, isSubmitting, isTimeUp]);
 
   // Redirect guards
   useEffect(() => {
@@ -155,24 +190,25 @@ export default function ExamSubmit() {
     }));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     if (!token || !exam) return;
     setIsSubmitting(true);
     setIsSubmitConfirm(false);
 
     try {
       const formData = new FormData();
+      const currentAnswers = answersRef.current;
 
       // Build answers JSON
       const answersJson = exam.questions.map((q) => ({
         question_id: q.id,
-        answer_text: answers[q.id]?.text || "",
+        answer_text: currentAnswers[q.id]?.text || "",
       }));
       formData.append("answers", JSON.stringify(answersJson));
 
       // Append all images for each question as image_{q_id}_0, image_{q_id}_1, ...
       exam.questions.forEach((q) => {
-        const imgs = answers[q.id]?.images || [];
+        const imgs = currentAnswers[q.id]?.images || [];
         imgs.forEach((img, idx) => {
           formData.append(`image_${q.id}_${idx}`, img, img.name);
         });
@@ -203,7 +239,15 @@ export default function ExamSubmit() {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [token, exam, roomId, examId, navigate]);
+
+  // Auto-submit when time is up
+  useEffect(() => {
+    if (isTimeUp && !isSubmitting) {
+      toast.error("เวลาทำข้อสอบหมดแล้ว! ระบบจะส่งคำตอบของคุณโดยอัตโนมัติ", { duration: 5000 });
+      handleSubmit();
+    }
+  }, [isTimeUp]); // only trigger once when isTimeUp changes to true
 
   if (isLoading || isFetching) {
     return (
@@ -283,30 +327,54 @@ export default function ExamSubmit() {
           >
             <ArrowLeft size={16} /> กลับ
           </button>
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-r from-indigo-600 to-blue-500 rounded-2xl p-6 text-white shadow-lg"
-          >
-            <p className="text-white/70 text-sm mb-1 uppercase tracking-wide">กำลังทำข้อสอบ</p>
-            <h1 className="text-2xl font-bold">{exam?.title}</h1>
-            {exam?.description && (
-              <p className="text-white/80 mt-1 text-sm">{exam.description}</p>
-            )}
-            <div className="mt-4 flex items-center gap-4">
-              <div className="flex-1 bg-white/20 rounded-full h-2 overflow-hidden">
-                <motion.div
-                  className="h-full bg-white rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progress}%` }}
-                  transition={{ duration: 0.4 }}
-                />
+          
+          <div className="flex flex-col md:flex-row gap-4 mb-4">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex-1 bg-gradient-to-r from-indigo-600 to-blue-500 rounded-2xl p-6 text-white shadow-lg"
+            >
+              <p className="text-white/70 text-sm mb-1 uppercase tracking-wide">กำลังทำข้อสอบ</p>
+              <h1 className="text-2xl font-bold">{exam?.title}</h1>
+              {exam?.description && (
+                <p className="text-white/80 mt-1 text-sm">{exam.description}</p>
+              )}
+              <div className="mt-4 flex items-center gap-4">
+                <div className="flex-1 bg-white/20 rounded-full h-2 overflow-hidden">
+                  <motion.div
+                    className="h-full bg-white rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${progress}%` }}
+                    transition={{ duration: 0.4 }}
+                  />
+                </div>
+                <span className="text-white text-sm font-bold whitespace-nowrap">
+                  {answeredCount}/{totalQuestions} ข้อ
+                </span>
               </div>
-              <span className="text-white text-sm font-bold whitespace-nowrap">
-                {answeredCount}/{totalQuestions} ข้อ
-              </span>
-            </div>
-          </motion.div>
+            </motion.div>
+
+            {/* Timer Card */}
+            {timeLeft && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className={`flex flex-col items-center justify-center rounded-2xl p-6 shadow-lg min-w-[200px] border-2 transition-colors duration-300 ${
+                  timeLeft.startsWith("00:0") || timeLeft.startsWith("00:1") 
+                    ? "bg-red-50 border-red-200 text-red-600" 
+                    : "bg-white border-indigo-100 text-indigo-700"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-2 font-bold uppercase tracking-wider text-xs opacity-80">
+                  <Clock size={16} />
+                  <span>เหลือเวลาทำข้อสอบ</span>
+                </div>
+                <div className="text-4xl font-black tabular-nums tracking-tight">
+                  {timeLeft}
+                </div>
+              </motion.div>
+            )}
+          </div>
         </div>
 
         {/* Question Cards */}

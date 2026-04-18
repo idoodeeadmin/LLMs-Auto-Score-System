@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import Navbar from "@/components/Navbar";
 import {
   ChevronLeft, ChevronRight, CheckCircle2, AlertTriangle,
-  MessageSquare, BookOpen, AlertCircle, X, Loader2
+  MessageSquare, BookOpen, AlertCircle, X, Loader2, Save
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,6 +34,10 @@ interface AnswerData {
   teacher_comment?: string;
   rubrics?: Rubric[];
   answer_key?: string;
+  image_path?: string;
+  image_paths?: string[];
+  q_image_path?: string;
+  q_image_paths?: string[];
 }
 
 interface StudentInfo {
@@ -246,9 +250,11 @@ export default function StudentGrading() {
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-green-600">
                 <CheckCircle2 size={32} />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">ยืนยันการอนุมัติ?</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                {isApproved ? "ยืนยันการแก้ไข?" : "ยืนยันการอนุมัติ?"}
+              </h3>
               <p className="text-gray-500">
-                คุณต้องการอนุมัติผลการตรวจของ <br />
+                คุณต้องการ{isApproved ? "บันทึกการแก้ไขผล" : "อนุมัติผล"}การตรวจของ <br />
                 <span className="font-bold text-gray-800 text-lg">"{currentStudentName}"</span> ใช่หรือไม่?
                 <br />
                 <span className="text-sm text-gray-400 mt-1 block">คะแนนที่คุณแก้ไขจะถูกบันทึกด้วย</span>
@@ -268,7 +274,7 @@ export default function StudentGrading() {
                 className="flex-1 h-12 text-base bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg shadow-green-100"
               >
                 {isApproving ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
-                ยืนยันอนุมัติ
+                {isApproved ? "ตกลง แก้ไข" : "ยืนยันอนุมัติ"}
               </Button>
             </div>
           </div>
@@ -346,15 +352,15 @@ export default function StudentGrading() {
             </Button>
             <Button
               onClick={onApproveClick}
-              disabled={isApproved || isApproving}
+              disabled={isApproving}
               className={`min-w-[140px] shadow-sm font-bold transition-all ${
                 isApproved
-                  ? "bg-gray-100 text-gray-400 cursor-not-allowed hover:bg-gray-100"
+                  ? "bg-amber-500 hover:bg-amber-600 text-white hover:shadow-md hover:scale-105 active:scale-95"
                   : "bg-green-600 hover:bg-green-700 text-white hover:shadow-md hover:scale-105 active:scale-95"
               }`}
             >
               {isApproved ? (
-                <><CheckCircle2 className="mr-2 w-4 h-4" /> อนุมัติแล้ว</>
+                <> <Save className="mr-2 w-4 h-4" /> บันทึกการแก้ไข</>
               ) : (
                 <><CheckCircle2 className="mr-2 w-4 h-4" /> อนุมัติผลตรวจ</>
               )}
@@ -388,6 +394,28 @@ export default function StudentGrading() {
                 <h3 className="text-gray-900 font-medium leading-relaxed mb-6">
                   {a.question_text}
                 </h3>
+
+                {/* Question Images */}
+                {(a.q_image_paths && a.q_image_paths.length > 0) ? (
+                  <div className="mb-6 grid grid-cols-1 gap-2">
+                    {a.q_image_paths.map((src, i) => (
+                      <img
+                        key={i}
+                        src={src}
+                        alt={`รูปโจทย์รูปที่ ${i + 1}`}
+                        className="w-full rounded-xl border border-gray-200 shadow-sm object-contain bg-white max-h-64"
+                      />
+                    ))}
+                  </div>
+                ) : a.q_image_path ? (
+                  <div className="mb-6">
+                    <img
+                      src={a.q_image_path}
+                      alt="รูปโจทย์"
+                      className="w-full rounded-xl border border-gray-200 shadow-sm object-contain bg-white max-h-64"
+                    />
+                  </div>
+                ) : null}
 
                 {a.answer_key && (
                   <div className="mb-4 bg-emerald-50 rounded-xl p-4 border border-emerald-100">
@@ -432,6 +460,37 @@ export default function StudentGrading() {
                       <span className="text-gray-300 italic">ไม่มีคำตอบ</span>
                     )}
                   </div>
+
+                  {/* Student Answer Images */}
+                  {(a.image_paths && a.image_paths.length > 0) ? (
+                    <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {a.image_paths.map((src, i) => (
+                        <div key={i} className="group relative aspect-video rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-gray-50">
+                          <img
+                            src={src}
+                            alt={`รูปคำตอบที่ ${i + 1}`}
+                            className="w-full h-full object-contain"
+                          />
+                          <a 
+                            href={src} 
+                            target="_blank" 
+                            rel="noreferrer"
+                            className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-bold"
+                          >
+                            ดูรูปเต็ม
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  ) : a.image_path ? (
+                    <div className="mt-4">
+                      <img
+                        src={a.image_path}
+                        alt="รูปคำตอบ"
+                        className="max-h-80 w-auto rounded-xl border border-gray-200 shadow-sm"
+                      />
+                    </div>
+                  ) : null}
                 </div>
 
                 {/* AI Feedback Section */}
@@ -478,7 +537,6 @@ export default function StudentGrading() {
                         onChange={(e) => handleScoreChange(a.question_id, e.target.value)}
                         max={a.max_score}
                         min={0}
-                        disabled={isApproved}
                       />
                     </div>
                   </div>
@@ -501,7 +559,6 @@ export default function StudentGrading() {
                         className="min-h-[60px] bg-white border-gray-200 focus:border-[#3B82F6] resize-none"
                         value={comments[a.question_id] || ""}
                         onChange={(e) => handleCommentChange(a.question_id, e.target.value)}
-                        disabled={isApproved}
                       />
                     </div>
                   </div>

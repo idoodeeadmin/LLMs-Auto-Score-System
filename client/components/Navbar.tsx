@@ -1,6 +1,7 @@
-import { Bell, User, LogOut, Settings, UserCircle } from "lucide-react";
+import { Bell, User, LogOut, Settings, UserCircle, History, Clock, CheckCircle2, ChevronRight, BookOpen, AlertTriangle, Trophy } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useState, useEffect, useRef } from "react";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -15,19 +16,65 @@ interface NavbarProps {
   setActiveTab?: (tab: any) => void;
 }
 
+interface Notification {
+  type: "deadline_passed" | "ai_graded" | "new_exam" | "deadline_soon" | "result_published";
+  exam_id: number;
+  exam_title: string;
+  room_id: number;
+  room_name: string;
+  message: string;
+  link: string;
+}
+
 export default function Navbar({ }: NavbarProps) {
-  const { user, logout } = useAuth();
+  const { user, logout, token } = useAuth();
   const navigate = useNavigate();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [bellOpen, setBellOpen] = useState(false);
+  const [readLinks, setReadLinks] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem("notif_read_links");
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
+  });
+
+  // Fetch notifications for all logged-in users
+  useEffect(() => {
+    if (!token || !user) return;
+
+    const fetchNotifications = async () => {
+      try {
+        const res = await fetch("/api/notifications", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setNotifications(data);
+        }
+      } catch { /* silent */ }
+    };
+
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 60000); // refresh every 60s
+    return () => clearInterval(interval);
+  }, [token, user?.role]);
 
   const handleLogout = () => {
     logout();
     navigate("/");
   };
 
+  // Persist readLinks to localStorage on every change
+  useEffect(() => {
+    localStorage.setItem("notif_read_links", JSON.stringify([...readLinks]));
+  }, [readLinks]);
+
+  const unreadCount = notifications.filter(n => !readLinks.has(n.link)).length;
+
   return (
     <header className="bg-white border-b border-gray-100 px-4 md:px-6 py-3 md:py-4 sticky top-0 z-50 shadow-sm backdrop-blur-md bg-white/90">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-6">
-        {/* Logo (Links to dashboard/home) */}
+        {/* Logo */}
         <Link to="/home" className="flex items-center gap-2 md:gap-3 flex-shrink-0 group">
           <div className="w-10 h-10 md:w-12 md:h-12 bg-[#eff6ff] rounded-2xl flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -39,15 +86,96 @@ export default function Navbar({ }: NavbarProps) {
 
         {/* Right side icons */}
         <div className="flex items-center gap-3 md:gap-5 ml-auto">
-          <button className="p-2 hover:bg-gray-100 rounded-full transition-colors relative">
-            <Bell size={22} className="text-gray-600 md:w-6 md:h-6" />
-            <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
-          </button>
           
+          {/* Bell — All users */}
+          <DropdownMenu open={bellOpen} onOpenChange={(open) => {
+              setBellOpen(open);
+              if (open) {
+                setReadLinks(new Set(notifications.map(n => n.link)));
+              }
+            }}>
+              <DropdownMenuTrigger asChild>
+                <button className="p-2 hover:bg-gray-100 rounded-full transition-colors relative">
+                  <Bell size={22} className="text-gray-600" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 bg-red-500 border-2 border-white rounded-full text-white text-[10px] font-bold flex items-center justify-center">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80 rounded-xl mt-1 shadow-xl border-gray-100 p-2">
+                <DropdownMenuLabel className="text-sm font-bold text-gray-800 px-2 py-1">
+                  การแจ้งเตือน
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator className="my-1" />
+                {notifications.length === 0 ? (
+                  <div className="py-8 text-center text-gray-400 text-sm">
+                    <Bell size={28} className="mx-auto mb-2 opacity-30" />
+                    ไม่มีการแจ้งเตือนในขณะนี้
+                  </div>
+                ) : (
+                  notifications.map((notif, idx) => {
+                    const isRead = readLinks.has(notif.link);
+                    return (
+                      <DropdownMenuItem
+                        key={idx}
+                        asChild
+                        className="rounded-lg p-0 cursor-pointer focus:bg-blue-50"
+                      >
+                        <Link
+                          to={notif.link}
+                          className={`flex items-start gap-3 p-3 w-full rounded-lg transition-colors ${
+                            isRead
+                              ? "bg-white hover:bg-gray-50"
+                              : "bg-blue-50 hover:bg-blue-100"
+                          }`}
+                          onClick={() => {
+                            setReadLinks(prev => new Set([...prev, notif.link]));
+                            setBellOpen(false);
+                          }}
+                        >
+                          <div className={`mt-0.5 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${{
+                              deadline_passed: "bg-orange-100 text-orange-600",
+                              ai_graded:       "bg-green-100 text-green-600",
+                              new_exam:        "bg-blue-100 text-blue-600",
+                              deadline_soon:   "bg-red-100 text-red-600",
+                              result_published:"bg-purple-100 text-purple-600",
+                            }[notif.type] ?? "bg-gray-100 text-gray-500"}`}>
+                            {notif.type === "deadline_passed" && <Clock size={16} />}
+                            {notif.type === "ai_graded"       && <CheckCircle2 size={16} />}
+                            {notif.type === "new_exam"        && <BookOpen size={16} />}
+                            {notif.type === "deadline_soon"   && <AlertTriangle size={16} />}
+                            {notif.type === "result_published"&& <Trophy size={16} />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm leading-tight ${isRead ? "font-normal text-gray-600" : "font-semibold text-gray-800"}`}>
+                              {notif.message}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-0.5 truncate">{notif.room_name}</p>
+                          </div>
+                          <ChevronRight size={14} className="text-gray-300 mt-1 flex-shrink-0" />
+                        </Link>
+                      </DropdownMenuItem>
+                    );
+                  })
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+          {/* Profile avatar + dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="w-9 h-9 md:w-11 md:h-11 bg-[#eff6ff] border border-blue-100 rounded-full flex items-center justify-center hover:bg-blue-100 transition-colors shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none overflow-hidden">
-                <User size={18} className="text-[#3B82F6] md:w-5 md:h-5" />
+                {user?.avatarUrl ? (
+                  <img 
+                    src={user.avatarUrl.startsWith("http") ? user.avatarUrl : `/uploads/avatars/${user.avatarUrl}`} 
+                    className="w-full h-full object-cover" 
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <User size={18} className="text-[#3B82F6] md:w-5 md:h-5" />
+                )}
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 rounded-xl mt-1 shadow-lg border-gray-100 p-2">
@@ -61,13 +189,19 @@ export default function Navbar({ }: NavbarProps) {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-gray-50 my-2" />
-              <DropdownMenuItem className="rounded-lg gap-2 cursor-pointer focus:bg-blue-50 focus:text-blue-600">
-                <UserCircle size={18} />
-                <span>ข้อมูลส่วนตัว</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="rounded-lg gap-2 cursor-pointer focus:bg-blue-50 focus:text-blue-600">
-                <Settings size={18} />
-                <span>การตั้งค่า</span>
+              {user?.role === 'student' && (
+                <DropdownMenuItem asChild className="rounded-lg gap-2 cursor-pointer focus:bg-blue-50 focus:text-blue-600">
+                  <Link to="/history" className="flex items-center w-full">
+                    <History className="mr-2" size={18} />
+                    <span>ประวัติการสอบ</span>
+                  </Link>
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem asChild className="rounded-lg gap-2 cursor-pointer focus:bg-blue-50 focus:text-blue-600">
+                <Link to="/profile" className="flex items-center w-full">
+                  <UserCircle className="mr-2" size={18} />
+                  <span>ข้อมูลส่วนตัว</span>
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-gray-50 my-2" />
               <DropdownMenuItem 
@@ -79,6 +213,7 @@ export default function Navbar({ }: NavbarProps) {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
         </div>
       </div>
     </header>

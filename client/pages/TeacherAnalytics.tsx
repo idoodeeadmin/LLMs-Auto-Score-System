@@ -132,42 +132,54 @@ export default function TeacherAnalytics() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
-              <h2 className="font-semibold text-slate-800 mb-3">Score Distribution</h2>
-              <ChartContainer
-                className="h-[280px] w-full"
-                config={{ students: { label: "Students", color: "#4F46E5" } }}
-              >
-                <BarChart data={distributionData}>
-                  <CartesianGrid vertical={false} />
-                  <XAxis dataKey="range" tickLine={false} axisLine={false} />
-                  <YAxis allowDecimals={false} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="students" fill="var(--color-students)" radius={8} />
-                </BarChart>
-              </ChartContainer>
-            </div>
+            {analytics.submission_counts.submitted > 0 ? (
+              <>
+                <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+                  <h2 className="font-semibold text-slate-800 mb-3">Score Distribution</h2>
+                  <ChartContainer
+                    className="h-[280px] w-full"
+                    config={{ students: { label: "Students", color: "#4F46E5" } }}
+                  >
+                    <BarChart data={distributionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                      <XAxis dataKey="range" tick={{ fontSize: 12, fill: "#64748B" }} tickLine={false} axisLine={false} />
+                      <YAxis tick={{ fontSize: 12, fill: "#64748B" }} tickLine={false} axisLine={false} allowDecimals={false} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Bar dataKey="students" fill="#4F46E5" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                    </BarChart>
+                  </ChartContainer>
+                </div>
 
-            <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
-              <h2 className="font-semibold text-slate-800 mb-3">Question Difficulty</h2>
-              <div className="space-y-2">
-                {analytics.difficulty_analysis.map((q) => (
-                  <div key={q.question_id} className="rounded-lg border border-slate-100 p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm text-slate-700">
-                        ข้อ {q.order_index + 1}: {q.question_text}
-                      </p>
-                      <span className="text-xs font-bold px-2 py-1 rounded bg-orange-50 text-orange-700 border border-orange-100">
-                        {q.percent_correct}%
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Avg {q.avg_score}/{q.max_score}
-                    </p>
+                <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+                  <h2 className="font-semibold text-slate-800 mb-3">Question Difficulty</h2>
+                  <div className="space-y-2">
+                    {analytics.difficulty_analysis.map((q) => (
+                      <div key={q.question_id} className="rounded-lg border border-slate-100 p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm text-slate-700">
+                            ข้อ {q.order_index + 1}: {q.question_text}
+                          </p>
+                          <span className="text-xs font-bold px-2 py-1 rounded bg-orange-50 text-orange-700 border border-orange-100">
+                            {q.percent_correct}%
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Avg {q.avg_score}/{q.max_score}
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
+              </>
+            ) : (
+              <div className="bg-white rounded-2xl border border-slate-100 p-16 shadow-sm flex flex-col items-center justify-center text-center mt-6 col-span-1 md:col-span-4">
+                <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mb-5 border border-indigo-100">
+                  <BarChart3 className="w-10 h-10 text-indigo-300" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-800">ยังไม่มีข้อมูลสถิติให้วิเคราะห์</h3>
+                <p className="text-sm text-slate-500 mt-2 max-w-md">ระบบจะแสดงรายงานผลลัพธ์ประสิทธิภาพเมื่อมีนักศึกษาส่งข้อสอบและได้รับการอนุมัติผลตรวจคะแนนแล้วอย่างน้อย 1 คน</p>
               </div>
-            </div>
+            )}
           </>
         )}
       </main>

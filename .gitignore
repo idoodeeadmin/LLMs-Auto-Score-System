@@ -44,3 +44,9 @@ ENV/
 # Application specific
 uploads/
 /generated/prisma
+.gemini/
+
+# Firebase & Secrets
+*-firebase-adminsdk-*.json
+firebase-credentials.json
+service-account.json
