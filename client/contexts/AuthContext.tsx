@@ -9,6 +9,7 @@ interface User {
   name: string;
   role: 'teacher' | 'student';
   studentId?: string;
+  avatarUrl?: string;
 }
 
 interface AuthContextType {
@@ -19,6 +20,7 @@ interface AuthContextType {
   login: (token: string, userData: User) => void;
   logout: () => void;
   loginWithFirebase: (firebaseToken: string) => Promise<void>;
+  updateUser: (userData: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -73,6 +75,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     toast.info("ออกจากระบบแล้ว");
   };
 
+  const updateUser = (userData: Partial<User>) => {
+    if (user) {
+      setUser({ ...user, ...userData });
+    }
+  };
+
   const loginWithFirebase = async (firebaseToken: string) => {
     try {
       const response = await fetch("/api/auth/firebase-login", {
@@ -105,6 +113,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         logout,
         loginWithFirebase,
+        updateUser,
       }}
     >
       {children}

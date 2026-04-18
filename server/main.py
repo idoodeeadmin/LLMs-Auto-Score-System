@@ -80,7 +80,7 @@ def get_current_user(authorization: Optional[str] = Header(None)):
     email = payload.get("sub")
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, email, name, role, student_id FROM users WHERE email = ?", (email,))
+    cursor.execute("SELECT id, email, name, role, student_id, avatar_url FROM users WHERE email = ?", (email,))
     user = cursor.fetchone()
     conn.close()
     
@@ -127,13 +127,15 @@ async def login(user_data: UserLogin):
         )
     
     access_token = create_access_token(data={"sub": user["email"]})
+    user_dict = dict(user)
     
     user_info = {
-        "id": user["id"],
-        "email": user["email"],
-        "name": user["name"],
-        "role": user["role"],
-        "studentId": user["student_id"]
+        "id": user_dict["id"],
+        "email": user_dict["email"],
+        "name": user_dict["name"],
+        "role": user_dict["role"],
+        "studentId": user_dict.get("student_id"),
+        "avatarUrl": user_dict.get("avatar_url")
     }
     
     return {"access_token": access_token, "token_type": "bearer", "user": user_info}
@@ -145,14 +147,72 @@ async def get_me(user: dict = Depends(get_current_user)):
         "email": user["email"],
         "name": user["name"],
         "role": user["role"],
-        "studentId": user["student_id"]
+        "studentId": user["student_id"],
+        "avatarUrl": user.get("avatar_url", None)
     }
+
+@app.put("/api/auth/profile")
+async def update_profile(
+    name: str = Form(None),
+    password: str = Form(None),
+    avatar: UploadFile = File(None),
+    user: dict = Depends(get_current_user)
+):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    avatar_filename = user.get("avatar_url")
+    if avatar:
+        import uuid, os
+        # Generate random filename
+        ext = avatar.filename.split(".")[-1] if "." in avatar.filename else "png"
+        avatar_filename = f"{uuid.uuid4().hex}.{ext}"
+        file_path = os.path.join("uploads", "avatars", avatar_filename)
+        
+        # Save file chunks safely
+        with open(file_path, "wb") as f:
+            while chunk := await avatar.read(1024 * 1024):
+                f.write(chunk)
+                
+    update_fields = []
+    params = []
+    
+    if name:
+        update_fields.append("name = ?")
+        params.append(name)
+        
+    if password:
+        update_fields.append("password = ?")
+        params.append(get_password_hash(password))
+        
+    if avatar_filename and avatar_filename != user.get("avatar_url"):
+        update_fields.append("avatar_url = ?")
+        params.append(avatar_filename)
+        
+    if update_fields:
+        query = f"UPDATE users SET {', '.join(update_fields)} WHERE id = ?"
+        params.append(user["id"])
+        
+        try:
+            cursor.execute(query, tuple(params))
+            conn.commit()
+        except sqlite3.Error as e:
+            conn.close()
+            raise HTTPException(status_code=500, detail=str(e))
+            
+    conn.close()
+    return {"message": "Profile updated successfully", "avatarUrl": avatar_filename}
 
 class FirebaseLoginRequest(BaseModel):
     firebase_token: str
 
 # Firebase Admin SDK - verify Firebase tokens
 _FIREBASE_CREDENTIALS_PATH = os.getenv("FIREBASE_CREDENTIALS_PATH", "")
+
+# Resolve to absolute path relative to project root (parent of server/)
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _FIREBASE_CREDENTIALS_PATH and not os.path.isabs(_FIREBASE_CREDENTIALS_PATH):
+    _FIREBASE_CREDENTIALS_PATH = os.path.join(_PROJECT_ROOT, _FIREBASE_CREDENTIALS_PATH)
 
 # Initialize Firebase Admin SDK
 _firebase_app = None
@@ -181,6 +241,7 @@ async def firebase_login(request: FirebaseLoginRequest):
         decoded_token = auth.verify_id_token(request.firebase_token)
         email = decoded_token.get("email")
         display_name = decoded_token.get("name", decoded_token.get("display_name", "User"))
+        google_picture = decoded_token.get("picture", None)  # Google profile picture URL
         
         if not email:
             raise HTTPException(status_code=400, detail="Email not available from Google account")
@@ -202,16 +263,25 @@ async def firebase_login(request: FirebaseLoginRequest):
     user = cursor.fetchone()
     
     if user:
-        # User exists - log them in
+        # User exists - log them in, update Google avatar if changed
+        user_dict = dict(user)  # convert sqlite3.Row to dict
+        existing_avatar = user_dict.get("avatar_url")
+        if google_picture and google_picture != existing_avatar:
+            cursor.execute(
+                "UPDATE users SET avatar_url = ? WHERE id = ?",
+                (google_picture, user_dict["id"])
+            )
+            conn.commit()
         conn.close()
         access_token = create_access_token(data={"sub": email})
         
         user_info = {
-            "id": user["id"],
-            "email": user["email"],
-            "name": user["name"],
-            "role": user["role"],
-            "studentId": user["student_id"]
+            "id": user_dict["id"],
+            "email": user_dict["email"],
+            "name": user_dict["name"],
+            "role": user_dict["role"],
+            "studentId": user_dict.get("student_id"),
+            "avatarUrl": google_picture or existing_avatar
         }
         
         return {"access_token": access_token, "token_type": "bearer", "user": user_info}
@@ -219,8 +289,8 @@ async def firebase_login(request: FirebaseLoginRequest):
     # User doesn't exist - create new account as student (default role)
     try:
         cursor.execute(
-            "INSERT INTO users (email, password, name, role, student_id) VALUES (?, ?, ?, ?, ?)",
-            (email, f"firebase_{decoded_token.get('uid', '')}", display_name, "student", None)
+            "INSERT INTO users (email, password, name, role, student_id, avatar_url) VALUES (?, ?, ?, ?, ?, ?)",
+            (email, f"firebase_{decoded_token.get('uid', '')}", display_name, "student", None, google_picture)
         )
         conn.commit()
         new_user_id = cursor.lastrowid
@@ -233,13 +303,190 @@ async def firebase_login(request: FirebaseLoginRequest):
         "email": email,
         "name": display_name,
         "role": "student",
-        "studentId": None
+        "studentId": None,
+        "avatarUrl": google_picture
     }
     
     access_token = create_access_token(data={"sub": email})
     conn.close()
     
     return {"access_token": access_token, "token_type": "bearer", "user": user_info}
+
+# Notifications
+@app.get("/api/notifications")
+async def get_notifications(user: dict = Depends(get_current_user)):
+    """Return notifications for teachers and students."""
+    from datetime import datetime, timezone, timedelta
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    now_utc = datetime.now(timezone.utc)
+    notifications = []
+
+    # ─── TEACHER ───────────────────────────────────────────────
+    if user["role"] == "teacher":
+        cursor.execute(
+            """
+            SELECT e.id AS exam_id, e.title AS exam_title, e.end_date,
+                   r.id AS room_id, r.name AS room_name
+            FROM exams e
+            JOIN rooms r ON e.room_id = r.id
+            WHERE r.owner_id = ?
+            """,
+            (user["id"],)
+        )
+        exams = cursor.fetchall()
+
+        for exam in exams:
+            exam_id    = exam["exam_id"]
+            exam_title = exam["exam_title"]
+            room_id    = exam["room_id"]
+            room_name  = exam["room_name"]
+            end_date_str = exam["end_date"]
+
+            deadline_passed = False
+            if end_date_str:
+                try:
+                    deadline = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
+                    if deadline.tzinfo is None:
+                        deadline = deadline.replace(tzinfo=timezone.utc)
+                    if now_utc > deadline:
+                        deadline_passed = True
+                except (ValueError, TypeError):
+                    pass
+
+            cursor.execute(
+                """
+                SELECT
+                    COUNT(*) AS total_submitted,
+                    SUM(CASE WHEN status IN ('ready','needs_review') THEN 1 ELSE 0 END) AS pending_review,
+                    SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) AS approved_count
+                FROM submissions WHERE exam_id = ?
+                """,
+                (exam_id,)
+            )
+            row = cursor.fetchone()
+            total_submitted = row["total_submitted"] or 0
+            pending_review  = row["pending_review"]  or 0
+            approved_count  = row["approved_count"]  or 0
+
+            if deadline_passed and pending_review > 0:
+                notifications.append({
+                    "type": "deadline_passed",
+                    "exam_id": exam_id, "exam_title": exam_title,
+                    "room_id": room_id, "room_name": room_name,
+                    "message": (
+                        f"[{room_name}] ชุดข้อสอบ \"{exam_title}\" หมดเวลาส่งแล้ว "
+                        f"มีนักศึกษาส่งคำตอบ {total_submitted} คน รอตรวจ {pending_review} คน"
+                    ),
+                    "link": f"/room/{room_id}/exam/{exam_id}/review"
+                })
+
+            if pending_review > 0:
+                notifications.append({
+                    "type": "ai_graded",
+                    "exam_id": exam_id, "exam_title": exam_title,
+                    "room_id": room_id, "room_name": room_name,
+                    "message": (
+                        f"[{room_name}] AI ประเมินผล \"{exam_title}\" เสร็จแล้ว "
+                        f"รอการอนุมัติจากอาจารย์ {pending_review} คน "
+                        f"(อนุมัติแล้ว {approved_count}/{total_submitted} คน)"
+                    ),
+                    "link": f"/room/{room_id}/exam/{exam_id}/review"
+                })
+
+
+    # ─── STUDENT ───────────────────────────────────────────────
+    else:
+        student_id = user["id"]
+
+        # All exams in rooms this student has joined
+        cursor.execute(
+            """
+            SELECT e.id AS exam_id, e.title AS exam_title,
+                   e.start_date, e.end_date,
+                   r.id AS room_id, r.name AS room_name
+            FROM exams e
+            JOIN rooms r ON e.room_id = r.id
+            JOIN enrollments en ON en.room_id = r.id
+            WHERE en.user_id = ?
+            """,
+            (student_id,)
+        )
+        exams = cursor.fetchall()
+
+        for exam in exams:
+            exam_id      = exam["exam_id"]
+            exam_title   = exam["exam_title"]
+            room_id      = exam["room_id"]
+            room_name    = exam["room_name"]
+            start_str    = exam["start_date"]
+            end_str      = exam["end_date"]
+
+            # Parse dates
+            start_dt = end_dt = None
+            try:
+                if start_str:
+                    start_dt = datetime.fromisoformat(start_str.replace('Z', '+00:00'))
+                    if start_dt.tzinfo is None:
+                        start_dt = start_dt.replace(tzinfo=timezone.utc)
+                if end_str:
+                    end_dt = datetime.fromisoformat(end_str.replace('Z', '+00:00'))
+                    if end_dt.tzinfo is None:
+                        end_dt = end_dt.replace(tzinfo=timezone.utc)
+            except (ValueError, TypeError):
+                pass
+
+            # Check if student has already submitted
+            cursor.execute(
+                "SELECT id, status FROM submissions WHERE exam_id = ? AND student_id = ?",
+                (exam_id, student_id)
+            )
+            submission = cursor.fetchone()
+            has_submitted = submission is not None
+            sub_status = submission["status"] if submission else None
+
+            exam_open = (start_dt is None or now_utc >= start_dt) and \
+                        (end_dt is None or now_utc <= end_dt)
+
+            # 1. New exam available (open + not submitted)
+            if exam_open and not has_submitted:
+                notifications.append({
+                    "type": "new_exam",
+                    "exam_id": exam_id, "exam_title": exam_title,
+                    "room_id": room_id, "room_name": room_name,
+                    "message": f"[{room_name}] มีข้อสอบใหม่ \"{exam_title}\" เปิดรับการส่งแล้ว!",
+                    "link": f"/room/{room_id}/exam/{exam_id}"
+                })
+
+            # 2. Deadline approaching < 24h (open + not submitted)
+            if exam_open and not has_submitted and end_dt:
+                time_left = end_dt - now_utc
+                if timedelta(0) < time_left < timedelta(hours=24):
+                    hours_left = int(time_left.total_seconds() // 3600)
+                    mins_left  = int((time_left.total_seconds() % 3600) // 60)
+                    time_str   = f"{hours_left} ชั่วโมง {mins_left} นาที" if hours_left > 0 else f"{mins_left} นาที"
+                    notifications.append({
+                        "type": "deadline_soon",
+                        "exam_id": exam_id, "exam_title": exam_title,
+                        "room_id": room_id, "room_name": room_name,
+                        "message": f"[{room_name}] \"{exam_title}\" ใกล้หมดเวลา! เหลืออีก {time_str}",
+                        "link": f"/room/{room_id}/exam/{exam_id}"
+                    })
+
+            # 3. Result published (submission is approved)
+            if has_submitted and sub_status == "approved":
+                notifications.append({
+                    "type": "result_published",
+                    "exam_id": exam_id, "exam_title": exam_title,
+                    "room_id": room_id, "room_name": room_name,
+                    "message": f"[{room_name}] อาจารย์ประกาศผล \"{exam_title}\" แล้ว กดเพื่อดูคะแนนของคุณ",
+                    "link": f"/room/{room_id}/exam/{exam_id}"
+                })
+
+    conn.close()
+    return notifications
+
 
 # Room Routes
 def generate_class_code(length=6):
@@ -462,10 +709,13 @@ async def create_exam(room_id: int, exam: ExamCreate, user: dict = Depends(get_c
         conn.close()
         raise HTTPException(status_code=404, detail="Room not found or unauthorized")
 
+    # Calculate total_score server-side to ensure accuracy
+    computed_total_score = sum(float(q.score) for q in exam.questions)
+
     # Insert exam
     cursor.execute(
         "INSERT INTO exams (room_id, title, description, total_score, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?)",
-        (room_id, exam.title, exam.description, exam.total_score, exam.start_date, exam.end_date)
+        (room_id, exam.title, exam.description, computed_total_score, exam.start_date, exam.end_date)
     )
     exam_id = cursor.lastrowid
 
@@ -531,10 +781,13 @@ async def update_exam(room_id: int, exam_id: int, exam: ExamCreate, user: dict =
         conn.close()
         raise HTTPException(status_code=404, detail="Room not found or unauthorized")
 
+    # Calculate total_score server-side to ensure accuracy
+    computed_total_score = sum(float(q.score) for q in exam.questions)
+
     # Update exam
     cursor.execute(
         "UPDATE exams SET title = ?, description = ?, total_score = ?, start_date = ?, end_date = ? WHERE id = ?",
-        (exam.title, exam.description, exam.total_score, exam.start_date, exam.end_date, exam_id)
+        (exam.title, exam.description, computed_total_score, exam.start_date, exam.end_date, exam_id)
     )
 
     # Delete existing questions
@@ -709,8 +962,8 @@ async def score_with_gemini(
     max_score: float,
     answer_key: Optional[str] = None,
     rubrics: Optional[list] = None,
-    image_bytes: Optional[bytes] = None,
-    image_mime: str = "image/jpeg",
+    image_bytes_list: Optional[List[bytes]] = None,
+    image_mime_list: Optional[List[str]] = None,
 ) -> dict:
     """
     Score a student answer using Gemini AI.
@@ -743,28 +996,32 @@ async def score_with_gemini(
     student_answer_section = answer_text.strip() if answer_text and answer_text.strip() else "(ไม่มีคำตอบ)"
 
     prompt = (
-        "คุณคือระบบตรวจข้อสอบอัตนัยอัตโนมัติ กรุณาประเมินคำตอบของนักเรียนตามเกณฑ์ที่กำหนด\n\n"
+        "คุณคือคุณครูผู้เชี่ยวชาญในการตรวจข้อสอบอัตนัย กรุณาประเมินคำตอบของนักเรียนอย่างละเอียดและเป็นธรรมตามเกณฑ์ที่กำหนด\n\n"
         f"## โจทย์คำถาม\n{question_text}\n\n"
         f"## คะแนนเต็ม\n{max_score} คะแนน\n\n"
         + answer_key_section
         + rubric_section
         + f"## คำตอบของนักเรียน\n{student_answer_section}\n\n"
         "## คำสั่ง\n"
-        "ประเมินคำตอบและตอบกลับเป็น JSON ที่มีรูปแบบดังนี้เท่านั้น:\n"
-        "{{\n"
-        f'  "score": <คะแนนที่ให้ เป็นตัวเลขทศนิยม 1 ตำแหน่ง ระหว่าง 0 ถึง {max_score}>,\n'
-        '  "confidence": <"high" หากมั่นใจมาก, "medium" หากปานกลาง, "low" หากไม่มั่นใจ>,\n'
-        '  "feedback": <คำอธิบายการให้คะแนนเป็นภาษาไทย 1-3 ประโยค ที่เป็นประโยชน์ต่อนักเรียน>\n'
-        "}}"
+        "1. วิเคราะห์คำตอบของนักเรียนอย่างรอบคอบ เปรียบเทียบกับแนวคำตอบและเกณฑ์การให้คะแนน (Chain of Thought: สิ่งที่นักเรียนตอบถูกคืออะไร ขาดอะไรไปบ้าง)\n"
+        "2. พิจารณารูปภาพประกอบ (ถ้ามี) ว่าสัมพันธ์กับคำตอบและโจทย์หรือไม่\n"
+        "3. ประเมินคะแนนและให้ข้อเสนอแนะที่สร้างสรรค์\n"
+        "ตอบกลับเป็น JSON ที่มีรูปแบบดังนี้เท่านั้น (งดเว้นการพิมพ์ข้อความอื่นๆ นอก JSON):\n"
+        "{\n"
+        f'  "score": <คะแนนที่ได้ เป็นตัวเลขทศนิยม 1 ตำแหน่ง ระหว่าง 0 ถึง {max_score}>,\n'
+        '  "confidence": <"high" หากมั่นใจมาก, "medium" หากปานกลาง, "low" หากไม่มั่นใจ หรือรูปภาพไม่ชัดเจน>,\n'
+        '  "feedback": <คำอธิบายการให้คะแนนและข้อเสนอแนะเป็นภาษาไทย 2-4 ประโยค ที่ช่วยให้นักเรียนเข้าใจว่าได้/เสียคะแนนตรงไหน>\n'
+        "}"
     )
 
     try:
         # Build multimodal contents: text prompt + optional image
         contents: list = [prompt]
-        if image_bytes:
-            contents.append(
-                genai_types.Part.from_bytes(data=image_bytes, mime_type=image_mime)
-            )
+        if image_bytes_list and image_mime_list:
+            for bts, mime in zip(image_bytes_list, image_mime_list):
+                contents.append(
+                    genai_types.Part.from_bytes(data=bts, mime_type=mime)
+                )
 
         response = await _genai_client.aio.models.generate_content(
             model=_GEMINI_MODEL,
@@ -863,6 +1120,26 @@ async def submit_exam_multipart(
         conn.close()
         raise HTTPException(status_code=404, detail="Exam not found")
 
+    # Strict deadline check
+    end_date_str = exam_row["end_date"]
+    if end_date_str:
+        try:
+            from datetime import datetime, timezone
+            # Parse typical frontend ISO strings
+            deadline = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
+            # If deadline has no timezone info, assume UTC
+            if deadline.tzinfo is None:
+                deadline = deadline.replace(tzinfo=timezone.utc)
+            now = datetime.now(timezone.utc)
+            if now > deadline:
+                conn.close()
+                raise HTTPException(
+                    status_code=403, 
+                    detail="เลยกำหนดเวลาส่งคำตอบข้อสอบแล้ว (Deadline Passed)"
+                )
+        except (ValueError, TypeError):
+            pass  # if cannot parse, ignore
+
     # LOCK-ONCE: check if already submitted
     cursor.execute(
         "SELECT id, status FROM submissions WHERE exam_id = ? AND student_id = ?",
@@ -916,7 +1193,8 @@ async def submit_exam_multipart(
     total_ai_score = 0.0
 
     for q_id, q in questions.items():
-        answer_text = answers_map.get(q_id, "")
+        base_answer_text = answers_map.get(q_id, "")
+        answer_text = base_answer_text[:300] if base_answer_text else ""
 
         # Handle multiple images for this question: image_{q_id}_0, image_{q_id}_1, ...
         img_list: list[bytes] = []
@@ -928,11 +1206,14 @@ async def submit_exam_multipart(
         os.makedirs(upload_dir, exist_ok=True)
 
         for img_idx in range(10):  # support up to 10 images per question
-            field_name = f"image_{q_id}_{img_idx}" if img_idx > 0 else f"image_{q_id}"
+            field_name = f"image_{q_id}_{img_idx}"
             file_field = form.get(field_name)
+            
+            # backward compatibility for legacy non-multi format
+            if not file_field and img_idx == 0:
+                file_field = form.get(f"image_{q_id}")
+                
             if not file_field or not hasattr(file_field, "read"):
-                if img_idx > 0:
-                    break  # no more images
                 continue
             raw_bytes = await file_field.read()
             if not raw_bytes:
@@ -949,9 +1230,6 @@ async def submit_exam_multipart(
             img_paths.append(url)
 
         image_paths_json = json_module.dumps(img_paths) if img_paths else None
-        # Use first image for Gemini
-        first_img_bytes = img_list[0] if img_list else None
-        first_img_mime = img_mime_list[0] if img_mime_list else "image/jpeg"
 
         # Parse rubrics
         rubrics_data = None
@@ -967,8 +1245,8 @@ async def submit_exam_multipart(
             max_score=q["score"],
             answer_key=q.get("answer_key"),
             rubrics=rubrics_data,
-            image_bytes=first_img_bytes,
-            image_mime=first_img_mime,
+            image_bytes_list=img_list[:5], # maximum 5 images to prevent token overload
+            image_mime_list=img_mime_list[:5],
         )
         total_ai_score += ai_result["score"]
 
@@ -1364,17 +1642,66 @@ async def get_my_submission(room_id: int, exam_id: int, user: dict = Depends(get
     # Approved: return full result including score
     submission = dict(submission)
     cursor.execute("""
-        SELECT sa.answer_text, sa.image_path, q.text AS question_text, q.score AS max_score, q.order_index
+        SELECT sa.answer_text, sa.image_path, sa.image_paths, sa.ai_score, sa.ai_feedback, sa.teacher_score, sa.teacher_comment,
+               q.text AS question_text, q.score AS max_score, q.order_index, q.image_path AS q_image_path, q.image_paths AS q_image_paths
         FROM submission_answers sa
         JOIN questions q ON sa.question_id = q.id
         WHERE sa.submission_id = ?
         ORDER BY q.order_index
     """, (submission["id"],))
-    answers = [dict(a) for a in cursor.fetchall()]
+    answers = []
+    for a in cursor.fetchall():
+        ad = dict(a)
+        # Parse JSON image_paths
+        if ad.get("image_paths"):
+            try:
+                ad["image_paths"] = json_module.loads(ad["image_paths"])
+            except Exception:
+                ad["image_paths"] = [ad["image_path"]] if ad.get("image_path") else []
+        else:
+            ad["image_paths"] = [ad["image_path"]] if ad.get("image_path") else []
+            
+        if ad.get("q_image_paths"):
+            try:
+                ad["q_image_paths"] = json_module.loads(ad["q_image_paths"])
+            except Exception:
+                ad["q_image_paths"] = [ad["q_image_path"]] if ad.get("q_image_path") else []
+        else:
+            ad["q_image_paths"] = [ad["q_image_path"]] if ad.get("q_image_path") else []
+        
+        answers.append(ad)
     conn.close()
 
     submission["answers"] = answers
     return submission
+
+
+@app.get("/api/submissions/me")
+async def get_all_my_submissions(user: dict = Depends(get_current_user)):
+    """Student views all their submissions across all exams and rooms."""
+    if user["role"] != "student":
+        raise HTTPException(status_code=403, detail="Only students can view their submission history")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT
+            e.id AS exam_id, e.title AS exam_title, e.total_score AS exam_total_score,
+            r.id AS room_id, r.name AS room_name,
+            s.id AS submission_id, COALESCE(s.status, 'missing') AS status, 
+            s.total_score AS submission_score, s.submitted_at
+        FROM enrollments en
+        JOIN rooms r ON en.room_id = r.id
+        JOIN exams e ON e.room_id = r.id
+        LEFT JOIN submissions s ON s.exam_id = e.id AND s.student_id = en.user_id
+        WHERE en.user_id = ?
+        ORDER BY COALESCE(s.submitted_at, e.created_at) DESC
+    """, (user["id"],))
+    results = cursor.fetchall()
+    conn.close()
+
+    return [dict(r) for r in results]
 
 
 @app.get("/api/rooms/{room_id}/exams/{exam_id}/submissions/{student_id}")
@@ -1412,8 +1739,9 @@ async def get_student_submission(room_id: int, exam_id: int, student_id: int, us
     cursor.execute("""
         SELECT
             sa.id, sa.question_id, sa.answer_text, sa.ai_score, sa.ai_feedback, sa.ai_confidence,
-            sa.teacher_score, sa.teacher_comment,
-            q.text AS question_text, q.score AS max_score, q.rubrics, q.answer_key, q.order_index
+            sa.teacher_score, sa.teacher_comment, sa.image_path, sa.image_paths,
+            q.text AS question_text, q.score AS max_score, q.rubrics, q.answer_key, 
+            q.order_index, q.image_path AS q_image_path, q.image_paths AS q_image_paths
         FROM submission_answers sa
         JOIN questions q ON sa.question_id = q.id
         WHERE sa.submission_id = ?
@@ -1428,6 +1756,25 @@ async def get_student_submission(room_id: int, exam_id: int, student_id: int, us
                 ad["rubrics"] = json_module.loads(ad["rubrics"])
             except Exception:
                 ad["rubrics"] = []
+                
+        # Parse JSON image_paths for answers
+        if ad.get("image_paths"):
+            try:
+                ad["image_paths"] = json_module.loads(ad["image_paths"])
+            except Exception:
+                ad["image_paths"] = [ad["image_path"]] if ad.get("image_path") else []
+        else:
+            ad["image_paths"] = [ad["image_path"]] if ad.get("image_path") else []
+            
+        # Parse JSON image_paths for questions
+        if ad.get("q_image_paths"):
+            try:
+                ad["q_image_paths"] = json_module.loads(ad["q_image_paths"])
+            except Exception:
+                ad["q_image_paths"] = [ad["q_image_path"]] if ad.get("q_image_path") else []
+        else:
+            ad["q_image_paths"] = [ad["q_image_path"]] if ad.get("q_image_path") else []
+            
         answers.append(ad)
 
     conn.close()

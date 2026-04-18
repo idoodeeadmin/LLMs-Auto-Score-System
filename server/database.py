@@ -150,12 +150,20 @@ def init_db():
     except Exception:
         pass  # Column already exists
 
+    # Migration: add avatar_url column to users if not exists
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN avatar_url TEXT")
+        conn.commit()
+    except Exception:
+        pass  # Column already exists
+
     conn.close()
 
     # Ensure uploads directory exists
     import os
     os.makedirs("uploads", exist_ok=True)
     os.makedirs(os.path.join("uploads", "questions"), exist_ok=True)
+    os.makedirs(os.path.join("uploads", "avatars"), exist_ok=True)
 
 
 if __name__ == "__main__":

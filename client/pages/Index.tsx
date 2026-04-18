@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
 export default function Index() {
   const [showPassword, setShowPassword] = useState(false);
@@ -185,6 +186,20 @@ export default function Index() {
                 )}
               </Button>
               
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-200" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="bg-slate-50 px-2 text-slate-500">หรือ</span>
+                </div>
+              </div>
+
+              <GoogleSignInButton
+                text="เข้าสู่ระบบด้วย Google"
+                onSuccess={() => navigate("/home")}
+              />
+
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-slate-200" />

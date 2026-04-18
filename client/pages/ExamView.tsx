@@ -47,7 +47,11 @@ export default function ExamView() {
   const [exam, setExam] = useState<Exam | null>(null);
   const [isFetching, setIsFetching] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [mySubmission, setMySubmission] = useState<{ status: string; total_score?: number } | null>(null);
+  const [mySubmission, setMySubmission] = useState<{ 
+    status: string; 
+    total_score?: number;
+    answers?: any[];
+  } | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -76,16 +80,32 @@ export default function ExamView() {
     };
     fetchExam();
 
-    // Fetch student's own submission status
+    // Fetch student's own submission status and poll if 'submitted'
     if (user?.role === "student") {
-      fetch(`/api/rooms/${roomId}/exams/${examId}/submissions/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((r) => r.json())
-        .then((d) => setMySubmission(d))
-        .catch(() => { });
+      let intervalId: NodeJS.Timeout;
+      const checkStatus = async () => {
+        try {
+          const r = await fetch(`/api/rooms/${roomId}/exams/${examId}/submissions/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (r.ok) {
+            const data = await r.json();
+            setMySubmission(data);
+            if (data.status !== "submitted" && intervalId) {
+              clearInterval(intervalId);
+            }
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      };
+      
+      checkStatus(); // Initial fetch
+      intervalId = setInterval(checkStatus, 5000); // Poll every 5 seconds
+      
+      return () => clearInterval(intervalId);
     }
-  }, [token, roomId, examId]);
+  }, [token, roomId, examId, user?.role, navigate]);
 
   if (isLoading || isFetching || !user) {
     return (
@@ -344,14 +364,93 @@ export default function ExamView() {
               </div>
             ) : mySubmission.status === "approved" ? (
               /* Approved */
-              <div className="bg-green-50 rounded-2xl border border-green-200 shadow-sm p-8 text-center">
-                <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-3" />
-                <h3 className="text-xl font-bold text-green-700 mb-1">อนุมัติแล้ว ✅</h3>
-                <p className="text-green-600 text-sm">อาจารย์ตรวจและอนุมัติผลแล้ว</p>
-                <div className="mt-4 bg-white rounded-xl p-4 border border-green-100 inline-block">
-                  <p className="text-3xl font-bold text-green-600">{mySubmission.total_score ?? "-"}</p>
-                  <p className="text-sm text-gray-400">/ {exam?.total_score} คะแนน</p>
+              <div className="space-y-6">
+                <div className="bg-green-50 rounded-2xl border border-green-200 shadow-sm p-8 text-center">
+                  <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-3" />
+                  <h3 className="text-xl font-bold text-green-700 mb-1">ผลการประเมิน</h3>
+                  <p className="text-green-600 text-sm">อาจารย์ตรวจและอนุมัติผลแล้ว</p>
+                  <div className="mt-4 bg-white rounded-xl p-4 border border-green-100 inline-block">
+                    <p className="text-3xl font-bold text-green-600">{mySubmission.total_score ?? "-"}</p>
+                    <p className="text-sm text-gray-400">/ {exam?.total_score} คะแนน</p>
+                  </div>
                 </div>
+
+                {mySubmission.answers && mySubmission.answers.length > 0 && (
+                  <div className="space-y-4 mt-8 text-left">
+                    <h3 className="text-xl font-bold text-slate-800 border-b border-slate-200 pb-3 mb-4">รายละเอียดคะแนนและข้อเสนอแนะ</h3>
+                    {mySubmission.answers.map((ans, idx) => (
+                      <div key={idx} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-5">
+                        <div className="flex flex-col gap-4">
+                          {/* Top part: Question & Score */}
+                          <div className="flex justify-between items-start gap-4 border-b border-slate-100 pb-4">
+                            <div>
+                              <span className="inline-block px-2.5 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-lg mb-2">
+                                ข้อ {ans.order_index + 1}
+                              </span>
+                              <p className="text-slate-800 font-medium leading-relaxed">{ans.question_text}</p>
+                            </div>
+                            <div className="text-right flex-shrink-0 bg-slate-50 px-3 py-2 rounded-xl border border-slate-100">
+                              <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">ได้คะแนน</p>
+                              <div className="text-xl font-bold text-indigo-600">
+                                {ans.teacher_score ?? ans.ai_score ?? 0} <span className="text-sm text-slate-400 font-normal">/ {ans.max_score}</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Student Answer */}
+                          <div>
+                            <p className="text-xs text-slate-500 font-bold mb-2">คำตอบของคุณ:</p>
+                            <div className="bg-slate-50 p-4 mb-3 rounded-xl border border-slate-200/60 text-slate-700 text-sm whitespace-pre-wrap leading-relaxed shadow-inner">
+                              {ans.answer_text || <span className="italic text-slate-400">ไม่ได้ตอบข้อนี้</span>}
+                            </div>
+                            {/* Student Answer Images — multi support */}
+                            {(ans.image_paths && ans.image_paths.length > 0) ? (
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
+                                {ans.image_paths.map((src: string, i: number) => (
+                                  <img 
+                                    key={i} 
+                                    src={src} 
+                                    alt={`ภาพแนบคำตอบ ${i+1}`} 
+                                    className="w-full aspect-video object-contain rounded-xl border border-slate-200 shadow-sm bg-slate-50" 
+                                  />
+                                ))}
+                              </div>
+                            ) : ans.image_path ? (
+                              <img src={ans.image_path} alt="ภาพแนบคำตอบ" className="max-w-xs mt-3 rounded-xl border border-slate-200 shadow-sm bg-slate-50" />
+                            ) : null}
+                          </div>
+
+                          {/* Feedbacks Grid */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                            {/* AI Feedback */}
+                            <div className="bg-blue-50/70 rounded-xl p-4 border border-blue-100 relative shadow-sm">
+                              <p className="text-xs font-bold text-blue-600 mb-2 flex items-center gap-2">
+                                ✨ AI Feedback 
+                                <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full border border-blue-200/50">
+                                  {ans.ai_score} pts
+                                </span>
+                              </p>
+                              <p className="text-sm text-slate-700 leading-relaxed">
+                                {ans.ai_feedback || "ไม่มี Feedback จาก AI"}
+                              </p>
+                            </div>
+                            {/* Teacher Feedback */}
+                            {ans.teacher_comment && (
+                              <div className="bg-emerald-50/70 rounded-xl p-4 border border-emerald-100 relative shadow-sm">
+                                <p className="text-xs font-bold text-emerald-600 mb-2 flex items-center gap-2">
+                                  👩‍🏫 ข้อเสนอแนะจากอาจารย์
+                                </p>
+                                <p className="text-sm text-slate-700 leading-relaxed">
+                                  {ans.teacher_comment}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : (
               /* Submitted / AI graded / Waiting teacher approval — ซ่อนคะแนนทั้งหมด */

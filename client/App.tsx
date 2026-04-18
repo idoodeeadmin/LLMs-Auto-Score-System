@@ -19,6 +19,8 @@ import ExamSubmit from "./pages/ExamSubmit";
 import TeacherAnalytics from "./pages/TeacherAnalytics";
 import RoomAnalytics from "./pages/RoomAnalytics";
 import ExamScoreboard from "./pages/ExamScoreboard";
+import StudentHistory from "./pages/StudentHistory";
+import Profile from "./pages/Profile";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +39,8 @@ export const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/register" element={<Register />} />
             <Route path="/home" element={<Home />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/history" element={<StudentHistory />} />
             <Route path="/room/:roomId/analytics" element={<RoomAnalytics />} />
             <Route path="/room/:roomId/exam/:examId/scoreboard" element={<ExamScoreboard />} />
             <Route path="/room/:roomId/exam/:examId/submit" element={<ExamSubmit />} />

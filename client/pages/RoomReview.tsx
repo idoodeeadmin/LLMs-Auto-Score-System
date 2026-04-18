@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import Navbar from "@/components/Navbar";
 import {
   Search, CheckCircle2, AlertCircle,
-  FileText, User, Check, AlertTriangle, Loader2, ArrowLeft, RefreshCw
+  FileText, User, Check, AlertTriangle, Loader2, ArrowLeft, RefreshCw, Inbox, FileX
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -444,10 +444,24 @@ export default function RoomReview() {
           {/* Student List */}
           <div className="divide-y divide-gray-100 flex-1">
             {filteredStudents.length === 0 ? (
-              <div className="py-20 text-center text-gray-400">
-                {students.length === 0
-                  ? "ยังไม่มีนักศึกษาในห้องนี้"
-                  : "ไม่มีข้อมูลในหมวดหมู่นี้"}
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                {students.length === 0 ? (
+                  <>
+                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
+                      <Inbox className="w-8 h-8 text-gray-300" />
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-700">ยังไม่มีการส่งข้อสอบ</h3>
+                    <p className="text-sm text-gray-400 mt-1 max-w-sm">ยังไม่มีนักศึกษาคนใดส่งคำตอบเข้ามาในระบบสำหรับวิชานี้ หรือห้องนี้ยังไม่มีนักศึกษา</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
+                      <FileX className="w-8 h-8 text-gray-300" />
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-700">ไม่พบคำตอบในหมวดนี้</h3>
+                    <p className="text-sm text-gray-400 mt-1 max-w-sm">คุณอาจค้นหาไม่ตรงกับชื่อนักศึกษา หรือหมวดหมู่นี้ยังว่างเปล่าอยู่</p>
+                  </>
+                )}
               </div>
             ) : (
               filteredStudents.map((student) => (
