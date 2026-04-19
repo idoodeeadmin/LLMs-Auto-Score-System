@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Loader2, Search } from "lucide-react";
+import { ArrowLeft, Loader2, Search, Download } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -64,6 +64,30 @@ export default function ExamScoreboard() {
     run();
   }, [token, roomId, examId]);
 
+  const handleExportCSV = async () => {
+    if (!token) return;
+    try {
+      const response = await fetch(`/api/rooms/${roomId}/exams/${examId}/export-csv`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `scores_${exam?.title.replace(/\s+/g, '_') || 'exam'}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        toast.success("ดาวน์โหลดไฟล์ CSV สำเร็จ");
+      } else {
+        toast.error("ส่งออกไฟล์ไม่สำเร็จ");
+      }
+    } catch (e) {
+      toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    }
+  };
+
   const filteredAndSorted = useMemo(() => {
     const filtered = students.filter((s) => {
       const q = search.toLowerCase();
@@ -100,9 +124,18 @@ export default function ExamScoreboard() {
           <ArrowLeft size={16} /> กลับหน้า analytics ห้อง
         </button>
 
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
-          <h1 className="text-xl md:text-2xl font-bold text-slate-900">{exam?.title}</h1>
-          <p className="text-slate-500 mt-1">คะแนนเต็ม {exam?.total_score ?? "-"} · ตารางคะแนนรายนักเรียน</p>
+        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-slate-900">{exam?.title}</h1>
+            <p className="text-slate-500 mt-1">คะแนนเต็ม {exam?.total_score ?? "-"} · ตารางคะแนนรายนักเรียน</p>
+          </div>
+          <button
+            onClick={handleExportCSV}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition-all shadow-sm shadow-emerald-100 active:scale-95"
+          >
+            <Download size={18} />
+            ส่งออก CSV
+          </button>
         </div>
 
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">

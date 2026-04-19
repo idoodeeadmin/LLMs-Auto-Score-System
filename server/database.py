@@ -113,6 +113,28 @@ def init_db():
     )
     ''')
 
+    # Create Password Resets table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS password_resets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        token TEXT UNIQUE NOT NULL,
+        expires_at DATETIME NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+    )
+    ''')
+
+    # Create Email Verifications table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS email_verifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        token TEXT UNIQUE NOT NULL,
+        expires_at DATETIME NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+    )
+    ''')
+
     conn.commit()
 
     # Migration: add graded_by_ai column to submissions if not exists
@@ -154,6 +176,17 @@ def init_db():
     try:
         cursor.execute("ALTER TABLE users ADD COLUMN avatar_url TEXT")
         conn.commit()
+    except Exception:
+        pass  # Column already exists
+
+    # Migration: add is_verified column to users if not exists
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0")
+        conn.commit()
+        # Set all legacy users to verified = 1 to prevent locking them out
+        cursor.execute("UPDATE users SET is_verified = 1 WHERE is_verified = 0")
+        conn.commit()
+        print("Legacy users successfully migrated to is_verified = 1")
     except Exception:
         pass  # Column already exists
 

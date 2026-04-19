@@ -60,10 +60,14 @@ export default function Home() {
         if (res.ok) {
           const data = await res.json();
           setExamRooms(data);
+        } else {
+          const errorData = await res.json().catch(() => ({}));
+          console.error("Fetch Rooms Failed:", res.status, errorData);
+          toast.error(`ดึงข้อมูลห้องเรียนไม่สำเร็จ (${res.status})`);
         }
       } catch (error) {
-        console.error(error);
-        toast.error("ดึงข้อมูลห้องเรียนไม่สำเร็จ");
+        console.error("Fetch Rooms Network Error:", error);
+        toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์ (Network Error)");
       } finally {
         setIsFetchingRooms(false);
       }
@@ -246,6 +250,20 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
       <Navbar />
+
+      {user?.is_verified === 0 && (
+        <div className="bg-amber-50 border-b border-amber-200">
+          <div className="max-w-7xl mx-auto px-6 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm">
+            <div className="flex items-center gap-2 text-amber-800">
+              <span className="flex w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+              <p>บัญชีนี้ยังไม่ได้ยืนยันอีเมล หากลืมรหัสผ่านจะกู้คืนผ่านอีเมลไม่ได้ กรุณาจำ "รหัสนิสิตผูกกับบัญชี" หรือ "หน้าจอชื่อ-นามสกุลปัจจุบัน" ไว้ใช้แทน</p>
+            </div>
+            <Link to="/profile">
+              <span className="text-amber-700 hover:text-amber-900 font-semibold underline underline-offset-4 decoration-amber-300">ผูกบัญชี Google ที่นี่</span>
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">

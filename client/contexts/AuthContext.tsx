@@ -2,6 +2,9 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { toast } from "sonner";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { io, Socket } from "socket.io-client";
+
+const SOCKET_SERVER_URL = "http://localhost:3001";
 
 interface User {
   id: number;
@@ -10,6 +13,7 @@ interface User {
   role: 'teacher' | 'student';
   studentId?: string;
   avatarUrl?: string;
+  is_verified?: number;
 }
 
 interface AuthContextType {
@@ -29,6 +33,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(localStorage.getItem("token"));
   const [isLoading, setIsLoading] = useState(true);
+  const [socket, setSocket] = useState<Socket | null>(null);
+
+  useEffect(() => {
+    // Initialize socket connection only when user is authenticated
+    if (user && !socket) {
+      try {
+        const newSocket = io(SOCKET_SERVER_URL, {
+          transports: ['websocket'], // Prefer websocket to avoid some CORS issues with polling
+          reconnectionAttempts: 3
+        });
+        setSocket(newSocket);
+
+        newSocket.on("connect", () => {
+          console.log("Connected to Real-time Notification Server");
+          newSocket.emit("join_room", user.id);
+        });
+
+        newSocket.on("connect_error", (err) => {
+          console.warn("Socket connection error (Node server might be down):", err.message);
+        });
+
+        newSocket.on("new_notification", (data) => {
+          console.log("Received notification:", data);
+          toast(data.message || "มีการแจ้งเตือนใหม่", {
+            description: "กดเพื่อดูรายละเอียด",
+            action: data.data?.link ? {
+              label: "ดูห้องเรียน",
+              onClick: () => window.location.href = data.data.link
+            } : undefined,
+            duration: 10000,
+          });
+        });
+
+        return () => {
+          newSocket.disconnect();
+          setSocket(null);
+        };
+      } catch (e) {
+        console.error("Socket initialization failed:", e);
+      }
+    } else if (!user && socket) {
+      socket.disconnect();
+      setSocket(null);
+    }
+  }, [user, socket]);
 
   useEffect(() => {
     const fetchUser = async () => {

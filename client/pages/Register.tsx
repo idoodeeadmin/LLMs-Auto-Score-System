@@ -257,15 +257,15 @@ export default function Register() {
             {/* Email Input */}
             <motion.div variants={fadeIn} className="space-y-1.5">
               <label className="text-sm font-medium leading-none text-slate-700">
-                อีเมล (Email)
+                อีเมล หรือ รหัสที่ใช้ล็อคอิน (Email or ID)
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <Input
-                  type="email"
+                  type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@example.com"
+                  placeholder="name@example.com หรือ setup001"
                   required
                   className="pl-9 h-11 text-base transition-shadow focus-visible:ring-indigo-500 bg-white"
                 />

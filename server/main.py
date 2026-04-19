@@ -1,7 +1,7 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Header, UploadFile, File, Form, Query
+from fastapi import FastAPI, Depends, HTTPException, status, Header, UploadFile, File, Form, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import Response
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from .database import get_db_connection, init_db
@@ -16,6 +16,8 @@ import io
 import statistics
 from dotenv import load_dotenv
 import aiofiles
+import httpx
+import time
 
 load_dotenv()
 
@@ -45,14 +47,14 @@ except Exception:
 
 # Models
 class UserRegister(BaseModel):
-    email: EmailStr
+    email: str
     password: str
     name: str
     role: str
     student_id: Optional[str] = None
 
 class UserLogin(BaseModel):
-    email: EmailStr
+    email: str
     password: str
 
 class TokenResponse(BaseModel):
@@ -67,7 +69,54 @@ class RoomCreate(BaseModel):
 class JoinRoomRequest(BaseModel):
     class_code: str
 
+class ForgotPasswordRequest(BaseModel):
+    email: str
+    name: Optional[str] = None
+    student_id: Optional[str] = None
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+class ResendVerificationRequest(BaseModel):
+    email: str
+
+# In-memory Rate Limiter
+REQUEST_LOGS = {} # { "ip": [timestamp1, timestamp2...] }
+
+def check_rate_limit(ip: str, limit: int = 10, window: int = 60):
+    """Simple IP-based rate limiter (default: 10 requests per minute)"""
+    now = time.time()
+    if ip not in REQUEST_LOGS:
+        REQUEST_LOGS[ip] = []
+    
+    # Clean old logs outside window
+    REQUEST_LOGS[ip] = [t for t in REQUEST_LOGS[ip] if now - t < window]
+    
+    if len(REQUEST_LOGS[ip]) >= limit:
+        return False
+    
+    REQUEST_LOGS[ip].append(now)
+    return True
+
 # Dependencies
+async def trigger_socket_notify(user_id: int, notify_type: str, message: str, data: dict = None):
+    """Bridge to Node.js Socket server to emit real-time notifications"""
+    socket_url = f"http://localhost:{os.getenv('SOCKET_PORT', '3001')}/emit-notification"
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.post(socket_url, json={
+                "userId": user_id,
+                "type": notify_type,
+                "message": message,
+                "data": data or {}
+            }, timeout=2.0)
+    except Exception as e:
+        print(f"[Socket Bridge Error] {e}")
+
 def get_current_user(authorization: Optional[str] = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid token")
@@ -80,7 +129,7 @@ def get_current_user(authorization: Optional[str] = Header(None)):
     email = payload.get("sub")
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, email, name, role, student_id, avatar_url FROM users WHERE email = ?", (email,))
+    cursor.execute("SELECT id, email, name, role, student_id, avatar_url, is_verified FROM users WHERE email = ?", (email,))
     user = cursor.fetchone()
     conn.close()
     
@@ -91,7 +140,10 @@ def get_current_user(authorization: Optional[str] = Header(None)):
 
 # Auth Routes
 @app.post("/api/auth/register")
-async def register(user: UserRegister):
+async def register(user: UserRegister, request: Request):
+    # Rate limit: 5 registrations per hour per IP
+    if not check_rate_limit(request.client.host, limit=5, window=3600):
+        raise HTTPException(status_code=429, detail="Too many registration attempts. Please try again later.")
     conn = get_db_connection()
     cursor = conn.cursor()
     
@@ -99,19 +151,80 @@ async def register(user: UserRegister):
     
     try:
         cursor.execute(
-            "INSERT INTO users (email, password, name, role, student_id) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO users (email, password, name, role, student_id, is_verified) VALUES (?, ?, ?, ?, ?, 0)",
             (user.email, hashed_password, user.name, user.role, user.student_id)
+        )
+        user_id = cursor.lastrowid
+        
+        import uuid
+        from datetime import datetime, timezone, timedelta
+        import os, smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+        
+        token = uuid.uuid4().hex
+        expires_at = (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat()
+        
+        cursor.execute(
+            "INSERT INTO email_verifications (user_id, token, expires_at) VALUES (?, ?, ?)",
+            (user_id, token, expires_at)
         )
         conn.commit()
     except sqlite3.IntegrityError:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    finally:
         conn.close()
+        raise HTTPException(status_code=400, detail="Email already registered")
         
-    return {"message": "User registered successfully"}
+    # Send verification email
+    verify_link = f"http://localhost:8080/verify-email?token={token}"
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_port_str = os.getenv("SMTP_PORT", "587")
+    smtp_port = int(smtp_port_str) if smtp_port_str else 587
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+    
+    dev_verify_link = None
+    if smtp_host and smtp_user and smtp_password:
+        try:
+            msg = MIMEMultipart()
+            msg['From'] = f"Evaly Score <{smtp_user}>"
+            msg['To'] = user.email
+            msg['Subject'] = "ยืนยันบัญชีอีเมล Evaly Score (Verify Email)"
+            
+            body = f"""
+            <h2>ยินดีต้อนรับสู่ Evaly Score</h2>
+            <p>กรุณาคลิกที่ลิงก์ด้านล่างเพื่อยืนยันบัญชีอีเมลของคุณ (ลิงก์มีอายุการใช้งาน 24 ชั่วโมง):</p>
+            <p><a href="{verify_link}">{verify_link}</a></p>
+            """
+            
+            msg.attach(MIMEText(body, 'html'))
+            server = smtplib.SMTP(smtp_host, smtp_port)
+            server.starttls()
+            server.login(smtp_user, smtp_password)
+            server.send_message(msg)
+            server.quit()
+        except Exception as e:
+            print(f"\n[Verify Email Error] Failed to send email: {e}")
+            dev_verify_link = verify_link
+    else:
+        dev_verify_link = verify_link
+        
+    conn.close()
+    
+    if dev_verify_link:
+        print(f"\n========== VERIFY EMAIL ==========")
+        print(f"Verify Link: {dev_verify_link}")
+        print(f"==================================\n")
+        
+    return {
+        "message": "สมัครสมาชิกสำเร็จ กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชีของคุณ",
+        "dev_verify_link": dev_verify_link
+    }
 
 @app.post("/api/auth/login", response_model=TokenResponse)
-async def login(user_data: UserLogin):
+async def login(user_data: UserLogin, request: Request):
+    # Rate limit: 10 login attempts per minute
+    if not check_rate_limit(request.client.host, limit=10, window=60):
+        raise HTTPException(status_code=429, detail="Too many login attempts. Please wait a minute.")
     conn = get_db_connection()
     cursor = conn.cursor()
     
@@ -125,7 +238,7 @@ async def login(user_data: UserLogin):
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+        
     access_token = create_access_token(data={"sub": user["email"]})
     user_dict = dict(user)
     
@@ -135,7 +248,8 @@ async def login(user_data: UserLogin):
         "name": user_dict["name"],
         "role": user_dict["role"],
         "studentId": user_dict.get("student_id"),
-        "avatarUrl": user_dict.get("avatar_url")
+        "avatarUrl": user_dict.get("avatar_url"),
+        "is_verified": user_dict.get("is_verified", 0)
     }
     
     return {"access_token": access_token, "token_type": "bearer", "user": user_info}
@@ -148,7 +262,8 @@ async def get_me(user: dict = Depends(get_current_user)):
         "name": user["name"],
         "role": user["role"],
         "studentId": user["student_id"],
-        "avatarUrl": user.get("avatar_url", None)
+        "avatarUrl": user.get("avatar_url", None),
+        "is_verified": user.get("is_verified", 0)
     }
 
 @app.put("/api/auth/profile")
@@ -202,6 +317,294 @@ async def update_profile(
             
     conn.close()
     return {"message": "Profile updated successfully", "avatarUrl": avatar_filename}
+
+@app.post("/api/auth/forgot-password")
+async def forgot_password(req: ForgotPasswordRequest):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT id, name, student_id FROM users WHERE email = ?", (req.email,))
+    user = cursor.fetchone()
+    
+    if not user:
+        conn.close()
+        # For security, don't scream that email isn't there
+        return {"message": "If that email exists, a password reset link has been generated."}
+        
+    # Self-Service Recovery if additional identity info provided
+    if req.name or req.student_id:
+        is_owner = False
+        if req.name and user["name"] and req.name.strip().lower() == user["name"].strip().lower():
+            is_owner = True
+        elif req.student_id and user["student_id"] and req.student_id.strip().lower() == user["student_id"].strip().lower():
+            is_owner = True
+            
+        if not is_owner:
+            conn.close()
+            raise HTTPException(status_code=400, detail="คุณไม่ใช่เจ้าของบัญชี ชื่อหรือรหัสนิสิตไม่ตรงกับฐานข้อมูล")
+            
+        import uuid
+        from datetime import datetime, timezone, timedelta
+        
+        token = uuid.uuid4().hex
+        expires_at = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+        
+        cursor.execute("DELETE FROM password_resets WHERE user_id = ?", (user["id"],))
+        cursor.execute("INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)", (user["id"], token, expires_at))
+        conn.commit()
+        conn.close()
+        
+        return {"message": "ยืนยันตัวตนสำเร็จ!", "reset_token": token}
+        
+    import uuid
+    from datetime import datetime, timezone, timedelta
+    
+    token = uuid.uuid4().hex
+    
+    # Store aware datetime
+    now_utc = datetime.now(timezone.utc)
+    expires_at = (now_utc + timedelta(hours=1)).isoformat()
+    
+    # Delete old tokens for this user
+    cursor.execute("DELETE FROM password_resets WHERE user_id = ?", (user["id"],))
+    
+    # Add new token
+    cursor.execute(
+        "INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)",
+        (user["id"], token, expires_at)
+    )
+    conn.commit()
+    conn.close()
+    
+    # Generate reset link
+    reset_link = f"http://localhost:8080/reset-password?token={token}"
+    
+    # Sending Email via SMTP
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    import os
+    
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_port_str = os.getenv("SMTP_PORT", "587")
+    smtp_port = int(smtp_port_str) if smtp_port_str else 587
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+    
+    error_msg = None
+    if smtp_host and smtp_user and smtp_password:
+        try:
+            msg = MIMEMultipart()
+            msg['From'] = f"Evaly Score <{smtp_user}>"
+            msg['To'] = req.email
+            msg['Subject'] = "รีเซ็ตรหัสผ่าน Evaly Score (Password Reset)"
+            
+            body = f"""
+            <h2>รีเซ็ตรหัสผ่าน Evaly Score</h2>
+            <p>เราได้รับการร้องขอให้รีเซ็ตรหัสผ่านสำหรับบัญชีของคุณ</p>
+            <p>กรุณาคลิกที่ลิงก์ด้านล่างเพื่อตั้งรหัสผ่านใหม่ (ลิงก์นี้มีอายุการใช้งาน 1 ชั่วโมง):</p>
+            <p><a href="{reset_link}">{reset_link}</a></p>
+            <p><br>หากคุณไม่ได้ร้องขอการรีเซ็ตรหัสผ่านนี้ กรุณาเพิกเฉยต่ออีเมลฉบับนี้</p>
+            """
+            
+            msg.attach(MIMEText(body, 'html'))
+            
+            server = smtplib.SMTP(smtp_host, smtp_port)
+            server.starttls()
+            server.login(smtp_user, smtp_password)
+            server.send_message(msg)
+            server.quit()
+            print(f"\n[Email Sent] Password reset link sent to {req.email}")
+            
+            return {"message": "ส่งลิงก์สำหรับรีเซ็ตรหัสผ่านไปยังอีเมลของคุณแล้ว กรุณาตรวจสอบกล่องข้อความ"}
+        except Exception as e:
+            print(f"\n[Email Error] Failed to send email: {e}")
+            error_msg = str(e)
+            
+    # Fallback to dev logs
+    print(f"\n========== FORGOT PASSWORD ==========")
+    print(f"Request for: {req.email}")
+    print(f"Reset Link: {reset_link}")
+    if error_msg:
+        print(f"SMTP Error: {error_msg}")
+    elif not smtp_host:
+        print("Note: SMTP variables not configured in .env")
+    print(f"======================================\n")
+    
+    # Returning the link for development/testing ease
+    return {
+        "message": "รหัสสำหรับการทดสอบ (Dev Mode): ระบบยังไม่ได้ตั้งค่า Email SMTP",
+        "dev_reset_link": reset_link
+    }
+
+@app.post("/api/auth/reset-password")
+async def reset_password(req: ResetPasswordRequest):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT * FROM password_resets WHERE token = ?", (req.token,))
+    reset_record = cursor.fetchone()
+    
+    if not reset_record:
+        conn.close()
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+        
+    # Check expiration
+    from datetime import datetime, timezone
+    try:
+        expires_at_str = reset_record["expires_at"]
+        expires_at = datetime.fromisoformat(expires_at_str.replace('Z', '+00:00'))
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+            
+        now_utc = datetime.now(timezone.utc)
+        if now_utc > expires_at:
+            cursor.execute("DELETE FROM password_resets WHERE id = ?", (reset_record["id"],))
+            conn.commit()
+            conn.close()
+            raise HTTPException(status_code=400, detail="Reset token has expired")
+    except ValueError:
+        pass # Handle parsing error silently if data is malformed
+
+    # Hash new password
+    hashed_password = get_password_hash(req.new_password)
+    
+    # Update user password
+    cursor.execute("UPDATE users SET password = ? WHERE id = ?", (hashed_password, reset_record["user_id"]))
+    
+    # Invalidate token
+    cursor.execute("DELETE FROM password_resets WHERE id = ?", (reset_record["id"],))
+    
+    conn.commit()
+    conn.close()
+    
+    return {"message": "Password has been successfully reset"}
+
+@app.delete("/api/auth/account")
+async def delete_account(user: dict = Depends(get_current_user)):
+    """Permanently delete user account and all associated data"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Check if user exists
+    cursor.execute("SELECT id FROM users WHERE id = ?", (user["id"],))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    # Delete user (foreign key cascades will handle the rest)
+    cursor.execute("DELETE FROM users WHERE id = ?", (user["id"],))
+    conn.commit()
+    conn.close()
+    
+    return {"message": "Account deleted successfully"}
+
+@app.post("/api/auth/verify-email")
+async def verify_email(req: VerifyEmailRequest):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT * FROM email_verifications WHERE token = ?", (req.token,))
+    record = cursor.fetchone()
+    
+    if not record:
+        conn.close()
+        raise HTTPException(status_code=400, detail="ลิงก์ยืนยันไม่ถูกต้องหรือหมดอายุแล้ว")
+        
+    from datetime import datetime, timezone
+    try:
+        expires_at_str = record["expires_at"]
+        expires_at = datetime.fromisoformat(expires_at_str.replace('Z', '+00:00'))
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if datetime.now(timezone.utc) > expires_at:
+            cursor.execute("DELETE FROM email_verifications WHERE id = ?", (record["id"],))
+            conn.commit()
+            conn.close()
+            raise HTTPException(status_code=400, detail="ลิงก์ยืนยันหมดอายุแล้ว")
+    except ValueError:
+        pass
+        
+    cursor.execute("UPDATE users SET is_verified = 1 WHERE id = ?", (record["user_id"],))
+    cursor.execute("DELETE FROM email_verifications WHERE user_id = ?", (record["user_id"],))
+    conn.commit()
+    conn.close()
+    
+    return {"message": "ยืนยันอีเมลสำเร็จ"}
+
+@app.post("/api/auth/resend-verification")
+async def resend_verification(req: ResendVerificationRequest):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT id, is_verified FROM users WHERE email = ?", (req.email,))
+    user = cursor.fetchone()
+    
+    if not user:
+        conn.close()
+        return {"message": "หากมีบัญชีนี้ในระบบ ลิงก์ยืนยันจะถูกส่งไปที่อีเมลของคุณ"}
+        
+    if user["is_verified"] == 1:
+        conn.close()
+        raise HTTPException(status_code=400, detail="อีเมลนี้ได้รับการยืนยันแล้ว")
+        
+    import uuid
+    from datetime import datetime, timezone, timedelta
+    import os, smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    
+    token = uuid.uuid4().hex
+    expires_at = (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat()
+    
+    cursor.execute("DELETE FROM email_verifications WHERE user_id = ?", (user["id"],))
+    cursor.execute("INSERT INTO email_verifications (user_id, token, expires_at) VALUES (?, ?, ?)", (user["id"], token, expires_at))
+    conn.commit()
+    conn.close()
+    
+    # Send email
+    verify_link = f"http://localhost:8080/verify-email?token={token}"
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_port_str = os.getenv("SMTP_PORT", "587")
+    smtp_port = int(smtp_port_str) if smtp_port_str else 587
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+    
+    dev_verify_link = None
+    if smtp_host and smtp_user and smtp_password:
+        try:
+            msg = MIMEMultipart()
+            msg['From'] = f"Evaly Score <{smtp_user}>"
+            msg['To'] = req.email
+            msg['Subject'] = "ส่งซ้ำ - ยืนยันบัญชีอีเมล Evaly Score (Verify Email)"
+            
+            body = f"""
+            <h2>ยินดีต้อนรับสู่ Evaly Score</h2>
+            <p>กรุณาคลิกที่ลิงก์ด้านล่างเพื่อยืนยันบัญชีอีเมลของคุณ (ลิงก์มีอายุการใช้งาน 24 ชั่วโมง):</p>
+            <p><a href="{verify_link}">{verify_link}</a></p>
+            """
+            
+            msg.attach(MIMEText(body, 'html'))
+            server = smtplib.SMTP(smtp_host, smtp_port)
+            server.starttls()
+            server.login(smtp_user, smtp_password)
+            server.send_message(msg)
+            server.quit()
+            print(f"\n[Email Sent] Verification link resent to {req.email}")
+            return {"message": "ส่งลิงก์ยืนยันอีเมลสำเร็จ กรุณาตรวจสอบกล่องข้อความ"}
+        except Exception as e:
+            print(f"\n[Email Error] Failed to send email: {e}")
+            dev_verify_link = verify_link
+    else:
+        dev_verify_link = verify_link
+        
+    if dev_verify_link:
+        print(f"\n========== VERIFY EMAIL ==========")
+        print(f"Verify Link: {dev_verify_link}")
+        print(f"==================================\n")
+        return {"message": "Dev Mode", "dev_verify_link": dev_verify_link}
+        
+    return {"message": "หากมีบัญชีนี้ในระบบ ลิงก์ยืนยันจะถูกส่งไปที่อีเมลของคุณ"}
 
 class FirebaseLoginRequest(BaseModel):
     firebase_token: str
@@ -289,8 +692,8 @@ async def firebase_login(request: FirebaseLoginRequest):
     # User doesn't exist - create new account as student (default role)
     try:
         cursor.execute(
-            "INSERT INTO users (email, password, name, role, student_id, avatar_url) VALUES (?, ?, ?, ?, ?, ?)",
-            (email, f"firebase_{decoded_token.get('uid', '')}", display_name, "student", None, google_picture)
+            "INSERT INTO users (email, password, name, role, student_id, avatar_url, is_verified) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (email, f"firebase_{decoded_token.get('uid', '')}", display_name, "student", None, google_picture, 1)
         )
         conn.commit()
         new_user_id = cursor.lastrowid
@@ -311,6 +714,30 @@ async def firebase_login(request: FirebaseLoginRequest):
     conn.close()
     
     return {"access_token": access_token, "token_type": "bearer", "user": user_info}
+
+@app.post("/api/auth/link-google")
+async def link_google(request: FirebaseLoginRequest, current_user: dict = Depends(get_current_user)):
+    if not _firebase_app:
+        raise HTTPException(status_code=500, detail="Firebase SDK ไม่พร้อมใช้งาน")
+        
+    try:
+        decoded_token = auth.verify_id_token(request.firebase_token)
+        google_picture = decoded_token.get("picture", None)
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="ยืนยันบัญชี Google ไม่สำเร็จ")
+        
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("UPDATE users SET is_verified = 1 WHERE id = ?", (current_user["id"],))
+    
+    if google_picture and not current_user.get("avatar_url"):
+        cursor.execute("UPDATE users SET avatar_url = ? WHERE id = ?", (google_picture, current_user["id"]))
+        
+    conn.commit()
+    conn.close()
+    
+    return {"message": "เชื่อมโยงบัญชี Google สำเร็จ"}
 
 # Notifications
 @app.get("/api/notifications")
@@ -1274,6 +1701,17 @@ async def submit_exam_multipart(
         (new_status, round(total_ai_score, 1), submission_id)
     )
     conn.commit()
+
+    # REAL-TIME NOTIFICATION: Notify teacher that a new submission is ready
+    cursor.execute("SELECT owner_id FROM rooms WHERE id = ?", (room_id,))
+    teacher_id = cursor.fetchone()["owner_id"]
+    await trigger_socket_notify(
+        user_id=teacher_id,
+        notify_type="ai_graded",
+        message=f"มีนักศึกษาส่งข้อสอบใหม่ในห้องของคุณ และ AI ตรวจเสร็จแล้ว!",
+        data={"exam_id": exam_id, "room_id": room_id, "submission_id": submission_id}
+    )
+
     conn.close()
 
     return {
@@ -1282,6 +1720,144 @@ async def submit_exam_multipart(
         "status": new_status,
         "ai_score": round(total_ai_score, 1)
     }
+
+@app.get("/api/rooms/{room_id}/exams/{exam_id}/export-csv")
+async def export_exam_csv(room_id: int, exam_id: int, user: dict = Depends(get_current_user)):
+    """Teacher exports exam scores to CSV"""
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can export scores")
+        
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Verify room ownership
+    cursor.execute("SELECT id FROM rooms WHERE id = ? AND owner_id = ?", (room_id, user["id"]))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=403, detail="Unauthorized")
+        
+    # Get all enrolled students and their scores
+    cursor.execute("""
+        SELECT 
+            u.student_id AS student_code, u.name, u.email, 
+            COALESCE(s.status, 'missing') as status, 
+            s.total_score, s.submitted_at
+        FROM enrollments e
+        JOIN users u ON e.user_id = u.id
+        LEFT JOIN submissions s ON s.exam_id = ? AND s.student_id = u.id
+        WHERE e.room_id = ?
+        ORDER BY u.name ASC
+    """, (exam_id, room_id))
+    
+    results = cursor.fetchall()
+    
+    # Get exam title for filename
+    cursor.execute("SELECT title FROM exams WHERE id = ?", (exam_id,))
+    row = cursor.fetchone()
+    exam_title = row["title"] if row else "Exam"
+    conn.close()
+    
+    # Create CSV content
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Student ID", "Name", "Status", "Score", "Submitted At"])
+    
+    for r in results:
+        writer.writerow([
+            r["student_code"] or "-",
+            r["name"],
+            r["status"],
+            r["total_score"] if r["total_score"] is not None else "0",
+            r["submitted_at"] or "-"
+        ])
+    
+    content = output.getvalue()
+    
+    return StreamingResponse(
+        iter([content]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=scores_{exam_title.replace(' ', '_')}.csv"}
+    )
+
+@app.get("/api/rooms/{room_id}/export-summary-csv")
+async def export_room_summary_csv(room_id: int, user: dict = Depends(get_current_user)):
+    """Teacher exports overall room summary (all exams) to CSV"""
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can export summary")
+        
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # 1. Verify ownership and get room name
+    cursor.execute("SELECT name FROM rooms WHERE id = ? AND owner_id = ?", (room_id, user["id"]))
+    room_row = cursor.fetchone()
+    if not room_row:
+        conn.close()
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    room_name = room_row["name"]
+
+    # 2. Get all exams in this room (sorted by creation date)
+    cursor.execute("SELECT id, title, total_score FROM exams WHERE room_id = ? ORDER BY created_at ASC", (room_id,))
+    exams = cursor.fetchall()
+    exam_ids = [e["id"] for e in exams]
+    exam_titles = [e["title"] for e in exams]
+
+    # 3. Get all enrolled students
+    cursor.execute("""
+        SELECT u.id, u.name, u.email, u.student_id
+        FROM enrollments e
+        JOIN users u ON e.user_id = u.id
+        WHERE e.room_id = ?
+        ORDER BY u.name ASC
+    """, (room_id,))
+    students = cursor.fetchall()
+
+    # 4. Get all submissions for these exams in this room
+    cursor.execute("""
+        SELECT exam_id, student_id, total_score
+        FROM submissions
+        WHERE exam_id IN (SELECT id FROM exams WHERE room_id = ?)
+    """, (room_id,))
+    submissions_list = cursor.fetchall()
+    
+    # Map submissions into a lookup dict: {student_id: {exam_id: score}}
+    scores_map = {}
+    for sub in submissions_list:
+        sid = sub["student_id"]
+        eid = sub["exam_id"]
+        if sid not in scores_map:
+            scores_map[sid] = {}
+        scores_map[sid][eid] = sub["total_score"]
+
+    conn.close()
+
+    # 5. Create CSV content
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Header: Info + Exam Titles + Total
+    writer.writerow(["Student ID", "Name"] + exam_titles + ["Total Cumulative Score"])
+    
+    for s in students:
+        row = [s["student_id"], s["name"]]
+        cumulative_total = 0
+        
+        for eid in exam_ids:
+            score = scores_map.get(s["id"], {}).get(eid, 0)
+            row.append(score)
+            cumulative_total += (score or 0)
+            
+        row.append(cumulative_total)
+        writer.writerow(row)
+    
+    content = output.getvalue()
+    
+    filename = f"Summary_{room_name.replace(' ', '_')}.csv"
+    return StreamingResponse(
+        iter([content]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 
 @app.get("/api/rooms/{room_id}/exams/{exam_id}/submissions")
