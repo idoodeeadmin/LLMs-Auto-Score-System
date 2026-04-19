@@ -13,6 +13,8 @@ export default function Index() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState("");
+  const [isResending, setIsResending] = useState(false);
   
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -38,13 +40,40 @@ export default function Index() {
         login(data.access_token, data.user);
         navigate("/home");
       } else {
-        toast.error(data.detail || "อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+        if (data.detail === "not_verified") {
+            setUnverifiedEmail(email);
+            toast.error("คุณยังไม่ได้ยืนยันอีเมล กรุณาตรวจสอบกล่องข้อความ", { duration: 5000 });
+        } else {
+            setUnverifiedEmail("");
+            toast.error(data.detail || "อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+        }
       }
     } catch (error) {
       console.error("Login error:", error);
       toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (!unverifiedEmail) return;
+    setIsResending(true);
+    try {
+        const res = await fetch("/api/auth/resend-verification", {
+            method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({email: unverifiedEmail})
+        });
+        const d = await res.json();
+        if (res.ok) {
+            toast.success("ส่งอีเมลยืนยันอีกครั้งสำเร็จ! กรุณาตรวจสอบกล่องข้อความ");
+            if (d.dev_verify_link) { toast.info("Dev Mode: ดูลิงก์ยืนยันใน Console Server หรือลองเปิดลิงก์: " + d.dev_verify_link, {duration: 8000}) }
+        } else {
+            toast.error(d.detail || "เกิดข้อผิดพลาด");
+        }
+    } catch (e) {
+        toast.error("Failed to connect");
+    } finally {
+        setIsResending(false);
     }
   };
 
@@ -127,15 +156,15 @@ export default function Index() {
             <motion.div variants={fadeIn} className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium leading-none text-slate-700">
-                  อีเมล (Email)
+                  อีเมล หรือ รหัสนิสิต (Email or ID)
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                   <Input
-                    type="email"
+                    type="text"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@example.com"
+                    placeholder="name@example.com หรือ student001"
                     required
                     className="pl-10 h-12 text-base transition-shadow focus-visible:ring-indigo-500"
                   />
@@ -147,9 +176,9 @@ export default function Index() {
                   <label className="text-sm font-medium leading-none text-slate-700">
                     รหัสผ่าน (Password)
                   </label>
-                  <a href="#" className="text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                  <Link to="/forgot-password" className="text-sm font-medium text-indigo-600 hover:text-indigo-500">
                     ลืมรหัสผ่าน?
-                  </a>
+                  </Link>
                 </div>
                 <div className="relative">
                   <Input
@@ -169,6 +198,27 @@ export default function Index() {
                   </button>
                 </div>
               </div>
+              
+              {unverifiedEmail && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    className="p-3 bg-red-50 border border-red-200 rounded-lg flex flex-col gap-2"
+                  >
+                    <p className="text-sm text-red-600 font-medium">คุณยังไม่ได้ยืนยันอีเมลใช่หรือไม่?</p>
+                    <Button 
+                      onClick={handleResend} 
+                      type="button" 
+                      variant="outline" 
+                      size="sm" 
+                      disabled={isResending}
+                      className="border-red-200 text-red-700 hover:bg-red-100"
+                    >
+                      {isResending ? <Loader2 className="w-4 h-4 animate-spin mr-2"/> : null}
+                      ส่งลิงก์ยืนยันใหม่อีกครั้ง
+                    </Button>
+                  </motion.div>
+              )}
             </motion.div>
 
             <motion.div variants={fadeIn} className="space-y-4 pt-2">

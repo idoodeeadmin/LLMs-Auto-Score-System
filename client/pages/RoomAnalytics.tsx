@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Loader2, BarChart3 } from "lucide-react";
+import { ArrowLeft, Loader2, BarChart3, Download } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -60,6 +60,30 @@ export default function RoomAnalytics() {
     run();
   }, [token, roomId]);
 
+  const handleExportSummary = async () => {
+    if (!token || !roomId) return;
+    try {
+      const res = await fetch(`/api/rooms/${roomId}/export-summary-csv`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Summary_Room_${roomId}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        toast.success("ดาวน์โหลดสรุปคะแนนรวมสำเร็จ");
+      } else {
+        toast.error("ส่งออกข้อมูลไม่สำเร็จ");
+      }
+    } catch {
+      toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    }
+  };
+
   if (isLoading || isFetching) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50">
@@ -94,11 +118,20 @@ export default function RoomAnalytics() {
         </button>
 
         <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="text-indigo-600" size={18} />
-            <h1 className="text-xl md:text-2xl font-bold text-slate-900">
-              วิเคราะห์ข้อสอบทุกชุดในห้อง
-            </h1>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="text-indigo-600" size={18} />
+              <h1 className="text-xl md:text-2xl font-bold text-slate-900">
+                วิเคราะห์ข้อสอบทุกชุดในห้อง
+              </h1>
+            </div>
+            <button
+              onClick={handleExportSummary}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-all shadow-sm shadow-indigo-100 active:scale-95 text-sm"
+            >
+              <Download size={16} />
+              ส่งออกสรุปทุกชุด (CSV)
+            </button>
           </div>
           <p className="text-slate-500 mt-1">เปรียบเทียบผลทุกชุดข้อสอบในห้องเดียวกัน</p>
         </div>
