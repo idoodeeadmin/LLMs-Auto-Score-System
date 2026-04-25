@@ -10,3 +10,5 @@ aiofiles
 openpyxl
 httpx
 firebase-admin
+pymysql
+certifi

@@ -67,9 +67,9 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
       className={`
         relative inline-flex items-center justify-center gap-2
         w-full h-12 px-4 py-3
-        bg-white hover:bg-gray-50
-        border-2 border-gray-200 hover:border-gray-300
-        rounded-xl text-gray-700 font-medium text-base
+        bg-white dark:bg-slate-800 hover:bg-gray-50 dark:bg-slate-900
+        border-2 border-gray-200 dark:border-slate-700 hover:border-gray-300
+        rounded-xl text-gray-700 dark:text-slate-300 font-medium text-base
         transition-all duration-200
         disabled:opacity-50 disabled:cursor-not-allowed
         hover:shadow-sm active:scale-[0.98]
@@ -77,7 +77,7 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
       `}
     >
       {isLoading ? (
-        <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
+        <Loader2 className="h-5 w-5 animate-spin text-gray-500 dark:text-slate-400" />
       ) : (
         <svg className="h-5 w-5" viewBox="0 0 24 24">
           <path

@@ -232,7 +232,7 @@ export default function StudentGrading() {
 
   if (isLoading || isFetching) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
+      <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
         <Loader2 className="animate-spin text-indigo-600 h-12 w-12" />
       </div>
     );
@@ -245,26 +245,26 @@ export default function StudentGrading() {
       {/* --- CONFIRMATION MODAL --- */}
       {isConfirmOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 transform transition-all scale-100 animate-in zoom-in-95 duration-200 border border-gray-100">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 transform transition-all scale-100 animate-in zoom-in-95 duration-200 border border-gray-100 dark:border-slate-800">
             <div className="text-center mb-6">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-green-600">
                 <CheckCircle2 size={32} />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                 {isApproved ? "ยืนยันการแก้ไข?" : "ยืนยันการอนุมัติ?"}
               </h3>
-              <p className="text-gray-500">
+              <p className="text-gray-500 dark:text-slate-400">
                 คุณต้องการ{isApproved ? "บันทึกการแก้ไขผล" : "อนุมัติผล"}การตรวจของ <br />
-                <span className="font-bold text-gray-800 text-lg">"{currentStudentName}"</span> ใช่หรือไม่?
+                <span className="font-bold text-gray-800 dark:text-slate-200 text-lg">"{currentStudentName}"</span> ใช่หรือไม่?
                 <br />
-                <span className="text-sm text-gray-400 mt-1 block">คะแนนที่คุณแก้ไขจะถูกบันทึกด้วย</span>
+                <span className="text-sm text-gray-400 dark:text-slate-500 mt-1 block">คะแนนที่คุณแก้ไขจะถูกบันทึกด้วย</span>
               </p>
             </div>
             <div className="flex gap-3">
               <Button
                 variant="outline"
                 onClick={() => setIsConfirmOpen(false)}
-                className="flex-1 h-12 text-base border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl"
+                className="flex-1 h-12 text-base border-gray-300 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:bg-slate-900 rounded-xl"
               >
                 <X size={16} className="mr-2" /> ยกเลิก
               </Button>
@@ -282,7 +282,7 @@ export default function StudentGrading() {
       )}
 
       {/* Sticky Header Bar */}
-      <div className="sticky top-[80px] z-30 bg-white border-b border-gray-200 shadow-sm px-4 py-3">
+      <div className="sticky top-[80px] z-30 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shadow-sm px-4 py-3">
         <div className="max-w-[1440px] mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
 
           {/* Navigator */}
@@ -291,26 +291,26 @@ export default function StudentGrading() {
               variant="outline"
               onClick={() => navigateToStudent(currentStudentIndex - 1)}
               disabled={currentStudentIndex === 0 || studentsList.length === 0}
-              className="h-9 px-2 text-gray-500 hover:text-[#3B82F6] transition-colors"
+              className="h-9 px-2 text-gray-500 dark:text-slate-400 hover:text-[#3B82F6] transition-colors"
             >
               <ChevronLeft size={18} />
             </Button>
             <div className="text-center px-4 min-w-[180px]">
-              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+              <p className="text-xs font-medium text-gray-400 dark:text-slate-500 uppercase tracking-wide">
                 ลำดับที่ {currentStudentIndex + 1} / {studentsList.length}
               </p>
-              <h2 className="text-lg font-bold text-gray-900 leading-none mt-0.5">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white leading-none mt-0.5">
                 {currentStudentName}
               </h2>
               {studentInfo?.student_code && (
-                <p className="text-xs text-gray-400">{studentInfo.student_code}</p>
+                <p className="text-xs text-gray-400 dark:text-slate-500">{studentInfo.student_code}</p>
               )}
             </div>
             <Button
               variant="outline"
               onClick={() => navigateToStudent(currentStudentIndex + 1)}
               disabled={currentStudentIndex >= studentsList.length - 1 || studentsList.length === 0}
-              className="h-9 px-2 text-gray-500 hover:text-[#3B82F6] transition-colors"
+              className="h-9 px-2 text-gray-500 dark:text-slate-400 hover:text-[#3B82F6] transition-colors"
             >
               <ChevronRight size={18} />
             </Button>
@@ -346,7 +346,7 @@ export default function StudentGrading() {
             <Button
               variant="ghost"
               onClick={() => navigate(`/room/${roomId}/exam/${examId}/review`)}
-              className="text-gray-500 hover:text-gray-700"
+              className="text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:text-slate-300"
             >
               กลับรายชื่อ
             </Button>
@@ -373,25 +373,25 @@ export default function StudentGrading() {
       <main className="max-w-[1200px] mx-auto p-4 md:p-8 space-y-8 mt-4 animate-in fade-in duration-500">
 
         {answers.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-20 text-center">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-20 text-center">
             <AlertCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 font-medium">ไม่พบข้อมูลคำตอบของนักเรียนคนนี้</p>
+            <p className="text-gray-500 dark:text-slate-400 font-medium">ไม่พบข้อมูลคำตอบของนักเรียนคนนี้</p>
           </div>
         ) : (
           answers.map((a, index) => (
             <div
               key={a.question_id}
-              className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col lg:flex-row"
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden flex flex-col lg:flex-row"
             >
               {/* Left Panel — Question & Rubrics */}
-              <div className="lg:w-1/3 bg-gray-50 p-6 border-b lg:border-b-0 lg:border-r border-gray-200">
+              <div className="lg:w-1/3 bg-gray-50 dark:bg-slate-900 p-6 border-b lg:border-b-0 lg:border-r border-gray-200 dark:border-slate-700">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-8 h-8 rounded-lg bg-[#3B82F6] text-white font-bold flex items-center justify-center shadow-sm">
                     {index + 1}
                   </div>
-                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">โจทย์คำถาม</span>
+                  <span className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">โจทย์คำถาม</span>
                 </div>
-                <h3 className="text-gray-900 font-medium leading-relaxed mb-6">
+                <h3 className="text-gray-900 dark:text-white font-medium leading-relaxed mb-6">
                   {a.question_text}
                 </h3>
 
@@ -403,7 +403,7 @@ export default function StudentGrading() {
                         key={i}
                         src={src}
                         alt={`รูปโจทย์รูปที่ ${i + 1}`}
-                        className="w-full rounded-xl border border-gray-200 shadow-sm object-contain bg-white max-h-64"
+                        className="w-full rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm object-contain bg-white dark:bg-slate-800 max-h-64"
                       />
                     ))}
                   </div>
@@ -412,7 +412,7 @@ export default function StudentGrading() {
                     <img
                       src={a.q_image_path}
                       alt="รูปโจทย์"
-                      className="w-full rounded-xl border border-gray-200 shadow-sm object-contain bg-white max-h-64"
+                      className="w-full rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm object-contain bg-white dark:bg-slate-800 max-h-64"
                     />
                   </div>
                 ) : null}
@@ -427,15 +427,15 @@ export default function StudentGrading() {
                 )}
 
                 {a.rubrics && a.rubrics.length > 0 && (
-                  <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-                    <div className="flex items-center gap-2 mb-3 text-gray-700 font-semibold text-sm">
+                  <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 shadow-sm">
+                    <div className="flex items-center gap-2 mb-3 text-gray-700 dark:text-slate-300 font-semibold text-sm">
                       <BookOpen size={16} /> เกณฑ์การให้คะแนน
                     </div>
                     <ul className="space-y-3">
                       {a.rubrics.map((r, i) => (
-                        <li key={i} className="text-sm flex justify-between items-start border-b border-gray-100 pb-2 last:border-0 last:pb-0">
-                          <span className="text-gray-600">{r.name || r.label}</span>
-                          <span className="font-mono font-bold text-gray-400 text-xs bg-gray-100 px-2 py-0.5 rounded ml-2">
+                        <li key={i} className="text-sm flex justify-between items-start border-b border-gray-100 dark:border-slate-800 pb-2 last:border-0 last:pb-0">
+                          <span className="text-gray-600 dark:text-slate-400">{r.name || r.label}</span>
+                          <span className="font-mono font-bold text-gray-400 dark:text-slate-500 text-xs bg-gray-100 px-2 py-0.5 rounded ml-2">
                             max {r.score ?? r.maxScore}
                           </span>
                         </li>
@@ -450,12 +450,12 @@ export default function StudentGrading() {
                 {/* Student Answer */}
                 <div className="mb-8">
                   <div className="flex justify-between items-center mb-3">
-                    <h4 className="text-sm font-bold text-gray-700">คำตอบของนักเรียน</h4>
-                    <span className="text-xs text-gray-400">
+                    <h4 className="text-sm font-bold text-gray-700 dark:text-slate-300">คำตอบของนักเรียน</h4>
+                    <span className="text-xs text-gray-400 dark:text-slate-500">
                       {studentInfo?.student_code || studentInfo?.email}
                     </span>
                   </div>
-                  <div className="p-4 rounded-xl border border-gray-200 bg-white text-gray-800 leading-relaxed text-base shadow-sm min-h-[80px] whitespace-pre-wrap">
+                  <div className="p-4 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-200 leading-relaxed text-base shadow-sm min-h-[80px] whitespace-pre-wrap">
                     {a.answer_text || (
                       <span className="text-gray-300 italic">ไม่มีคำตอบ</span>
                     )}
@@ -465,7 +465,7 @@ export default function StudentGrading() {
                   {(a.image_paths && a.image_paths.length > 0) ? (
                     <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
                       {a.image_paths.map((src, i) => (
-                        <div key={i} className="group relative aspect-video rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-gray-50">
+                        <div key={i} className="group relative aspect-video rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700 shadow-sm bg-gray-50 dark:bg-slate-900">
                           <img
                             src={src}
                             alt={`รูปคำตอบที่ ${i + 1}`}
@@ -487,7 +487,7 @@ export default function StudentGrading() {
                       <img
                         src={a.image_path}
                         alt="รูปคำตอบ"
-                        className="max-h-80 w-auto rounded-xl border border-gray-200 shadow-sm"
+                        className="max-h-80 w-auto rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm"
                       />
                     </div>
                   ) : null}
@@ -498,7 +498,7 @@ export default function StudentGrading() {
                   className={`rounded-xl border-2 p-5 relative transition-all ${
                     a.ai_confidence === "low"
                       ? "border-orange-100 bg-orange-50/30"
-                      : "border-blue-100 bg-blue-50/20"
+                      : "border-blue-100 bg-blue-50 dark:bg-blue-900/30/20"
                   }`}
                 >
                   <div className="flex justify-between items-start mb-4">
@@ -521,12 +521,12 @@ export default function StudentGrading() {
                     {/* Score Editor */}
                     <div className="flex items-center gap-3">
                       <div className="text-right">
-                        <p className="text-[10px] text-gray-500 font-medium uppercase">คะแนนประเมิน</p>
+                        <p className="text-[10px] text-gray-500 dark:text-slate-400 font-medium uppercase">คะแนนประเมิน</p>
                         <div className="flex items-baseline gap-1 justify-end">
                           <span className="text-2xl font-bold text-[#3B82F6]">
                             {scores[a.question_id] ?? a.ai_score}
                           </span>
-                          <span className="text-gray-400 text-sm">/ {a.max_score}</span>
+                          <span className="text-gray-400 dark:text-slate-500 text-sm">/ {a.max_score}</span>
                         </div>
                       </div>
                       <Input
@@ -542,21 +542,21 @@ export default function StudentGrading() {
                   </div>
 
                   {/* AI Feedback Text */}
-                  <div className="bg-white p-4 rounded-lg border border-gray-200 text-gray-700 text-sm leading-relaxed mb-4">
+                  <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 text-sm leading-relaxed mb-4">
                     {a.ai_feedback || "ไม่มี feedback จาก AI"}
                   </div>
 
                   {/* Teacher Comment */}
-                  <div className="flex items-start gap-3 mt-4 pt-4 border-t border-gray-200/50">
-                    <MessageSquare className="w-5 h-5 text-gray-400 mt-2" />
+                  <div className="flex items-start gap-3 mt-4 pt-4 border-t border-gray-200 dark:border-slate-700/50">
+                    <MessageSquare className="w-5 h-5 text-gray-400 dark:text-slate-500 mt-2" />
                     <div className="flex-1 space-y-2">
-                      <label className="text-xs font-bold text-gray-500">
+                      <label className="text-xs font-bold text-gray-500 dark:text-slate-400">
                         ความคิดเห็นอาจารย์ (Optional)
                       </label>
                       <Textarea
                         id={`comment-q${a.question_id}`}
                         placeholder="พิมพ์คำแนะนำให้นักเรียน..."
-                        className="min-h-[60px] bg-white border-gray-200 focus:border-[#3B82F6] resize-none"
+                        className="min-h-[60px] bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 focus:border-[#3B82F6] resize-none"
                         value={comments[a.question_id] || ""}
                         onChange={(e) => handleCommentChange(a.question_id, e.target.value)}
                       />

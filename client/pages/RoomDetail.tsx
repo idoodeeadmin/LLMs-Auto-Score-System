@@ -118,7 +118,7 @@ export default function RoomDetail() {
 
   if (isLoading || isFetching || !user) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
+      <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
         <Loader2 className="animate-spin text-indigo-600 h-12 w-12" />
       </div>
     );
@@ -133,14 +133,14 @@ export default function RoomDetail() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans">
       <Navbar />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8">
         {/* Back Button */}
         <button
           onClick={() => navigate("/home")}
-          className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors text-sm font-medium"
+          className="flex items-center gap-2 text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:text-slate-200 transition-colors text-sm font-medium"
         >
           <ArrowLeft size={18} /> กลับหน้าหลัก
         </button>
@@ -178,12 +178,12 @@ export default function RoomDetail() {
         </motion.div>
 
         {/* Tab Bar */}
-        <motion.div initial="hidden" animate="visible" variants={fadeUp} className="flex items-center gap-1 bg-white rounded-2xl p-1.5 shadow-sm border border-slate-100 w-fit">
+        <motion.div initial="hidden" animate="visible" variants={fadeUp} className="flex items-center gap-1 bg-white dark:bg-slate-800 rounded-2xl p-1.5 shadow-sm border border-slate-100 dark:border-slate-700 w-fit">
           <button
             onClick={() => setActiveTab("exams")}
             className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === "exams"
                 ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
-                : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                : "text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:bg-slate-900"
               }`}
           >
             <BookOpen size={15} className="inline mr-1.5 -mt-0.5" />
@@ -193,7 +193,7 @@ export default function RoomDetail() {
             onClick={() => setActiveTab("members")}
             className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === "members"
                 ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
-                : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                : "text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:bg-slate-900"
               }`}
           >
             <Users size={15} className="inline mr-1.5 -mt-0.5" />
@@ -206,13 +206,13 @@ export default function RoomDetail() {
           {activeTab === "exams" && (
             <motion.div key="exams" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }} className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-slate-800">รายการข้อสอบ</h2>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200">รายการข้อสอบ</h2>
                 <div className="flex items-center gap-2">
                   {isTeacher && (
                     <Button
                       variant="outline"
                       onClick={() => navigate(`/room/${roomId}/analytics`)}
-                      className="border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                      className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:bg-indigo-900/30"
                     >
                       <BarChart3 size={16} className="mr-1.5" /> วิเคราะห์ทุกชุด
                     </Button>
@@ -227,16 +227,16 @@ export default function RoomDetail() {
 
               {isTeacher && roomAnalytics && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="bg-white rounded-xl border border-slate-200 p-4">
-                    <p className="text-xs text-slate-500">นักศึกษาในห้อง</p>
-                    <p className="text-2xl font-bold text-slate-800">{roomAnalytics.total_students}</p>
+                  <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">นักศึกษาในห้อง</p>
+                    <p className="text-2xl font-bold text-slate-800 dark:text-slate-200">{roomAnalytics.total_students}</p>
                   </div>
-                  <div className="bg-white rounded-xl border border-slate-200 p-4">
-                    <p className="text-xs text-slate-500">จำนวนข้อสอบ</p>
+                  <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">จำนวนข้อสอบ</p>
                     <p className="text-2xl font-bold text-indigo-600">{roomAnalytics.exam_count}</p>
                   </div>
-                  <div className="bg-white rounded-xl border border-slate-200 p-4">
-                    <p className="text-xs text-slate-500">ค่าเฉลี่ยรวม (Approved)</p>
+                  <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">ค่าเฉลี่ยรวม (Approved)</p>
                     <p className="text-2xl font-bold text-emerald-600">
                       {roomAnalytics.exam_summaries.length > 0
                         ? (
@@ -250,12 +250,12 @@ export default function RoomDetail() {
               )}
 
               {isTeacher && roomAnalytics && roomAnalytics.exam_summaries.length > 0 && (
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                  <div className="px-5 py-3 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-slate-700">ภาพรวมผลสอบรายข้อสอบ</h3>
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
+                  <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">ภาพรวมผลสอบรายข้อสอบ</h3>
                     <button
                       onClick={() => setShowExamSummary((prev) => !prev)}
-                      className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-slate-800"
+                      className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:text-slate-200"
                     >
                       {showExamSummary ? (
                         <>
@@ -272,8 +272,8 @@ export default function RoomDetail() {
                     <div className="divide-y divide-slate-100">
                       {roomAnalytics.exam_summaries.slice(0, 5).map((item) => (
                         <div key={item.exam_id} className="px-5 py-3 flex flex-wrap items-center justify-between gap-3">
-                          <p className="font-medium text-slate-700">{item.title}</p>
-                          <div className="text-sm text-slate-500 flex items-center gap-4">
+                          <p className="font-medium text-slate-700 dark:text-slate-300">{item.title}</p>
+                          <div className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 flex items-center gap-4">
                             <span>ส่งแล้ว {item.submitted_count}</span>
                             <span>ยังไม่ส่ง {item.missing_count}</span>
                             <span className="font-semibold text-indigo-600">Avg {item.approved_mean}</span>
@@ -286,12 +286,12 @@ export default function RoomDetail() {
               )}
 
               {exams.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center shadow-sm">
-                  <div className="mx-auto w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                    <BookOpen className="h-8 w-8 text-slate-400" />
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-16 text-center shadow-sm">
+                  <div className="mx-auto w-16 h-16 bg-slate-50 dark:bg-slate-900 rounded-full flex items-center justify-center mb-4">
+                    <BookOpen className="h-8 w-8 text-slate-400 dark:text-slate-500" />
                   </div>
-                  <h3 className="text-lg font-semibold text-slate-700 mb-1">ยังไม่มีข้อสอบ</h3>
-                  <p className="text-slate-500 text-sm mb-6">{isTeacher ? "กดปุ่ม 'สร้างข้อสอบ' เพื่อเพิ่มข้อสอบแรก" : "อาจารย์ยังไม่ได้สร้างข้อสอบในห้องนี้"}</p>
+                  <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-1">ยังไม่มีข้อสอบ</h3>
+                  <p className="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm mb-6">{isTeacher ? "กดปุ่ม 'สร้างข้อสอบ' เพื่อเพิ่มข้อสอบแรก" : "อาจารย์ยังไม่ได้สร้างข้อสอบในห้องนี้"}</p>
                   {isTeacher && (
                     <Button onClick={() => navigate(`/room/${roomId}/create-exam`)} className="bg-indigo-600 hover:bg-indigo-700">
                       <Plus size={16} className="mr-1.5" /> สร้างข้อสอบแรก
@@ -304,18 +304,18 @@ export default function RoomDetail() {
                     <div
                       key={exam.id}
                       onClick={() => navigate(`/room/${roomId}/exam/${exam.id}`)}
-                      className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md hover:border-indigo-200 cursor-pointer transition-all group"
+                      className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-5 shadow-sm hover:shadow-md hover:border-indigo-200 cursor-pointer transition-all group"
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex gap-4 items-start">
-                          <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                          <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
                             <FileText size={20} className="text-indigo-600" />
                           </div>
                           <div>
-                            <h3 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">{exam.title}</h3>
-                            {exam.description && <p className="text-sm text-slate-500 mt-0.5">{exam.description}</p>}
+                            <h3 className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 transition-colors">{exam.title}</h3>
+                            {exam.description && <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 mt-0.5">{exam.description}</p>}
                             {exam.start_date && (
-                              <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+                              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 flex items-center gap-1">
                                 <Calendar size={12} /> {new Date(exam.start_date).toLocaleDateString('th-TH')}
                               </p>
                             )}
@@ -323,7 +323,7 @@ export default function RoomDetail() {
                         </div>
                         <div className="text-right flex-shrink-0">
                           <span className="text-lg font-bold text-indigo-600">{exam.total_score}</span>
-                          <span className="text-xs text-slate-400 ml-1">คะแนน</span>
+                          <span className="text-xs text-slate-400 dark:text-slate-500 ml-1">คะแนน</span>
                         </div>
                       </div>
                     </div>
@@ -337,36 +337,36 @@ export default function RoomDetail() {
           {activeTab === "members" && (
             <motion.div key="members" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }} className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-slate-800">สมาชิกในห้อง</h2>
-                <span className="text-sm text-slate-500">{members.filter(m => (m as any).role === 'student').length} นักศึกษา</span>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200">สมาชิกในห้อง</h2>
+                <span className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">{members.filter(m => (m as any).role === 'student').length} นักศึกษา</span>
               </div>
 
               {members.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center shadow-sm">
-                  <div className="mx-auto w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                    <Users className="h-8 w-8 text-slate-400" />
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-16 text-center shadow-sm">
+                  <div className="mx-auto w-16 h-16 bg-slate-50 dark:bg-slate-900 rounded-full flex items-center justify-center mb-4">
+                    <Users className="h-8 w-8 text-slate-400 dark:text-slate-500" />
                   </div>
-                  <h3 className="text-lg font-semibold text-slate-700 mb-1">ยังไม่มีนักศึกษา</h3>
-                  <p className="text-slate-500 text-sm">แชร์รหัส <span className="font-mono font-bold text-indigo-600">{room?.class_code}</span> ให้นักศึกษาเพื่อเข้าร่วม</p>
+                  <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-1">ยังไม่มีนักศึกษา</h3>
+                  <p className="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm">แชร์รหัส <span className="font-mono font-bold text-indigo-600">{room?.class_code}</span> ให้นักศึกษาเพื่อเข้าร่วม</p>
                 </div>
               ) : (
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
                   {members.map((m, i) => {
                     const memberRole = (m as any).role;
                     const isTeacherMember = memberRole === 'teacher';
                     return (
-                      <div key={m.id} className={`flex items-center gap-4 px-6 py-4 ${i !== 0 ? "border-t border-slate-50" : ""} ${isTeacherMember ? "bg-indigo-50/50" : ""}`}>
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${isTeacherMember ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-600"}`}>
+                      <div key={m.id} className={`flex items-center gap-4 px-6 py-4 ${i !== 0 ? "border-t border-slate-50" : ""} ${isTeacherMember ? "bg-indigo-50 dark:bg-indigo-900/30/50" : ""}`}>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${isTeacherMember ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-600 dark:text-slate-400 dark:text-slate-500"}`}>
                           {m.name.charAt(0).toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className="font-semibold text-slate-800 truncate">{m.name}</p>
+                            <p className="font-semibold text-slate-800 dark:text-slate-200 truncate">{m.name}</p>
                             {isTeacherMember && (
                               <span className="flex-shrink-0 text-xs font-bold px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full">ผู้สอน</span>
                             )}
                           </div>
-                          <p className="text-sm text-slate-500 truncate">{m.email}{m.student_id ? ` · ${m.student_id}` : ""}</p>
+                          <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 truncate">{m.email}{m.student_id ? ` · ${m.student_id}` : ""}</p>
                         </div>
                         {isTeacherMember
                           ? <span className="text-indigo-400 flex-shrink-0">👑</span>

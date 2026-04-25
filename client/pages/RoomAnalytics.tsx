@@ -86,7 +86,7 @@ export default function RoomAnalytics() {
 
   if (isLoading || isFetching) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
+      <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
         <Loader2 className="animate-spin text-indigo-600 h-12 w-12" />
       </div>
     );
@@ -107,21 +107,21 @@ export default function RoomAnalytics() {
     : [];
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-10">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-10">
       <Navbar />
       <main className="max-w-6xl mx-auto px-4 md:px-8 py-8 space-y-6">
         <button
           onClick={() => navigate(`/room/${roomId}`)}
-          className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800"
+          className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:text-slate-200"
         >
           <ArrowLeft size={16} /> กลับหน้าห้องเรียน
         </button>
 
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-6 shadow-sm">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <BarChart3 className="text-indigo-600" size={18} />
-              <h1 className="text-xl md:text-2xl font-bold text-slate-900">
+              <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">
                 วิเคราะห์ข้อสอบทุกชุดในห้อง
               </h1>
             </div>
@@ -133,32 +133,32 @@ export default function RoomAnalytics() {
               ส่งออกสรุปทุกชุด (CSV)
             </button>
           </div>
-          <p className="text-slate-500 mt-1">เปรียบเทียบผลทุกชุดข้อสอบในห้องเดียวกัน</p>
+          <p className="text-slate-500 dark:text-slate-400 dark:text-slate-500 mt-1">เปรียบเทียบผลทุกชุดข้อสอบในห้องเดียวกัน</p>
         </div>
 
         {analytics && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-white rounded-xl border border-slate-100 p-4">
-                <p className="text-sm text-slate-500">จำนวนนักศึกษา</p>
-                <p className="text-2xl font-bold text-slate-800">{analytics.total_students}</p>
+              <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4">
+                <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">จำนวนนักศึกษา</p>
+                <p className="text-2xl font-bold text-slate-800 dark:text-slate-200">{analytics.total_students}</p>
               </div>
-              <div className="bg-white rounded-xl border border-slate-100 p-4">
-                <p className="text-sm text-slate-500">จำนวนชุดข้อสอบ</p>
+              <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4">
+                <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">จำนวนชุดข้อสอบ</p>
                 <p className="text-2xl font-bold text-indigo-600">{analytics.exam_count}</p>
               </div>
-              <div className="bg-white rounded-xl border border-slate-100 p-4">
-                <p className="text-sm text-slate-500">Mean รวม (Approved)</p>
+              <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4">
+                <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">Mean รวม (Approved)</p>
                 <p className="text-2xl font-bold text-emerald-600">{analytics.overall_mean_score}</p>
               </div>
-              <div className="bg-white rounded-xl border border-slate-100 p-4">
-                <p className="text-sm text-slate-500">Median รวม (Approved)</p>
+              <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4">
+                <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">Median รวม (Approved)</p>
                 <p className="text-2xl font-bold text-violet-600">{analytics.overall_median_score}</p>
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
-              <h2 className="font-semibold text-slate-800 mb-3">เปรียบเทียบคะแนนเฉลี่ยรายชุด (%)</h2>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-5 shadow-sm">
+              <h2 className="font-semibold text-slate-800 dark:text-slate-200 mb-3">เปรียบเทียบคะแนนเฉลี่ยรายชุด (%)</h2>
               <ChartContainer
                 className="h-[300px] w-full"
                 config={{
@@ -185,11 +185,11 @@ export default function RoomAnalytics() {
                   />
                 </BarChart>
               </ChartContainer>
-              <p className="text-xs text-slate-400 mt-2">คลิกแท่งกราฟเพื่อดูคะแนนรายนักเรียนของชุดนั้น</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">คลิกแท่งกราฟเพื่อดูคะแนนรายนักเรียนของชุดนั้น</p>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
-              <h2 className="font-semibold text-slate-800 mb-3">การกระจายคะแนนรวมทั้งห้อง (%)</h2>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-5 shadow-sm">
+              <h2 className="font-semibold text-slate-800 dark:text-slate-200 mb-3">การกระจายคะแนนรวมทั้งห้อง (%)</h2>
               <ChartContainer
                 className="h-[260px] w-full"
                 config={{ students: { label: "จำนวนนักเรียน", color: "#3B82F6" } }}
@@ -204,11 +204,11 @@ export default function RoomAnalytics() {
               </ChartContainer>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-3 border-b border-slate-100 bg-slate-50">
-                <h2 className="font-semibold text-slate-800">ตารางสรุปทุกชุดข้อสอบ</h2>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
+              <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+                <h2 className="font-semibold text-slate-800 dark:text-slate-200">ตารางสรุปทุกชุดข้อสอบ</h2>
               </div>
-              <div className="grid grid-cols-12 gap-3 px-5 py-3 bg-slate-50/70 border-b border-slate-100 text-xs font-semibold text-slate-500">
+              <div className="grid grid-cols-12 gap-3 px-5 py-3 bg-slate-50 dark:bg-slate-900/70 border-b border-slate-100 dark:border-slate-700 text-xs font-semibold text-slate-500 dark:text-slate-400 dark:text-slate-500">
                 <div className="col-span-4">ชื่อข้อสอบ</div>
                 <div className="col-span-1 text-right">เต็ม</div>
                 <div className="col-span-1 text-right">ส่งแล้ว</div>
@@ -222,13 +222,13 @@ export default function RoomAnalytics() {
                 {analytics.exam_summaries.map((e) => (
                   <div key={e.exam_id} className="grid grid-cols-12 gap-3 px-5 py-4 items-center">
                     <div className="col-span-4 min-w-0">
-                      <p className="font-medium text-slate-800">{e.title}</p>
-                      <p className="text-xs text-slate-500">คะแนนเต็ม {e.total_score}</p>
+                      <p className="font-medium text-slate-800 dark:text-slate-200">{e.title}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">คะแนนเต็ม {e.total_score}</p>
                     </div>
-                    <div className="col-span-1 text-right text-sm text-slate-600">{e.total_score}</div>
-                    <div className="col-span-1 text-right text-sm text-slate-600">{e.submitted_count}</div>
-                    <div className="col-span-1 text-right text-sm text-slate-600">{e.missing_count}</div>
-                    <div className="col-span-1 text-right text-sm text-slate-600">{e.submission_rate}%</div>
+                    <div className="col-span-1 text-right text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500">{e.total_score}</div>
+                    <div className="col-span-1 text-right text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500">{e.submitted_count}</div>
+                    <div className="col-span-1 text-right text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500">{e.missing_count}</div>
+                    <div className="col-span-1 text-right text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500">{e.submission_rate}%</div>
                     <div className="col-span-1 text-right text-sm font-semibold text-indigo-600">{e.approved_mean}</div>
                     <div className="col-span-1 text-right text-sm font-semibold text-emerald-600">{e.mean_percent}%</div>
                     <div className="col-span-2 text-right">

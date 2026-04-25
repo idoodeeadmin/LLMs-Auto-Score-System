@@ -109,7 +109,7 @@ export default function ExamView() {
 
   if (isLoading || isFetching || !user) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
+      <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
         <Loader2 className="animate-spin text-indigo-600 h-12 w-12" />
       </div>
     );
@@ -142,7 +142,7 @@ export default function ExamView() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-24">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-24">
       <Navbar />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
@@ -151,7 +151,7 @@ export default function ExamView() {
         <div className="flex items-center justify-between">
           <button
             onClick={() => navigate(`/room/${roomId}`)}
-            className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors text-sm font-medium"
+            className="flex items-center gap-2 text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:text-slate-200 transition-colors text-sm font-medium"
           >
             <ArrowLeft size={18} /> กลับหน้าห้อง
           </button>
@@ -167,7 +167,7 @@ export default function ExamView() {
               <Button
                 variant="outline"
                 onClick={() => setShowDeleteModal(true)}
-                className="gap-2 text-red-600 border-red-200 hover:bg-red-50"
+                className="gap-2 text-red-600 border-red-200 hover:bg-red-50 dark:bg-red-900/30"
               >
                 <Trash2 size={16} /> ลบ
               </Button>
@@ -231,27 +231,27 @@ export default function ExamView() {
           animate={{ opacity: 1, y: 0, transition: { delay: 0.1 } }}
           className="space-y-4"
         >
-          <h2 className="text-xl font-bold text-slate-800">รายการคำถาม</h2>
+          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200">รายการคำถาม</h2>
 
           {exam?.questions.length === 0 && (
-            <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center shadow-sm">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-12 text-center shadow-sm">
               <FileText className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-              <p className="text-slate-500">ยังไม่มีคำถามในข้อสอบนี้</p>
+              <p className="text-slate-500 dark:text-slate-400 dark:text-slate-500">ยังไม่มีคำถามในข้อสอบนี้</p>
             </div>
           )}
 
           {exam?.questions.map((q, index) => (
             <div
               key={q.id}
-              className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden hover:border-indigo-200 transition-colors"
+              className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden hover:border-indigo-200 transition-colors"
             >
               {/* Question Header */}
               <div className="p-5 flex gap-4 items-start">
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 font-bold text-sm flex items-center justify-center flex-shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 font-bold text-sm flex items-center justify-center flex-shrink-0">
                   {index + 1}
                 </div>
                 <div className="flex-1">
-                  <p className="text-slate-800 font-medium leading-relaxed">{q.text}</p>
+                  <p className="text-slate-800 dark:text-slate-200 font-medium leading-relaxed">{q.text}</p>
                   {/* Question images attached by teacher — gallery */}
                   {(q.image_paths && q.image_paths.length > 0) ? (
                     <div className="mt-3 grid grid-cols-2 gap-2">
@@ -260,7 +260,7 @@ export default function ExamView() {
                           key={i}
                           src={src}
                           alt={`รูปโจทย์ข้อ ${index + 1} รูปที่ ${i + 1}`}
-                          className="w-full rounded-xl border border-slate-200 shadow-sm object-contain bg-gray-50 max-h-56"
+                          className="w-full rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm object-contain bg-gray-50 dark:bg-slate-900 max-h-56"
                         />
                       ))}
                     </div>
@@ -269,12 +269,12 @@ export default function ExamView() {
                       <img
                         src={q.image_path}
                         alt={`รูปโจทย์ข้อ ${index + 1}`}
-                        className="max-h-72 w-auto rounded-xl border border-slate-200 shadow-sm object-contain bg-gray-50"
+                        className="max-h-72 w-auto rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm object-contain bg-gray-50 dark:bg-slate-900"
                       />
                     </div>
                   ) : null}
                 </div>
-                <span className="flex-shrink-0 text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">
+                <span className="flex-shrink-0 text-sm font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-full border border-indigo-100">
                   {q.score} คะแนน
                 </span>
               </div>
@@ -284,7 +284,7 @@ export default function ExamView() {
                 <div className="border-t border-slate-50">
                   <button
                     onClick={() => setExpandedId(expandedId === q.id ? null : q.id)}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-slate-400 hover:text-indigo-600 hover:bg-indigo-50/50 transition-colors font-medium"
+                    className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-slate-400 dark:text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:bg-indigo-900/30/50 transition-colors font-medium"
                   >
                     {expandedId === q.id
                       ? <><ChevronUp size={15} /> ซ่อนเฉลย</>
@@ -300,13 +300,13 @@ export default function ExamView() {
                         exit={{ opacity: 0, height: 0 }}
                         className="overflow-hidden"
                       >
-                        <div className="px-5 pb-5 pt-2 space-y-4 bg-slate-50/50">
+                        <div className="px-5 pb-5 pt-2 space-y-4 bg-slate-50 dark:bg-slate-900/50">
                           {q.answer_key && (
                             <div>
-                              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1">
+                              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1">
                                 <CheckCircle2 size={13} className="text-emerald-500" /> แนวคำตอบ
                               </p>
-                              <p className="text-slate-700 bg-white p-4 rounded-xl border border-slate-200 text-sm leading-relaxed">
+                              <p className="text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 text-sm leading-relaxed">
                                 {q.answer_key}
                               </p>
                             </div>
@@ -314,13 +314,13 @@ export default function ExamView() {
 
                           {q.rubrics && q.rubrics.length > 0 && (
                             <div>
-                              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">เกณฑ์การให้คะแนน</p>
-                              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">เกณฑ์การให้คะแนน</p>
+                              <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                                 {q.rubrics.map((r, i) => (
                                   <div key={i} className={`flex items-center justify-between px-4 py-3 text-sm ${i !== 0 ? "border-t border-slate-50" : ""}`}>
                                     <div>
-                                      <p className="font-semibold text-slate-700">{r.name}</p>
-                                      {r.description && <p className="text-slate-500 text-xs mt-0.5">{r.description}</p>}
+                                      <p className="font-semibold text-slate-700 dark:text-slate-300">{r.name}</p>
+                                      {r.description && <p className="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-xs mt-0.5">{r.description}</p>}
                                     </div>
                                     <span className="font-bold text-indigo-600 ml-4 flex-shrink-0">{r.score} คะแนน</span>
                                   </div>
@@ -346,12 +346,12 @@ export default function ExamView() {
           >
             {!mySubmission || mySubmission.status === "missing" ? (
               /* Not submitted yet */
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 text-center">
-                <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm p-8 text-center">
+                <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Send size={28} className="text-indigo-500" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-700 mb-2">พร้อมทำข้อสอบ?</h3>
-                <p className="text-slate-500 text-sm mb-6 leading-relaxed">
+                <h3 className="text-xl font-bold text-slate-700 dark:text-slate-300 mb-2">พร้อมทำข้อสอบ?</h3>
+                <p className="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm mb-6 leading-relaxed">
                   รองรับการตอบแบบ <strong>พิมพ์ข้อความ</strong> และ <strong>ถ่ายรูปคำตอบ</strong><br />
                   หลังส่งแล้วจะไม่สามารถแก้ไขได้
                 </p>
@@ -365,43 +365,43 @@ export default function ExamView() {
             ) : mySubmission.status === "approved" ? (
               /* Approved */
               <div className="space-y-6">
-                <div className="bg-green-50 rounded-2xl border border-green-200 shadow-sm p-8 text-center">
+                <div className="bg-green-50 dark:bg-green-900/30 rounded-2xl border border-green-200 shadow-sm p-8 text-center">
                   <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-3" />
                   <h3 className="text-xl font-bold text-green-700 mb-1">ผลการประเมิน</h3>
                   <p className="text-green-600 text-sm">อาจารย์ตรวจและอนุมัติผลแล้ว</p>
-                  <div className="mt-4 bg-white rounded-xl p-4 border border-green-100 inline-block">
+                  <div className="mt-4 bg-white dark:bg-slate-800 rounded-xl p-4 border border-green-100 inline-block">
                     <p className="text-3xl font-bold text-green-600">{mySubmission.total_score ?? "-"}</p>
-                    <p className="text-sm text-gray-400">/ {exam?.total_score} คะแนน</p>
+                    <p className="text-sm text-gray-400 dark:text-slate-500">/ {exam?.total_score} คะแนน</p>
                   </div>
                 </div>
 
                 {mySubmission.answers && mySubmission.answers.length > 0 && (
                   <div className="space-y-4 mt-8 text-left">
-                    <h3 className="text-xl font-bold text-slate-800 border-b border-slate-200 pb-3 mb-4">รายละเอียดคะแนนและข้อเสนอแนะ</h3>
+                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 pb-3 mb-4">รายละเอียดคะแนนและข้อเสนอแนะ</h3>
                     {mySubmission.answers.map((ans, idx) => (
-                      <div key={idx} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-5">
+                      <div key={idx} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden p-5">
                         <div className="flex flex-col gap-4">
                           {/* Top part: Question & Score */}
-                          <div className="flex justify-between items-start gap-4 border-b border-slate-100 pb-4">
+                          <div className="flex justify-between items-start gap-4 border-b border-slate-100 dark:border-slate-700 pb-4">
                             <div>
                               <span className="inline-block px-2.5 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-lg mb-2">
                                 ข้อ {ans.order_index + 1}
                               </span>
-                              <p className="text-slate-800 font-medium leading-relaxed">{ans.question_text}</p>
+                              <p className="text-slate-800 dark:text-slate-200 font-medium leading-relaxed">{ans.question_text}</p>
                             </div>
-                            <div className="text-right flex-shrink-0 bg-slate-50 px-3 py-2 rounded-xl border border-slate-100">
-                              <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">ได้คะแนน</p>
+                            <div className="text-right flex-shrink-0 bg-slate-50 dark:bg-slate-900 px-3 py-2 rounded-xl border border-slate-100 dark:border-slate-700">
+                              <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold tracking-wider mb-0.5">ได้คะแนน</p>
                               <div className="text-xl font-bold text-indigo-600">
-                                {ans.teacher_score ?? ans.ai_score ?? 0} <span className="text-sm text-slate-400 font-normal">/ {ans.max_score}</span>
+                                {ans.teacher_score ?? ans.ai_score ?? 0} <span className="text-sm text-slate-400 dark:text-slate-500 font-normal">/ {ans.max_score}</span>
                               </div>
                             </div>
                           </div>
                           
                           {/* Student Answer */}
                           <div>
-                            <p className="text-xs text-slate-500 font-bold mb-2">คำตอบของคุณ:</p>
-                            <div className="bg-slate-50 p-4 mb-3 rounded-xl border border-slate-200/60 text-slate-700 text-sm whitespace-pre-wrap leading-relaxed shadow-inner">
-                              {ans.answer_text || <span className="italic text-slate-400">ไม่ได้ตอบข้อนี้</span>}
+                            <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500 font-bold mb-2">คำตอบของคุณ:</p>
+                            <div className="bg-slate-50 dark:bg-slate-900 p-4 mb-3 rounded-xl border border-slate-200 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 text-sm whitespace-pre-wrap leading-relaxed shadow-inner">
+                              {ans.answer_text || <span className="italic text-slate-400 dark:text-slate-500">ไม่ได้ตอบข้อนี้</span>}
                             </div>
                             {/* Student Answer Images — multi support */}
                             {(ans.image_paths && ans.image_paths.length > 0) ? (
@@ -411,26 +411,26 @@ export default function ExamView() {
                                     key={i} 
                                     src={src} 
                                     alt={`ภาพแนบคำตอบ ${i+1}`} 
-                                    className="w-full aspect-video object-contain rounded-xl border border-slate-200 shadow-sm bg-slate-50" 
+                                    className="w-full aspect-video object-contain rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm bg-slate-50 dark:bg-slate-900" 
                                   />
                                 ))}
                               </div>
                             ) : ans.image_path ? (
-                              <img src={ans.image_path} alt="ภาพแนบคำตอบ" className="max-w-xs mt-3 rounded-xl border border-slate-200 shadow-sm bg-slate-50" />
+                              <img src={ans.image_path} alt="ภาพแนบคำตอบ" className="max-w-xs mt-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm bg-slate-50 dark:bg-slate-900" />
                             ) : null}
                           </div>
 
                           {/* Feedbacks Grid */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                             {/* AI Feedback */}
-                            <div className="bg-blue-50/70 rounded-xl p-4 border border-blue-100 relative shadow-sm">
+                            <div className="bg-blue-50 dark:bg-blue-900/30/70 rounded-xl p-4 border border-blue-100 relative shadow-sm">
                               <p className="text-xs font-bold text-blue-600 mb-2 flex items-center gap-2">
                                 ✨ AI Feedback 
                                 <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full border border-blue-200/50">
                                   {ans.ai_score} pts
                                 </span>
                               </p>
-                              <p className="text-sm text-slate-700 leading-relaxed">
+                              <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
                                 {ans.ai_feedback || "ไม่มี Feedback จาก AI"}
                               </p>
                             </div>
@@ -440,7 +440,7 @@ export default function ExamView() {
                                 <p className="text-xs font-bold text-emerald-600 mb-2 flex items-center gap-2">
                                   👩‍🏫 ข้อเสนอแนะจากอาจารย์
                                 </p>
-                                <p className="text-sm text-slate-700 leading-relaxed">
+                                <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
                                   {ans.teacher_comment}
                                 </p>
                               </div>
@@ -454,7 +454,7 @@ export default function ExamView() {
               </div>
             ) : (
               /* Submitted / AI graded / Waiting teacher approval — ซ่อนคะแนนทั้งหมด */
-              <div className="bg-blue-50 rounded-2xl border border-blue-200 shadow-sm p-8 text-center">
+              <div className="bg-blue-50 dark:bg-blue-900/30 rounded-2xl border border-blue-200 shadow-sm p-8 text-center">
                 <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   {mySubmission.status === "submitted" ? (
                     <Loader2 size={28} className="text-blue-500 animate-spin" />
@@ -472,7 +472,7 @@ export default function ExamView() {
                     ? "โปรดรอสักครู่ ระบบกำลังประเมินคำตอบ"
                     : "ส่งคำตอบเรียบร้อยแล้ว\nผลคะแนนจะแสดงเมื่ออาจารย์อนุมัติ"}
                 </p>
-                <div className="mt-5 inline-flex items-center gap-2 text-xs text-blue-400 bg-white px-4 py-2 rounded-full border border-blue-100">
+                <div className="mt-5 inline-flex items-center gap-2 text-xs text-blue-400 bg-white dark:bg-slate-800 px-4 py-2 rounded-full border border-blue-100">
                   <CheckCircle2 size={13} className="text-blue-400" />
                   ส่งสำเร็จแล้ว — กรุณารอผลการตรวจ
                 </div>
@@ -484,13 +484,13 @@ export default function ExamView() {
         {/* Delete Confirmation Modal */}
         {showDeleteModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="bg-white rounded-2xl p-6 max-w-sm w-full mx-4 shadow-xl">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-sm w-full mx-4 shadow-xl">
               <div className="text-center">
                 <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Trash2 className="text-red-600" size={24} />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">ยืนยันการลบข้อสอบ</h3>
-                <p className="text-gray-500 mb-6">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">ยืนยันการลบข้อสอบ</h3>
+                <p className="text-gray-500 dark:text-slate-400 mb-6">
                   คุณต้องการลบข้อสอบ "<strong>{exam?.title}</strong>" ใช่หรือไม่?<br />
                   <span className="text-red-500 text-sm">การกระทำนี้ไม่สามารถย้อนกลับได้</span>
                 </p>

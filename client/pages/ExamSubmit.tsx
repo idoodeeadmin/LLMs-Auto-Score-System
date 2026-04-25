@@ -251,7 +251,7 @@ export default function ExamSubmit() {
 
   if (isLoading || isFetching) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
+      <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
         <Loader2 className="animate-spin text-indigo-600 h-12 w-12" />
       </div>
     );
@@ -274,14 +274,14 @@ export default function ExamSubmit() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full border border-gray-100"
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-8 max-w-md w-full border border-gray-100 dark:border-slate-800"
             >
               <div className="text-center mb-6">
                 <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Send size={28} className="text-indigo-600" />
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">ยืนยันการส่ง?</h3>
-                <p className="text-gray-500 leading-relaxed">
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">ยืนยันการส่ง?</h3>
+                <p className="text-gray-500 dark:text-slate-400 leading-relaxed">
                   คุณตอบแล้ว{" "}
                   <span className="font-bold text-indigo-600">{answeredCount}/{totalQuestions}</span>{" "}
                   ข้อ
@@ -323,7 +323,7 @@ export default function ExamSubmit() {
         <div>
           <button
             onClick={() => navigate(`/room/${roomId}/exam/${examId}`)}
-            className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors text-sm font-medium mb-4"
+            className="flex items-center gap-2 text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:text-slate-200 transition-colors text-sm font-medium mb-4"
           >
             <ArrowLeft size={16} /> กลับ
           </button>
@@ -342,7 +342,7 @@ export default function ExamSubmit() {
               <div className="mt-4 flex items-center gap-4">
                 <div className="flex-1 bg-white/20 rounded-full h-2 overflow-hidden">
                   <motion.div
-                    className="h-full bg-white rounded-full"
+                    className="h-full bg-white dark:bg-slate-800 rounded-full"
                     initial={{ width: 0 }}
                     animate={{ width: `${progress}%` }}
                     transition={{ duration: 0.4 }}
@@ -361,8 +361,8 @@ export default function ExamSubmit() {
                 animate={{ opacity: 1, scale: 1 }}
                 className={`flex flex-col items-center justify-center rounded-2xl p-6 shadow-lg min-w-[200px] border-2 transition-colors duration-300 ${
                   timeLeft.startsWith("00:0") || timeLeft.startsWith("00:1") 
-                    ? "bg-red-50 border-red-200 text-red-600" 
-                    : "bg-white border-indigo-100 text-indigo-700"
+                    ? "bg-red-50 dark:bg-red-900/30 border-red-200 text-red-600" 
+                    : "bg-white dark:bg-slate-800 border-indigo-100 text-indigo-700"
                 }`}
               >
                 <div className="flex items-center gap-2 mb-2 font-bold uppercase tracking-wider text-xs opacity-80">
@@ -388,37 +388,37 @@ export default function ExamSubmit() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.06 }}
-              className={`bg-white rounded-2xl shadow-sm border-2 overflow-hidden transition-all duration-300 ${
-                hasAnswer ? "border-indigo-200" : "border-gray-100"
+              className={`bg-white dark:bg-slate-800 rounded-2xl shadow-sm border-2 overflow-hidden transition-all duration-300 ${
+                hasAnswer ? "border-indigo-200" : "border-gray-100 dark:border-slate-800"
               }`}
             >
               {/* Question Header */}
               <div className="px-6 pt-6 pb-4">
                 <div className="flex items-start gap-4 mb-4">
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 transition-colors ${
-                    hasAnswer ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-500"
+                    hasAnswer ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-500 dark:text-slate-400"
                   }`}>
                     {hasAnswer ? <CheckCircle2 size={18} /> : index + 1}
                   </div>
                   <div className="flex-1">
-                    <p className="text-slate-800 font-medium leading-relaxed">{q.text}</p>
+                    <p className="text-slate-800 dark:text-slate-200 font-medium leading-relaxed">{q.text}</p>
                     {/* รูปภาพโจทย์จากอาจารย์ — gallery */}
                     {(q.image_paths && q.image_paths.length > 0) ? (
                       <div className="mt-3 grid grid-cols-2 gap-2">
                         {q.image_paths.map((src, i) => (
-                          <div key={i} className="rounded-xl overflow-hidden border border-indigo-100 bg-gray-50">
+                          <div key={i} className="rounded-xl overflow-hidden border border-indigo-100 bg-gray-50 dark:bg-slate-900">
                             <img src={src} alt={`รูปโจทย์ ${i+1}`} className="w-full max-h-48 object-contain" />
                           </div>
                         ))}
-                        <div className="col-span-2 bg-indigo-50 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                        <div className="col-span-2 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
                           <ImageIcon size={11} className="text-indigo-400" />
                           <span className="text-xs text-indigo-500 font-medium">รูปโจทย์จากอาจารย์ ({q.image_paths.length} รูป)</span>
                         </div>
                       </div>
                     ) : q.image_path ? (
                       <div className="mt-3 rounded-xl overflow-hidden border border-indigo-100">
-                        <img src={q.image_path} alt="รูปโจทย์" className="w-full max-h-72 object-contain bg-gray-50" />
-                        <div className="bg-indigo-50 px-3 py-1.5 flex items-center gap-1.5">
+                        <img src={q.image_path} alt="รูปโจทย์" className="w-full max-h-72 object-contain bg-gray-50 dark:bg-slate-900" />
+                        <div className="bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1.5 flex items-center gap-1.5">
                           <ImageIcon size={11} className="text-indigo-400" />
                           <span className="text-xs text-indigo-500 font-medium">รูปโจทย์จากอาจารย์</span>
                         </div>
@@ -431,16 +431,16 @@ export default function ExamSubmit() {
                         </summary>
                         <ul className="mt-2 space-y-1 pl-4">
                           {q.rubrics.map((r, i) => (
-                            <li key={i} className="text-xs text-gray-500 flex justify-between">
+                            <li key={i} className="text-xs text-gray-500 dark:text-slate-400 flex justify-between">
                               <span>{r.name || r.label}</span>
-                              <span className="font-mono text-gray-400">{r.score} คะแนน</span>
+                              <span className="font-mono text-gray-400 dark:text-slate-500">{r.score} คะแนน</span>
                             </li>
                           ))}
                         </ul>
                       </details>
                     )}
                   </div>
-                  <span className="flex-shrink-0 text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">
+                  <span className="flex-shrink-0 text-sm font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-full border border-indigo-100">
                     {q.score} คะแนน
                   </span>
                 </div>
@@ -449,7 +449,7 @@ export default function ExamSubmit() {
                 <Textarea
                   id={`answer-${q.id}`}
                   placeholder="พิมพ์คำตอบของคุณที่นี่..."
-                  className="min-h-[120px] resize-none border-gray-200 focus:border-indigo-400 focus:ring-indigo-400 bg-gray-50/50 text-slate-800 placeholder:text-gray-300 rounded-xl text-base leading-relaxed"
+                  className="min-h-[120px] resize-none border-gray-200 dark:border-slate-700 focus:border-indigo-400 focus:ring-indigo-400 bg-gray-50 dark:bg-slate-900/50 text-slate-800 dark:text-slate-200 placeholder:text-gray-300 rounded-xl text-base leading-relaxed"
                   value={ans.text}
                   onChange={(e) => handleTextChange(q.id, e.target.value)}
                 />
@@ -462,7 +462,7 @@ export default function ExamSubmit() {
                   <div className="grid grid-cols-2 gap-2 mb-2">
                     {ans.imagePreviews.map((src, imgIdx) => (
                       <div key={imgIdx} className="relative group rounded-xl overflow-hidden border border-indigo-100">
-                        <img src={src} alt={`คำตอบ ${imgIdx+1}`} className="w-full max-h-40 object-contain bg-gray-50" />
+                        <img src={src} alt={`คำตอบ ${imgIdx+1}`} className="w-full max-h-40 object-contain bg-gray-50 dark:bg-slate-900" />
                         <button
                           onClick={() => handleRemoveImage(q.id, imgIdx)}
                           className="absolute top-1 right-1 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow opacity-0 group-hover:opacity-100 transition-opacity"
@@ -499,13 +499,13 @@ export default function ExamSubmit() {
                   />
                   <button
                     onClick={() => document.getElementById(`camera-${q.id}`)?.click()}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-dashed border-gray-300 hover:border-indigo-400 hover:bg-indigo-50 rounded-xl text-sm text-gray-400 hover:text-indigo-600 transition-all"
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-dashed border-gray-300 hover:border-indigo-400 hover:bg-indigo-50 dark:bg-indigo-900/30 rounded-xl text-sm text-gray-400 dark:text-slate-500 hover:text-indigo-600 transition-all"
                   >
                     <Camera size={16} /> ถ่ายรูป
                   </button>
                   <button
                     onClick={() => fileInputRefs.current[q.id]?.click()}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-dashed border-gray-300 hover:border-indigo-400 hover:bg-indigo-50 rounded-xl text-sm text-gray-400 hover:text-indigo-600 transition-all"
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-dashed border-gray-300 hover:border-indigo-400 hover:bg-indigo-50 dark:bg-indigo-900/30 rounded-xl text-sm text-gray-400 dark:text-slate-500 hover:text-indigo-600 transition-all"
                   >
                     <ImageIcon size={16} /> เลือกรูป{ans.images.length > 0 ? ` (+${ans.images.length})` : ""}
                   </button>
@@ -517,7 +517,7 @@ export default function ExamSubmit() {
 
         {/* Warning if not all answered */}
         {answeredCount < totalQuestions && (
-          <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-amber-700 text-sm">
+          <div className="flex items-center gap-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 rounded-xl px-4 py-3 text-amber-700 text-sm">
             <AlertCircle size={16} className="flex-shrink-0" />
             <span>ยังเหลือ {totalQuestions - answeredCount} ข้อที่ยังไม่ได้ตอบ — สามารถส่งได้ แต่จะได้คะแนน 0 สำหรับข้อที่ว่าง</span>
           </div>
@@ -525,10 +525,10 @@ export default function ExamSubmit() {
       </main>
 
       {/* Floating Submit Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-gray-200 px-4 py-4 z-40">
+      <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-gray-200 dark:border-slate-700 px-4 py-4 z-40">
         <div className="max-w-3xl mx-auto flex items-center gap-4">
           <div className="flex-1">
-            <div className="flex justify-between text-xs text-gray-500 mb-1">
+            <div className="flex justify-between text-xs text-gray-500 dark:text-slate-400 mb-1">
               <span>ความคืบหน้า</span>
               <span className="font-bold text-indigo-600">{answeredCount}/{totalQuestions} ข้อ</span>
             </div>

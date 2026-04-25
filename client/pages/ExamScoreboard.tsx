@@ -107,27 +107,27 @@ export default function ExamScoreboard() {
 
   if (isLoading || isFetching) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
+      <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
         <Loader2 className="animate-spin text-indigo-600 h-12 w-12" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-10">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-10">
       <Navbar />
       <main className="max-w-5xl mx-auto px-4 md:px-8 py-8 space-y-6">
         <button
           onClick={() => navigate(`/room/${roomId}/analytics`)}
-          className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800"
+          className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:text-slate-200"
         >
           <ArrowLeft size={16} /> กลับหน้า analytics ห้อง
         </button>
 
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold text-slate-900">{exam?.title}</h1>
-            <p className="text-slate-500 mt-1">คะแนนเต็ม {exam?.total_score ?? "-"} · ตารางคะแนนรายนักเรียน</p>
+            <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">{exam?.title}</h1>
+            <p className="text-slate-500 dark:text-slate-400 dark:text-slate-500 mt-1">คะแนนเต็ม {exam?.total_score ?? "-"} · ตารางคะแนนรายนักเรียน</p>
           </div>
           <button
             onClick={handleExportCSV}
@@ -138,10 +138,10 @@ export default function ExamScoreboard() {
           </button>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-slate-100">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-slate-100 dark:border-slate-700">
             <div className="relative max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 w-4 h-4" />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -151,7 +151,7 @@ export default function ExamScoreboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-12 gap-3 px-4 py-3 text-xs md:text-sm font-semibold text-slate-500 bg-slate-50 border-b border-slate-100">
+          <div className="grid grid-cols-12 gap-3 px-4 py-3 text-xs md:text-sm font-semibold text-slate-500 dark:text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700">
             <div className="col-span-5">นักเรียน</div>
             <div className="col-span-2">สถานะ</div>
             <div className="col-span-3 text-right">คะแนน</div>
@@ -160,15 +160,15 @@ export default function ExamScoreboard() {
 
           <div className="divide-y divide-slate-100">
             {filteredAndSorted.length === 0 ? (
-              <div className="px-4 py-10 text-center text-slate-400">ไม่พบข้อมูลนักเรียน</div>
+              <div className="px-4 py-10 text-center text-slate-400 dark:text-slate-500">ไม่พบข้อมูลนักเรียน</div>
             ) : (
               filteredAndSorted.map((s) => (
                 <div key={s.student_id} className="grid grid-cols-12 gap-3 px-4 py-3 items-center">
                   <div className="col-span-5 min-w-0">
-                    <p className="font-medium text-slate-800 truncate">{s.name}</p>
-                    <p className="text-xs text-slate-500 truncate">{s.student_code || s.email}</p>
+                    <p className="font-medium text-slate-800 dark:text-slate-200 truncate">{s.name}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500 truncate">{s.student_code || s.email}</p>
                   </div>
-                  <div className="col-span-2 text-sm text-slate-600">{s.status}</div>
+                  <div className="col-span-2 text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500">{s.status}</div>
                   <div className="col-span-3 text-right font-semibold text-indigo-700">
                     {s.total_score ?? "-"} / {exam?.total_score ?? "-"}
                   </div>

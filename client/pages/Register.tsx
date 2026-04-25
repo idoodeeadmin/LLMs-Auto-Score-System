@@ -8,10 +8,8 @@ import { Input } from "@/components/ui/input";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
 export default function Register() {
-  const [isStudent, setIsStudent] = useState(true);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [studentId, setStudentId] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [avatarPreview, setAvatarPreview] = useState("");
@@ -51,8 +49,7 @@ export default function Register() {
           email,
           password,
           name,
-          role: isStudent ? "student" : "teacher",
-          student_id: isStudent ? studentId : null,
+          role: "unassigned",
         }),
       });
 
@@ -89,7 +86,7 @@ export default function Register() {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900">
       {/* Left Side - Hero / Branding (Hidden on mobile) */}
       <div className="relative hidden w-1/2 flex-col items-center justify-center overflow-hidden bg-slate-900 lg:flex">
         {/* Subtle animated background gradient */}
@@ -130,7 +127,7 @@ export default function Register() {
           <motion.div variants={fadeIn}>
             <Link
               to="/"
-              className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors mb-2"
+              className="inline-flex items-center text-sm font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-indigo-600 transition-colors mb-2"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               ย้อนกลับหน้าล็อคอิน
@@ -138,55 +135,24 @@ export default function Register() {
           </motion.div>
 
           <motion.div variants={fadeIn} className="text-center lg:text-left">
-            <h2 className="text-3xl font-bold tracking-tight text-slate-900">
+            <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
               สร้างบัญชีผู้ใช้ใหม่
             </h2>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
               เข้าร่วมเป็นส่วนหนึ่งของเรา เพื่อการจัดการการเรียนการสอนที่ดีขึ้น
             </p>
           </motion.div>
 
-          {/* Role Toggle Buttons */}
-          <motion.div variants={fadeIn} className="flex gap-4 mb-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setIsStudent(true)}
-              className={`flex-1 flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border-2 transition-all duration-200 ease-in-out ${
-                isStudent
-                  ? "border-indigo-600 bg-indigo-50 text-indigo-700 shadow-sm"
-                  : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50"
-              }`}
-            >
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M19.0001 5L12.0001 2L5.00006 5L8.50006 6.5V8.5M19.0001 5L15.5001 6.5V8.5M19.0001 5V9M8.50006 8.5C8.50006 8.5 9.66706 8 12.0001 8C14.3331 8 15.5001 8.5 15.5001 8.5M8.50006 8.5V9.5C8.50006 9.95963 8.59059 10.4148 8.76648 10.8394C8.94237 11.264 9.20018 11.6499 9.52519 11.9749C9.85019 12.2999 10.236 12.5577 10.6607 12.7336C11.0853 12.9095 11.5404 13 12.0001 13C12.4597 13 12.9148 12.9095 13.3395 12.7336C13.7641 12.5577 14.1499 12.2999 14.4749 11.9749C14.7999 11.6499 15.0577 11.264 15.2336 10.8394C15.4095 10.4148 15.5001 9.95963 15.5001 9.5V8.5M7.78306 16.703C6.68306 17.388 3.79706 18.785 5.55406 20.534C6.41306 21.39 7.37006 22 8.57106 22H15.4291C16.6311 22 17.5871 21.389 18.4461 20.534C20.2031 18.785 17.3181 17.388 16.2171 16.704C14.9511 15.9174 13.4905 15.5005 12.0001 15.5005C10.5097 15.5005 9.04897 15.9174 7.78306 16.704" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <span className="font-semibold">นักเรียน / นักศึกษา</span>
-            </button>
 
-            <button
-              type="button"
-              onClick={() => setIsStudent(false)}
-              className={`flex-1 flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border-2 transition-all duration-200 ease-in-out ${
-                !isStudent
-                  ? "border-indigo-600 bg-indigo-50 text-indigo-700 shadow-sm"
-                  : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50"
-              }`}
-            >
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M20 17C20.5304 17 21.0391 16.7893 21.4142 16.4142C21.7893 16.0391 22 15.5304 22 15V4C22 3.46957 21.7893 2.96086 21.4142 2.58579C21.0391 2.21071 20.5304 2 20 2H9.46C9.81 2.61 10 3.3 10 4H20V15H11V17M15 7V9H9V22H7V16H5V22H3V14H1.5V9C1.5 8.46957 1.71071 7.96086 2.08579 7.58579C2.46086 7.21071 2.96957 7 3.5 7H15ZM8 4C8 4.53043 7.78929 5.03914 7.41421 5.41421C7.03914 5.78929 6.53043 6 6 6C5.46957 6 4.96086 5.78929 4.58579 5.41421C4.21071 5.03914 4 4.53043 4 4C4 3.46957 4.21071 2.96086 4.58579 2.58579C4.96086 2.21071 5.46957 2 6 2C6.53043 2 7.03914 2.21071 7.41421 2.58579C7.78929 2.96086 8 3.46957 8 4Z" fill="currentColor" />
-              </svg>
-              <span className="font-semibold">อาจารย์ / ผู้สอน</span>
-            </button>
-          </motion.div>
 
           {/* Google Sign-In Button */}
           <motion.div variants={fadeIn} className="pt-2">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200" />
+                <div className="w-full border-t border-slate-200 dark:border-slate-700" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="bg-slate-50 px-4 text-slate-500">หรือ</span>
+                <span className="bg-slate-50 dark:bg-slate-900 px-4 text-slate-500 dark:text-slate-400 dark:text-slate-500">หรือ</span>
               </div>
             </div>
           </motion.div>
@@ -194,16 +160,16 @@ export default function Register() {
           <motion.div variants={fadeIn}>
             <GoogleSignInButton 
               text="ลงทะเบียนด้วย Google"
-              className="border-2 border-slate-200 hover:border-slate-300"
+              className="border-2 border-slate-200 dark:border-slate-700 hover:border-slate-300"
             />
           </motion.div>
 
           <div className="relative flex items-center justify-center">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200" />
+              <div className="w-full border-t border-slate-200 dark:border-slate-700" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="bg-slate-50 px-4 text-slate-500">หรือลงทะเบียนด้วยอีเมล</span>
+              <span className="bg-slate-50 dark:bg-slate-900 px-4 text-slate-500 dark:text-slate-400 dark:text-slate-500">หรือลงทะเบียนด้วยอีเมล</span>
             </div>
           </div>
 
@@ -212,7 +178,7 @@ export default function Register() {
             <motion.div variants={fadeIn} className="flex justify-center">
               <div className="relative group">
                 <label htmlFor="avatar-upload" className="cursor-pointer block relative">
-                  <div className="w-20 h-20 rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center bg-slate-50 group-hover:bg-indigo-50 group-hover:border-indigo-300 transition-all overflow-hidden ring-4 ring-white shadow-sm">
+                  <div className="w-20 h-20 rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center bg-slate-50 dark:bg-slate-900 group-hover:bg-indigo-50 dark:bg-indigo-900/30 group-hover:border-indigo-300 transition-all overflow-hidden ring-4 ring-white shadow-sm">
                     {avatarPreview ? (
                       <img
                         src={avatarPreview}
@@ -220,7 +186,7 @@ export default function Register() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <User size={32} className="text-slate-400 group-hover:text-indigo-400 transition-colors" />
+                      <User size={32} className="text-slate-400 dark:text-slate-500 group-hover:text-indigo-400 transition-colors" />
                     )}
                   </div>
                   <div className="absolute bottom-0 right-0 w-7 h-7 bg-indigo-600 rounded-full flex items-center justify-center shadow-md ring-2 ring-white transform group-hover:scale-110 transition-transform">
@@ -239,7 +205,7 @@ export default function Register() {
 
             {/* Name Input */}
             <motion.div variants={fadeIn} className="space-y-1.5">
-              <label className="text-sm font-medium leading-none text-slate-700">
+              <label className="text-sm font-medium leading-none text-slate-700 dark:text-slate-300">
                 ชื่อ-นามสกุล (Name)
               </label>
               <div className="relative">
@@ -249,55 +215,35 @@ export default function Register() {
                   onChange={(e) => setName(e.target.value)}
                   placeholder="สิทธิกร ศรีรักษ์"
                   required
-                  className="h-11 text-base transition-shadow focus-visible:ring-indigo-500 bg-white"
+                  className="h-11 text-base transition-shadow focus-visible:ring-indigo-500 bg-white dark:bg-slate-800"
                 />
               </div>
             </motion.div>
 
             {/* Email Input */}
             <motion.div variants={fadeIn} className="space-y-1.5">
-              <label className="text-sm font-medium leading-none text-slate-700">
+              <label className="text-sm font-medium leading-none text-slate-700 dark:text-slate-300">
                 อีเมล หรือ รหัสที่ใช้ล็อคอิน (Email or ID)
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                 <Input
                   type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com หรือ setup001"
                   required
-                  className="pl-9 h-11 text-base transition-shadow focus-visible:ring-indigo-500 bg-white"
+                  className="pl-9 h-11 text-base transition-shadow focus-visible:ring-indigo-500 bg-white dark:bg-slate-800"
                 />
               </div>
             </motion.div>
 
-            {/* Student ID Input */}
-            {isStudent && (
-              <motion.div 
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="space-y-1.5"
-              >
-                <label className="text-sm font-medium leading-none text-slate-700">
-                  รหัสนักศึกษา (Student ID)
-                </label>
-                <Input
-                  type="text"
-                  value={studentId}
-                  onChange={(e) => setStudentId(e.target.value)}
-                  placeholder="เช่น 64012345"
-                  required={isStudent}
-                  className="h-11 text-base transition-shadow focus-visible:ring-indigo-500 bg-white"
-                />
-              </motion.div>
-            )}
+
 
             {/* Password Fields */}
             <motion.div variants={fadeIn} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium leading-none text-slate-700">
+                <label className="text-sm font-medium leading-none text-slate-700 dark:text-slate-300">
                   รหัสผ่าน (Password)
                 </label>
                 <Input
@@ -306,11 +252,11 @@ export default function Register() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="h-11 text-base transition-shadow focus-visible:ring-indigo-500 bg-white"
+                  className="h-11 text-base transition-shadow focus-visible:ring-indigo-500 bg-white dark:bg-slate-800"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium leading-none text-slate-700">
+                <label className="text-sm font-medium leading-none text-slate-700 dark:text-slate-300">
                   ยืนยันรหัสผ่าน (Confirm Password)
                 </label>
                 <Input
@@ -319,7 +265,7 @@ export default function Register() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="h-11 text-base transition-shadow focus-visible:ring-indigo-500 bg-white"
+                  className="h-11 text-base transition-shadow focus-visible:ring-indigo-500 bg-white dark:bg-slate-800"
                 />
               </div>
             </motion.div>

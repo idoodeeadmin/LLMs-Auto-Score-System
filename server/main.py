@@ -6,7 +6,7 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from .database import get_db_connection, init_db
 from .auth import get_password_hash, verify_password, create_access_token, decode_token
-import sqlite3
+import pymysql
 import random
 import string
 import os
@@ -50,7 +50,7 @@ class UserRegister(BaseModel):
     email: str
     password: str
     name: str
-    role: str
+    role: Optional[str] = "unassigned"
     student_id: Optional[str] = None
 
 class UserLogin(BaseModel):
@@ -152,7 +152,7 @@ async def register(user: UserRegister, request: Request):
     try:
         cursor.execute(
             "INSERT INTO users (email, password, name, role, student_id, is_verified) VALUES (?, ?, ?, ?, ?, 0)",
-            (user.email, hashed_password, user.name, user.role, user.student_id)
+            (user.email, hashed_password, user.name, "unassigned", None)
         )
         user_id = cursor.lastrowid
         
@@ -170,7 +170,7 @@ async def register(user: UserRegister, request: Request):
             (user_id, token, expires_at)
         )
         conn.commit()
-    except sqlite3.IntegrityError:
+    except pymysql.err.IntegrityError:
         conn.close()
         raise HTTPException(status_code=400, detail="Email already registered")
         
@@ -311,12 +311,42 @@ async def update_profile(
         try:
             cursor.execute(query, tuple(params))
             conn.commit()
-        except sqlite3.Error as e:
+        except pymysql.err.Error as e:
             conn.close()
             raise HTTPException(status_code=500, detail=str(e))
             
     conn.close()
     return {"message": "Profile updated successfully", "avatarUrl": avatar_filename}
+
+class SetRoleRequest(BaseModel):
+    role: str
+    student_id: Optional[str] = None
+
+@app.post("/api/auth/set-role")
+async def set_role(req: SetRoleRequest, user: dict = Depends(get_current_user)):
+    if user["role"] != "unassigned":
+        raise HTTPException(status_code=400, detail="Role already set")
+    
+    if req.role not in ["teacher", "student"]:
+        raise HTTPException(status_code=400, detail="Invalid role")
+        
+    if req.role == "student" and not req.student_id:
+        raise HTTPException(status_code=400, detail="Student ID is required for students")
+        
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "UPDATE users SET role = ?, student_id = ? WHERE id = ?",
+            (req.role, req.student_id, user["id"])
+        )
+        conn.commit()
+    except pymysql.err.Error as e:
+        conn.close()
+        raise HTTPException(status_code=500, detail=str(e))
+        
+    conn.close()
+    return {"message": "Role updated successfully", "role": req.role, "student_id": req.student_id}
 
 @app.post("/api/auth/forgot-password")
 async def forgot_password(req: ForgotPasswordRequest):
@@ -667,7 +697,7 @@ async def firebase_login(request: FirebaseLoginRequest):
     
     if user:
         # User exists - log them in, update Google avatar if changed
-        user_dict = dict(user)  # convert sqlite3.Row to dict
+        user_dict = dict(user)  # convert to dict
         existing_avatar = user_dict.get("avatar_url")
         if google_picture and google_picture != existing_avatar:
             cursor.execute(
@@ -689,15 +719,15 @@ async def firebase_login(request: FirebaseLoginRequest):
         
         return {"access_token": access_token, "token_type": "bearer", "user": user_info}
     
-    # User doesn't exist - create new account as student (default role)
+    # User doesn't exist - create new account as unassigned
     try:
         cursor.execute(
             "INSERT INTO users (email, password, name, role, student_id, avatar_url, is_verified) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (email, f"firebase_{decoded_token.get('uid', '')}", display_name, "student", None, google_picture, 1)
+            (email, f"firebase_{decoded_token.get('uid', '')}", display_name, "unassigned", None, google_picture, 1)
         )
         conn.commit()
         new_user_id = cursor.lastrowid
-    except sqlite3.IntegrityError:
+    except pymysql.err.IntegrityError:
         conn.close()
         raise HTTPException(status_code=400, detail="Email already registered")
     
@@ -705,7 +735,7 @@ async def firebase_login(request: FirebaseLoginRequest):
         "id": new_user_id,
         "email": email,
         "name": display_name,
-        "role": "student",
+        "role": "unassigned",
         "studentId": None,
         "avatarUrl": google_picture
     }
@@ -938,7 +968,7 @@ async def create_room(room: RoomCreate, user: dict = Depends(get_current_user)):
         )
         conn.commit()
         new_room_id = cursor.lastrowid
-    except sqlite3.IntegrityError:
+    except pymysql.err.IntegrityError:
         conn.close()
         raise HTTPException(status_code=500, detail="Failed to generate unique class code. Try again.")
         
