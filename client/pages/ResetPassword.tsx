@@ -75,7 +75,7 @@ export default function ResetPassword() {
   if (!token) return null; // Wait for effect to redirect
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900">
       {/* Left Side - Hero / Branding (Hidden on mobile) */}
       <div className="relative hidden w-1/2 flex-col items-center justify-center overflow-hidden bg-slate-900 lg:flex">
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/30 via-slate-900 to-slate-900 opacity-80" />
@@ -108,7 +108,7 @@ export default function ResetPassword() {
           <motion.div variants={fadeIn}>
             <Link
               to="/"
-              className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors mb-2"
+              className="inline-flex items-center text-sm font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-indigo-600 transition-colors mb-2"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               กลับหน้าหลัก
@@ -116,10 +116,10 @@ export default function ResetPassword() {
           </motion.div>
 
           <motion.div variants={fadeIn} className="text-center lg:text-left">
-            <h2 className="text-3xl font-bold tracking-tight text-slate-900">
+            <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
               สร้างรหัสผ่านใหม่
             </h2>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
               ตั้งรหัสผ่านใหม่ของคุณเพื่อเข้าใช้งานระบบ
             </p>
           </motion.div>
@@ -130,7 +130,7 @@ export default function ResetPassword() {
             className="space-y-5 mt-8"
           >
             <div className="space-y-1.5">
-              <label className="text-sm font-medium leading-none text-slate-700">
+              <label className="text-sm font-medium leading-none text-slate-700 dark:text-slate-300">
                 รหัสผ่านใหม่ (New Password)
               </label>
               <Input
@@ -139,12 +139,12 @@ export default function ResetPassword() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                className="h-11 text-base transition-shadow focus-visible:ring-indigo-500 bg-white"
+                className="h-11 text-base transition-shadow focus-visible:ring-indigo-500 bg-white dark:bg-slate-800"
               />
             </div>
             
             <div className="space-y-1.5">
-              <label className="text-sm font-medium leading-none text-slate-700">
+              <label className="text-sm font-medium leading-none text-slate-700 dark:text-slate-300">
                 ยืนยันรหัสผ่าน (Confirm Password)
               </label>
               <Input
@@ -153,7 +153,7 @@ export default function ResetPassword() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                className="h-11 text-base transition-shadow focus-visible:ring-indigo-500 bg-white"
+                className="h-11 text-base transition-shadow focus-visible:ring-indigo-500 bg-white dark:bg-slate-800"
               />
             </div>
 

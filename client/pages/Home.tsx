@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { RoleSelection } from "@/components/RoleSelection";
 
 interface ExamRoom {
   id: string | number;
@@ -47,6 +48,7 @@ export default function Home() {
       navigate("/");
     }
   }, [user, isLoading, navigate]);
+
 
   const [examRooms, setExamRooms] = useState<ExamRoom[]>([]);
 
@@ -230,10 +232,14 @@ export default function Home() {
 
   if (isLoading || !user || isFetchingRooms) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
+      <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
         <Loader2 className="animate-spin text-indigo-600 h-12 w-12" />
       </div>
     );
+  }
+
+  if (user?.role === "unassigned") {
+    return <RoleSelection />;
   }
 
   // Animation variants
@@ -248,11 +254,11 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans">
       <Navbar />
 
       {user?.is_verified === 0 && (
-        <div className="bg-amber-50 border-b border-amber-200">
+        <div className="bg-amber-50 dark:bg-amber-900/30 border-b border-amber-200">
           <div className="max-w-7xl mx-auto px-6 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm">
             <div className="flex items-center gap-2 text-amber-800">
               <span className="flex w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
@@ -274,21 +280,21 @@ export default function Home() {
           className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10 mt-4"
         >
           <div>
-            <h2 className="text-4xl font-bold tracking-tight text-slate-900 mb-2">Welcome, {user.name.split(' ')[0]}</h2>
-            <p className="text-slate-500 text-lg">
+            <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white mb-2">Welcome, {user.name.split(' ')[0]}</h2>
+            <p className="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-lg">
               ยินดีต้อนรับสู่แดชบอร์ด ({user.role === 'teacher' ? 'อาจารย์' : 'นักศึกษา'})
             </p>
           </div>
           
           <div className="flex items-center gap-4 w-full md:w-auto flex-col sm:flex-row">
             <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 h-5 w-5" />
               <Input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="ค้นหาชื่อ หรือ รหัสห้องสอบ..."
-                className="pl-10 h-11 bg-white border-slate-200 focus-visible:ring-indigo-500 shadow-sm"
+                className="pl-10 h-11 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus-visible:ring-indigo-500 shadow-sm"
               />
             </div>
             
@@ -318,21 +324,21 @@ export default function Home() {
           className="mb-12"
         >
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-2xl font-bold text-slate-800">ห้องเรียนของฉัน</h3>
+            <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-200">ห้องเรียนของฉัน</h3>
             {examRooms.length > 0 && (
-              <span className="text-sm font-medium text-slate-500">
+              <span className="text-sm font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">
                 พบ {filteredRooms.length} ห้อง
               </span>
             )}
           </div>
 
           {examRooms.length === 0 ? (
-            <motion.div variants={fadeUp} className="bg-white rounded-2xl shadow-sm border border-slate-100 p-16 text-center">
-              <div className="mx-auto w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                <BookOpen className="h-8 w-8 text-slate-400" />
+            <motion.div variants={fadeUp} className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-16 text-center">
+              <div className="mx-auto w-16 h-16 bg-slate-50 dark:bg-slate-900 rounded-full flex items-center justify-center mb-4">
+                <BookOpen className="h-8 w-8 text-slate-400 dark:text-slate-500" />
               </div>
-              <h4 className="text-lg font-semibold text-slate-700 mb-1">ยังไม่มีห้องเรียน</h4>
-              <p className="text-slate-500 mb-6 max-w-sm mx-auto">
+              <h4 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-1">ยังไม่มีห้องเรียน</h4>
+              <p className="text-slate-500 dark:text-slate-400 dark:text-slate-500 mb-6 max-w-sm mx-auto">
                 {user.role === 'teacher' 
                   ? "เริ่มต้นสร้างห้องเรียนแรกของคุณเพื่อเพิ่มข้อสอบและเชิญนักศึกษา" 
                   : "คุณยังไม่ได้เข้าร่วมห้องเรียนใดๆ กดเข้าร่วมด้วยรหัสประจำห้องเลย"}
@@ -348,15 +354,15 @@ export default function Home() {
               )}
             </motion.div>
           ) : filteredRooms.length === 0 ? (
-            <motion.div variants={fadeUp} className="bg-white rounded-2xl shadow-sm border border-slate-100 p-16 text-center">
-              <div className="mx-auto w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                <Search className="h-8 w-8 text-slate-400" />
+            <motion.div variants={fadeUp} className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-16 text-center">
+              <div className="mx-auto w-16 h-16 bg-slate-50 dark:bg-slate-900 rounded-full flex items-center justify-center mb-4">
+                <Search className="h-8 w-8 text-slate-400 dark:text-slate-500" />
               </div>
-              <h4 className="text-lg font-semibold text-slate-700 mb-1">ไม่พบห้องเรียนที่ค้นหา</h4>
-              <p className="text-slate-500 mb-6 max-w-sm mx-auto">
+              <h4 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-1">ไม่พบห้องเรียนที่ค้นหา</h4>
+              <p className="text-slate-500 dark:text-slate-400 dark:text-slate-500 mb-6 max-w-sm mx-auto">
                 ไม่พบข้อมูลที่ตรงกับ "{searchQuery}" ลองค้นหาด้วยคำอื่นหรือตรวจทานตัวสะกดดูอีกครั้ง
               </p>
-              <Button onClick={() => setSearchQuery("")} variant="outline" className="border-slate-200 text-slate-600 hover:bg-slate-50">
+              <Button onClick={() => setSearchQuery("")} variant="outline" className="border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:bg-slate-900">
                 ล้างการค้นหา
               </Button>
             </motion.div>
@@ -366,7 +372,7 @@ export default function Home() {
                 <motion.div
                   variants={fadeUp}
                   key={room.id}
-                  className="bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer group"
+                  className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer group"
                   onClick={() => navigate(`/room/${room.id}`)}
                 >
                   {/* Card Header */}
@@ -382,14 +388,14 @@ export default function Home() {
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">
                         {room.section && (
-                          <span className="inline-block px-2.5 py-0.5 bg-slate-100 text-slate-600 text-xs font-semibold tracking-wide rounded-full mb-2">
+                          <span className="inline-block px-2.5 py-0.5 bg-slate-100 text-slate-600 dark:text-slate-400 dark:text-slate-500 text-xs font-semibold tracking-wide rounded-full mb-2">
                             {room.section}
                           </span>
                         )}
                         {/* Copy Code Button */}
                         <button
                           onClick={(e) => handleCopyCode(e, room.class_code || room.id)}
-                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-indigo-600 transition-colors"
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-indigo-600 transition-colors"
                         >
                           <span className="font-mono font-bold text-sm tracking-widest">{room.class_code || room.id}</span>
                           <Copy size={13} className="opacity-60 flex-shrink-0" />
@@ -407,9 +413,9 @@ export default function Home() {
                               e.stopPropagation();
                               setActiveMenuId(activeMenuId === room.id ? null : room.id);
                             }}
-                            className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+                            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
                           >
-                            <MoreVertical size={18} className="text-slate-400" />
+                            <MoreVertical size={18} className="text-slate-400 dark:text-slate-500" />
                           </button>
 
                           <AnimatePresence>
@@ -419,19 +425,19 @@ export default function Home() {
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.95, y: -4 }}
                                 transition={{ duration: 0.1 }}
-                                className="absolute right-0 top-full mt-1 w-36 bg-white rounded-xl shadow-2xl border border-slate-200 z-[9999] overflow-hidden"
+                                className="absolute right-0 top-full mt-1 w-36 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 z-[9999] overflow-hidden"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <button
                                   onClick={(e) => { e.stopPropagation(); openEditModal(room); }}
-                                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 transition-colors text-slate-700 font-medium"
+                                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 dark:bg-slate-900 transition-colors text-slate-700 dark:text-slate-300 font-medium"
                                 >
                                   แก้ไขข้อมูล
                                 </button>
                                 <div className="h-px bg-slate-100" />
                                 <button
                                   onClick={(e) => { e.stopPropagation(); openDeleteConfirm(room.id); }}
-                                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-red-50 transition-colors text-red-600 font-medium"
+                                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-red-50 dark:bg-red-900/30 transition-colors text-red-600 font-medium"
                                 >
                                   ลบห้องสอบ
                                 </button>
@@ -458,21 +464,21 @@ export default function Home() {
           >
             <motion.div 
               initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-3xl shadow-2xl w-full max-w-md relative overflow-hidden"
+              className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-md relative overflow-hidden"
             >
               <div className="h-2 bg-gradient-to-r from-indigo-500 to-purple-600" />
               <div className="p-8 space-y-6">
                 <button
                   onClick={() => { setShowCreateModal(false); setSubjectName(""); setSectionClass(""); }}
-                  className="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600"
+                  className="absolute top-6 right-6 p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:text-slate-400 dark:text-slate-500"
                 >
                   <X size={20} />
                 </button>
-                <h2 className="text-2xl font-bold text-slate-900">สร้างห้องสอบใหม่</h2>
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">สร้างห้องสอบใหม่</h2>
                 
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700">ชื่อวิชา / ชื่อห้อง</label>
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">ชื่อวิชา / ชื่อห้อง</label>
                     <Input
                       type="text"
                       value={subjectName}
@@ -482,7 +488,7 @@ export default function Home() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700">ระบุกลุ่ม (Section) <span className="text-slate-400 font-normal">(ไม่บังคับ)</span></label>
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">ระบุกลุ่ม (Section) <span className="text-slate-400 dark:text-slate-500 font-normal">(ไม่บังคับ)</span></label>
                     <Input
                       type="text"
                       value={sectionClass}
@@ -514,21 +520,21 @@ export default function Home() {
           >
             <motion.div 
                 initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-                className="bg-white rounded-3xl shadow-2xl w-full max-w-md relative overflow-hidden"
+                className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-md relative overflow-hidden"
               >
               <div className="h-2 bg-gradient-to-r from-indigo-500 to-purple-600" />
               <div className="p-8 space-y-6">
                 <button
                   onClick={() => { setShowEditModal(false); setEditingRoom(null); setSubjectName(""); setSectionClass(""); }}
-                  className="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600"
+                  className="absolute top-6 right-6 p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:text-slate-400 dark:text-slate-500"
                 >
                   <X size={20} />
                 </button>
-                <h2 className="text-2xl font-bold text-slate-900">แก้ไขข้อมูลห้องสอบ</h2>
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">แก้ไขข้อมูลห้องสอบ</h2>
                 
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700">ชื่อวิชา / ชื่อห้อง</label>
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">ชื่อวิชา / ชื่อห้อง</label>
                     <Input
                       type="text"
                       value={subjectName}
@@ -538,7 +544,7 @@ export default function Home() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700">ระบุกลุ่ม (Section) <span className="text-slate-400 font-normal">(ไม่บังคับ)</span></label>
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">ระบุกลุ่ม (Section) <span className="text-slate-400 dark:text-slate-500 font-normal">(ไม่บังคับ)</span></label>
                     <Input
                       type="text"
                       value={sectionClass}
@@ -570,11 +576,11 @@ export default function Home() {
           >
             <motion.div 
                initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-               className="bg-white rounded-2xl shadow-xl border border-slate-100 w-full max-w-sm overflow-hidden"
+               className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 w-full max-w-sm overflow-hidden"
             >
               <div className="p-6">
-                <h3 className="text-lg font-bold text-slate-900 mb-2">ยืนยันการลบห้องสอบ</h3>
-                <p className="text-sm text-slate-500 mb-6">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">ยืนยันการลบห้องสอบ</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 mb-6">
                   คุณแน่ใจหรือว่าต้องการลบห้องเรียนนี้? ข้อมูลเกี่ยวกับแบบทดสอบและคะแนนในห้องนี้จะหายไปทั้งหมด และการกระทำนี้ไม่สามารถยกเลิกได้
                 </p>
 
@@ -582,7 +588,7 @@ export default function Home() {
                   <Button
                     variant="outline"
                     onClick={() => { setShowDeleteConfirm(false); setDeleteTargetId(null); }}
-                    className="flex-1 h-11 border-slate-200 text-slate-600 hover:bg-slate-50"
+                    className="flex-1 h-11 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:bg-slate-900"
                   >
                     ยกเลิก
                   </Button>
@@ -609,13 +615,13 @@ export default function Home() {
           >
             <motion.div 
               initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-3xl shadow-2xl w-full max-w-md relative overflow-hidden"
+              className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-md relative overflow-hidden"
             >
               <div className="h-2 bg-gradient-to-r from-emerald-400 to-teal-500" />
               <div className="p-8 space-y-6">
                 <button
                   onClick={() => { setShowJoinModal(false); setJoinRoomCode(""); }}
-                  className="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600"
+                  className="absolute top-6 right-6 p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:text-slate-400 dark:text-slate-500"
                 >
                   <X size={20} />
                 </button>
@@ -623,13 +629,13 @@ export default function Home() {
                   <div className="w-10 h-10 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center">
                     <BookOpen size={20} />
                   </div>
-                  <h2 className="text-2xl font-bold text-slate-900">เข้าร่วมห้องสอบ</h2>
+                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">เข้าร่วมห้องสอบ</h2>
                 </div>
                 
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700">รหัสห้องเรียน (Class Code)</label>
-                    <p className="text-xs text-slate-500 mb-2">
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">รหัสห้องเรียน (Class Code)</label>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500 mb-2">
                       โปรดกรอกรหัสประจำห้องเรียนที่ไม่ซ้ำกันที่คุณได้รับจากอาจารย์ผู้สอน
                     </p>
                     <Input

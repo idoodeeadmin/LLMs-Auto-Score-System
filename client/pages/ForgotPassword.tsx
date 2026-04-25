@@ -81,7 +81,7 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900">
       {/* Left Side - Hero / Branding (Hidden on mobile) */}
       <div className="relative hidden w-1/2 flex-col items-center justify-center overflow-hidden bg-slate-900 lg:flex">
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/30 via-slate-900 to-slate-900 opacity-80" />
@@ -118,7 +118,7 @@ export default function ForgotPassword() {
           <motion.div variants={fadeIn}>
             <Link
               to="/"
-              className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors mb-2"
+              className="inline-flex items-center text-sm font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-indigo-600 transition-colors mb-2"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               ย้อนกลับหน้าล็อคอิน
@@ -126,10 +126,10 @@ export default function ForgotPassword() {
           </motion.div>
 
           <motion.div variants={fadeIn} className="text-center lg:text-left">
-            <h2 className="text-3xl font-bold tracking-tight text-slate-900">
+            <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
               ลืมรหัสผ่าน?
             </h2>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
               กรอกอีเมลของคุณเพื่อรับลิงก์สำหรับสร้างรหัสผ่านใหม่
             </p>
           </motion.div>
@@ -145,39 +145,39 @@ export default function ForgotPassword() {
                 className="space-y-5 mt-8"
               >
                 <div className="flex bg-slate-100 p-1 rounded-xl mb-6">
-                  <button type="button" onClick={() => setRecoveryMode("email")} className={`flex-1 text-sm py-2 rounded-lg font-medium transition-colors ${recoveryMode === "email" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>กู้ผ่านอีเมล</button>
-                  <button type="button" onClick={() => setRecoveryMode("id")} className={`flex-1 text-sm py-2 rounded-lg font-medium transition-colors ${recoveryMode === "id" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>กู้ด้วยรหัสนิสิต/ชื่อ</button>
+                  <button type="button" onClick={() => setRecoveryMode("email")} className={`flex-1 text-sm py-2 rounded-lg font-medium transition-colors ${recoveryMode === "email" ? "bg-white dark:bg-slate-800 text-indigo-700 shadow-sm" : "text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:text-slate-300"}`}>กู้ผ่านอีเมล</button>
+                  <button type="button" onClick={() => setRecoveryMode("id")} className={`flex-1 text-sm py-2 rounded-lg font-medium transition-colors ${recoveryMode === "id" ? "bg-white dark:bg-slate-800 text-indigo-700 shadow-sm" : "text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:text-slate-300"}`}>กู้ด้วยรหัสนิสิต/ชื่อ</button>
                 </div>
 
                 <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium leading-none text-slate-700">
+                    <label className="text-sm font-medium leading-none text-slate-700 dark:text-slate-300">
                       Email หรือ ID ที่ใช้สมัคร
                     </label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                       <Input
                         type="text"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="email หรือ id ของคุณ"
                         required
-                        className="pl-9 h-11 text-base transition-shadow focus-visible:ring-indigo-500 bg-white"
+                        className="pl-9 h-11 text-base transition-shadow focus-visible:ring-indigo-500 bg-white dark:bg-slate-800"
                       />
                     </div>
                   </div>
 
                   {recoveryMode === "id" && (
-                     <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 space-y-4">
+                     <div className="bg-indigo-50 dark:bg-indigo-900/30 p-4 rounded-xl border border-indigo-100 space-y-4">
                         <p className="text-xs text-indigo-600 font-semibold mb-2">⭐ โหมดกู้คืน (หากใช้อีเมลปลอมตอนสมัคร)</p>
                         <div className="space-y-1.5">
-                          <label className="text-sm font-medium leading-none text-slate-700">ชื่อ-นามสกุล ที่บันทึกไว้</label>
-                          <Input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="เช่น สมชาย ใจดี" className="h-11 bg-white" />
+                          <label className="text-sm font-medium leading-none text-slate-700 dark:text-slate-300">ชื่อ-นามสกุล ที่บันทึกไว้</label>
+                          <Input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="เช่น สมชาย ใจดี" className="h-11 bg-white dark:bg-slate-800" />
                         </div>
-                        <div className="flex items-center justify-center text-xs text-slate-400 font-medium tracking-widest uppercase">--- หรือ ---</div>
+                        <div className="flex items-center justify-center text-xs text-slate-400 dark:text-slate-500 font-medium tracking-widest uppercase">--- หรือ ---</div>
                         <div className="space-y-1.5">
-                          <label className="text-sm font-medium leading-none text-slate-700">รหัสนิสิต ที่บันทึกไว้</label>
-                          <Input type="text" value={studentId} onChange={e => setStudentId(e.target.value)} placeholder="เช่น 64012345" className="h-11 bg-white" />
+                          <label className="text-sm font-medium leading-none text-slate-700 dark:text-slate-300">รหัสนิสิต ที่บันทึกไว้</label>
+                          <Input type="text" value={studentId} onChange={e => setStudentId(e.target.value)} placeholder="เช่น 64012345" className="h-11 bg-white dark:bg-slate-800" />
                         </div>
                      </div>
                   )}
@@ -204,7 +204,7 @@ export default function ForgotPassword() {
                 key="success"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="mt-8 p-6 bg-green-50 border border-green-200 rounded-2xl flex flex-col items-center text-center space-y-4"
+                className="mt-8 p-6 bg-green-50 dark:bg-green-900/30 border border-green-200 rounded-2xl flex flex-col items-center text-center space-y-4"
               >
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-green-600 mb-2">
                   <CheckCircle2 className="w-8 h-8" />
@@ -215,9 +215,9 @@ export default function ForgotPassword() {
                 </p>
                 
                 {devResetLink && (
-                  <div className="mt-4 w-full p-4 bg-white rounded-lg border border-yellow-200 text-left">
+                  <div className="mt-4 w-full p-4 bg-white dark:bg-slate-800 rounded-lg border border-yellow-200 text-left">
                     <p className="text-xs font-semibold text-yellow-600 mb-2 uppercase tracking-wider">🛠️ โหมดนักพัฒนา (Dev Mode)</p>
-                    <p className="text-xs text-slate-500 break-all mb-3">{devResetLink}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500 break-all mb-3">{devResetLink}</p>
                     <Button 
                       onClick={() => window.location.href = devResetLink}
                       variant="outline" 
@@ -231,7 +231,7 @@ export default function ForgotPassword() {
                 <Button
                   onClick={() => navigate("/")}
                   variant="ghost"
-                  className="mt-4 text-slate-500 hover:text-slate-700 w-full"
+                  className="mt-4 text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:text-slate-300 w-full"
                 >
                   กลับสู่หน้าเข้าสู่ระบบ
                 </Button>

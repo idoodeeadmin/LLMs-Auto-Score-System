@@ -94,7 +94,7 @@ export default function Index() {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900">
       {/* Left Side - Hero / Branding (Hidden on mobile) */}
       <div className="relative hidden w-1/2 flex-col items-center justify-center overflow-hidden bg-slate-900 lg:flex">
         {/* Subtle animated background gradient */}
@@ -140,14 +140,14 @@ export default function Index() {
                 className="h-16 w-16"
               />
             </div>
-            <h2 className="mt-4 text-2xl font-bold text-slate-800">Evaly</h2>
+            <h2 className="mt-4 text-2xl font-bold text-slate-800 dark:text-slate-200">Evaly</h2>
           </div>
 
           <motion.div variants={fadeIn} className="text-center lg:text-left">
-            <h2 className="text-3xl font-bold tracking-tight text-slate-900">
+            <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
               Welcome back
             </h2>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
               เข้าสู่ระบบเพื่อจัดการห้องเรียนและข้อสอบของคุณ
             </p>
           </motion.div>
@@ -155,11 +155,11 @@ export default function Index() {
           <form onSubmit={handleLogin} className="mt-8 space-y-6">
             <motion.div variants={fadeIn} className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium leading-none text-slate-700">
+                <label className="text-sm font-medium leading-none text-slate-700 dark:text-slate-300">
                   อีเมล หรือ รหัสนิสิต (Email or ID)
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                  <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                   <Input
                     type="text"
                     value={email}
@@ -173,7 +173,7 @@ export default function Index() {
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium leading-none text-slate-700">
+                  <label className="text-sm font-medium leading-none text-slate-700 dark:text-slate-300">
                     รหัสผ่าน (Password)
                   </label>
                   <Link to="/forgot-password" className="text-sm font-medium text-indigo-600 hover:text-indigo-500">
@@ -192,7 +192,7 @@ export default function Index() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:text-slate-400 dark:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
                     {showPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
                   </button>
@@ -203,7 +203,7 @@ export default function Index() {
                   <motion.div 
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
-                    className="p-3 bg-red-50 border border-red-200 rounded-lg flex flex-col gap-2"
+                    className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 rounded-lg flex flex-col gap-2"
                   >
                     <p className="text-sm text-red-600 font-medium">คุณยังไม่ได้ยืนยันอีเมลใช่หรือไม่?</p>
                     <Button 
@@ -238,10 +238,10 @@ export default function Index() {
               
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-200" />
+                  <div className="w-full border-t border-slate-200 dark:border-slate-700" />
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="bg-slate-50 px-2 text-slate-500">หรือ</span>
+                  <span className="bg-slate-50 dark:bg-slate-900 px-2 text-slate-500 dark:text-slate-400 dark:text-slate-500">หรือ</span>
                 </div>
               </div>
 
@@ -252,10 +252,10 @@ export default function Index() {
 
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-200" />
+                  <div className="w-full border-t border-slate-200 dark:border-slate-700" />
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="bg-slate-50 px-2 text-slate-500">หรือ</span>
+                  <span className="bg-slate-50 dark:bg-slate-900 px-2 text-slate-500 dark:text-slate-400 dark:text-slate-500">หรือ</span>
                 </div>
               </div>
 
@@ -263,7 +263,7 @@ export default function Index() {
                 type="button"
                 variant="outline"
                 onClick={() => navigate('/register')}
-                className="w-full h-12 border-slate-300 text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-all active:scale-[0.98]"
+                className="w-full h-12 border-slate-300 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:text-white transition-all active:scale-[0.98]"
               >
                 สมัครสมาชิกใหม่
               </Button>

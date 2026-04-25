@@ -2,6 +2,7 @@ import { Bell, User, LogOut, Settings, UserCircle, History, Clock, CheckCircle2,
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect, useRef } from "react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -72,7 +73,7 @@ export default function Navbar({ }: NavbarProps) {
   const unreadCount = notifications.filter(n => !readLinks.has(n.link)).length;
 
   return (
-    <header className="bg-white border-b border-gray-100 px-4 md:px-6 py-3 md:py-4 sticky top-0 z-50 shadow-sm backdrop-blur-md bg-white/90">
+    <header className="bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-800 px-4 md:px-6 py-3 md:py-4 sticky top-0 z-50 shadow-sm backdrop-blur-md bg-white/90">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-6">
         {/* Logo */}
         <Link to="/home" className="flex items-center gap-2 md:gap-3 flex-shrink-0 group">
@@ -81,12 +82,14 @@ export default function Navbar({ }: NavbarProps) {
               <path d="M19.0001 5L12.0001 2L5.00006 5L8.50006 6.5V8.5M19.0001 5L15.5001 6.5V8.5M19.0001 5V9M8.50006 8.5C8.50006 8.5 9.66706 8 12.0001 8C14.3331 8 15.5001 8.5 15.5001 8.5M8.50006 8.5V9.5C8.50006 9.95963 8.59059 10.4148 8.76648 10.8394C8.94237 11.264 9.20018 11.6499 9.52519 11.9749C9.85019 12.2999 10.236 12.5577 10.6607 12.7336C11.0853 12.9095 11.5404 13 12.0001 13C12.4597 13 12.9148 12.9095 13.3395 12.7336C13.7641 12.5577 14.1499 12.2999 14.4749 11.9749C14.7999 11.6499 15.0577 11.264 15.2336 10.8394C15.4095 10.4148 15.5001 9.95963 15.5001 9.5V8.5M7.78306 16.703C6.68306 17.388 3.79706 18.785 5.55406 20.534C6.41306 21.39 7.37006 22 8.57106 22H15.4291C16.6311 22 17.5871 21.389 18.4461 20.534C20.2031 18.785 17.3181 17.388 16.2171 16.704C14.9511 15.9174 13.4905 15.5005 12.0001 15.5005C10.5097 15.5005 9.04897 15.9174 7.78306 16.704" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-          <h1 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight">Evaly</h1>
+          <h1 className="text-xl md:text-2xl font-black text-gray-900 dark:text-white tracking-tight">Evaly</h1>
         </Link>
 
         {/* Right side icons */}
         <div className="flex items-center gap-3 md:gap-5 ml-auto">
           
+          <ThemeToggle />
+
           {/* Bell — All users */}
           <DropdownMenu open={bellOpen} onOpenChange={(open) => {
               setBellOpen(open);
@@ -95,8 +98,8 @@ export default function Navbar({ }: NavbarProps) {
               }
             }}>
               <DropdownMenuTrigger asChild>
-                <button className="p-2 hover:bg-gray-100 rounded-full transition-colors relative">
-                  <Bell size={22} className="text-gray-600" />
+                <button className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition-colors relative">
+                  <Bell size={22} className="text-gray-600 dark:text-slate-400 dark:text-slate-500" />
                   {unreadCount > 0 && (
                     <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 bg-red-500 border-2 border-white rounded-full text-white text-[10px] font-bold flex items-center justify-center">
                       {unreadCount > 9 ? "9+" : unreadCount}
@@ -104,13 +107,13 @@ export default function Navbar({ }: NavbarProps) {
                   )}
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80 rounded-xl mt-1 shadow-xl border-gray-100 p-2">
-                <DropdownMenuLabel className="text-sm font-bold text-gray-800 px-2 py-1">
+              <DropdownMenuContent align="end" className="w-80 rounded-xl mt-1 shadow-xl border-gray-100 dark:border-slate-800 p-2">
+                <DropdownMenuLabel className="text-sm font-bold text-gray-800 dark:text-slate-200 px-2 py-1">
                   การแจ้งเตือน
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="my-1" />
                 {notifications.length === 0 ? (
-                  <div className="py-8 text-center text-gray-400 text-sm">
+                  <div className="py-8 text-center text-gray-400 dark:text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm">
                     <Bell size={28} className="mx-auto mb-2 opacity-30" />
                     ไม่มีการแจ้งเตือนในขณะนี้
                   </div>
@@ -121,14 +124,14 @@ export default function Navbar({ }: NavbarProps) {
                       <DropdownMenuItem
                         key={idx}
                         asChild
-                        className="rounded-lg p-0 cursor-pointer focus:bg-blue-50"
+                        className="rounded-lg p-0 cursor-pointer focus:bg-blue-50 dark:bg-blue-900/30"
                       >
                         <Link
                           to={notif.link}
                           className={`flex items-start gap-3 p-3 w-full rounded-lg transition-colors ${
                             isRead
-                              ? "bg-white hover:bg-gray-50"
-                              : "bg-blue-50 hover:bg-blue-100"
+                              ? "bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700/50"
+                              : "bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-800/40"
                           }`}
                           onClick={() => {
                             setReadLinks(prev => new Set([...prev, notif.link]));
@@ -141,7 +144,7 @@ export default function Navbar({ }: NavbarProps) {
                               new_exam:        "bg-blue-100 text-blue-600",
                               deadline_soon:   "bg-red-100 text-red-600",
                               result_published:"bg-purple-100 text-purple-600",
-                            }[notif.type] ?? "bg-gray-100 text-gray-500"}`}>
+                            }[notif.type] ?? "bg-gray-100 text-gray-500 dark:text-slate-400 dark:text-slate-500"}`}>
                             {notif.type === "deadline_passed" && <Clock size={16} />}
                             {notif.type === "ai_graded"       && <CheckCircle2 size={16} />}
                             {notif.type === "new_exam"        && <BookOpen size={16} />}
@@ -149,10 +152,10 @@ export default function Navbar({ }: NavbarProps) {
                             {notif.type === "result_published"&& <Trophy size={16} />}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className={`text-sm leading-tight ${isRead ? "font-normal text-gray-600" : "font-semibold text-gray-800"}`}>
+                            <p className={`text-sm leading-tight ${isRead ? "font-normal text-gray-600 dark:text-slate-400 dark:text-slate-500" : "font-semibold text-gray-800 dark:text-slate-200"}`}>
                               {notif.message}
                             </p>
-                            <p className="text-xs text-gray-400 mt-0.5 truncate">{notif.room_name}</p>
+                            <p className="text-xs text-gray-400 dark:text-slate-500 dark:text-slate-400 dark:text-slate-500 mt-0.5 truncate">{notif.room_name}</p>
                           </div>
                           <ChevronRight size={14} className="text-gray-300 mt-1 flex-shrink-0" />
                         </Link>
@@ -166,7 +169,7 @@ export default function Navbar({ }: NavbarProps) {
           {/* Profile avatar + dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="w-9 h-9 md:w-11 md:h-11 bg-[#eff6ff] border border-blue-100 rounded-full flex items-center justify-center hover:bg-blue-100 transition-colors shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none overflow-hidden">
+              <button className="w-9 h-9 md:w-11 md:h-11 bg-[#eff6ff] border border-blue-100 rounded-full flex items-center justify-center hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none overflow-hidden">
                 {user?.avatarUrl ? (
                   <img 
                     src={user.avatarUrl.startsWith("http") ? user.avatarUrl : `/uploads/avatars/${user.avatarUrl}`} 
@@ -178,35 +181,35 @@ export default function Navbar({ }: NavbarProps) {
                 )}
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 rounded-xl mt-1 shadow-lg border-gray-100 p-2">
+            <DropdownMenuContent align="end" className="w-56 rounded-xl mt-1 shadow-lg border-gray-100 dark:border-slate-800 p-2">
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-bold leading-none">{user?.name}</p>
-                  <p className="text-xs leading-none text-gray-500 uppercase">
+                  <p className="text-xs leading-none text-gray-500 dark:text-slate-400 dark:text-slate-500 uppercase">
                     {user?.role === 'teacher' ? 'อาจารย์' : 'นักศึกษา'}
                   </p>
-                  <p className="text-xs leading-none text-gray-400">{user?.email}</p>
+                  <p className="text-xs leading-none text-gray-400 dark:text-slate-500 dark:text-slate-400 dark:text-slate-500">{user?.email}</p>
                 </div>
               </DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-gray-50 my-2" />
+              <DropdownMenuSeparator className="bg-gray-50 dark:bg-slate-900 my-2" />
               {user?.role === 'student' && (
-                <DropdownMenuItem asChild className="rounded-lg gap-2 cursor-pointer focus:bg-blue-50 focus:text-blue-600">
+                <DropdownMenuItem asChild className="rounded-lg gap-2 cursor-pointer focus:bg-blue-50 dark:bg-blue-900/30 focus:text-blue-600">
                   <Link to="/history" className="flex items-center w-full">
                     <History className="mr-2" size={18} />
                     <span>ประวัติการสอบ</span>
                   </Link>
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem asChild className="rounded-lg gap-2 cursor-pointer focus:bg-blue-50 focus:text-blue-600">
+              <DropdownMenuItem asChild className="rounded-lg gap-2 cursor-pointer focus:bg-blue-50 dark:bg-blue-900/30 focus:text-blue-600">
                 <Link to="/profile" className="flex items-center w-full">
                   <UserCircle className="mr-2" size={18} />
                   <span>ข้อมูลส่วนตัว</span>
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-gray-50 my-2" />
+              <DropdownMenuSeparator className="bg-gray-50 dark:bg-slate-900 my-2" />
               <DropdownMenuItem 
                 onClick={handleLogout}
-                className="rounded-lg gap-2 cursor-pointer text-red-500 focus:bg-red-50 focus:text-red-600 font-medium"
+                className="rounded-lg gap-2 cursor-pointer text-red-500 focus:bg-red-50 dark:bg-red-900/30 focus:text-red-600 font-medium"
               >
                 <LogOut size={18} />
                 <span>ออกจากระบบ</span>

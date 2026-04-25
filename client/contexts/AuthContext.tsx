@@ -10,7 +10,7 @@ interface User {
   id: number;
   email: string;
   name: string;
-  role: 'teacher' | 'student';
+  role: 'teacher' | 'student' | 'unassigned';
   studentId?: string;
   avatarUrl?: string;
   is_verified?: number;

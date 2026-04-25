@@ -28,10 +28,12 @@ import VerifyEmail from "./pages/VerifyEmail";
 const queryClient = new QueryClient();
 
 import { AuthProvider } from "./contexts/AuthContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
 
 export const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
+    <ThemeProvider defaultTheme="system" storageKey="evaly-theme">
+      <AuthProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -60,6 +62,7 @@ export const App = () => (
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
-    </AuthProvider>
+      </AuthProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
