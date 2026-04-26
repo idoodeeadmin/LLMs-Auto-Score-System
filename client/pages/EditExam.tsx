@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Plus, Trash2, Upload, Calendar, Clock, CheckCircle2, X, ChevronDown, ChevronUp, Image as ImageIcon, Edit3, Save, ArrowLeft, Loader2 } from "lucide-react";
+import { Plus, Trash2, Calendar, Clock, CheckCircle2, X, ChevronDown, ChevronUp, Image as ImageIcon, Edit3, ArrowLeft, Loader2, Shuffle, BookOpen, Search, Sparkles } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ interface Question {
   rubrics: RubricItem[];
   isExpanded: boolean;
   isEditing: boolean;
+  isGenerating?: boolean;
 }
 
 export default function EditExam() {
@@ -40,6 +41,25 @@ export default function EditExam() {
   const [startTime, setStartTime] = useState("");
   const [endDate, setEndDate] = useState("");
   const [endTime, setEndTime] = useState("");
+  const [isRandomized, setIsRandomized] = useState(false);
+
+  // Question Bank state
+  const [showBankModal, setShowBankModal] = useState(false);
+  const [bankQuestions, setBankQuestions] = useState<any[]>([]);
+  const [bankSearch, setBankSearch] = useState("");
+
+  const fetchBank = async () => {
+    try {
+      const res = await fetch("/api/question-bank", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) setBankQuestions(await res.json());
+    } catch { /* ignore */ }
+  };
+
+  useEffect(() => {
+    if (showBankModal) fetchBank();
+  }, [showBankModal]);
 
   const [questions, setQuestions] = useState<Question[]>([
     {
@@ -66,6 +86,7 @@ export default function EditExam() {
           const data = await res.json();
           setExamTitle(data.title || "");
           setExamDescription(data.description || "");
+          setIsRandomized(data.is_randomized === 1);
           if (data.start_date) {
             const d = new Date(data.start_date);
             setStartDate(d.toISOString().split("T")[0]);
@@ -197,14 +218,18 @@ export default function EditExam() {
   }
 
   const handleSave = async () => {
-    if (!examTitle.trim()) {
-      toast.error("โปรดกรอกชื่อชุดข้อสอบ");
-      return;
-    }
     const validQs = questions.filter(q => q.text.trim());
     if (validQs.length === 0) {
       toast.error("โปรดเพิ่มคำถามอย่างน้อยหนึ่งข้อ");
       return;
+    }
+
+    let finalTitle = examTitle.trim();
+    if (!finalTitle) {
+      finalTitle = validQs[0].text.trim();
+      if (finalTitle.length > 100) {
+        finalTitle = finalTitle.substring(0, 100) + "...";
+      }
     }
 
     setIsSaving(true);
@@ -212,11 +237,12 @@ export default function EditExam() {
     const computedTotal = validQs.reduce((sum, q) => sum + (parseFloat(q.score) || 0), 0);
     try {
       const payload = {
-        title: examTitle,
+        title: finalTitle,
         description: examDescription || null,
         total_score: computedTotal,
         start_date: startDate && startTime ? `${startDate}T${startTime}` : null,
         end_date: endDate && endTime ? `${endDate}T${endTime}` : null,
+        is_randomized: isRandomized ? 1 : 0,
         questions: validQs.map((q, i) => ({
           text: q.text,
           score: parseFloat(q.score) || 0,
@@ -244,6 +270,49 @@ export default function EditExam() {
       toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const generateRubric = async (qId: number) => {
+    const q = questions.find(x => x.id === qId);
+    if (!q || !q.text.trim()) {
+      toast.error("โปรดกรอกโจทย์คำถามก่อนสร้างเกณฑ์ด้วย AI");
+      return;
+    }
+    const scoreVal = parseFloat(q.score);
+    if (isNaN(scoreVal) || scoreVal <= 0) {
+      toast.error("โปรดระบุคะแนนเต็มให้มากกว่า 0");
+      return;
+    }
+
+    setQuestions(questions.map(x => x.id === qId ? { ...x, isGenerating: true } : x));
+    try {
+      const res = await fetch("/api/gemini/generate-rubric", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ question_text: q.text, total_score: scoreVal })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || "AI Error");
+      }
+      const data = await res.json();
+      setQuestions(questions.map(x => x.id === qId ? { 
+        ...x, 
+        answerKey: data.answer_key || "",
+        rubrics: data.rubrics?.map((r: any, idx: number) => ({
+          id: Date.now() + idx,
+          name: r.name || "",
+          description: r.description || "",
+          score: String(r.score || 0)
+        })) || x.rubrics,
+        isExpanded: true,
+        isGenerating: false
+      } : x));
+      toast.success("AI สร้างเกณฑ์สำเร็จ!");
+    } catch (e: any) {
+      toast.error(`สร้างเกณฑ์ไม่สำเร็จ: ${e.message}`);
+      setQuestions(questions.map(x => x.id === qId ? { ...x, isGenerating: false } : x));
     }
   };
 
@@ -304,8 +373,104 @@ export default function EditExam() {
                 </div>
               </div>
             </div>
+
+            {/* Randomized Toggle + Bank Button */}
+            <div className="mt-6 pt-5 border-t border-blue-400/30 flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div>
+                  <p className="text-sm font-bold text-white flex items-center gap-1.5 mb-0.5">
+                    <Shuffle size={14} /> สุ่มลำดับข้อสอบ
+                  </p>
+                  <p className="text-xs text-blue-200">นักเรียนแต่ละคนจะเห็นลำดับข้อที่ต่างกัน</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsRandomized(!isRandomized)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm border-2 transition-all duration-200 min-w-[90px] justify-center ${
+                    isRandomized
+                      ? "bg-green-400 border-green-300 text-white shadow-lg shadow-green-500/30"
+                      : "bg-white/10 border-white/30 text-white/70 hover:bg-white/20"
+                  }`}
+                >
+                  <div className={`w-2 h-2 rounded-full ${isRandomized ? "bg-white" : "bg-white/40"}`} />
+                  {isRandomized ? "เปิด" : "ปิด"}
+                </button>
+              </div>
+
+              <button
+                onClick={() => setShowBankModal(true)}
+                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white text-sm font-bold px-4 py-2 rounded-xl border border-white/30 transition-all"
+              >
+                <BookOpen size={15} /> เลือกจากคลังข้อสอบ
+              </button>
+            </div>
           </div>
         </section>
+
+        {/* Question Bank Modal */}
+        {showBankModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+              <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-slate-700">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <BookOpen size={20} className="text-blue-500" /> คลังข้อสอบของฉัน
+                </h3>
+                <button onClick={() => setShowBankModal(false)} className="text-gray-400 hover:text-gray-700 dark:hover:text-white">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-4 border-b border-gray-100 dark:border-slate-700">
+                <div className="relative">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    value={bankSearch}
+                    onChange={e => setBankSearch(e.target.value)}
+                    placeholder="ค้นหาคำถาม..."
+                    className="w-full pl-9 pr-4 h-10 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  />
+                </div>
+              </div>
+              <div className="overflow-y-auto flex-1 p-4 space-y-3">
+                {bankQuestions.filter(q => q.text.toLowerCase().includes(bankSearch.toLowerCase())).length === 0 ? (
+                  <div className="text-center py-12 text-gray-400">
+                    <BookOpen size={32} className="mx-auto mb-2 opacity-30" />
+                    <p>ยังไม่มีคำถามในคลัง</p>
+                  </div>
+                ) : bankQuestions.filter(q => q.text.toLowerCase().includes(bankSearch.toLowerCase())).map((bq) => (
+                  <div key={bq.id} className="flex items-start gap-3 p-4 rounded-xl border border-gray-200 dark:border-slate-700 hover:border-blue-300 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-all">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-800 dark:text-slate-200 font-medium leading-relaxed line-clamp-2">{bq.text}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-blue-600 font-bold">{bq.score} คะแนน</span>
+                        {bq.tags && <span className="text-xs text-gray-400">#{bq.tags}</span>}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const updatedQs = questions.map(q => ({ ...q, isEditing: false }));
+                        setQuestions([...updatedQs, {
+                          id: Date.now(),
+                          text: bq.text,
+                          score: String(bq.score),
+                          questionImages: [],
+                          answerKey: bq.answer_key || "",
+                          rubrics: bq.rubrics?.map((r: any) => ({ id: Date.now() + Math.random(), name: r.name || "", description: r.description || "", score: String(r.score || 0) })) || [{ id: Date.now() + 1, name: "", description: "", score: "" }],
+                          isExpanded: false,
+                          isEditing: true
+                        }]);
+                        setShowBankModal(false);
+                        toast.success("นำเข้าคำถามสำเร็จ!");
+                      }}
+                      className="flex-shrink-0 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold h-8 px-3 rounded-lg transition-colors"
+                    >
+                      + เพิ่ม
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Questions Header */}
         <div className="flex items-center justify-between pt-4">
@@ -399,7 +564,21 @@ export default function EditExam() {
                     </div>
 
                     {/* TOGGLE BUTTON AREA */}
-                    <div className="mt-8 pt-6 border-t border-gray-100 dark:border-slate-800 flex flex-col items-center">
+                    <div className="mt-8 pt-6 border-t border-gray-100 dark:border-slate-800 flex flex-col items-center gap-4">
+                      
+                      <Button
+                        variant="default"
+                        onClick={() => generateRubric(q.id)}
+                        disabled={q.isGenerating}
+                        className="w-full md:w-auto h-12 px-8 rounded-full text-sm font-bold bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 text-white shadow-lg shadow-fuchsia-500/25 transition-all duration-300 hover:scale-105"
+                      >
+                        {q.isGenerating ? (
+                          <><Loader2 size={18} className="mr-2 animate-spin" /> กำลังให้ AI คิดให้...</>
+                        ) : (
+                          <><Sparkles size={18} className="mr-2" /> ✨ สร้างเกณฑ์ด้วย AI (Auto Generate)</>
+                        )}
+                      </Button>
+
                       <Button
                         variant="ghost"
                         onClick={() => toggleExpand(q.id)}
@@ -414,7 +593,7 @@ export default function EditExam() {
                         {q.isExpanded ? (
                           <><ChevronUp size={18} className="mr-2" /> ซ่อนรูปแบบและเกณฑ์การให้คะแนน</>
                         ) : (
-                          <><ChevronDown size={18} className="mr-2" /> เพิ่มธงคำตอบและเกณฑ์รูบริค</>
+                          <><ChevronDown size={18} className="mr-2" /> เพิ่มธงคำตอบและเกณฑ์รูบริคเอง</>
                         )}
                       </Button>
                     </div>

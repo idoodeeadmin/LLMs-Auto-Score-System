@@ -1,4 +1,4 @@
-import { Bell, User, LogOut, Settings, UserCircle, History, Clock, CheckCircle2, ChevronRight, BookOpen, AlertTriangle, Trophy } from "lucide-react";
+import { Bell, User, LogOut, Settings, UserCircle, History, Clock, CheckCircle2, ChevronRight, BookOpen, AlertTriangle, Trophy, ShieldCheck } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect, useRef } from "react";
@@ -191,6 +191,12 @@ export default function Navbar({ }: NavbarProps) {
                   <p className="text-xs leading-none text-gray-400 dark:text-slate-500 dark:text-slate-400 dark:text-slate-500">{user?.email}</p>
                 </div>
               </DropdownMenuLabel>
+                            <DropdownMenuItem asChild className="rounded-lg gap-2 cursor-pointer focus:bg-blue-50 dark:bg-blue-900/30 focus:text-blue-600">
+                <Link to="/audit-log" className="flex items-center w-full">
+                  <ShieldCheck className="mr-2" size={18} />
+                  <span>ประวัติความปลอดภัย</span>
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-gray-50 dark:bg-slate-900 my-2" />
               {user?.role === 'student' && (
                 <DropdownMenuItem asChild className="rounded-lg gap-2 cursor-pointer focus:bg-blue-50 dark:bg-blue-900/30 focus:text-blue-600">
@@ -204,6 +210,12 @@ export default function Navbar({ }: NavbarProps) {
                 <Link to="/profile" className="flex items-center w-full">
                   <UserCircle className="mr-2" size={18} />
                   <span>ข้อมูลส่วนตัว</span>
+                </Link>
+              </DropdownMenuItem>
+                            <DropdownMenuItem asChild className="rounded-lg gap-2 cursor-pointer focus:bg-blue-50 dark:bg-blue-900/30 focus:text-blue-600">
+                <Link to="/audit-log" className="flex items-center w-full">
+                  <ShieldCheck className="mr-2" size={18} />
+                  <span>ประวัติความปลอดภัย</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-gray-50 dark:bg-slate-900 my-2" />

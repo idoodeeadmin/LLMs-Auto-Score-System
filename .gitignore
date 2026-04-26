@@ -50,3 +50,11 @@ uploads/
 *-firebase-adminsdk-*.json
 firebase-credentials.json
 service-account.json
+
+# Certificates
+*.pem
+*.crt
+*.p12
+*.pfx
+isrgrootx1.pem.txt
+

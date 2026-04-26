@@ -76,15 +76,27 @@ export default function RoomDetail() {
     if (!token || !roomId) return;
     const fetchRoom = async () => {
       try {
-        const [roomRes, examsRes, analyticsRes] = await Promise.all([
+        const promises = [
           fetch(`/api/rooms/${roomId}`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`/api/rooms/${roomId}/exams`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`/api/rooms/${roomId}/analytics`, { headers: { Authorization: `Bearer ${token}` } }),
-        ]);
+          fetch(`/api/rooms/${roomId}/exams`, { headers: { Authorization: `Bearer ${token}` } })
+        ];
+        
+        if (user?.role === "teacher") {
+          promises.push(fetch(`/api/rooms/${roomId}/analytics`, { headers: { Authorization: `Bearer ${token}` } }));
+        }
+
+        const responses = await Promise.all(promises);
+        const roomRes = responses[0];
+        const examsRes = responses[1];
+        
         if (roomRes.ok) setRoom(await roomRes.json());
         else { toast.error("ไม่พบห้องเรียนนี้"); navigate("/home"); }
+        
         if (examsRes.ok) setExams(await examsRes.json());
-        if (analyticsRes.ok) setRoomAnalytics(await analyticsRes.json());
+        
+        if (user?.role === "teacher" && responses[2] && responses[2].ok) {
+          setRoomAnalytics(await responses[2].json());
+        }
       } catch {
         toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
       } finally {

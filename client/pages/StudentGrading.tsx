@@ -38,6 +38,7 @@ interface AnswerData {
   image_paths?: string[];
   q_image_path?: string;
   q_image_paths?: string[];
+  quality_metrics?: string;
 }
 
 interface StudentInfo {
@@ -545,6 +546,33 @@ export default function StudentGrading() {
                   <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 text-sm leading-relaxed mb-4">
                     {a.ai_feedback || "ไม่มี feedback จาก AI"}
                   </div>
+
+                  {/* Quality Metrics */}
+                  {a.quality_metrics && (
+                    <div className="grid grid-cols-3 gap-2 mb-4">
+                      {(() => {
+                        try {
+                          const m = JSON.parse(a.quality_metrics);
+                          return (
+                            <>
+                              <div className="bg-white/50 dark:bg-slate-800/50 p-2 rounded-lg border border-gray-100 dark:border-slate-700 flex flex-col items-center text-center">
+                                <span className="text-[10px] text-gray-400 dark:text-slate-500 font-bold uppercase">ความยาว</span>
+                                <span className="text-xs font-semibold text-gray-700 dark:text-slate-300">{m.length_eval || "-"}</span>
+                              </div>
+                              <div className="bg-white/50 dark:bg-slate-800/50 p-2 rounded-lg border border-gray-100 dark:border-slate-700 flex flex-col items-center text-center">
+                                <span className="text-[10px] text-gray-400 dark:text-slate-500 font-bold uppercase">ความซับซ้อน</span>
+                                <span className="text-xs font-semibold text-gray-700 dark:text-slate-300">{m.complexity_eval || "-"}</span>
+                              </div>
+                              <div className="bg-white/50 dark:bg-slate-800/50 p-2 rounded-lg border border-gray-100 dark:border-slate-700 flex flex-col items-center text-center">
+                                <span className="text-[10px] text-gray-400 dark:text-slate-500 font-bold uppercase">ความลื่นไหล</span>
+                                <span className="text-xs font-semibold text-gray-700 dark:text-slate-300">{m.readability_eval || "-"}</span>
+                              </div>
+                            </>
+                          );
+                        } catch (e) { return null; }
+                      })()}
+                    </div>
+                  )}
 
                   {/* Teacher Comment */}
                   <div className="flex items-start gap-3 mt-4 pt-4 border-t border-gray-200 dark:border-slate-700/50">

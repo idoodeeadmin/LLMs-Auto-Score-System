@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import FastAPI, Depends, HTTPException, status, Header, UploadFile, File, Form, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -34,10 +35,34 @@ app.add_middleware(
 
 # Initialize Database on startup
 @app.on_event("startup")
-def startup_event():
+async def startup_event():
     init_db()
     # Mount uploads folder for serving images
     os.makedirs("uploads", exist_ok=True)
+    
+    # Start grading worker
+    asyncio.create_task(grading_worker())
+    
+    # Recover pending submissions
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, exam_id, student_id FROM submissions WHERE status = 'submitted'")
+    pending = cursor.fetchall()
+    for row in pending:
+        # We need room_id, let's fetch it from exam
+        cursor.execute("SELECT room_id FROM exams WHERE id = ?", (row["exam_id"],))
+        exam_row = cursor.fetchone()
+        if exam_row:
+            await grading_queue.put({
+                "submission_id": row["id"],
+                "room_id": exam_row["room_id"],
+                "exam_id": row["exam_id"],
+                "user_id": row["student_id"]
+            })
+    conn.close()
+    if pending:
+        print(f"[Startup] Recovered {len(pending)} pending submissions into grading queue")
+
 
 # Serve uploaded images as static files
 try:
@@ -84,8 +109,13 @@ class VerifyEmailRequest(BaseModel):
 class ResendVerificationRequest(BaseModel):
     email: str
 
+
 # In-memory Rate Limiter
 REQUEST_LOGS = {} # { "ip": [timestamp1, timestamp2...] }
+
+# Batch Grading Queue
+grading_queue = asyncio.Queue()
+
 
 def check_rate_limit(ip: str, limit: int = 10, window: int = 60):
     """Simple IP-based rate limiter (default: 10 requests per minute)"""
@@ -103,6 +133,132 @@ def check_rate_limit(ip: str, limit: int = 10, window: int = 60):
     return True
 
 # Dependencies
+
+async def grading_worker():
+    while True:
+        task = await grading_queue.get()
+        try:
+            submission_id = task.get("submission_id")
+            room_id = task["room_id"]
+            exam_id = task["exam_id"]
+            user_id = task.get("user_id")
+            specific_q_id = task.get("question_id")
+            
+            print(f"[Grading Worker] Processing submission {submission_id} (Question: {specific_q_id or 'All'})...")
+            
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # Fetch all answers for this submission
+            cursor.execute("SELECT * FROM submission_answers WHERE submission_id = ?", (submission_id,))
+            answers = cursor.fetchall()
+            
+            # Fetch questions for rubrics/answer_keys
+            cursor.execute("SELECT * FROM questions WHERE exam_id = ? ORDER BY order_index", (exam_id,))
+            questions = {q["id"]: dict(q) for q in cursor.fetchall()}
+            
+            total_ai_score = 0.0
+            confidences = []
+            
+            for ans in answers:
+                q_id = ans["question_id"]
+                if specific_q_id and q_id != specific_q_id:
+                    continue
+                    
+                q = questions.get(q_id)
+                if not q:
+                    continue
+                    
+                answer_text = ans["answer_text"] or ""
+                
+                # Load images from disk
+                img_list = []
+                img_mime_list = []
+                
+                image_paths_json = ans["image_paths"]
+                if image_paths_json:
+                    import json
+                    paths = json.loads(image_paths_json)
+                    for path in paths:
+                        # path is like /uploads/1/1/q_1_0.jpg
+                        # local path is uploads/1/1/q_1_0.jpg
+                        local_path = path.lstrip("/")
+                        try:
+                            with open(local_path, "rb") as img_file:
+                                raw_bytes = img_file.read()
+                                img_list.append(raw_bytes)
+                                # guess mime from extension
+                                ext = local_path.split(".")[-1].lower()
+                                if ext == "png": mime = "image/png"
+                                elif ext == "webp": mime = "image/webp"
+                                else: mime = "image/jpeg"
+                                img_mime_list.append(mime)
+                        except Exception as e:
+                            print(f"[Grading Worker] Failed to read image {local_path}: {e}")
+                
+                # Parse rubrics
+                rubrics_data = None
+                if q.get("rubrics"):
+                    try:
+                        import json
+                        rubrics_data = json.loads(q["rubrics"])
+                    except Exception:
+                        rubrics_data = None
+                        
+                ai_result = await score_with_gemini(
+                    question_text=q["text"],
+                    answer_text=answer_text,
+                    max_score=q["score"],
+                    answer_key=q.get("answer_key"),
+                    rubrics=rubrics_data,
+                    image_bytes_list=img_list[:5],
+                    image_mime_list=img_mime_list[:5],
+                )
+                total_ai_score += ai_result["score"]
+                confidences.append(ai_result["confidence"])
+                
+                # Store quality metrics if present
+                q_metrics = json_module_top.dumps(ai_result.get("metrics", {})) if ai_result.get("metrics") else None
+                
+                cursor.execute(
+                    "UPDATE submission_answers SET ai_score = ?, ai_feedback = ?, ai_confidence = ?, quality_metrics = ? WHERE id = ?",
+                    (ai_result["score"], ai_result["feedback"], ai_result["confidence"], q_metrics, ans["id"])
+                )
+                
+            new_status = "needs_review" if "low" in confidences else "ready"
+            
+            # Recalculate total score for the submission from all answers
+            cursor.execute("SELECT SUM(COALESCE(teacher_score, ai_score, 0)) as total FROM submission_answers WHERE submission_id = ?", (submission_id,))
+            total_score_row = cursor.fetchone()
+            new_total_score = total_score_row["total"] if total_score_row and total_score_row["total"] else 0.0
+
+            cursor.execute(
+                "UPDATE submissions SET status = ?, total_score = ?, graded_by_ai = 1 WHERE id = ?",
+                (new_status, round(new_total_score, 1), submission_id)
+            )
+            conn.commit()
+            
+            # Notify teacher
+            cursor.execute("SELECT owner_id FROM rooms WHERE id = ?", (room_id,))
+            teacher_row = cursor.fetchone()
+            if teacher_row:
+                await trigger_socket_notify(
+                    user_id=teacher_row["owner_id"],
+                    notify_type="ai_graded",
+                    message=f"มีนักศึกษาส่งข้อสอบใหม่ในห้องของคุณ และ AI ตรวจเสร็จแล้ว!",
+                    data={"exam_id": exam_id, "room_id": room_id, "submission_id": submission_id}
+                )
+            
+            conn.close()
+            print(f"[Grading Worker] Finished submission {submission_id}")
+            
+        except Exception as e:
+            print(f"[Grading Worker] Error processing task: {e}")
+            import traceback
+            traceback.print_exc()
+        finally:
+            grading_queue.task_done()
+
 async def trigger_socket_notify(user_id: int, notify_type: str, message: str, data: dict = None):
     """Bridge to Node.js Socket server to emit real-time notifications"""
     socket_url = f"http://localhost:{os.getenv('SOCKET_PORT', '3001')}/emit-notification"
@@ -117,6 +273,20 @@ async def trigger_socket_notify(user_id: int, notify_type: str, message: str, da
     except Exception as e:
         print(f"[Socket Bridge Error] {e}")
 
+
+def log_audit_action(user_id: int, action_type: str, entity_id: Optional[str] = None, details: Optional[str] = None, ip_address: Optional[str] = None):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO audit_logs (user_id, action_type, entity_id, details, ip_address) VALUES (?, ?, ?, ?, ?)",
+            (user_id, action_type, entity_id, details, ip_address)
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Failed to log audit action: {e}")
+
 def get_current_user(authorization: Optional[str] = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid token")
@@ -127,14 +297,19 @@ def get_current_user(authorization: Optional[str] = Header(None)):
         raise HTTPException(status_code=401, detail="Invalid or expired token")
     
     email = payload.get("sub")
+    token_version = payload.get("token_version", 0)
+    
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, email, name, role, student_id, avatar_url, is_verified FROM users WHERE email = ?", (email,))
+    cursor.execute("SELECT id, email, name, role, student_id, avatar_url, is_verified, token_version FROM users WHERE email = ?", (email,))
     user = cursor.fetchone()
     conn.close()
     
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+        
+    if user.get("token_version", 0) != token_version:
+        raise HTTPException(status_code=401, detail="Session expired or revoked")
     
     return dict(user)
 
@@ -239,7 +414,9 @@ async def login(user_data: UserLogin, request: Request):
             headers={"WWW-Authenticate": "Bearer"},
         )
         
-    access_token = create_access_token(data={"sub": user["email"]})
+    access_token = create_access_token(data={"sub": user["email"], "token_version": user.get("token_version", 0)})
+    
+    log_audit_action(user["id"], "LOGIN", None, "User logged in via email", request.client.host)
     user_dict = dict(user)
     
     user_info = {
@@ -500,7 +677,9 @@ async def reset_password(req: ResetPasswordRequest):
     hashed_password = get_password_hash(req.new_password)
     
     # Update user password
-    cursor.execute("UPDATE users SET password = ? WHERE id = ?", (hashed_password, reset_record["user_id"]))
+    cursor.execute("UPDATE users SET password = ?, token_version = token_version + 1 WHERE id = ?", (hashed_password, reset_record["user_id"]))
+    
+    log_audit_action(reset_record["user_id"], "PASSWORD_RESET", None, "User reset their password (all sessions revoked)", req.client.host)
     
     # Invalidate token
     cursor.execute("DELETE FROM password_resets WHERE id = ?", (reset_record["id"],))
@@ -660,7 +839,7 @@ if _FIREBASE_CREDENTIALS_PATH and os.path.exists(_FIREBASE_CREDENTIALS_PATH):
         print(f"[Firebase] Failed to initialize Admin SDK: {e}")
 
 @app.post("/api/auth/firebase-login", response_model=TokenResponse)
-async def firebase_login(request: FirebaseLoginRequest):
+async def firebase_login(request: FirebaseLoginRequest, req: Request):
     """
     Verify Firebase ID token and either:
     - Find existing user by email and log them in
@@ -706,7 +885,8 @@ async def firebase_login(request: FirebaseLoginRequest):
             )
             conn.commit()
         conn.close()
-        access_token = create_access_token(data={"sub": email})
+        access_token = create_access_token(data={"sub": email, "token_version": user.get("token_version", 0)})
+        log_audit_action(user["id"], "LOGIN", None, "User logged in via Firebase", req.client.host)
         
         user_info = {
             "id": user_dict["id"],
@@ -740,7 +920,8 @@ async def firebase_login(request: FirebaseLoginRequest):
         "avatarUrl": google_picture
     }
     
-    access_token = create_access_token(data={"sub": email})
+    access_token = create_access_token(data={"sub": email, "token_version": 0})
+    log_audit_action(new_user_id, "REGISTER", None, "User registered via Firebase", req.client.host)
     conn.close()
     
     return {"access_token": access_token, "token_type": "bearer", "user": user_info}
@@ -1022,7 +1203,7 @@ async def update_room(room_id: int, room_data: RoomCreate, user: dict = Depends(
     return {"message": "Room updated successfully"}
 
 @app.delete("/api/rooms/{room_id}")
-async def delete_room(room_id: int, user: dict = Depends(get_current_user)):
+async def delete_room(request: Request, room_id: int, user: dict = Depends(get_current_user)):
     if user["role"] != "teacher":
         raise HTTPException(status_code=403, detail="Only teachers can delete rooms")
         
@@ -1038,6 +1219,7 @@ async def delete_room(room_id: int, user: dict = Depends(get_current_user)):
     conn.commit()
     conn.close()
     
+    log_audit_action(user["id"], "DELETE_ROOM", str(room_id), f"Deleted room {room_id}", request.client.host)
     return {"message": "Room deleted successfully"}
 
 @app.post("/api/rooms/join")
@@ -1150,7 +1332,27 @@ class ExamCreate(BaseModel):
     total_score: float = 0
     start_date: Optional[str] = None
     end_date: Optional[str] = None
+    is_randomized: int = 0
     questions: list[QuestionInput] = []
+
+class TimeExtensionRequest(BaseModel):
+    student_id: Optional[int] = None  # None = apply to whole class
+    extra_minutes: int
+    note: Optional[str] = None
+
+class GenerateRubricRequest(BaseModel):
+    question_text: str
+    total_score: float
+
+class QuestionBankCreate(BaseModel):
+    text: str
+    score: float = 0
+    answer_key: Optional[str] = None
+    rubrics: Optional[list] = None
+    tags: Optional[str] = None
+
+class DraftSaveRequest(BaseModel):
+    answers: dict  # {question_id: answer_text}
 
 @app.post("/api/rooms/{room_id}/exams")
 async def create_exam(room_id: int, exam: ExamCreate, user: dict = Depends(get_current_user)):
@@ -1171,8 +1373,8 @@ async def create_exam(room_id: int, exam: ExamCreate, user: dict = Depends(get_c
 
     # Insert exam
     cursor.execute(
-        "INSERT INTO exams (room_id, title, description, total_score, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?)",
-        (room_id, exam.title, exam.description, computed_total_score, exam.start_date, exam.end_date)
+        "INSERT INTO exams (room_id, title, description, total_score, start_date, end_date, is_randomized) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (room_id, exam.title, exam.description, computed_total_score, exam.start_date, exam.end_date, exam.is_randomized)
     )
     exam_id = cursor.lastrowid
 
@@ -1243,8 +1445,8 @@ async def update_exam(room_id: int, exam_id: int, exam: ExamCreate, user: dict =
 
     # Update exam
     cursor.execute(
-        "UPDATE exams SET title = ?, description = ?, total_score = ?, start_date = ?, end_date = ? WHERE id = ?",
-        (exam.title, exam.description, computed_total_score, exam.start_date, exam.end_date, exam_id)
+        "UPDATE exams SET title = ?, description = ?, total_score = ?, start_date = ?, end_date = ?, is_randomized = ? WHERE id = ?",
+        (exam.title, exam.description, computed_total_score, exam.start_date, exam.end_date, exam.is_randomized, exam_id)
     )
 
     # Delete existing questions
@@ -1292,7 +1494,7 @@ async def update_exam(room_id: int, exam_id: int, exam: ExamCreate, user: dict =
     return updated_exam
 
 @app.delete("/api/rooms/{room_id}/exams/{exam_id}")
-async def delete_exam(room_id: int, exam_id: int, user: dict = Depends(get_current_user)):
+async def delete_exam(request: Request, room_id: int, exam_id: int, user: dict = Depends(get_current_user)):
     if user["role"] != "teacher":
         raise HTTPException(status_code=403, detail="Only teachers can delete exams")
 
@@ -1316,6 +1518,7 @@ async def delete_exam(room_id: int, exam_id: int, user: dict = Depends(get_curre
     conn.commit()
     conn.close()
 
+    log_audit_action(user["id"], "DELETE_EXAM", str(exam_id), f"Deleted exam {exam_id}", request.client.host)
     return {"message": "Exam deleted successfully"}
 
 @app.get("/api/rooms/{room_id}/exams")
@@ -1373,6 +1576,13 @@ async def get_exam(room_id: int, exam_id: int, user: dict = Depends(get_current_
             # Backward compat: single image_path
             qd["image_paths"] = [qd["image_path"]] if qd.get("image_path") else []
         result["questions"].append(qd)
+
+    # Deterministic shuffle for students when is_randomized = 1
+    # Using student_id as seed ensures same student always sees same order
+    if result.get("is_randomized") and user["role"] == "student":
+        import random as _random
+        rng = _random.Random(user["id"] + exam_id * 1000)
+        rng.shuffle(result["questions"])
 
     return result
 
@@ -1463,11 +1673,17 @@ async def score_with_gemini(
         "1. วิเคราะห์คำตอบของนักเรียนอย่างรอบคอบ เปรียบเทียบกับแนวคำตอบและเกณฑ์การให้คะแนน (Chain of Thought: สิ่งที่นักเรียนตอบถูกคืออะไร ขาดอะไรไปบ้าง)\n"
         "2. พิจารณารูปภาพประกอบ (ถ้ามี) ว่าสัมพันธ์กับคำตอบและโจทย์หรือไม่\n"
         "3. ประเมินคะแนนและให้ข้อเสนอแนะที่สร้างสรรค์\n"
+        "4. วิเคราะห์คุณภาพเรียงความ (Essay Quality Metrics) ในด้านความยาว ความซับซ้อน และความสละสลวย\n"
         "ตอบกลับเป็น JSON ที่มีรูปแบบดังนี้เท่านั้น (งดเว้นการพิมพ์ข้อความอื่นๆ นอก JSON):\n"
         "{\n"
         f'  "score": <คะแนนที่ได้ เป็นตัวเลขทศนิยม 1 ตำแหน่ง ระหว่าง 0 ถึง {max_score}>,\n'
         '  "confidence": <"high" หากมั่นใจมาก, "medium" หากปานกลาง, "low" หากไม่มั่นใจ หรือรูปภาพไม่ชัดเจน>,\n'
-        '  "feedback": <คำอธิบายการให้คะแนนและข้อเสนอแนะเป็นภาษาไทย 2-4 ประโยค ที่ช่วยให้นักเรียนเข้าใจว่าได้/เสียคะแนนตรงไหน>\n'
+        '  "feedback": <คำอธิบายการให้คะแนนและข้อเสนอแนะเป็นภาษาไทย 2-4 ประโยค ที่ช่วยให้นักเรียนเข้าใจว่าได้/เสียคะแนนตรงไหน>,\n'
+        '  "metrics": {\n'
+        '    "length_eval": <ข้อความสรุปความยาว เช่น "เหมาะสม", "สั้นเกินไป", "ยาวแต่เนื้อหาน้อย">,\n'
+        '    "complexity_eval": <ข้อความสรุปความซับซ้อน/คลังคำศัพท์ เช่น "ดีมาก", "ปานกลาง", "ใช้คำซ้ำเยอะ">,\n'
+        '    "readability_eval": <ข้อความสรุปความลื่นไหล/อ่านง่าย เช่น "อ่านง่ายมาก", "สละสลวย", "วกวนเข้าใจยาก">\n'
+        '  }\n'
         "}"
     )
 
@@ -1508,6 +1724,56 @@ async def score_with_gemini(
     except Exception as e:
         print(f"[Gemini Error] {e} — falling back to heuristic")
         return _fallback_score(answer_text, max_score)
+
+
+@app.post("/api/gemini/generate-rubric")
+async def generate_rubric(req: GenerateRubricRequest, user: dict = Depends(get_current_user)):
+    """Generate Answer Key and Rubrics automatically based on question and total score."""
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can generate rubrics")
+    if not _USE_GEMINI or not _genai_client:
+        raise HTTPException(status_code=503, detail="Gemini AI is not configured or unavailable")
+
+    prompt = f"""
+    You are an expert exam setter and grader.
+    Given the following question and its maximum score, generate a comprehensive "Answer Key" (ธงคำตอบ)
+    and a detailed "Rubrics" (เกณฑ์การให้คะแนน) broken down into specific criteria.
+    The total score of all rubrics MUST equal exactly {req.total_score}.
+    Output MUST be valid JSON matching this schema:
+    {{
+        "answer_key": "String (detailed correct answer model in Thai)",
+        "rubrics": [
+            {{
+                "name": "String (short criteria name, e.g. ความถูกต้อง, การอธิบาย, โครงสร้างโค้ด)",
+                "description": "String (what is expected to get this score)",
+                "score": Number (float or int)
+            }}
+        ]
+    }}
+    
+    Question: {req.question_text}
+    Total Score: {req.total_score}
+    """
+    
+    try:
+        response = _genai_client.models.generate_content(
+            model=_GEMINI_MODEL,
+            contents=prompt,
+            config=genai_types.GenerateContentConfig(
+                response_mime_type="application/json",
+            )
+        )
+        result_text = response.text
+        if result_text.startswith("```json"):
+            result_text = result_text.strip("```json").strip("```").strip()
+        elif result_text.startswith("```"):
+            result_text = result_text.strip("```").strip()
+            
+        data = json_module.loads(result_text)
+        return data
+    except Exception as e:
+        print(f"[Gemini Error in Generate Rubric]: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate rubric via AI")
 
 
 class SubmitAnswerInput(BaseModel):
@@ -1634,7 +1900,7 @@ async def submit_exam_multipart(
     cursor.execute(
         """INSERT INTO submissions (exam_id, student_id, status, submitted_at, graded_by_ai)
            VALUES (?, ?, 'submitted', CURRENT_TIMESTAMP, 0)
-           ON CONFLICT(exam_id, student_id) DO UPDATE SET
+           ON DUPLICATE KEY UPDATE
              status='submitted', submitted_at=CURRENT_TIMESTAMP, graded_by_ai=0""",
         (exam_id, user["id"])
     )
@@ -1688,67 +1954,32 @@ async def submit_exam_multipart(
 
         image_paths_json = json_module.dumps(img_paths) if img_paths else None
 
-        # Parse rubrics
-        rubrics_data = None
-        if q.get("rubrics"):
-            try:
-                rubrics_data = json_module.loads(q["rubrics"])
-            except Exception:
-                rubrics_data = None
-
-        ai_result = await score_with_gemini(
-            question_text=q["text"],
-            answer_text=answer_text,
-            max_score=q["score"],
-            answer_key=q.get("answer_key"),
-            rubrics=rubrics_data,
-            image_bytes_list=img_list[:5], # maximum 5 images to prevent token overload
-            image_mime_list=img_mime_list[:5],
-        )
-        total_ai_score += ai_result["score"]
-
         first_image_path = img_paths[0] if img_paths else None
         cursor.execute(
             """INSERT INTO submission_answers
                  (submission_id, question_id, answer_text, ai_score, ai_feedback, ai_confidence, image_path, image_paths)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-               ON CONFLICT(submission_id, question_id) DO UPDATE SET
-                 answer_text=excluded.answer_text, ai_score=excluded.ai_score,
-                 ai_feedback=excluded.ai_feedback, ai_confidence=excluded.ai_confidence,
-                 image_path=excluded.image_path, image_paths=excluded.image_paths""",
-            (submission_id, q_id, answer_text,
-             ai_result["score"], ai_result["feedback"], ai_result["confidence"],
-             first_image_path, image_paths_json)
+               VALUES (?, ?, ?, 0, '', 'medium', ?, ?)
+               ON DUPLICATE KEY UPDATE
+                 answer_text=VALUES(answer_text), image_path=VALUES(image_path), image_paths=VALUES(image_paths)""",
+            (submission_id, q_id, answer_text, first_image_path, image_paths_json)
         )
 
-    # Determine overall status
-    cursor.execute("SELECT ai_confidence FROM submission_answers WHERE submission_id = ?", (submission_id,))
-    confidences = [r["ai_confidence"] for r in cursor.fetchall()]
-    new_status = "needs_review" if "low" in confidences else "ready"
+    # Enqueue grading task
+    await grading_queue.put({
+        "submission_id": submission_id,
+        "room_id": room_id,
+        "exam_id": exam_id,
+        "user_id": user["id"]
+    })
 
-    cursor.execute(
-        "UPDATE submissions SET status = ?, total_score = ?, graded_by_ai = 1 WHERE id = ?",
-        (new_status, round(total_ai_score, 1), submission_id)
-    )
     conn.commit()
-
-    # REAL-TIME NOTIFICATION: Notify teacher that a new submission is ready
-    cursor.execute("SELECT owner_id FROM rooms WHERE id = ?", (room_id,))
-    teacher_id = cursor.fetchone()["owner_id"]
-    await trigger_socket_notify(
-        user_id=teacher_id,
-        notify_type="ai_graded",
-        message=f"มีนักศึกษาส่งข้อสอบใหม่ในห้องของคุณ และ AI ตรวจเสร็จแล้ว!",
-        data={"exam_id": exam_id, "room_id": room_id, "submission_id": submission_id}
-    )
-
     conn.close()
 
     return {
-        "message": "ส่งคำตอบสำเร็จ",
+        "message": "ส่งคำตอบสำเร็จ (ระบบกำลังตรวจคะแนน)",
         "submission_id": submission_id,
-        "status": new_status,
-        "ai_score": round(total_ai_score, 1)
+        "status": "submitted",
+        "ai_score": 0
     }
 
 @app.get("/api/rooms/{room_id}/exams/{exam_id}/export-csv")
@@ -2035,10 +2266,14 @@ async def get_room_analytics(room_id: int, user: dict = Depends(get_current_user
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT id FROM rooms WHERE id = ? AND owner_id = ?", (room_id, user["id"]))
-    if not cursor.fetchone():
+    cursor.execute("SELECT id, owner_id FROM rooms WHERE id = ?", (room_id,))
+    room = cursor.fetchone()
+    if not room:
         conn.close()
-        raise HTTPException(status_code=403, detail="Unauthorized")
+        raise HTTPException(status_code=404, detail="Room not found")
+    if str(room["owner_id"]) != str(user["id"]):
+        conn.close()
+        raise HTTPException(status_code=403, detail=f"Unauthorized: owner={room['owner_id']} != user={user['id']}")
 
     cursor.execute("""
         SELECT
@@ -2345,7 +2580,7 @@ async def get_student_submission(room_id: int, exam_id: int, student_id: int, us
     cursor.execute("""
         SELECT
             sa.id, sa.question_id, sa.answer_text, sa.ai_score, sa.ai_feedback, sa.ai_confidence,
-            sa.teacher_score, sa.teacher_comment, sa.image_path, sa.image_paths,
+            sa.teacher_score, sa.teacher_comment, sa.image_path, sa.image_paths, sa.quality_metrics,
             q.text AS question_text, q.score AS max_score, q.rubrics, q.answer_key, 
             q.order_index, q.image_path AS q_image_path, q.image_paths AS q_image_paths
         FROM submission_answers sa
@@ -2394,6 +2629,7 @@ async def get_student_submission(room_id: int, exam_id: int, student_id: int, us
 
 @app.put("/api/rooms/{room_id}/exams/{exam_id}/submissions/{student_id}/approve")
 async def approve_submission(
+    request: Request,
     room_id: int, exam_id: int, student_id: int,
     body: ApproveSubmissionRequest,
     user: dict = Depends(get_current_user)
@@ -2449,7 +2685,39 @@ async def approve_submission(
     conn.commit()
     conn.close()
 
+    log_audit_action(user["id"], "GRADE_CHANGE", str(submission_id), f"Approved/Updated grade for student {student_id} on exam {exam_id}", request.client.host)
     return {"message": "Submission approved", "total_score": round(total_teacher_score, 1)}
+
+@app.post("/api/rooms/{room_id}/exams/{exam_id}/questions/{question_id}/rescore")
+async def rescore_question(room_id: int, exam_id: int, question_id: int, user: dict = Depends(get_current_user)):
+    """Force AI to rescore a specific question for all submissions in an exam."""
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can rescore")
+        
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Check ownership
+    cursor.execute("SELECT id FROM rooms WHERE id = ? AND owner_id = ?", (room_id, user["id"]))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=403, detail="Unauthorized")
+        
+    # Find all submissions that have an answer for this question
+    cursor.execute("SELECT submission_id FROM submission_answers WHERE question_id = ?", (question_id,))
+    subs = cursor.fetchall()
+    
+    for row in subs:
+        await grading_queue.put({
+            "submission_id": row["submission_id"],
+            "room_id": room_id,
+            "exam_id": exam_id,
+            "question_id": question_id
+        })
+        
+    conn.close()
+    return {"message": f"เพิ่มการประมวลผลข้อนี้ใหม่จำนวน {len(subs)} รายการลงในคิวแล้ว"}
+
 
 
 @app.post("/api/rooms/{room_id}/exams/{exam_id}/bulk-approve")
@@ -2500,3 +2768,263 @@ async def ping():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
+
+@app.get("/api/audit-logs")
+async def get_audit_logs(user=Depends(get_current_user)):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT id, action_type, entity_id, details, ip_address, created_at FROM audit_logs WHERE user_id = ? ORDER BY created_at DESC LIMIT 100",
+        (user["id"],)
+    )
+    logs = cursor.fetchall()
+    conn.close()
+    return logs
+
+
+# ============================================================
+# Auto-save Draft Endpoints
+# ============================================================
+
+@app.post("/api/rooms/{room_id}/exams/{exam_id}/draft")
+async def save_draft(room_id: int, exam_id: int, body: DraftSaveRequest, user: dict = Depends(get_current_user)):
+    """Student saves answer draft to server (hybrid with localStorage)."""
+    if user["role"] != "student":
+        raise HTTPException(status_code=403, detail="Only students can save drafts")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    draft_json = json_module.dumps(body.answers, ensure_ascii=False)
+    cursor.execute(
+        """INSERT INTO submission_drafts (exam_id, student_id, draft_data)
+           VALUES (?, ?, ?)
+           ON DUPLICATE KEY UPDATE draft_data = VALUES(draft_data), updated_at = CURRENT_TIMESTAMP""",
+        (exam_id, user["id"], draft_json)
+    )
+    conn.commit()
+    conn.close()
+    return {"message": "Draft saved"}
+
+
+@app.get("/api/rooms/{room_id}/exams/{exam_id}/draft")
+async def get_draft(room_id: int, exam_id: int, user: dict = Depends(get_current_user)):
+    """Student loads saved draft from server."""
+    if user["role"] != "student":
+        raise HTTPException(status_code=403, detail="Only students can load drafts")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT draft_data, updated_at FROM submission_drafts WHERE exam_id = ? AND student_id = ?",
+        (exam_id, user["id"])
+    )
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return {"answers": {}, "updated_at": None}
+
+    try:
+        answers = json_module.loads(row["draft_data"])
+    except Exception:
+        answers = {}
+
+    return {"answers": answers, "updated_at": str(row["updated_at"])}
+
+
+@app.delete("/api/rooms/{room_id}/exams/{exam_id}/draft")
+async def delete_draft(room_id: int, exam_id: int, user: dict = Depends(get_current_user)):
+    """Delete draft after successful submission."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "DELETE FROM submission_drafts WHERE exam_id = ? AND student_id = ?",
+        (exam_id, user["id"])
+    )
+    conn.commit()
+    conn.close()
+    return {"message": "Draft deleted"}
+
+
+# ============================================================
+# Time Extension Endpoints
+# ============================================================
+
+@app.post("/api/rooms/{room_id}/exams/{exam_id}/extensions")
+async def grant_time_extension(
+    request: Request,
+    room_id: int, exam_id: int,
+    body: TimeExtensionRequest,
+    user: dict = Depends(get_current_user)
+):
+    """Teacher grants extra time to a specific student or the whole class (student_id=None)."""
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can grant time extensions")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Verify room ownership
+    cursor.execute("SELECT id FROM rooms WHERE id = ? AND owner_id = ?", (room_id, user["id"]))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=404, detail="Room not found or unauthorized")
+
+    cursor.execute("SELECT id FROM exams WHERE id = ? AND room_id = ?", (exam_id, room_id))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=404, detail="Exam not found")
+
+    cursor.execute(
+        "INSERT INTO exam_time_extensions (exam_id, student_id, extra_minutes, granted_by, note) VALUES (?, ?, ?, ?, ?)",
+        (exam_id, body.student_id, body.extra_minutes, user["id"], body.note)
+    )
+    conn.commit()
+    conn.close()
+
+    target = f"นักเรียน ID {body.student_id}" if body.student_id else "ทั้งห้อง"
+    log_audit_action(user["id"], "TIME_EXTENSION", str(exam_id),
+                     f"Granted {body.extra_minutes} mins to {target} on exam {exam_id}",
+                     request.client.host)
+    return {"message": f"ขยายเวลา {body.extra_minutes} นาทีสำเร็จ"}
+
+
+@app.get("/api/rooms/{room_id}/exams/{exam_id}/extensions/me")
+async def get_my_extension(room_id: int, exam_id: int, user: dict = Depends(get_current_user)):
+    """Student gets their total extra minutes for this exam."""
+    if user["role"] != "student":
+        raise HTTPException(status_code=403, detail="Students only")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Sum up: extensions for this student + whole-class extensions (student_id IS NULL)
+    cursor.execute(
+        """SELECT COALESCE(SUM(extra_minutes), 0) as total_extra
+           FROM exam_time_extensions
+           WHERE exam_id = ? AND (student_id = ? OR student_id IS NULL)""",
+        (exam_id, user["id"])
+    )
+    row = cursor.fetchone()
+    conn.close()
+    return {"extra_minutes": int(row["total_extra"] or 0)}
+
+
+@app.get("/api/rooms/{room_id}/exams/{exam_id}/extensions")
+async def get_all_extensions(room_id: int, exam_id: int, user: dict = Depends(get_current_user)):
+    """Teacher views all extensions for an exam."""
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Teachers only")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """SELECT e.*, u.name as student_name, u.email as student_email
+           FROM exam_time_extensions e
+           LEFT JOIN users u ON e.student_id = u.id
+           WHERE e.exam_id = ?
+           ORDER BY e.created_at DESC""",
+        (exam_id,)
+    )
+    extensions = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in extensions]
+
+
+# ============================================================
+# Question Bank Endpoints
+# ============================================================
+
+@app.get("/api/question-bank")
+async def list_question_bank(user: dict = Depends(get_current_user)):
+    """Teacher lists their own question bank."""
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Teachers only")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT * FROM question_bank WHERE owner_id = ? ORDER BY created_at DESC",
+        (user["id"],)
+    )
+    items = cursor.fetchall()
+    conn.close()
+
+    result = []
+    for item in items:
+        d = dict(item)
+        if d.get("rubrics"):
+            try:
+                d["rubrics"] = json_module.loads(d["rubrics"])
+            except Exception:
+                d["rubrics"] = []
+        result.append(d)
+    return result
+
+
+@app.post("/api/question-bank")
+async def create_question_bank(body: QuestionBankCreate, user: dict = Depends(get_current_user)):
+    """Teacher adds a question to their bank."""
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Teachers only")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    rubrics_json = json_module.dumps(body.rubrics, ensure_ascii=False) if body.rubrics else None
+    cursor.execute(
+        "INSERT INTO question_bank (owner_id, text, score, answer_key, rubrics, tags) VALUES (?, ?, ?, ?, ?, ?)",
+        (user["id"], body.text, body.score, body.answer_key, rubrics_json, body.tags)
+    )
+    new_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return {"id": new_id, "message": "Question saved to bank"}
+
+
+@app.delete("/api/question-bank/{question_id}")
+async def delete_question_bank(question_id: int, user: dict = Depends(get_current_user)):
+    """Teacher deletes a question from their bank."""
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Teachers only")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM question_bank WHERE id = ? AND owner_id = ?", (question_id, user["id"]))
+    conn.commit()
+    conn.close()
+    return {"message": "Deleted"}
+
+
+@app.post("/api/question-bank/save-from-exam")
+async def save_questions_from_exam(
+    room_id: int,
+    exam_id: int,
+    user: dict = Depends(get_current_user)
+):
+    """Teacher saves all questions from an exam into their question bank."""
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Teachers only")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM rooms WHERE id = ? AND owner_id = ?", (room_id, user["id"]))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    cursor.execute("SELECT * FROM questions WHERE exam_id = ?", (exam_id,))
+    questions = cursor.fetchall()
+
+    saved = 0
+    for q in questions:
+        cursor.execute(
+            "INSERT INTO question_bank (owner_id, text, score, answer_key, rubrics, tags) VALUES (?, ?, ?, ?, ?, ?)",
+            (user["id"], q["text"], q["score"], q["answer_key"], q["rubrics"], None)
+        )
+        saved += 1
+
+    conn.commit()
+    conn.close()
+    return {"message": f"บันทึก {saved} ข้อลงคลังเรียบร้อยแล้ว", "saved": saved}
+
