@@ -89,7 +89,8 @@ def init_db():
         role VARCHAR(50) NOT NULL,
         student_id VARCHAR(100),
         avatar_url TEXT,
-        is_verified TINYINT DEFAULT 0
+        is_verified TINYINT DEFAULT 0,
+        token_version INTEGER DEFAULT 0
     )
     ''')
     
@@ -128,6 +129,7 @@ def init_db():
         total_score FLOAT DEFAULT 0,
         start_date VARCHAR(100),
         end_date VARCHAR(100),
+        is_randomized TINYINT DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (room_id) REFERENCES rooms (id) ON DELETE CASCADE
     )
@@ -207,6 +209,65 @@ def init_db():
     )
     ''')
 
+    # Create Audit Logs table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS audit_logs (
+        id INTEGER PRIMARY KEY AUTO_INCREMENT,
+        user_id INTEGER,
+        action_type VARCHAR(50) NOT NULL,
+        entity_id VARCHAR(50),
+        details TEXT,
+        ip_address VARCHAR(45),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
+    )
+    ''')
+
+    # Create Submission Drafts table (Auto-save)
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS submission_drafts (
+        id INTEGER PRIMARY KEY AUTO_INCREMENT,
+        exam_id INTEGER NOT NULL,
+        student_id INTEGER NOT NULL,
+        draft_data TEXT NOT NULL,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (exam_id) REFERENCES exams (id) ON DELETE CASCADE,
+        FOREIGN KEY (student_id) REFERENCES users (id) ON DELETE CASCADE,
+        UNIQUE(exam_id, student_id)
+    )
+    ''')
+
+    # Create Exam Time Extensions table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS exam_time_extensions (
+        id INTEGER PRIMARY KEY AUTO_INCREMENT,
+        exam_id INTEGER NOT NULL,
+        student_id INTEGER,
+        extra_minutes INTEGER NOT NULL DEFAULT 0,
+        granted_by INTEGER,
+        note TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (exam_id) REFERENCES exams (id) ON DELETE CASCADE,
+        FOREIGN KEY (student_id) REFERENCES users (id) ON DELETE CASCADE,
+        FOREIGN KEY (granted_by) REFERENCES users (id) ON DELETE SET NULL
+    )
+    ''')
+
+    # Create Question Bank table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS question_bank (
+        id INTEGER PRIMARY KEY AUTO_INCREMENT,
+        owner_id INTEGER NOT NULL,
+        text TEXT NOT NULL,
+        score FLOAT DEFAULT 0,
+        answer_key TEXT,
+        rubrics TEXT,
+        tags VARCHAR(500),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (owner_id) REFERENCES users (id) ON DELETE CASCADE
+    )
+    ''')
+
     conn.commit()
 
     # In MySQL, adding a column that already exists will raise a pymysql.err.OperationalError
@@ -229,6 +290,9 @@ def init_db():
     add_column_if_not_exists("users", "name VARCHAR(255) NOT NULL DEFAULT 'User'")
     add_column_if_not_exists("users", "student_id VARCHAR(100)")
     add_column_if_not_exists("users", "avatar_url TEXT")
+    add_column_if_not_exists("users", "token_version INTEGER DEFAULT 0")
+    add_column_if_not_exists("exams", "is_randomized TINYINT DEFAULT 0")
+    add_column_if_not_exists("submission_answers", "quality_metrics TEXT")
     
     try:
         cursor.execute("ALTER TABLE users ADD COLUMN is_verified TINYINT DEFAULT 0")

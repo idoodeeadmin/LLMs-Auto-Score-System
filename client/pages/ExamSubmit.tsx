@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Camera, Image as ImageIcon, X, Send,
-  Loader2, CheckCircle2, AlertCircle, BookOpen, Trash2, Clock
+  Loader2, CheckCircle2, AlertCircle, BookOpen, Trash2, Clock, Save
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -58,6 +58,10 @@ export default function ExamSubmit() {
   
   const [timeLeft, setTimeLeft] = useState<string | null>(null);
   const [isTimeUp, setIsTimeUp] = useState(false);
+  const [extraMinutes, setExtraMinutes] = useState(0);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const localStorageKey = `draft_${roomId}_${examId}`;
 
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
@@ -66,13 +70,13 @@ export default function ExamSubmit() {
     answersRef.current = answers;
   }, [answers]);
 
-  // Countdown timer logic
+  // Countdown timer logic — includes extra_minutes
   useEffect(() => {
     if (!exam?.end_date || isSubmitting || isTimeUp) return;
 
     const interval = setInterval(() => {
       const now = new Date().getTime();
-      const end = new Date(exam.end_date!).getTime();
+      const end = new Date(exam.end_date!).getTime() + extraMinutes * 60 * 1000;
       const diff = end - now;
 
       if (diff <= 0) {
@@ -90,7 +94,7 @@ export default function ExamSubmit() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [exam, isSubmitting, isTimeUp]);
+  }, [exam, isSubmitting, isTimeUp, extraMinutes]);
 
   // Redirect guards
   useEffect(() => {
@@ -141,6 +145,63 @@ export default function ExamSubmit() {
     };
 
     Promise.all([fetchExam(), checkSubmission()]);
+
+    // Fetch time extension for this student
+    const fetchExtension = async () => {
+      try {
+        const r = await fetch(`/api/rooms/${roomId}/exams/${examId}/extensions/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (r.ok) {
+          const data = await r.json();
+          setExtraMinutes(data.extra_minutes || 0);
+        }
+      } catch { /* ignore */ }
+    };
+    fetchExtension();
+
+    // Load draft from server (prefer server over localStorage)
+    const fetchDraft = async () => {
+      try {
+        const r = await fetch(`/api/rooms/${roomId}/exams/${examId}/draft`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (r.ok) {
+          const data = await r.json();
+          if (data.answers && Object.keys(data.answers).length > 0) {
+            // Restore text answers from server draft
+            setAnswers(prev => {
+              const updated = { ...prev };
+              Object.entries(data.answers).forEach(([qId, text]) => {
+                const id = parseInt(qId);
+                if (updated[id]) {
+                  updated[id] = { ...updated[id], text: text as string };
+                }
+              });
+              return updated;
+            });
+            toast.info("โหลดคำตอบที่บันทึกไว้ก่อนหน้า", { duration: 3000 });
+          } else {
+            // Fallback: check localStorage
+            const localDraft = localStorage.getItem(localStorageKey);
+            if (localDraft) {
+              const parsed = JSON.parse(localDraft);
+              setAnswers(prev => {
+                const updated = { ...prev };
+                Object.entries(parsed).forEach(([qId, text]) => {
+                  const id = parseInt(qId);
+                  if (updated[id]) {
+                    updated[id] = { ...updated[id], text: text as string };
+                  }
+                });
+                return updated;
+              });
+            }
+          }
+        }
+      } catch { /* ignore */ }
+    };
+    setTimeout(fetchDraft, 300); // slight delay so exam data loads first
   }, [token, roomId, examId, navigate]);
 
   const answeredCount = Object.values(answers).filter(
@@ -154,6 +215,27 @@ export default function ExamSubmit() {
       ...prev,
       [qId]: { ...prev[qId], text: value },
     }));
+    // Save to localStorage immediately
+    const updated = { ...answersRef.current, [qId]: { ...answersRef.current[qId], text: value } };
+    const textOnly: Record<string, string> = {};
+    Object.entries(updated).forEach(([k, v]) => { textOnly[k] = v.text; });
+    localStorage.setItem(localStorageKey, JSON.stringify(textOnly));
+
+    // Debounced server save
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    setAutoSaveStatus("saving");
+    autoSaveTimerRef.current = setTimeout(async () => {
+      try {
+        await fetch(`/api/rooms/${roomId}/exams/${examId}/draft`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ answers: textOnly }),
+        });
+        setAutoSaveStatus("saved");
+      } catch {
+        setAutoSaveStatus("idle");
+      }
+    }, 2000);
   };
 
   const handleImageSelect = useCallback((qId: number, files: FileList) => {
@@ -226,6 +308,12 @@ export default function ExamSubmit() {
       const data = await res.json();
 
       if (res.ok) {
+        // Clear draft after successful submit
+        localStorage.removeItem(localStorageKey);
+        fetch(`/api/rooms/${roomId}/exams/${examId}/draft`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => {});
         toast.success("ส่งคำตอบสำเร็จ! กำลังประมวลผล AI...");
         navigate(`/room/${roomId}/exam/${examId}`);
       } else if (res.status === 409) {
@@ -368,11 +456,27 @@ export default function ExamSubmit() {
                 <div className="flex items-center gap-2 mb-2 font-bold uppercase tracking-wider text-xs opacity-80">
                   <Clock size={16} />
                   <span>เหลือเวลาทำข้อสอบ</span>
+                  {extraMinutes > 0 && (
+                    <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-bold">
+                      +{extraMinutes}m
+                    </span>
+                  )}
                 </div>
                 <div className="text-4xl font-black tabular-nums tracking-tight">
                   {timeLeft}
                 </div>
               </motion.div>
+            )}
+
+            {/* Auto-save badge */}
+            {autoSaveStatus !== "idle" && (
+              <div className="flex items-center gap-1.5 text-xs text-gray-400 self-end pb-2">
+                {autoSaveStatus === "saving" ? (
+                  <><Loader2 size={11} className="animate-spin" /> กำลังบันทึก...</>
+                ) : (
+                  <><Save size={11} className="text-green-500" /> บันทึกร่างแล้ว</>
+                )}
+              </div>
             )}
           </div>
         </div>

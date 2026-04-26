@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Trophy, FileText, ChevronDown, ChevronUp,
   CheckCircle2, Loader2, Calendar, Clock, ClipboardCheck,
-  Send, AlertCircle, BarChart3, Pencil, Trash2
+  Send, AlertCircle, BarChart3, Pencil, Trash2, TimerReset, Users
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -54,6 +54,12 @@ export default function ExamView() {
   } | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showExtensionPanel, setShowExtensionPanel] = useState(false);
+  const [extStudentId, setExtStudentId] = useState<"" | number>("");
+  const [extMinutes, setExtMinutes] = useState(15);
+  const [extNote, setExtNote] = useState("");
+  const [isGranting, setIsGranting] = useState(false);
+  const [extensions, setExtensions] = useState<any[]>([]);
 
   useEffect(() => {
     if (!isLoading && !user) navigate("/");
@@ -141,6 +147,46 @@ export default function ExamView() {
     }
   };
 
+  const fetchExtensions = async () => {
+    if (!token || !roomId || !examId) return;
+    try {
+      const res = await fetch(`/api/rooms/${roomId}/exams/${examId}/extensions`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) setExtensions(await res.json());
+    } catch { /* ignore */ }
+  };
+
+  const handleGrantExtension = async () => {
+    if (!token || !roomId || !examId || extMinutes <= 0) return;
+    setIsGranting(true);
+    try {
+      const res = await fetch(`/api/rooms/${roomId}/exams/${examId}/extensions`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          student_id: extStudentId !== "" ? extStudentId : null,
+          extra_minutes: extMinutes,
+          note: extNote || null,
+        }),
+      });
+      if (res.ok) {
+        toast.success("ขยายเวลาสำเร็จ!");
+        setExtStudentId("");
+        setExtNote("");
+        setExtMinutes(15);
+        fetchExtensions();
+      } else {
+        const err = await res.json();
+        toast.error(err.detail || "ไม่สามารถขยายเวลาได้");
+      }
+    } catch {
+      toast.error("เกิดข้อผิดพลาด");
+    } finally {
+      setIsGranting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-24">
       <Navbar />
@@ -173,6 +219,13 @@ export default function ExamView() {
               </Button>
               <Button
                 variant="outline"
+                onClick={() => { setShowExtensionPanel(!showExtensionPanel); if (!showExtensionPanel) fetchExtensions(); }}
+                className="gap-2 text-green-700 border-green-200 hover:bg-green-50 dark:text-green-400 dark:border-green-800"
+              >
+                <TimerReset size={16} /> ขยายเวลา
+              </Button>
+              <Button
+                variant="outline"
                 onClick={() => navigate(`/room/${roomId}/exam/${examId}/analytics`)}
                 className="gap-2"
               >
@@ -187,6 +240,75 @@ export default function ExamView() {
             </div>
           )}
         </div>
+
+        {/* Time Extension Panel */}
+        {isTeacher && showExtensionPanel && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-green-50 dark:bg-green-900/20 rounded-2xl border border-green-200 dark:border-green-800 p-6"
+          >
+            <h3 className="font-bold text-green-800 dark:text-green-300 flex items-center gap-2 mb-4">
+              <TimerReset size={18} /> ขยายเวลาทำข้อสอบ
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+              <div className="md:col-span-1">
+                <label className="text-xs font-bold text-gray-500 dark:text-slate-400 mb-1 block">Student ID (เว้นว่าง = ทั้งห้อง)</label>
+                <input
+                  type="number"
+                  placeholder="เว้นว่าง = ทั้งห้อง"
+                  value={extStudentId}
+                  onChange={e => setExtStudentId(e.target.value ? parseInt(e.target.value) : "")}
+                  className="w-full h-10 px-3 rounded-xl border border-green-200 dark:border-green-800 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-green-300"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 dark:text-slate-400 mb-1 block">เวลาเพิ่ม (นาที)</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={extMinutes}
+                  onChange={e => setExtMinutes(parseInt(e.target.value) || 1)}
+                  className="w-full h-10 px-3 rounded-xl border border-green-200 dark:border-green-800 bg-white dark:bg-slate-800 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-green-300"
+                />
+              </div>
+              <div className="md:col-span-1">
+                <label className="text-xs font-bold text-gray-500 dark:text-slate-400 mb-1 block">หมายเหตุ (ไม่บังคับ)</label>
+                <input
+                  value={extNote}
+                  onChange={e => setExtNote(e.target.value)}
+                  placeholder="เช่น การสอบพิเศษ..."
+                  className="w-full h-10 px-3 rounded-xl border border-green-200 dark:border-green-800 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-green-300"
+                />
+              </div>
+              <Button
+                onClick={handleGrantExtension}
+                disabled={isGranting || extMinutes <= 0}
+                className="bg-green-600 hover:bg-green-700 text-white h-10 rounded-xl"
+              >
+                {isGranting ? <Loader2 size={16} className="animate-spin" /> : <><TimerReset size={15} className="mr-1" /> ยืนยันขยายเวลา</>}
+              </Button>
+            </div>
+
+            {/* Extension History */}
+            {extensions.length > 0 && (
+              <div className="mt-4 border-t border-green-200 dark:border-green-800 pt-4">
+                <p className="text-xs font-bold text-green-700 dark:text-green-400 mb-2 flex items-center gap-1">
+                  <Users size={12} /> ประวัติการขยายเวลา
+                </p>
+                <div className="space-y-1">
+                  {extensions.map((ext) => (
+                    <div key={ext.id} className="flex items-center gap-3 text-xs text-gray-600 dark:text-slate-400 bg-white dark:bg-slate-800 rounded-lg px-3 py-2">
+                      <span className="font-bold text-green-600">+{ext.extra_minutes}นาที</span>
+                      <span>{ext.student_name ? ext.student_name : <span className="text-blue-500 font-medium">ทั้งห้อง</span>}</span>
+                      {ext.note && <span className="text-gray-400">— {ext.note}</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
 
         {/* Exam Header */}
         <motion.div

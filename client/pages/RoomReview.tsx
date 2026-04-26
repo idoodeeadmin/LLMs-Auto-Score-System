@@ -245,6 +245,23 @@ export default function RoomReview() {
     }
   };
 
+  const handleRescore = async (questionId: number) => {
+    if (!token || !confirm("ต้องการให้ AI ตรวจคำตอบของนักเรียนทุกคนในข้อนี้ใหม่หรือไม่? (ระบบจะใช้เกณฑ์/ธงคำตอบล่าสุดที่คุณแก้ไข)")) return;
+    try {
+      const res = await fetch(`/api/rooms/${roomId}/exams/${examId}/questions/${questionId}/rescore`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        toast.success("เริ่มการตรวจใหม่แล้ว ระบบกำลังประมวลผลเบื้องหลัง");
+      } else {
+        toast.error("ไม่สามารถเริ่มการตรวจใหม่ได้");
+      }
+    } catch {
+      toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    }
+  };
+
   const StatusBadge = ({ status, score, maxScore }: { status: StudentStatus; score?: number; maxScore?: number }) => {
     if (status === "ready") return (
       <div className="flex flex-col items-start">
@@ -592,9 +609,19 @@ export default function RoomReview() {
                       {q.percent_correct}%
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
-                    คะแนนเฉลี่ย {q.avg_score}/{q.max_score}
-                  </p>
+                  <div className="flex items-center justify-between mt-1">
+                    <p className="text-xs text-gray-500 dark:text-slate-400">
+                      คะแนนเฉลี่ย {q.avg_score}/{q.max_score}
+                    </p>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-7 text-[10px] text-blue-600 hover:text-blue-700 hover:bg-blue-50 py-0"
+                      onClick={() => handleRescore(q.question_id)}
+                    >
+                      <RefreshCw size={10} className="mr-1" /> ตรวจใหม่ทั้งหมด (Rescore)
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>

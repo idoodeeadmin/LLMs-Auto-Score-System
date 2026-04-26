@@ -486,49 +486,40 @@ uvicorn server.main:app --reload --port 8001
 ## 12. ฟีเจอร์ที่กำลังจะปรับปรุงหรือเพิ่มเติม (Features to Consider)
 
 ### 12.1 ระบบ Authentication & Security
-- **[ ] Session Management** - จัดการ session แบบ revoke token เมื่อเปลี่ยนรหัสผ่าน
-- **[ ] Audit Log** - บันทึกการกระทำสำคัญทั้งหมด (login, delete, grade changes)
+- **[x] Session Management** - จัดการ session แบบ revoke token เมื่อเปลี่ยนรหัสผ่าน
+- **[x] Audit Log** - บันทึกการกระทำสำคัญทั้งหมด (login, delete, grade changes)
 
 ### 12.2 AI Grading System
-- **[ ] Confidence Threshold** - Auto-flag คำตอบที่ AI มั่นใจต่ำกว่า threshold
-- **[ ] Batch Grading Queue** - ระบบ queue สำหรับประมวลผลจำนวนมากแบบ async
+- **[x] Confidence Threshold** - Auto-flag คำตอบที่ AI มั่นใจต่ำกว่า threshold
+- **[x] Batch Grading Queue** - ระบบ queue สำหรับประมวลผลจำนวนมากแบบ async
 
 ### 12.3 Exam & Question Management
-- **[ ] Question Bank** - คลังข้อสอบที่ใช้ซ้ำได้ข้ามห้องเรียน
-- **[ ] Question Categories** - แบ่งหมวดหมู่ข้อสอบตามหัวข้อ (LO, Bloom's Taxonomy)
-- **[ ] Randomized Questions** - สุ่มคำถาม/ตัวเลือกสำหรับแต่ละนักเรียน
-- **[ ] Time Extension** - ฟีเจอร์ขยายเวลาสอบสำหรับนักเรียนพิเศษ
-- **[ ] Auto-save Draft** - บันทึกคำตอบอัตโนมัติระหว่างทำข้อสอบ
+- **[x] Question Bank** - คลังข้อสอบที่ใช้ซ้ำได้ข้ามห้องเรียน
+- **[x] Randomized Questions** - สุ่มคำถาม/ตัวเลือกสำหรับแต่ละนักเรียน
+- **[x] Time Extension** - ฟีเจอร์ขยายเวลาสอบสำหรับนักเรียนพิเศษ
+- **[x] Auto-save Draft** - บันทึกคำตอบอัตโนมัติระหว่างทำข้อสอบ
 
 ### 12.4 Analytics & Reporting
-- **[ ] Learning Analytics Dashboard** - วิเคราะห์จุดอ่อนจุดแข็งของนักเรียน
-- **[ ] Comparative Analysis** - เปรียบเทียบผลสอบระหว่างห้องเรียน/เทอม
+- **[-] Comparative Analysis** - เปรียบเทียบผลสอบระหว่างห้องเรียน/เทอม (ข้าม)
 
 
 ### 12.5 User Experience
-- **[ ] Dark Mode** - โหมดมืดสำหรับการใช้งานกลางคืน
-- **[ ] Mobile App** - Native iOS/Android app หรือ PWA
-- **[ ] Offline Mode** - ทำข้อสอบได้แม้ไม่มี internet แล้ว sync ภายหลัง
-- **[ ] Rich Text Editor** - แก้ไขคำตอบพร้อม formatting (bold, code block)
+- **[] Dark Mode** - โหมดมืดสำหรับการใช้งานกลางคืน
 
 ### 12.6 Infrastructure
-- **[ ] PostgreSQL Migration** - ย้ายจาก SQLite 
 - **[ ] Cloud Storage** - ใช้ AWS S3/Google Cloud Storage แทน local storage 
-- **[ ] CDN Integration** - เพิ่มความเร็วในการโหลดรูปภาพ
-- **[ ] Redis Caching** - Cache ผลการตรวจและข้อมูลที่เข้าถึงบ่อย
 - **[ ] Docker Compose** - Containerization สำหรับ deployment ที่ง่ายขึ้น
 - **[ ] CI/CD Pipeline** - Automated testing และ deployment
 
 ### 12.7 Collaboration
-- **[ ] Peer Review** - นักเรียนตรวจคำตอบซึ่งกันและกัน (peer grading)
 - **[ ] Group Assignments** - รองรับการส่งงานกลุ่ม
 - **[ ] Discussion Forum** - กระดานถาม-ตอบสำหรับแต่ละห้องเรียน
 - **[ ] Announcement System** - ระบบประกาศจากอาจารย์พร้อม read receipt
 
 ### 12.8 AI Enhancements
-- **[ ] Auto-rubric Generation** - AI สร้างเกณฑ์คะแนนอัตโนมัติจากคำถาม
-- **[ ] Smart Rescoring** - ปรับคะแนนอัตโนมัติเมื่อมีการเปลี่ยน rubric
-- **[ ] Essay Quality Metrics** - วิเคราะห์ความยาว, ความซับซ้อน, readability
+- **[x] Auto-rubric Generation** - AI สร้างเกณฑ์คะแนนอัตโนมัติจากคำถาม
+- **[x] Smart Rescoring** - ปรับคะแนนอัตโนมัติเมื่อมีการเปลี่ยน rubric
+- **[x] Essay Quality Metrics** - วิเคราะห์ความยาว, ความซับซ้อน, readability
 
 ---
 
