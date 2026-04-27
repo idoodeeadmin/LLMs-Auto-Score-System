@@ -184,11 +184,19 @@ export default function Profile() {
           className="w-full max-w-lg space-y-6 bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700"
         >
           <motion.div variants={fadeIn} className="flex justify-between items-start">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">ตั้งค่าโปรไฟล์</h2>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
-                แก้ไขข้อมูลส่วนตัว {user?.role === "student" ? "รหัสนักศึกษา: " + (user?.studentId || "-") : "อาจารย์ผู้สอน"}
-              </p>
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => navigate(-1)} 
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-500 dark:text-slate-400 dark:text-slate-500"
+              >
+                <ArrowLeft size={20} />
+              </button>
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">ตั้งค่าโปรไฟล์</h2>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
+                  แก้ไขข้อมูลส่วนตัว {user?.role === "student" ? "รหัสนักศึกษา: " + (user?.studentId || "-") : "อาจารย์ผู้สอน"}
+                </p>
+              </div>
             </div>
           </motion.div>
 
