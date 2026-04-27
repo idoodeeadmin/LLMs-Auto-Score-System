@@ -890,15 +890,27 @@ if _FIREBASE_CREDENTIALS_PATH and not os.path.isabs(_FIREBASE_CREDENTIALS_PATH):
 
 # Initialize Firebase Admin SDK
 _firebase_app = None
-if _FIREBASE_CREDENTIALS_PATH and os.path.exists(_FIREBASE_CREDENTIALS_PATH):
+_FIREBASE_JSON = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON", "")
+
+if _FIREBASE_JSON:
+    import firebase_admin
+    from firebase_admin import credentials, auth
+    try:
+        cred_dict = json_module_top.loads(_FIREBASE_JSON)
+        cred = credentials.Certificate(cred_dict)
+        _firebase_app = firebase_admin.initialize_app(cred)
+        print("[Firebase] Admin SDK initialized successfully from environment variable")
+    except Exception as e:
+        print(f"[Firebase] Failed to initialize Admin SDK from ENV: {e}")
+elif _FIREBASE_CREDENTIALS_PATH and os.path.exists(_FIREBASE_CREDENTIALS_PATH):
     import firebase_admin
     from firebase_admin import credentials, auth
     try:
         cred = credentials.Certificate(_FIREBASE_CREDENTIALS_PATH)
         _firebase_app = firebase_admin.initialize_app(cred)
-        print("[Firebase] Admin SDK initialized successfully")
+        print("[Firebase] Admin SDK initialized successfully from file")
     except Exception as e:
-        print(f"[Firebase] Failed to initialize Admin SDK: {e}")
+        print(f"[Firebase] Failed to initialize Admin SDK from file: {e}")
 
 @app.post("/api/auth/firebase-login", response_model=TokenResponse)
 async def firebase_login(request: FirebaseLoginRequest, req: Request):
