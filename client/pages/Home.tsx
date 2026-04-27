@@ -54,7 +54,7 @@ export default function Home() {
 
   useEffect(() => {
     if (!token || !user) return;
-    const fetchRooms = async () => {
+    const fetchRooms = async (retries = 2) => {
       try {
         const res = await fetch("/api/rooms", {
           headers: { Authorization: `Bearer ${token}` }
@@ -62,16 +62,21 @@ export default function Home() {
         if (res.ok) {
           const data = await res.json();
           setExamRooms(data);
+          setIsFetchingRooms(false);
+        } else if (res.status === 401) {
+          // Token might be expired, let AuthContext handle it or redirect
+          setIsFetchingRooms(false);
         } else {
-          const errorData = await res.json().catch(() => ({}));
-          console.error("Fetch Rooms Failed:", res.status, errorData);
-          toast.error(`ดึงข้อมูลห้องเรียนไม่สำเร็จ (${res.status})`);
+          throw new Error("Failed to fetch");
         }
       } catch (error) {
-        console.error("Fetch Rooms Network Error:", error);
-        toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์ (Network Error)");
-      } finally {
-        setIsFetchingRooms(false);
+        if (retries > 0) {
+          setTimeout(() => fetchRooms(retries - 1), 1500);
+        } else {
+          console.error("Fetch Rooms Network Error:", error);
+          toast.error("การเชื่อมต่อขัดข้องชั่วคราว กำลังพยายามเชื่อมต่อใหม่...", { duration: 2000 });
+          setIsFetchingRooms(false);
+        }
       }
     };
     fetchRooms();

@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import ImageModal from "@/components/ImageModal";
 import { Textarea } from "@/components/ui/textarea";
 
 interface Rubric {
@@ -61,6 +62,9 @@ export default function ExamSubmit() {
   const [extraMinutes, setExtraMinutes] = useState(0);
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Image Modal State
+  const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
   const localStorageKey = `draft_${roomId}_${examId}`;
 
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
@@ -237,6 +241,42 @@ export default function ExamSubmit() {
       }
     }, 2000);
   };
+
+  // Force save function
+  const flushSave = useCallback(async () => {
+    const currentAnswers = answersRef.current;
+    const textOnly: Record<string, string> = {};
+    Object.entries(currentAnswers).forEach(([k, v]) => { textOnly[k] = v.text; });
+    
+    if (Object.keys(textOnly).length === 0) return;
+
+    try {
+      await fetch(`/api/rooms/${roomId}/exams/${examId}/draft`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ answers: textOnly }),
+      });
+    } catch (e) {
+      console.error("Flush save failed:", e);
+    }
+  }, [token, roomId, examId]);
+
+  // Handle auto-save on unmount and page leave
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // We use beacon or a synchronous-like fetch if possible, but for SPA unmount, flushSave is enough
+      flushSave();
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+        flushSave();
+      }
+    };
+  }, [flushSave]);
 
   const handleImageSelect = useCallback((qId: number, files: FileList) => {
     const newFiles = Array.from(files).filter(f => {
@@ -510,8 +550,13 @@ export default function ExamSubmit() {
                     {(q.image_paths && q.image_paths.length > 0) ? (
                       <div className="mt-3 grid grid-cols-2 gap-2">
                         {q.image_paths.map((src, i) => (
-                          <div key={i} className="rounded-xl overflow-hidden border border-indigo-100 bg-gray-50 dark:bg-slate-900">
-                            <img src={src} alt={`รูปโจทย์ ${i+1}`} className="w-full max-h-48 object-contain" />
+                          <div key={i} className="rounded-xl overflow-hidden border border-indigo-100 bg-gray-50 dark:bg-slate-900 cursor-zoom-in hover:opacity-90 transition-opacity">
+                            <img 
+                              src={src} 
+                              alt={`รูปโจทย์ ${i+1}`} 
+                              className="w-full max-h-48 object-contain" 
+                              onClick={() => setModalImage({ src, alt: `รูปโจทย์ข้อ ${index + 1} (${i + 1}/${q.image_paths?.length})` })}
+                            />
                           </div>
                         ))}
                         <div className="col-span-2 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
@@ -565,11 +610,16 @@ export default function ExamSubmit() {
                 {ans.imagePreviews.length > 0 && (
                   <div className="grid grid-cols-2 gap-2 mb-2">
                     {ans.imagePreviews.map((src, imgIdx) => (
-                      <div key={imgIdx} className="relative group rounded-xl overflow-hidden border border-indigo-100">
-                        <img src={src} alt={`คำตอบ ${imgIdx+1}`} className="w-full max-h-40 object-contain bg-gray-50 dark:bg-slate-900" />
+                      <div key={imgIdx} className="relative group rounded-xl overflow-hidden border border-indigo-100 cursor-zoom-in">
+                        <img 
+                          src={src} 
+                          alt={`คำตอบ ${imgIdx+1}`} 
+                          className="w-full max-h-40 object-contain bg-gray-50 dark:bg-slate-900 hover:opacity-90 transition-opacity" 
+                          onClick={() => setModalImage({ src, alt: `รูปคำตอบข้อ ${index + 1} (${imgIdx + 1}/${ans.imagePreviews.length})` })}
+                        />
                         <button
-                          onClick={() => handleRemoveImage(q.id, imgIdx)}
-                          className="absolute top-1 right-1 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => { e.stopPropagation(); handleRemoveImage(q.id, imgIdx); }}
+                          className="absolute top-1 right-1 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow opacity-0 group-hover:opacity-100 transition-opacity z-10"
                         >
                           <Trash2 size={12} />
                         </button>
@@ -658,6 +708,13 @@ export default function ExamSubmit() {
           </Button>
         </div>
       </div>
+
+      <ImageModal
+        isOpen={!!modalImage}
+        onClose={() => setModalImage(null)}
+        src={modalImage?.src || ""}
+        alt={modalImage?.alt}
+      />
     </div>
   );
 }

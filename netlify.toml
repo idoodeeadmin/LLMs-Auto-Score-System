@@ -1,15 +1,22 @@
 [build]
-  command = "npm run build:client"
-  functions = "netlify/functions"
+  command = "pnpm build"
   publish = "dist/spa"
 
-
-[functions]
-  external_node_modules = ["express"]
-  node_bundler = "esbuild"
-  
 [[redirects]]
-  force = true
   from = "/api/*"
+  to = "https://YOUR_RENDER_API_URL/api/:splat"
   status = 200
-  to = "/.netlify/functions/api/:splat"
+  force = true
+
+[[redirects]]
+  from = "/socket.io/*"
+  to = "https://YOUR_RENDER_SOCKET_URL/socket.io/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+

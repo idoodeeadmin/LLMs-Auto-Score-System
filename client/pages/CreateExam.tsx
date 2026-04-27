@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Plus, Trash2, Calendar, Clock, CheckCircle2, X, ChevronDown, ChevronUp, Image as ImageIcon, Edit3, ArrowLeft, Loader2, Shuffle, BookOpen, Search, Sparkles } from "lucide-react";
 import Navbar from "@/components/Navbar";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface RubricItem {
   id: number;
@@ -32,6 +33,7 @@ export default function CreateExam() {
   const navigate = useNavigate();
   const { token } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
 
   // Exam meta state
   const [examTitle, setExamTitle] = useState("");
@@ -72,6 +74,41 @@ export default function CreateExam() {
       isEditing: true
     }
   ]);
+
+  // Track changes to mark as dirty (skip initial render)
+  useEffect(() => {
+    // For CreateExam, we check if title is not empty or more than 1 question or 1st question has text
+    const hasData = examTitle.trim() !== "" || 
+                    examDescription.trim() !== "" || 
+                    questions.length > 1 || 
+                    (questions.length === 1 && questions[0].text.trim() !== "");
+    
+    if (hasData) {
+      setIsDirty(true);
+    }
+  }, [examTitle, examDescription, startDate, startTime, endDate, endTime, isRandomized, questions]);
+
+  // Handle browser-level alert (Refresh/Close Tab)
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
+
+  const onBack = () => {
+    if (isDirty) {
+      if (window.confirm("คุณมีการกรอกข้อมูลค้างไว้ ต้องการออกจากหน้านี้ใช่หรือไม่?")) {
+        navigate(`/room/${roomId}`);
+      }
+    } else {
+      navigate(`/room/${roomId}`);
+    }
+  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, qId: number) => {
     const files = e.target.files;
@@ -197,6 +234,7 @@ export default function CreateExam() {
 
       if (res.ok) {
         toast.success("สร้างข้อสอบสำเร็จ!");
+        setIsDirty(false); // Reset dirty state
         navigate(`/room/${roomId}`);
       } else {
         const err = await res.json();
@@ -211,10 +249,13 @@ export default function CreateExam() {
 
   const generateRubric = async (qId: number) => {
     const q = questions.find(x => x.id === qId);
-    if (!q || !q.text.trim()) {
-      toast.error("โปรดกรอกโจทย์คำถามก่อนสร้างเกณฑ์ด้วย AI");
+    if (!q) return;
+    
+    if (!q.text.trim() && (!q.questionImages || q.questionImages.length === 0)) {
+      toast.error("โปรดกรอกโจทย์คำถามหรือแนบรูปภาพก่อนสร้างเกณฑ์ด้วย AI");
       return;
     }
+
     const scoreVal = parseFloat(q.score);
     if (isNaN(scoreVal) || scoreVal <= 0) {
       toast.error("โปรดระบุคะแนนเต็มให้มากกว่า 0");
@@ -226,7 +267,11 @@ export default function CreateExam() {
       const res = await fetch("/api/gemini/generate-rubric", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ question_text: q.text, total_score: scoreVal })
+        body: JSON.stringify({ 
+          question_text: q.text, 
+          total_score: scoreVal,
+          question_images_base64: q.questionImages 
+        })
       });
       if (!res.ok) {
         const err = await res.json();
@@ -257,7 +302,7 @@ export default function CreateExam() {
       <Navbar />
 
       <main className="max-w-[1000px] mx-auto p-4 md:p-8 space-y-6">
-        <button onClick={() => navigate(`/room/${roomId}`)} className="flex items-center gap-2 text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:text-slate-200 text-sm font-medium">
+        <button onClick={onBack} className="flex items-center gap-2 text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:text-slate-200 text-sm font-medium">
           <ArrowLeft size={16} /> กลับหน้าห้อง
         </button>
 

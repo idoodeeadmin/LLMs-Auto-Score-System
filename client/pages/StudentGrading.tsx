@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import ImageModal from "@/components/ImageModal";
 
 // ---- Types ----
 interface Rubric {
@@ -71,6 +72,9 @@ export default function StudentGrading() {
   const [submissionStatus, setSubmissionStatus] = useState<string>("ready");
   const [scores, setScores] = useState<Record<number, number>>({});
   const [comments, setComments] = useState<Record<number, string>>({});
+
+  // Image Modal State
+  const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
 
   // Navigation between students
   const [studentsList, setStudentsList] = useState<StudentListItem[]>([]);
@@ -404,7 +408,8 @@ export default function StudentGrading() {
                         key={i}
                         src={src}
                         alt={`รูปโจทย์รูปที่ ${i + 1}`}
-                        className="w-full rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm object-contain bg-white dark:bg-slate-800 max-h-64"
+                        className="w-full rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm object-contain bg-white dark:bg-slate-800 max-h-64 cursor-zoom-in hover:opacity-90 transition-opacity"
+                        onClick={() => setModalImage({ src, alt: `รูปโจทย์ข้อที่ ${index + 1} (${i + 1}/${a.q_image_paths?.length})` })}
                       />
                     ))}
                   </div>
@@ -413,7 +418,8 @@ export default function StudentGrading() {
                     <img
                       src={a.q_image_path}
                       alt="รูปโจทย์"
-                      className="w-full rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm object-contain bg-white dark:bg-slate-800 max-h-64"
+                      className="w-full rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm object-contain bg-white dark:bg-slate-800 max-h-64 cursor-zoom-in hover:opacity-90 transition-opacity"
+                      onClick={() => setModalImage({ src: a.q_image_path!, alt: `รูปโจทย์ข้อที่ ${index + 1}` })}
                     />
                   </div>
                 ) : null}
@@ -470,16 +476,9 @@ export default function StudentGrading() {
                           <img
                             src={src}
                             alt={`รูปคำตอบที่ ${i + 1}`}
-                            className="w-full h-full object-contain"
+                            className="w-full h-full object-contain cursor-zoom-in hover:opacity-90 transition-opacity"
+                            onClick={() => setModalImage({ src, alt: `คำตอบข้อที่ ${index + 1} (${i + 1}/${a.image_paths?.length})` })}
                           />
-                          <a 
-                            href={src} 
-                            target="_blank" 
-                            rel="noreferrer"
-                            className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-bold"
-                          >
-                            ดูรูปเต็ม
-                          </a>
                         </div>
                       ))}
                     </div>
@@ -488,7 +487,8 @@ export default function StudentGrading() {
                       <img
                         src={a.image_path}
                         alt="รูปคำตอบ"
-                        className="max-h-80 w-auto rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm"
+                        className="max-h-80 w-auto rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm cursor-zoom-in hover:opacity-90 transition-opacity"
+                        onClick={() => setModalImage({ src: a.image_path!, alt: `คำตอบข้อที่ ${index + 1}` })}
                       />
                     </div>
                   ) : null}
@@ -596,6 +596,13 @@ export default function StudentGrading() {
           ))
         )}
       </main>
+
+      <ImageModal
+        isOpen={!!modalImage}
+        onClose={() => setModalImage(null)}
+        src={modalImage?.src || ""}
+        alt={modalImage?.alt}
+      />
     </div>
   );
 }
