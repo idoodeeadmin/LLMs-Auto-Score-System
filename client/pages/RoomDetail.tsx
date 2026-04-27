@@ -1,11 +1,17 @@
 import { useState, useEffect } from "react";
-import { Users, Plus, ArrowLeft, Copy, BookOpen, Loader2, UserCheck, FileText, Calendar, BarChart3, ChevronDown, ChevronUp } from "lucide-react";
+import { Users, Plus, ArrowLeft, Copy, BookOpen, Loader2, UserCheck, FileText, Calendar, BarChart3, ChevronDown, ChevronUp, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface RoomInfo {
   id: number;
@@ -78,6 +84,11 @@ export default function RoomDetail() {
   const [newAnn, setNewAnn] = useState({ title: "", content: "" });
   const [isFetching, setIsFetching] = useState(true);
   const [showExamSummary, setShowExamSummary] = useState(true);
+  
+  // Delete Exam States
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [examToDelete, setExamToDelete] = useState<Exam | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) navigate("/");
@@ -145,6 +156,30 @@ export default function RoomDetail() {
     }
   };
 
+  const handleDeleteExam = async () => {
+    if (!token || !roomId || !examToDelete) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/rooms/${roomId}/exams/${examToDelete.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        toast.success("ลบข้อสอบเรียบร้อยแล้ว");
+        setExams(prev => prev.filter(e => e.id !== examToDelete.id));
+      } else {
+        const err = await res.json();
+        toast.error(err.detail || "ไม่สามารถลบข้อสอบ");
+      }
+    } catch {
+      toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+      setExamToDelete(null);
+    }
+  };
+
   if (isLoading || isFetching || !user) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
@@ -177,15 +212,15 @@ export default function RoomDetail() {
         {/* Room Banner */}
         <motion.div
           initial="hidden" animate="visible" variants={fadeUp}
-          className={`bg-gradient-to-br ${GRADIENTS[gradientIndex]} rounded-3xl p-8 text-white shadow-xl relative overflow-hidden`}
+          className={`bg-gradient-to-br ${GRADIENTS[gradientIndex]} rounded-2xl md:rounded-3xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden`}
         >
           <div className="absolute inset-0 bg-black/5" />
-          <div className="relative z-10 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-5">
             <div>
-              <p className="text-white/70 text-sm font-medium mb-1 uppercase tracking-wider">ห้องเรียน</p>
-              <h1 className="text-3xl sm:text-4xl font-bold drop-shadow">{room?.name}</h1>
+              <p className="text-white/70 text-[10px] md:text-sm font-medium mb-1 uppercase tracking-wider">ห้องเรียน</p>
+              <h1 className="text-2xl md:text-4xl font-bold drop-shadow leading-tight">{room?.name}</h1>
               {room?.section && (
-                <span className="inline-block mt-2 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-sm font-semibold">
+                <span className="inline-block mt-2 px-3 py-0.5 md:py-1 bg-white/20 backdrop-blur-sm rounded-full text-xs md:text-sm font-semibold">
                   {room.section}
                 </span>
               )}
@@ -194,48 +229,51 @@ export default function RoomDetail() {
             {isTeacher && room?.class_code && (
               <button
                 onClick={handleCopyCode}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 rounded-2xl transition-colors text-left"
+                className="flex items-center gap-3 px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 rounded-xl md:rounded-2xl transition-colors text-left self-start md:self-auto"
               >
                 <div>
-                  <p className="text-white/70 text-xs">รหัสเชิญ</p>
-                  <p className="font-mono font-bold text-xl tracking-widest">{room.class_code}</p>
+                  <p className="text-white/70 text-[10px]">รหัสเชิญ</p>
+                  <p className="font-mono font-bold text-lg md:text-xl tracking-widest">{room.class_code}</p>
                 </div>
-                <Copy size={16} className="opacity-70 ml-1" />
+                <Copy size={14} className="opacity-70 ml-1" />
               </button>
             )}
           </div>
         </motion.div>
 
         {/* Tab Bar */}
-        <motion.div initial="hidden" animate="visible" variants={fadeUp} className="flex items-center gap-1 bg-white dark:bg-slate-800 rounded-2xl p-1.5 shadow-sm border border-slate-100 dark:border-slate-700 w-fit">
+        <motion.div 
+          initial="hidden" animate="visible" variants={fadeUp} 
+          className="flex items-center gap-1 bg-white dark:bg-slate-800 rounded-2xl p-1 shadow-sm border border-slate-100 dark:border-slate-700 w-full md:w-fit overflow-x-auto no-scrollbar"
+        >
           <button
             onClick={() => setActiveTab("exams")}
-            className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === "exams"
+            className={`flex-1 md:flex-none whitespace-nowrap px-4 md:px-6 py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all ${activeTab === "exams"
                 ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
-                : "text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:bg-slate-900"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:bg-slate-900"
               }`}
           >
-            <BookOpen size={15} className="inline mr-1.5 -mt-0.5" />
+            <BookOpen size={14} className="inline mr-1.5 -mt-0.5" />
             ข้อสอบ
           </button>
           <button
             onClick={() => setActiveTab("announcements")}
-            className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === "announcements"
+            className={`flex-1 md:flex-none whitespace-nowrap px-4 md:px-6 py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all ${activeTab === "announcements"
                 ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
-                : "text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:bg-slate-900"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:bg-slate-900"
               }`}
           >
-            <Plus size={15} className="inline mr-1.5 -mt-0.5" />
+            <Plus size={14} className="inline mr-1.5 -mt-0.5" />
             ประกาศ
           </button>
           <button
             onClick={() => setActiveTab("members")}
-            className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === "members"
+            className={`flex-1 md:flex-none whitespace-nowrap px-4 md:px-6 py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all ${activeTab === "members"
                 ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
-                : "text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:bg-slate-900"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:bg-slate-900"
               }`}
           >
-            <Users size={15} className="inline mr-1.5 -mt-0.5" />
+            <Users size={14} className="inline mr-1.5 -mt-0.5" />
             สมาชิก
           </button>
         </motion.div>
@@ -244,21 +282,24 @@ export default function RoomDetail() {
           {/* Exams Tab */}
           {activeTab === "exams" && (
             <motion.div key="exams" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }} className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200">รายการข้อสอบ</h2>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
                   {isTeacher && (
                     <Button
                       variant="outline"
                       onClick={() => navigate(`/room/${roomId}/analytics`)}
-                      className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:bg-indigo-900/30"
+                      className="flex-1 sm:flex-none h-9 text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:bg-indigo-900/30"
                     >
-                      <BarChart3 size={16} className="mr-1.5" /> วิเคราะห์ทุกชุด
+                      <BarChart3 size={14} className="mr-1.5" /> วิเคราะห์
                     </Button>
                   )}
                   {isTeacher && (
-                    <Button onClick={() => navigate(`/room/${roomId}/create-exam`)} className="bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-200">
-                      <Plus size={16} className="mr-1.5" /> สร้างข้อสอบ
+                    <Button 
+                      onClick={() => navigate(`/room/${roomId}/create-exam`)} 
+                      className="flex-1 sm:flex-none h-9 text-xs bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-200"
+                    >
+                      <Plus size={14} className="mr-1.5" /> สร้างข้อสอบ
                     </Button>
                   )}
                 </div>
@@ -283,7 +324,7 @@ export default function RoomDetail() {
                     <div
                       key={exam.id}
                       onClick={() => navigate(`/room/${roomId}/exam/${exam.id}`)}
-                      className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-5 shadow-sm hover:shadow-md hover:border-indigo-200 cursor-pointer transition-all group"
+                      className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-5 shadow-sm hover:shadow-md hover:border-indigo-200 cursor-pointer transition-all group relative"
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex gap-4 items-start">
@@ -292,7 +333,7 @@ export default function RoomDetail() {
                           </div>
                           <div>
                             <h3 className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 transition-colors">{exam.title}</h3>
-                            {exam.description && <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 mt-0.5">{exam.description}</p>}
+                            {exam.description && <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 mt-0.5 line-clamp-1">{exam.description}</p>}
                             {exam.start_date && (
                               <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 flex items-center gap-1">
                                 <Calendar size={12} /> {new Date(exam.start_date).toLocaleDateString('th-TH')}
@@ -300,9 +341,37 @@ export default function RoomDetail() {
                             )}
                           </div>
                         </div>
-                        <div className="text-right flex-shrink-0">
-                          <span className="text-lg font-bold text-indigo-600">{exam.total_score}</span>
-                          <span className="text-xs text-slate-400 dark:text-slate-500 ml-1">คะแนน</span>
+                        <div className="flex items-start gap-4">
+                          <div className="text-right flex-shrink-0 hidden sm:block">
+                            <span className="text-lg font-bold text-indigo-600">{exam.total_score}</span>
+                            <span className="text-xs text-slate-400 dark:text-slate-500 ml-1">คะแนน</span>
+                          </div>
+                          
+                          {isTeacher && (
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-400 hover:text-slate-600">
+                                    <MoreVertical size={18} />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-36">
+                                  <DropdownMenuItem onClick={() => navigate(`/room/${roomId}/exam/${exam.id}/edit`)}>
+                                    <Pencil size={14} className="mr-2" /> แก้ไข
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    className="text-red-600 focus:text-red-600" 
+                                    onClick={() => {
+                                      setExamToDelete(exam);
+                                      setShowDeleteModal(true);
+                                    }}
+                                  >
+                                    <Trash2 size={14} className="mr-2" /> ลบ
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -473,6 +542,43 @@ export default function RoomDetail() {
           )}
         </AnimatePresence>
       </main>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <div className="text-center">
+              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="text-red-600" size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">ยืนยันการลบข้อสอบ</h3>
+              <p className="text-gray-500 dark:text-slate-400 mb-6 text-sm">
+                คุณต้องการลบข้อสอบ "<strong>{examToDelete?.title}</strong>" ใช่หรือไม่?<br />
+                <span className="text-red-500 font-bold mt-2 block">การกระทำนี้ไม่สามารถย้อนกลับได้</span>
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setExamToDelete(null);
+                  }}
+                  className="flex-1"
+                >
+                  ยกเลิก
+                </Button>
+                <Button
+                  onClick={handleDeleteExam}
+                  disabled={isDeleting}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                >
+                  {isDeleting ? <Loader2 size={16} className="animate-spin" /> : "ลบข้อสอบ"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

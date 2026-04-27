@@ -284,22 +284,22 @@ export default function Home() {
           initial="hidden" animate="visible" variants={fadeUp}
           className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10 mt-4"
         >
-          <div>
-            <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white mb-2">Welcome, {user.name.split(' ')[0]}</h2>
-            <p className="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-lg">
+          <div className="flex-1">
+            <h2 className="text-2xl md:text-4xl font-bold tracking-tight text-slate-900 dark:text-white mb-1 md:mb-2">Welcome, {user.name.split(' ')[0]}</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-sm md:text-lg">
               ยินดีต้อนรับสู่แดชบอร์ด ({user.role === 'teacher' ? 'อาจารย์' : 'นักศึกษา'})
             </p>
           </div>
           
           <div className="flex items-center gap-4 w-full md:w-auto flex-col sm:flex-row">
             <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 h-5 w-5" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4 md:h-5 md:w-5" />
               <Input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="ค้นหาชื่อ หรือ รหัสห้องสอบ..."
-                className="pl-10 h-11 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus-visible:ring-indigo-500 shadow-sm"
+                placeholder="ค้นหา..."
+                className="pl-9 md:pl-10 h-10 md:h-11 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-sm text-sm"
               />
             </div>
             
@@ -328,8 +328,8 @@ export default function Home() {
           animate="visible"
           className="mb-12"
         >
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-200">ห้องเรียนของฉัน</h3>
+          <div className="flex items-center justify-between mb-4 md:mb-6">
+            <h3 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-slate-200">ห้องเรียนของฉัน</h3>
             {examRooms.length > 0 && (
               <span className="text-sm font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">
                 พบ {filteredRooms.length} ห้อง

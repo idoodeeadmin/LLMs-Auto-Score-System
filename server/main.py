@@ -2619,14 +2619,12 @@ async def export_exam_scores(
 
     safe_title = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in exam["title"])
     export_headers = [
-        "Student ID",
-        "Student Code",
-        "Student Name",
-        "Email",
-        "Status",
-        "Score",
-        "Submitted At",
-        "Exam Total Score",
+        "รหัสนักศึกษา",
+        "ชื่อ-นามสกุล",
+        "สถานะ",
+        "คะแนนที่ได้",
+        "คะแนนเต็ม",
+        "วันที่ส่ง",
     ]
 
     if export_fmt == "csv":
@@ -2635,8 +2633,8 @@ async def export_exam_scores(
         writer.writerow(export_headers)
         for r in rows:
             writer.writerow([
-                r["student_id"], r["student_code"], r["name"], r["email"],
-                r["status"], r["total_score"], r["submitted_at"], exam["total_score"]
+                r["student_code"], r["name"],
+                r["status"], r["total_score"], exam["total_score"], r["submitted_at"]
             ])
 
         csv_content = output.getvalue()
@@ -2672,8 +2670,8 @@ async def export_exam_scores(
 
     for r in rows:
         ws.append([
-            r["student_id"], r["student_code"], r["name"], r["email"],
-            r["status"], r["total_score"], r["submitted_at"], exam["total_score"]
+            r["student_code"], r["name"],
+            r["status"], r["total_score"], exam["total_score"], r["submitted_at"]
         ])
 
     ws.freeze_panes = "A2"
