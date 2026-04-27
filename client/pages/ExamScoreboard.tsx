@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 type SubmissionStatus = "missing" | "ready" | "needs_review" | "approved";
 
@@ -151,35 +152,60 @@ export default function ExamScoreboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-12 gap-3 px-4 py-3 text-xs md:text-sm font-semibold text-slate-500 dark:text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700">
+          <div className="hidden md:grid grid-cols-12 gap-3 px-6 py-3 text-sm font-bold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700">
             <div className="col-span-5">นักเรียน</div>
-            <div className="col-span-2">สถานะ</div>
-            <div className="col-span-3 text-right">คะแนน</div>
+            <div className="col-span-3 text-center">สถานะ</div>
+            <div className="col-span-2 text-right">คะแนน</div>
             <div className="col-span-2 text-right">รายละเอียด</div>
           </div>
 
           <div className="divide-y divide-slate-100">
             {filteredAndSorted.length === 0 ? (
-              <div className="px-4 py-10 text-center text-slate-400 dark:text-slate-500">ไม่พบข้อมูลนักเรียน</div>
+              <div className="px-4 py-12 text-center text-slate-400 dark:text-slate-500">ไม่พบข้อมูลนักเรียน</div>
             ) : (
               filteredAndSorted.map((s) => (
-                <div key={s.student_id} className="grid grid-cols-12 gap-3 px-4 py-3 items-center">
-                  <div className="col-span-5 min-w-0">
-                    <p className="font-medium text-slate-800 dark:text-slate-200 truncate">{s.name}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500 truncate">{s.student_code || s.email}</p>
+                <div key={s.student_id} className="flex flex-col md:grid md:grid-cols-12 gap-3 md:gap-3 px-4 md:px-6 py-4 items-start md:items-center border-b border-slate-50 dark:border-slate-800 last:border-0 hover:bg-slate-50/50 transition-colors">
+                  <div className="w-full md:col-span-5 min-w-0 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-900 flex items-center justify-center text-slate-500 font-bold text-xs">
+                      {s.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold md:font-medium text-slate-800 dark:text-slate-200 truncate text-sm md:text-base">{s.name}</p>
+                      <p className="text-[10px] md:text-xs text-slate-500 dark:text-slate-400 truncate">{s.student_code || s.email}</p>
+                    </div>
+                    <div className="md:hidden">
+                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                         s.status === 'approved' ? 'bg-green-100 text-green-700' : 
+                         s.status === 'missing' ? 'bg-slate-100 text-slate-400' : 'bg-blue-100 text-blue-700'
+                       }`}>
+                         {s.status}
+                       </span>
+                    </div>
                   </div>
-                  <div className="col-span-2 text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500">{s.status}</div>
-                  <div className="col-span-3 text-right font-semibold text-indigo-700">
-                    {s.total_score ?? "-"} / {exam?.total_score ?? "-"}
+                  <div className="hidden md:block md:col-span-3 text-center text-sm">
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                      s.status === 'approved' ? 'bg-green-100 text-green-700' : 
+                      s.status === 'missing' ? 'bg-slate-100 text-slate-400' : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {s.status}
+                    </span>
                   </div>
-                  <div className="col-span-2 text-right">
-                    <button
+                  <div className="w-full md:col-span-2 flex md:justify-end items-center justify-between border-t border-slate-50 md:border-0 pt-2 md:pt-0">
+                    <span className="md:hidden text-[10px] text-slate-400 font-bold uppercase">คะแนนรวม</span>
+                    <p className="font-bold text-indigo-700 text-sm md:text-base">
+                      {s.total_score ?? "-"} <span className="text-slate-300 font-normal">/</span> {exam?.total_score ?? "-"}
+                    </p>
+                  </div>
+                  <div className="w-full md:col-span-2 text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => navigate(`/room/${roomId}/exam/${examId}/grading/${s.student_id}`)}
-                      className="text-xs text-indigo-600 hover:text-indigo-800"
+                      className="w-full md:w-auto text-xs text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 h-8"
                       disabled={s.status === "missing"}
                     >
                       {s.status === "missing" ? "-" : "ดูรายข้อ"}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ))

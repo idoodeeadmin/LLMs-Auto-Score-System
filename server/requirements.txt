@@ -12,3 +12,5 @@ httpx
 firebase-admin
 pymysql
 certifi
+pytest
+pytest-mock

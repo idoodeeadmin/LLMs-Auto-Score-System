@@ -2,14 +2,13 @@ import { useState, useEffect, useCallback } from "react";
 import Navbar from "@/components/Navbar";
 import {
   Search, CheckCircle2, AlertCircle,
-  FileText, User, Check, AlertTriangle, Loader2, ArrowLeft, RefreshCw, Inbox, FileX
+  FileText, User, Check, AlertTriangle, Loader2, ArrowLeft, RefreshCw, Inbox, FileX, CheckSquare, X
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
 type StudentStatus = "missing" | "ready" | "needs_review" | "approved";
@@ -32,42 +31,22 @@ interface ExamInfo {
   total_score: number;
 }
 
-interface Analytics {
-  mean_score: number;
-  median_score: number;
-  approved_submission_count: number;
-  score_distribution: Record<string, number>;
-  submission_counts: {
-    submitted: number;
-    missing: number;
-  };
-  difficulty_analysis: Array<{
-    question_id: number;
-    order_index: number;
-    question_text: string;
-    max_score: number;
-    avg_score: number;
-    percent_correct: number;
-  }>;
-}
-
 export default function RoomReview() {
   const navigate = useNavigate();
   const { roomId, examId } = useParams();
   const { user, token, isLoading } = useAuth();
 
   const [activeTab, setActiveTab] = useState<"missing" | "pending" | "approved">("pending");
-  const [subFilter, setSubFilter] = useState<"all" | "success" | "failed">("all");
+  const [subFilter, setSubFilter] = useState<"all" | "ready" | "needs_review">("all");
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [students, setStudents] = useState<StudentSubmission[]>([]);
   const [exam, setExam] = useState<ExamInfo | null>(null);
-  const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [isFetching, setIsFetching] = useState(true);
   const [isApproving, setIsApproving] = useState(false);
   const [isExportingCsv, setIsExportingCsv] = useState(false);
   const [isExportingXlsx, setIsExportingXlsx] = useState(false);
-  const [bulkMode, setBulkMode] = useState<"ready_only" | "include_needs_review">("ready_only");
+  const [showExportModal, setShowExportModal] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) navigate("/");
@@ -75,17 +54,18 @@ export default function RoomReview() {
   }, [user, isLoading, navigate]);
 
   const fetchData = useCallback(async () => {
-    if (!token || !roomId || !examId) return;
+    if (!token || !roomId || !examId) {
+      setIsFetching(false);
+      return;
+    }
+    
     setIsFetching(true);
     try {
-      const [subRes, examRes, analyticsRes] = await Promise.all([
+      const [subRes, examRes] = await Promise.all([
         fetch(`/api/rooms/${roomId}/exams/${examId}/submissions`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
         fetch(`/api/rooms/${roomId}/exams/${examId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`/api/rooms/${roomId}/exams/${examId}/analytics`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -95,13 +75,12 @@ export default function RoomReview() {
       } else {
         toast.error("ไม่สามารถโหลดข้อมูลการส่งงานได้");
       }
+      
       if (examRes.ok) {
         setExam(await examRes.json());
       }
-      if (analyticsRes.ok) {
-        setAnalytics(await analyticsRes.json());
-      }
-    } catch {
+    } catch (error) {
+      console.error("Fetch error:", error);
       toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
     } finally {
       setIsFetching(false);
@@ -112,7 +91,7 @@ export default function RoomReview() {
     fetchData();
   }, [fetchData]);
 
-  // Filtering
+  // Unified Filtering Logic
   const filteredStudents = students.filter((s) => {
     const matchSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (s.student_code || "").toLowerCase().includes(searchQuery.toLowerCase());
@@ -124,25 +103,21 @@ export default function RoomReview() {
       const isPending = s.status === "ready" || s.status === "needs_review";
       if (!isPending) return false;
       if (subFilter === "all") return true;
-      if (subFilter === "success") return s.status === "ready";
-      if (subFilter === "failed") return s.status === "needs_review";
+      if (subFilter === "ready") return s.status === "ready";
+      if (subFilter === "needs_review") return s.status === "needs_review";
     }
     return false;
   });
 
-  const approvableStudents = filteredStudents.filter((s) => {
-    if (bulkMode === "include_needs_review") return s.status === "ready" || s.status === "needs_review";
-    return s.status === "ready";
-  });
   const missingCount = students.filter((s) => s.status === "missing").length;
   const pendingCount = students.filter((s) => s.status === "ready" || s.status === "needs_review").length;
   const approvedCount = students.filter((s) => s.status === "approved").length;
 
-  const toggleSelectAll = () => {
-    if (approvableStudents.length > 0 && selectedIds.length === approvableStudents.length) {
+  const toggleSelectAllVisible = () => {
+    if (filteredStudents.length > 0 && selectedIds.length === filteredStudents.length) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(approvableStudents.map((s) => s.student_id));
+      setSelectedIds(filteredStudents.map((s) => s.student_id));
     }
   };
 
@@ -245,423 +220,286 @@ export default function RoomReview() {
     }
   };
 
-  const handleRescore = async (questionId: number) => {
-    if (!token || !confirm("ต้องการให้ AI ตรวจคำตอบของนักเรียนทุกคนในข้อนี้ใหม่หรือไม่? (ระบบจะใช้เกณฑ์/ธงคำตอบล่าสุดที่คุณแก้ไข)")) return;
-    try {
-      const res = await fetch(`/api/rooms/${roomId}/exams/${examId}/questions/${questionId}/rescore`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        toast.success("เริ่มการตรวจใหม่แล้ว ระบบกำลังประมวลผลเบื้องหลัง");
-      } else {
-        toast.error("ไม่สามารถเริ่มการตรวจใหม่ได้");
-      }
-    } catch {
-      toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
-    }
-  };
-
   const StatusBadge = ({ status, score, maxScore }: { status: StudentStatus; score?: number; maxScore?: number }) => {
     if (status === "ready") return (
       <div className="flex flex-col items-start">
-        <span className="text-sm font-bold text-gray-900 dark:text-white">สำเร็จ (รออนุมัติ)</span>
-        <span className="text-xs text-green-600 bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded-md mt-1 border border-green-100">
-          คะแนน AI: {score ?? "-"}/{maxScore ?? "-"}
+        <span className="text-sm font-bold text-gray-900 dark:text-slate-100">พร้อมอนุมัติ</span>
+        <span className="text-xs text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-md mt-1 border border-green-100 dark:border-green-900/40">
+          AI: {score ?? "-"}/{maxScore ?? "-"}
         </span>
       </div>
     );
     if (status === "needs_review") return (
       <div className="flex flex-col items-start">
-        <span className="text-sm font-bold text-gray-900 dark:text-white">ต้องตรวจสอบ</span>
-        <span className="text-xs text-orange-600 bg-orange-50 px-2 py-0.5 rounded-md mt-1 border border-orange-100 flex items-center gap-1">
-          <AlertTriangle size={10} /> AI ไม่มั่นใจ — โปรดตรวจ
+        <span className="text-sm font-bold text-gray-900 dark:text-slate-100">ต้องตรวจสอบ</span>
+        <span className="text-xs text-orange-600 bg-orange-50 dark:bg-orange-900/20 px-2 py-0.5 rounded-md mt-1 border border-orange-100 dark:border-orange-900/40 flex items-center gap-1">
+          <AlertTriangle size={10} /> AI ไม่มั่นใจ
         </span>
       </div>
     );
     if (status === "approved") return (
-      <div className="flex items-center gap-2 text-green-600 font-medium">
+      <div className="flex items-center gap-2 text-green-600 dark:text-emerald-400 font-bold text-sm">
         <CheckCircle2 size={16} /> อนุมัติแล้ว ({score ?? "-"}/{maxScore ?? "-"})
       </div>
     );
-    return <span className="text-gray-400 dark:text-slate-500 italic">ยังไม่ส่งข้อสอบ</span>;
+    return <span className="text-gray-400 dark:text-slate-500 italic text-sm font-medium">ยังไม่ส่งข้อสอบ</span>;
   };
 
   if (isLoading || isFetching) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
-        <Loader2 className="animate-spin text-indigo-600 h-12 w-12" />
+      <div className="flex h-screen items-center justify-center bg-white dark:bg-slate-950">
+        <Loader2 className="animate-spin text-slate-400 h-10 w-10" />
       </div>
     );
   }
 
-  const distributionData = analytics
-    ? Object.entries(analytics.score_distribution).map(([range, count]) => ({
-        range,
-        students: count,
-      }))
-    : [];
-
   return (
-    <div className="min-h-screen bg-[#F8F9FA] pb-20">
+    <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
       <Navbar activeTab="allReviews" />
 
-      <main className="max-w-[1440px] mx-auto p-6 md:p-8 space-y-8">
+      <main className="max-w-6xl mx-auto px-6 py-12 space-y-12">
 
-        {/* Header & Stats */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <button
-              onClick={() => navigate(`/room/${roomId}/exam/${examId}`)}
-              className="flex items-center gap-1.5 text-sm text-gray-400 dark:text-slate-500 hover:text-gray-700 dark:text-slate-300 mb-2 transition-colors"
-            >
-              <ArrowLeft size={15} /> กลับหน้าข้อสอบ
-            </button>
-            <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{exam?.title ?? "..."}</h1>
-              <span className="bg-blue-100 text-[#3B82F6] text-xs px-2 py-0.5 rounded font-bold">
-                {exam?.total_score} คะแนน
-              </span>
-            </div>
-            <p className="text-gray-500 dark:text-slate-400">จัดการผลการประเมินและอนุมัติคะแนน</p>
-          </div>
-
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={fetchData} className="bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300" disabled={isFetching}>
-              <RefreshCw className={`mr-2 w-4 h-4 ${isFetching ? "animate-spin" : ""}`} /> รีเฟรช
-            </Button>
-            <Button
-              variant="outline"
-              className="bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300"
-              onClick={() => handleExport("csv")}
-              disabled={isExportingCsv}
-            >
-              <FileText className="mr-2 w-4 h-4" /> Export CSV
-            </Button>
-            <Button
-              variant="outline"
-              className="bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300"
-              onClick={() => handleExport("xlsx")}
-              disabled={isExportingXlsx}
-            >
-              <FileText className="mr-2 w-4 h-4" /> Export Excel
-            </Button>
-          </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div
-            onClick={() => setActiveTab("missing")}
-            className={`p-5 rounded-xl border shadow-sm flex items-center justify-between cursor-pointer transition-all hover:shadow-md ${activeTab === "missing" ? "border-gray-400 bg-gray-50 dark:bg-slate-900 ring-1 ring-gray-400" : "bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-800"}`}
+        {/* Unified Header Section */}
+        <header>
+          <button
+            onClick={() => navigate(`/room/${roomId}/exam/${examId}`)}
+            className="group flex items-center gap-2 text-slate-400 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors text-xs font-bold uppercase tracking-widest mb-8"
           >
+            <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+            กลับหน้าข้อสอบ
+          </button>
+
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
             <div>
-              <p className="text-sm text-gray-500 dark:text-slate-400">ยังไม่ส่ง</p>
-              <p className="text-2xl font-bold text-gray-400 dark:text-slate-500">{missingCount} <span className="text-sm font-normal">คน</span></p>
+              <h1 className="text-4xl font-black tracking-tighter mb-2 text-slate-900 dark:text-white">{exam?.title}</h1>
+              <p className="text-slate-500 dark:text-slate-400 font-medium">จัดการผลการประเมินและอนุมัติคะแนนนักศึกษา</p>
             </div>
-            <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 dark:text-slate-500"><User size={20} /></div>
+
+
           </div>
+        </header>
 
-          <div
-            onClick={() => setActiveTab("pending")}
-            className={`p-5 rounded-xl border shadow-sm flex items-center justify-between cursor-pointer transition-all hover:shadow-md relative overflow-hidden ${activeTab === "pending" ? "border-[#3B82F6] bg-blue-50 dark:bg-blue-900/30/20 ring-1 ring-[#3B82F6]" : "bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-800"}`}
-          >
-            {activeTab === "pending" && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#3B82F6]" />}
-            <div>
-              <p className={`text-sm font-medium ${activeTab === "pending" ? "text-[#3B82F6]" : "text-gray-500 dark:text-slate-400"}`}>รอการตรวจ/อนุมัติ</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{pendingCount} <span className="text-sm font-normal text-gray-500 dark:text-slate-400">คน</span></p>
-            </div>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${activeTab === "pending" ? "bg-blue-100 text-[#3B82F6]" : "bg-gray-50 dark:bg-slate-900 text-gray-400 dark:text-slate-500"}`}><AlertCircle size={20} /></div>
-          </div>
-
-          <div
-            onClick={() => setActiveTab("approved")}
-            className={`p-5 rounded-xl border shadow-sm flex items-center justify-between cursor-pointer transition-all hover:shadow-md ${activeTab === "approved" ? "border-green-500 bg-green-50 dark:bg-green-900/30/20 ring-1 ring-green-500" : "bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-800"}`}
-          >
-            <div>
-              <p className={`text-sm font-medium ${activeTab === "approved" ? "text-green-600" : "text-gray-500 dark:text-slate-400"}`}>อนุมัติแล้ว</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{approvedCount} <span className="text-sm font-normal text-gray-500 dark:text-slate-400">คน</span></p>
-            </div>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${activeTab === "approved" ? "bg-green-100 text-green-600" : "bg-gray-50 dark:bg-slate-900 text-gray-400 dark:text-slate-500"}`}><CheckCircle2 size={20} /></div>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden min-h-[400px] flex flex-col">
-
-          {/* Toolbar */}
-          <div className="border-b border-gray-200 dark:border-slate-700 p-4 flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex p-1 bg-gray-100 rounded-lg self-start">
-              <button onClick={() => setActiveTab("missing")} className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === "missing" ? "bg-white dark:bg-slate-800 text-gray-900 dark:text-white shadow-sm" : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:text-slate-300"}`}>
-                ยังไม่ส่ง ({missingCount})
-              </button>
-              <button onClick={() => setActiveTab("pending")} className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === "pending" ? "bg-white dark:bg-slate-800 text-[#3B82F6] shadow-sm" : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:text-slate-300"}`}>
-                รอการตรวจ ({pendingCount})
-              </button>
-              <button onClick={() => setActiveTab("approved")} className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === "approved" ? "bg-white dark:bg-slate-800 text-green-600 shadow-sm" : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:text-slate-300"}`}>
-                อนุมัติแล้ว ({approvedCount})
-              </button>
-            </div>
-
-            <div className="flex gap-3 w-full md:w-auto items-center">
-              {activeTab === "pending" && (
-                <div className="flex gap-2 mr-2 items-center">
-                  <button onClick={() => setSubFilter("all")} className={`px-3 py-1.5 text-xs font-bold rounded-full border transition-all ${subFilter === "all" ? "bg-gray-800 text-white border-gray-800" : "bg-white dark:bg-slate-800 text-gray-500 dark:text-slate-400 border-gray-200 dark:border-slate-700 hover:border-gray-400"}`}>ทั้งหมด</button>
-                  <button onClick={() => setSubFilter("failed")} className={`px-3 py-1.5 text-xs font-bold rounded-full border transition-all ${subFilter === "failed" ? "bg-orange-500 text-white border-orange-500" : "bg-white dark:bg-slate-800 text-gray-500 dark:text-slate-400 border-gray-200 dark:border-slate-700 hover:border-orange-300"}`}>ประเมินไม่ได้</button>
-                  <button onClick={() => setSubFilter("success")} className={`px-3 py-1.5 text-xs font-bold rounded-full border transition-all ${subFilter === "success" ? "bg-green-500 text-white border-green-500" : "bg-white dark:bg-slate-800 text-gray-500 dark:text-slate-400 border-gray-200 dark:border-slate-700 hover:border-green-300"}`}>ประเมินสำเร็จ</button>
-                  <div className="flex items-center bg-gray-100 rounded-full p-1 ml-2">
-                    <button
-                      onClick={() => {
-                        setBulkMode("ready_only");
-                        setSelectedIds((prev) => prev.filter((id) => students.some((s) => s.student_id === id && s.status === "ready")));
-                      }}
-                      className={`px-2.5 py-1 text-xs rounded-full ${bulkMode === "ready_only" ? "bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-200 shadow-sm" : "text-gray-500 dark:text-slate-400"}`}
-                    >
-                      Bulk: Ready
-                    </button>
-                    <button
-                      onClick={() => setBulkMode("include_needs_review")}
-                      className={`px-2.5 py-1 text-xs rounded-full ${bulkMode === "include_needs_review" ? "bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-200 shadow-sm" : "text-gray-500 dark:text-slate-400"}`}
-                    >
-                      +Needs Review
-                    </button>
-                  </div>
-                </div>
-              )}
-              <div className="relative flex-1 md:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 w-4 h-4" />
-                <Input
-                  placeholder="ค้นหาชื่อ / รหัสนักศึกษา..."
-                  className="pl-9 h-10 bg-gray-50 dark:bg-slate-900 border-gray-200 dark:border-slate-700"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Table Header */}
-          <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700 text-sm font-semibold text-gray-500 dark:text-slate-400">
-            <div className="col-span-4 flex items-center gap-4">
-              <div className="flex items-center justify-center w-5">
-                <input
-                  type="checkbox"
-                  className={`w-4 h-4 rounded border-gray-300 text-[#3B82F6] focus:ring-[#3B82F6] ${activeTab === "pending" && approvableStudents.length === 0 ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-                  checked={activeTab === "pending" ? (approvableStudents.length > 0 && selectedIds.length === approvableStudents.length) : false}
-                  disabled={activeTab !== "pending" || approvableStudents.length === 0}
-                  onChange={toggleSelectAll}
-                />
-              </div>
-              <span>รายชื่อนักศึกษา</span>
-            </div>
-            <div className="col-span-4">ผลการประเมิน (AI)</div>
-            <div className="col-span-4 text-right pr-4">การดำเนินการ</div>
-          </div>
-
-          {/* Student List */}
-          <div className="divide-y divide-gray-100 flex-1">
-            {filteredStudents.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                {students.length === 0 ? (
-                  <>
-                    <div className="w-16 h-16 bg-gray-50 dark:bg-slate-900 rounded-full flex items-center justify-center mb-4 border border-gray-100 dark:border-slate-800">
-                      <Inbox className="w-8 h-8 text-gray-300" />
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-700 dark:text-slate-300">ยังไม่มีการส่งข้อสอบ</h3>
-                    <p className="text-sm text-gray-400 dark:text-slate-500 mt-1 max-w-sm">ยังไม่มีนักศึกษาคนใดส่งคำตอบเข้ามาในระบบสำหรับวิชานี้ หรือห้องนี้ยังไม่มีนักศึกษา</p>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-16 h-16 bg-gray-50 dark:bg-slate-900 rounded-full flex items-center justify-center mb-4 border border-gray-100 dark:border-slate-800">
-                      <FileX className="w-8 h-8 text-gray-300" />
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-700 dark:text-slate-300">ไม่พบคำตอบในหมวดนี้</h3>
-                    <p className="text-sm text-gray-400 dark:text-slate-500 mt-1 max-w-sm">คุณอาจค้นหาไม่ตรงกับชื่อนักศึกษา หรือหมวดหมู่นี้ยังว่างเปล่าอยู่</p>
-                  </>
+        {/* Elegant Tabs & Filters */}
+        <div className="flex flex-col md:flex-row justify-between items-center gap-8 border-b border-slate-100 dark:border-slate-900 pb-2">
+          <div className="flex gap-8">
+            {[
+              { id: "pending", label: "รอตรวจ", count: pendingCount, color: "text-blue-500" },
+              { id: "approved", label: "อนุมัติแล้ว", count: approvedCount, color: "text-emerald-500" },
+              { id: "missing", label: "ยังไม่ส่ง", count: missingCount, color: "text-slate-400" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`relative pb-4 text-xs font-black uppercase tracking-[0.2em] transition-all ${activeTab === tab.id ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                  }`}
+              >
+                {tab.label}
+                <span className={`ml-2 ${activeTab === tab.id ? tab.color : "opacity-40"}`}>({tab.count})</span>
+                {activeTab === tab.id && (
+                  <span className="absolute bottom-0 left-0 right-0 h-1 bg-slate-900 dark:bg-white rounded-full" />
                 )}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-4 w-full md:w-auto">
+            <div className="relative flex-1 md:flex-none md:w-64">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-500 w-4 h-4" />
+              <input
+                placeholder="ค้นหาชื่อ..."
+                className="w-full pl-11 pr-4 h-11 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-full text-sm font-medium outline-none focus:ring-2 ring-slate-100 dark:ring-slate-800 transition-all text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-900/50 p-1 rounded-full border border-slate-100 dark:border-slate-800">
+              
+
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="h-9 w-9 rounded-full text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all p-0" 
+                onClick={() => setShowExportModal(true)} 
+                disabled={isExportingXlsx || students.length === 0}
+              >
+                <FileText size={14} />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Export Confirmation Modal */}
+        <AnimatePresence>
+          {showExportModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                exit={{ opacity: 0 }}
+                onClick={() => setShowExportModal(false)}
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" 
+              />
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="relative bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl border border-slate-100 dark:border-slate-800"
+              >
+                <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-6 mx-auto">
+                  <FileText className="text-blue-500" size={32} />
+                </div>
+                <h3 className="text-xl font-black text-center mb-2 text-slate-900 dark:text-white">ส่งออกข้อมูล</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 text-center mb-8">คุณต้องการส่งออกข้อมูลคะแนนนักศึกษาทั้งหมดเป็นไฟล์ Excel (.xlsx) ใช่หรือไม่?</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <Button variant="ghost" onClick={() => setShowExportModal(false)} className="rounded-full h-12 font-bold">ยกเลิก</Button>
+                  <Button 
+                    onClick={() => {
+                      setShowExportModal(false);
+                      handleExport("xlsx");
+                    }} 
+                    className="rounded-full h-12 bg-slate-900 dark:bg-white dark:text-slate-900 text-white font-black"
+                  >
+                    ยืนยัน
+                  </Button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Action Controls for Pending Tab */}
+        {activeTab === "pending" && (
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mr-2">Filters:</span>
+            <div className="flex p-1 bg-slate-50 dark:bg-slate-900 rounded-full border border-slate-100 dark:border-slate-800">
+              <button onClick={() => setSubFilter("all")} className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-full transition-all ${subFilter === "all" ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 hover:text-slate-800 dark:text-slate-300"}`}>ดูทั้งหมด</button>
+              <button onClick={() => setSubFilter("ready")} className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-full transition-all ${subFilter === "ready" ? "bg-emerald-500 text-white shadow-sm" : "text-slate-500 hover:text-slate-800 dark:text-slate-300"}`}>AI มั่นใจ</button>
+              <button onClick={() => setSubFilter("needs_review")} className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-full transition-all ${subFilter === "needs_review" ? "bg-rose-500 text-white shadow-sm" : "text-slate-500 hover:text-slate-800 dark:text-slate-300"}`}>ต้องตรวจเอง</button>
+            </div>
+
+            <div className="h-4 w-px bg-slate-100 dark:bg-slate-900 mx-2 hidden sm:block" />
+
+            <Button
+              variant="outline"
+              onClick={toggleSelectAllVisible}
+              disabled={filteredStudents.length === 0}
+              className={`h-9 px-4 rounded-full font-black text-[10px] uppercase tracking-widest border-2 transition-all flex items-center gap-2 ${selectedIds.length === filteredStudents.length && filteredStudents.length > 0
+                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                  : "border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}
+            >
+              {selectedIds.length === filteredStudents.length && filteredStudents.length > 0 ? (
+                <><X size={14} /> ยกเลิกการเลือก</>
+              ) : (
+                <><CheckSquare size={14} /> เลือกทุกคนที่แสดงอยู่</>
+              )}
+            </Button>
+          </div>
+        )}
+
+        {/* Student List - Unified Design */}
+        <div className="space-y-4">
+          {filteredStudents.length === 0 ? (
+            <div className="py-32 text-center bg-slate-50 dark:bg-slate-900/50 rounded-[2.5rem] border border-dashed border-slate-200 dark:border-slate-800">
+              <Inbox className="mx-auto mb-4 text-slate-300 dark:text-slate-700" size={48} />
+              <p className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">ไม่พบรายการนักศึกษา</p>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800">
+              <div className="grid grid-cols-12 gap-4 px-6 py-4 bg-slate-50 dark:bg-slate-800/50 rounded-t-2xl text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+                <div className="col-span-1 flex items-center justify-center">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 rounded-full border-2 border-slate-300 checked:bg-slate-900"
+                    checked={filteredStudents.length > 0 && selectedIds.length === filteredStudents.length}
+                    onChange={toggleSelectAllVisible}
+                  />
+                </div>
+                <div className="col-span-5">รายชื่อนักศึกษา</div>
+                <div className="col-span-3">สถานะ AI</div>
+                <div className="col-span-3 text-right">การดำเนินการ</div>
               </div>
-            ) : (
-              filteredStudents.map((student) => (
-                <div key={student.student_id} className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-gray-50 dark:bg-slate-900/50 transition-colors group">
-                  {/* Name Col */}
-                  <div className="col-span-4 flex items-center gap-4">
-                    <div className="flex items-center justify-center w-5">
+
+              <div className="divide-y divide-slate-50 dark:divide-slate-900">
+                {filteredStudents.map((student) => (
+                  <div key={student.student_id} className="grid grid-cols-12 gap-4 px-6 py-6 items-center hover:bg-slate-50 dark:hover:bg-slate-900/30 transition-all group">
+                    <div className="col-span-1 flex items-center justify-center">
                       <input
                         type="checkbox"
-                        className={`w-4 h-4 rounded border-gray-300 text-[#3B82F6] focus:ring-[#3B82F6] ${(bulkMode === "include_needs_review" ? (student.status !== "ready" && student.status !== "needs_review") : student.status !== "ready") ? "opacity-30 cursor-not-allowed bg-gray-100" : "cursor-pointer"}`}
+                        className="w-4 h-4 rounded-full border-2 border-slate-300 transition-all cursor-pointer"
                         checked={selectedIds.includes(student.student_id)}
-                        disabled={bulkMode === "include_needs_review" ? (student.status !== "ready" && student.status !== "needs_review") : student.status !== "ready"}
                         onChange={() => toggleSelectOne(student.student_id)}
                       />
                     </div>
-                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-[#3B82F6] font-bold text-sm flex-shrink-0">
-                      {student.name.charAt(0)}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-medium text-gray-900 dark:text-white truncate">{student.name}</p>
-                      <p className="text-xs text-gray-500 dark:text-slate-400 truncate">
-                        {student.student_code || student.email}
-                        {student.submitted_at && ` · ส่งเมื่อ ${new Date(student.submitted_at).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}`}
-                      </p>
-                    </div>
-                  </div>
 
-                  {/* Status Col */}
-                  <div className="col-span-4">
-                    <StatusBadge status={student.status} score={student.total_score ?? undefined} maxScore={exam?.total_score} />
-                  </div>
+                    <div className="col-span-5 flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-bold text-xs text-slate-500 dark:text-slate-400">
+                        {student.name.charAt(0)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-black truncate text-slate-900 dark:text-slate-100">{student.name}</p>
+                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate">{student.student_code || student.email}</p>
+                      </div>
+                    </div>
 
-                  {/* Actions Col */}
-                  <div className="col-span-4 flex justify-end gap-2">
-                    {activeTab === "pending" && (
-                      <>
+                    <div className="col-span-3">
+                      <StatusBadge status={student.status} score={student.total_score ?? undefined} maxScore={exam?.total_score} />
+                    </div>
+
+                    <div className="col-span-3 flex justify-end gap-2">
+                      {activeTab === "pending" ? (
+                        <>
+                          <Button
+                            variant="outline"
+                            onClick={() => navigate(`/room/${roomId}/exam/${examId}/grading/${student.student_id}`)}
+                            className="h-9 px-4 rounded-full font-black text-[10px] uppercase tracking-widest border-2"
+                          >
+                            ตรวจสอบ
+                          </Button>
+                          <Button
+                            onClick={() => handleApproveOne(student.student_id)}
+                            disabled={student.status === "needs_review"}
+                            className="h-9 w-24 bg-slate-900 dark:bg-white dark:text-slate-900 rounded-full font-black text-[10px] uppercase tracking-widest shadow-xl shadow-slate-100 dark:shadow-none"
+                          >
+                            อนุมัติ
+                          </Button>
+                        </>
+                      ) : (
                         <Button
-                          onClick={() => handleApproveOne(student.student_id)}
-                          disabled={student.status === "needs_review"}
-                          className={`h-9 w-24 rounded-lg font-bold shadow-sm transition-all ${student.status === "needs_review" ? "bg-gray-300 cursor-not-allowed text-gray-500 dark:text-slate-400" : "bg-green-500 hover:bg-green-600 text-white"}`}
-                        >
-                          <Check size={14} className="mr-1" />อนุมัติ
-                        </Button>
-                        <Button
-                          variant="outline"
+                          variant="ghost"
                           onClick={() => navigate(`/room/${roomId}/exam/${examId}/grading/${student.student_id}`)}
-                          className="border-blue-200 text-[#3B82F6] hover:bg-blue-50 dark:bg-blue-900/30 h-9 px-4 rounded-lg font-medium"
+                          className="h-9 px-4 font-black text-[10px] uppercase tracking-widest text-slate-400 hover:text-slate-900"
+                          disabled={student.status === 'missing'}
                         >
-                          ตรวจสอบ
+                          {student.status === 'missing' ? 'ไม่มีข้อมูล' : 'รายละเอียด'}
                         </Button>
-                      </>
-                    )}
-                    {activeTab === "approved" && (
-                      <Button
-                        variant="ghost"
-                        onClick={() => navigate(`/room/${roomId}/exam/${examId}/grading/${student.student_id}`)}
-                        className="text-gray-400 dark:text-slate-500 hover:text-[#3B82F6]"
-                      >
-                        ดูรายละเอียด
-                      </Button>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))
-            )}
-          </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-
-        {/* Analytics Summary */}
-        {analytics && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
-              <p className="text-sm text-gray-500 dark:text-slate-400">คะแนนเฉลี่ย (Approved)</p>
-              <p className="text-2xl font-bold text-[#3B82F6]">
-                {analytics.mean_score} / {exam?.total_score ?? "-"}
-              </p>
-            </div>
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
-              <p className="text-sm text-gray-500 dark:text-slate-400">มัธยฐาน (Approved)</p>
-              <p className="text-2xl font-bold text-violet-600">
-                {analytics.median_score} / {exam?.total_score ?? "-"}
-              </p>
-            </div>
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
-              <p className="text-sm text-gray-500 dark:text-slate-400">ส่งแล้ว / ยังไม่ส่ง</p>
-              <p className="text-2xl font-bold text-emerald-600">
-                {analytics.submission_counts.submitted} / {analytics.submission_counts.missing}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {analytics && (
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-3">Score Distribution</h2>
-            <ChartContainer
-              className="h-[240px] w-full"
-              config={{
-                students: {
-                  label: "จำนวนนักเรียน",
-                  color: "#3B82F6",
-                },
-              }}
-            >
-              <BarChart data={distributionData}>
-                <CartesianGrid vertical={false} />
-                <XAxis dataKey="range" tickLine={false} axisLine={false} />
-                <YAxis allowDecimals={false} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="students" radius={8} fill="var(--color-students)" />
-              </BarChart>
-            </ChartContainer>
-          </div>
-        )}
-
-        {/* Difficulty Analysis */}
-        {analytics && analytics.difficulty_analysis.length > 0 && (
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-3">Question Difficulty Analysis</h2>
-            <div className="space-y-2">
-              {analytics.difficulty_analysis.slice(0, 5).map((q) => (
-                <div key={q.question_id} className="border border-gray-100 dark:border-slate-800 rounded-lg p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium text-gray-800 dark:text-slate-200 truncate">
-                      ข้อ {q.order_index + 1}: {q.question_text}
-                    </p>
-                    <span className="text-xs font-bold px-2 py-1 rounded bg-orange-50 text-orange-600 border border-orange-100">
-                      {q.percent_correct}%
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between mt-1">
-                    <p className="text-xs text-gray-500 dark:text-slate-400">
-                      คะแนนเฉลี่ย {q.avg_score}/{q.max_score}
-                    </p>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-7 text-[10px] text-blue-600 hover:text-blue-700 hover:bg-blue-50 py-0"
-                      onClick={() => handleRescore(q.question_id)}
-                    >
-                      <RefreshCw size={10} className="mr-1" /> ตรวจใหม่ทั้งหมด (Rescore)
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </main>
 
-      {/* Floating Bulk Action Bar */}
+      {/* Floating Action Bar - Minimalist */}
       {selectedIds.length > 0 && activeTab === "pending" && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-6 animate-in slide-in-from-bottom-4 z-50">
-          <div className="flex items-center gap-3 border-r border-gray-700 pr-6">
-            <div className="bg-[#3B82F6] text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">{selectedIds.length}</div>
-            <span className="font-medium">รายการที่เลือก</span>
+        <div className="fixed bottom-12 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-8 py-4 rounded-full shadow-2xl flex items-center gap-8 animate-in slide-in-from-bottom-8 z-50">
+          <div className="flex items-center gap-3">
+            <span className="w-6 h-6 bg-white text-slate-900 rounded-full flex items-center justify-center text-[10px] font-black">{selectedIds.length}</span>
+            <span className="text-xs font-black uppercase tracking-[0.2em]">รายการที่เลือก</span>
           </div>
-          <div className="flex gap-3">
-            <div className="flex items-center gap-1 bg-gray-800 rounded-lg p-1">
-              <button
-                className={`px-2.5 py-1.5 text-xs rounded ${bulkMode === "ready_only" ? "bg-white dark:bg-slate-800 text-gray-900 dark:text-white font-semibold" : "text-gray-300"}`}
-                onClick={() => {
-                  setBulkMode("ready_only");
-                  setSelectedIds((prev) => prev.filter((id) => students.some((s) => s.student_id === id && s.status === "ready")));
-                }}
-              >
-                เฉพาะ Ready
-              </button>
-              <button
-                className={`px-2.5 py-1.5 text-xs rounded ${bulkMode === "include_needs_review" ? "bg-white dark:bg-slate-800 text-gray-900 dark:text-white font-semibold" : "text-gray-300"}`}
-                onClick={() => setBulkMode("include_needs_review")}
-              >
-                รวม Needs Review
-              </button>
-            </div>
-            <Button variant="ghost" onClick={() => setSelectedIds([])} className="text-gray-300 hover:text-white h-8">ยกเลิก</Button>
+          <div className="flex items-center gap-4">
+            <button onClick={() => setSelectedIds([])} className="text-[10px] font-black uppercase tracking-widest opacity-50 hover:opacity-100 transition-opacity">ยกเลิก</button>
             <Button
               onClick={handleBulkApprove}
               disabled={isApproving}
-              className="bg-green-500 hover:bg-green-600 text-white h-9 px-6 rounded-lg font-bold"
+              className="bg-white text-slate-900 hover:bg-slate-100 h-10 px-8 rounded-full font-black text-[10px] uppercase tracking-widest"
             >
-              {isApproving ? <Loader2 size={14} className="animate-spin mr-2" /> : null}
-              อนุมัติทั้งหมด ({selectedIds.length})
+              {isApproving ? <Loader2 size={12} className="animate-spin mr-2" /> : null}
+              อนุมัติที่เลือก
             </Button>
           </div>
         </div>
