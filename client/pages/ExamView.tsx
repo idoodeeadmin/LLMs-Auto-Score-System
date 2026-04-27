@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import ImageModal from "@/components/ImageModal";
 
 interface Rubric {
   name: string;
@@ -60,6 +61,9 @@ export default function ExamView() {
   const [extNote, setExtNote] = useState("");
   const [isGranting, setIsGranting] = useState(false);
   const [extensions, setExtensions] = useState<any[]>([]);
+
+  // Image Modal State
+  const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
 
   useEffect(() => {
     if (!isLoading && !user) navigate("/");
@@ -382,7 +386,8 @@ export default function ExamView() {
                           key={i}
                           src={src}
                           alt={`รูปโจทย์ข้อ ${index + 1} รูปที่ ${i + 1}`}
-                          className="w-full rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm object-contain bg-gray-50 dark:bg-slate-900 max-h-56"
+                          className="w-full rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm object-contain bg-gray-50 dark:bg-slate-900 max-h-56 cursor-zoom-in hover:opacity-90 transition-opacity"
+                          onClick={() => setModalImage({ src, alt: `โจทย์ข้อ ${index + 1} (${i + 1}/${q.image_paths?.length})` })}
                         />
                       ))}
                     </div>
@@ -391,7 +396,8 @@ export default function ExamView() {
                       <img
                         src={q.image_path}
                         alt={`รูปโจทย์ข้อ ${index + 1}`}
-                        className="max-h-72 w-auto rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm object-contain bg-gray-50 dark:bg-slate-900"
+                        className="max-h-72 w-auto rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm object-contain bg-gray-50 dark:bg-slate-900 cursor-zoom-in hover:opacity-90 transition-opacity"
+                        onClick={() => setModalImage({ src: q.image_path!, alt: `โจทย์ข้อ ${index + 1}` })}
                       />
                     </div>
                   ) : null}
@@ -533,12 +539,18 @@ export default function ExamView() {
                                     key={i} 
                                     src={src} 
                                     alt={`ภาพแนบคำตอบ ${i+1}`} 
-                                    className="w-full aspect-video object-contain rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm bg-slate-50 dark:bg-slate-900" 
+                                    className="w-full aspect-video object-contain rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm bg-slate-50 dark:bg-slate-900 cursor-zoom-in hover:opacity-90 transition-opacity" 
+                                    onClick={() => setModalImage({ src, alt: `คำตอบข้อ ${ans.order_index + 1} (${i + 1}/${ans.image_paths.length})` })}
                                   />
                                 ))}
                               </div>
                             ) : ans.image_path ? (
-                              <img src={ans.image_path} alt="ภาพแนบคำตอบ" className="max-w-xs mt-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm bg-slate-50 dark:bg-slate-900" />
+                              <img 
+                                src={ans.image_path} 
+                                alt="ภาพแนบคำตอบ" 
+                                className="max-w-xs mt-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm bg-slate-50 dark:bg-slate-900 cursor-zoom-in hover:opacity-90 transition-opacity" 
+                                onClick={() => setModalImage({ src: ans.image_path!, alt: `คำตอบข้อ ${ans.order_index + 1}` })}
+                              />
                             ) : null}
                           </div>
 
@@ -638,6 +650,13 @@ export default function ExamView() {
         )}
 
       </main>
+
+      <ImageModal
+        isOpen={!!modalImage}
+        onClose={() => setModalImage(null)}
+        src={modalImage?.src || ""}
+        alt={modalImage?.alt}
+      />
     </div>
   );
 }

@@ -34,6 +34,15 @@ interface Exam {
   created_at: string;
 }
 
+interface Announcement {
+  id: number;
+  title: string;
+  content: string;
+  created_at: string;
+  is_read?: number;
+  read_count?: number;
+}
+
 interface RoomAnalytics {
   total_students: number;
   exam_count: number;
@@ -60,11 +69,13 @@ export default function RoomDetail() {
   const { roomId } = useParams();
   const navigate = useNavigate();
   const { user, token, isLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState<"exams" | "members">("exams");
+  const [activeTab, setActiveTab] = useState<"exams" | "members" | "announcements">("exams");
   const [room, setRoom] = useState<RoomInfo | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
-  const [roomAnalytics, setRoomAnalytics] = useState<RoomAnalytics | null>(null);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [isPostingAnn, setIsPostingAnn] = useState(false);
+  const [newAnn, setNewAnn] = useState({ title: "", content: "" });
   const [isFetching, setIsFetching] = useState(true);
   const [showExamSummary, setShowExamSummary] = useState(true);
 
@@ -74,33 +85,39 @@ export default function RoomDetail() {
 
   useEffect(() => {
     if (!token || !roomId) return;
-    const fetchRoom = async () => {
+    const fetchRoom = async (retries = 2) => {
       try {
         const promises = [
           fetch(`/api/rooms/${roomId}`, { headers: { Authorization: `Bearer ${token}` } }),
           fetch(`/api/rooms/${roomId}/exams`, { headers: { Authorization: `Bearer ${token}` } })
         ];
         
-        if (user?.role === "teacher") {
-          promises.push(fetch(`/api/rooms/${roomId}/analytics`, { headers: { Authorization: `Bearer ${token}` } }));
-        }
-
         const responses = await Promise.all(promises);
         const roomRes = responses[0];
         const examsRes = responses[1];
         
-        if (roomRes.ok) setRoom(await roomRes.json());
-        else { toast.error("ไม่พบห้องเรียนนี้"); navigate("/home"); }
-        
-        if (examsRes.ok) setExams(await examsRes.json());
-        
-        if (user?.role === "teacher" && responses[2] && responses[2].ok) {
-          setRoomAnalytics(await responses[2].json());
+        if (roomRes.ok) {
+          setRoom(await roomRes.json());
+          if (examsRes.ok) setExams(await examsRes.json());
+          
+          // Fetch announcements
+          const annRes = await fetch(`/api/rooms/${roomId}/announcements`, { headers: { Authorization: `Bearer ${token}` } });
+          if (annRes.ok) setAnnouncements(await annRes.json());
+          
+          setIsFetching(false);
+        } else if (roomRes.status === 404) {
+          toast.error("ไม่พบห้องเรียนนี้");
+          navigate("/home");
+        } else {
+          throw new Error("Fetch failed");
         }
-      } catch {
-        toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
-      } finally {
-        setIsFetching(false);
+      } catch (error) {
+        if (retries > 0) {
+          setTimeout(() => fetchRoom(retries - 1), 1500);
+        } else {
+          toast.error("การเชื่อมต่อขัดข้อง กำลังพยายามเชื่อมต่อใหม่...", { duration: 2000 });
+          setIsFetching(false);
+        }
       }
     };
     fetchRoom();
@@ -202,6 +219,16 @@ export default function RoomDetail() {
             ข้อสอบ
           </button>
           <button
+            onClick={() => setActiveTab("announcements")}
+            className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === "announcements"
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
+                : "text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:bg-slate-900"
+              }`}
+          >
+            <Plus size={15} className="inline mr-1.5 -mt-0.5" />
+            ประกาศ
+          </button>
+          <button
             onClick={() => setActiveTab("members")}
             className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === "members"
                 ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
@@ -236,66 +263,6 @@ export default function RoomDetail() {
                   )}
                 </div>
               </div>
-
-              {isTeacher && roomAnalytics && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-                    <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">นักศึกษาในห้อง</p>
-                    <p className="text-2xl font-bold text-slate-800 dark:text-slate-200">{roomAnalytics.total_students}</p>
-                  </div>
-                  <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-                    <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">จำนวนข้อสอบ</p>
-                    <p className="text-2xl font-bold text-indigo-600">{roomAnalytics.exam_count}</p>
-                  </div>
-                  <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-                    <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">ค่าเฉลี่ยรวม (Approved)</p>
-                    <p className="text-2xl font-bold text-emerald-600">
-                      {roomAnalytics.exam_summaries.length > 0
-                        ? (
-                            roomAnalytics.exam_summaries.reduce((sum, e) => sum + (e.approved_mean || 0), 0) /
-                            roomAnalytics.exam_summaries.length
-                          ).toFixed(2)
-                        : "0.00"}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {isTeacher && roomAnalytics && roomAnalytics.exam_summaries.length > 0 && (
-                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
-                  <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">ภาพรวมผลสอบรายข้อสอบ</h3>
-                    <button
-                      onClick={() => setShowExamSummary((prev) => !prev)}
-                      className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:text-slate-200"
-                    >
-                      {showExamSummary ? (
-                        <>
-                          <ChevronUp size={14} /> ซ่อน
-                        </>
-                      ) : (
-                        <>
-                          <ChevronDown size={14} /> แสดง
-                        </>
-                      )}
-                    </button>
-                  </div>
-                  {showExamSummary && (
-                    <div className="divide-y divide-slate-100">
-                      {roomAnalytics.exam_summaries.slice(0, 5).map((item) => (
-                        <div key={item.exam_id} className="px-5 py-3 flex flex-wrap items-center justify-between gap-3">
-                          <p className="font-medium text-slate-700 dark:text-slate-300">{item.title}</p>
-                          <div className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 flex items-center gap-4">
-                            <span>ส่งแล้ว {item.submitted_count}</span>
-                            <span>ยังไม่ส่ง {item.missing_count}</span>
-                            <span className="font-semibold text-indigo-600">Avg {item.approved_mean}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
 
               {exams.length === 0 ? (
                 <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-16 text-center shadow-sm">
@@ -342,6 +309,119 @@ export default function RoomDetail() {
                   ))}
                 </div>
               )}
+            </motion.div>
+          )}
+
+          {/* Announcements Tab */}
+          {activeTab === "announcements" && (
+            <motion.div key="announcements" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }} className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200">ประกาศจากผู้สอน</h2>
+              </div>
+
+              {isTeacher && (
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-6 shadow-sm space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">หัวข้อประกาศ</label>
+                    <input
+                      type="text"
+                      value={newAnn.title}
+                      onChange={(e) => setNewAnn({ ...newAnn, title: e.target.value })}
+                      placeholder="เช่น แจ้งเลื่อนสอบ, ประกาศผลคะแนน..."
+                      className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">รายละเอียด</label>
+                    <textarea
+                      value={newAnn.content}
+                      onChange={(e) => setNewAnn({ ...newAnn, content: e.target.value })}
+                      placeholder="รายละเอียดของประกาศ..."
+                      rows={3}
+                      className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none"
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      disabled={isPostingAnn || !newAnn.title || !newAnn.content}
+                      onClick={async () => {
+                        setIsPostingAnn(true);
+                        try {
+                          const res = await fetch(`/api/rooms/${roomId}/announcements`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                            body: JSON.stringify(newAnn),
+                          });
+                          if (res.ok) {
+                            toast.success("ประกาศสำเร็จ");
+                            setNewAnn({ title: "", content: "" });
+                            // Refresh announcements
+                            const annRes = await fetch(`/api/rooms/${roomId}/announcements`, { headers: { Authorization: `Bearer ${token}` } });
+                            if (annRes.ok) setAnnouncements(await annRes.json());
+                          }
+                        } catch {
+                          toast.error("ล้มเหลวในการประกาศ");
+                        } finally {
+                          setIsPostingAnn(false);
+                        }
+                      }}
+                      className="bg-indigo-600 hover:bg-indigo-700"
+                    >
+                      {isPostingAnn ? <Loader2 className="animate-spin mr-2" size={16} /> : <Plus size={16} className="mr-2" />}
+                      สร้างประกาศ
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                {announcements.length === 0 ? (
+                  <div className="text-center py-12 text-slate-400 dark:text-slate-500">
+                    <Plus className="mx-auto h-12 w-12 mb-4 opacity-20" />
+                    <p>ยังไม่มีการประกาศในห้องเรียนนี้</p>
+                  </div>
+                ) : (
+                  announcements.map((ann) => (
+                    <div
+                      key={ann.id}
+                      onMouseEnter={async () => {
+                        if (!isTeacher && !ann.is_read) {
+                          // Mark as read when hover or viewed
+                          fetch(`/api/announcements/${ann.id}/read`, {
+                            method: "POST",
+                            headers: { Authorization: `Bearer ${token}` }
+                          });
+                          // Update local state
+                          setAnnouncements(prev => prev.map(a => a.id === ann.id ? { ...a, is_read: 1 } : a));
+                        }
+                      }}
+                      className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-6 shadow-sm relative overflow-hidden"
+                    >
+                      {!isTeacher && !ann.is_read && (
+                        <div className="absolute top-0 right-0 w-3 h-3 bg-indigo-600 rounded-bl-lg" />
+                      )}
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-bold text-lg text-slate-800 dark:text-slate-200">{ann.title}</h3>
+                        <span className="text-xs text-slate-400 dark:text-slate-500">{new Date(ann.created_at).toLocaleString('th-TH')}</span>
+                      </div>
+                      <p className="text-slate-600 dark:text-slate-400 dark:text-slate-400 whitespace-pre-wrap">{ann.content}</p>
+                      
+                      {isTeacher && (
+                        <div className="mt-4 pt-4 border-t border-slate-50 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">
+                          <UserCheck size={14} className="text-emerald-500" />
+                          <span>นักศึกษาอ่านแล้ว {ann.read_count} คน</span>
+                          <button 
+                            onClick={() => navigate(`/room/${roomId}/announcement/${ann.id}/stats`)}
+                            className="ml-auto text-indigo-600 hover:underline"
+                          >
+                            ดูรายชื่อ
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
             </motion.div>
           )}
 

@@ -19,8 +19,55 @@ from dotenv import load_dotenv
 import aiofiles
 import httpx
 import time
+import cloudinary
+import cloudinary.uploader
+from cloudinary.utils import cloudinary_url
 
 load_dotenv()
+
+# Cloudinary Configuration
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+    secure=True
+)
+
+def upload_to_cloudinary(file_bytes, folder="evaly", public_id=None):
+    try:
+        upload_result = cloudinary.uploader.upload(
+            file_bytes,
+            folder=folder,
+            public_id=public_id,
+            resource_type="auto"
+        )
+        return upload_result.get("secure_url")
+    except Exception as e:
+        print(f"[Cloudinary] Upload error: {e}")
+        return None
+
+async def get_image_bytes(path_or_url: str):
+    if not path_or_url: return None
+    if path_or_url.startswith("http"):
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(path_or_url, timeout=10.0)
+                if resp.status_code == 200:
+                    return resp.content
+                return None
+        except Exception as e:
+            print(f"[Grading Worker] Failed to fetch URL {path_or_url}: {e}")
+            return None
+    else:
+        local_path = path_or_url.lstrip("/")
+        if os.path.exists(local_path):
+            try:
+                async with aiofiles.open(local_path, "rb") as f:
+                    return await f.read()
+            except Exception as e:
+                print(f"[Grading Worker] Failed to read local {local_path}: {e}")
+                return None
+        return None
 
 app = FastAPI(title="Evaly API")
 
@@ -67,6 +114,7 @@ async def startup_event():
 # Serve uploaded images as static files
 try:
     app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+    app.mount("/api/uploads", StaticFiles(directory="uploads"), name="api_uploads")
 except Exception:
     pass  # Directory may not exist yet on first run
 
@@ -108,6 +156,10 @@ class VerifyEmailRequest(BaseModel):
 
 class ResendVerificationRequest(BaseModel):
     email: str
+
+class AnnouncementCreate(BaseModel):
+    title: str
+    content: str
 
 
 # In-memory Rate Limiter
@@ -171,7 +223,7 @@ async def grading_worker():
                     
                 answer_text = ans["answer_text"] or ""
                 
-                # Load images from disk
+                # Load images (could be local or cloudinary)
                 img_list = []
                 img_mime_list = []
                 
@@ -180,39 +232,53 @@ async def grading_worker():
                     import json
                     paths = json.loads(image_paths_json)
                     for path in paths:
-                        # path is like /uploads/1/1/q_1_0.jpg
-                        # local path is uploads/1/1/q_1_0.jpg
-                        local_path = path.lstrip("/")
-                        try:
-                            with open(local_path, "rb") as img_file:
-                                raw_bytes = img_file.read()
-                                img_list.append(raw_bytes)
-                                # guess mime from extension
-                                ext = local_path.split(".")[-1].lower()
-                                if ext == "png": mime = "image/png"
-                                elif ext == "webp": mime = "image/webp"
-                                else: mime = "image/jpeg"
-                                img_mime_list.append(mime)
-                        except Exception as e:
-                            print(f"[Grading Worker] Failed to read image {local_path}: {e}")
+                        raw_bytes = await get_image_bytes(path)
+                        if raw_bytes:
+                            img_list.append(raw_bytes)
+                            # guess mime
+                            if path.endswith(".png"): mime = "image/png"
+                            elif path.endswith(".webp"): mime = "image/webp"
+                            else: mime = "image/jpeg"
+                            img_mime_list.append(mime)
                 
+                # Load question images
+                q_img_list = []
+                q_img_mime_list = []
+                q_image_paths = q.get("image_paths")
+                if q_image_paths:
+                    try:
+                        q_paths = json_module.loads(q_image_paths)
+                        for qp in q_paths:
+                            qb = await get_image_bytes(qp)
+                            if qb:
+                                q_img_list.append(qb)
+                                q_img_mime_list.append("image/png" if qp.endswith(".png") else "image/webp" if qp.endswith(".webp") else "image/jpeg")
+                    except Exception: pass
+                elif q.get("image_path"):
+                    qp = q["image_path"]
+                    qb = await get_image_bytes(qp)
+                    if qb:
+                        q_img_list.append(qb)
+                        q_img_mime_list.append("image/png" if qp.endswith(".png") else "image/webp" if qp.endswith(".webp") else "image/jpeg")
+
                 # Parse rubrics
                 rubrics_data = None
                 if q.get("rubrics"):
                     try:
-                        import json
-                        rubrics_data = json.loads(q["rubrics"])
+                        rubrics_data = json_module.loads(q["rubrics"])
                     except Exception:
                         rubrics_data = None
                         
                 ai_result = await score_with_gemini(
-                    question_text=q["text"],
+                    question_text=q.get("text") or "",
                     answer_text=answer_text,
                     max_score=q["score"],
                     answer_key=q.get("answer_key"),
                     rubrics=rubrics_data,
                     image_bytes_list=img_list[:5],
                     image_mime_list=img_mime_list[:5],
+                    q_image_bytes_list=q_img_list[:5],
+                    q_image_mime_list=q_img_mime_list[:5]
                 )
                 total_ai_score += ai_result["score"]
                 confidences.append(ai_result["confidence"])
@@ -455,16 +521,12 @@ async def update_profile(
     
     avatar_filename = user.get("avatar_url")
     if avatar:
-        import uuid, os
-        # Generate random filename
-        ext = avatar.filename.split(".")[-1] if "." in avatar.filename else "png"
-        avatar_filename = f"{uuid.uuid4().hex}.{ext}"
-        file_path = os.path.join("uploads", "avatars", avatar_filename)
-        
-        # Save file chunks safely
-        with open(file_path, "wb") as f:
-            while chunk := await avatar.read(1024 * 1024):
-                f.write(chunk)
+        # Upload to Cloudinary
+        file_content = await avatar.read()
+        avatar_url = upload_to_cloudinary(file_content, folder="avatars")
+        if avatar_url:
+            update_fields.append("avatar = ?")
+            params.append(avatar_url)
                 
     update_fields = []
     params = []
@@ -1315,6 +1377,132 @@ async def get_room_members(room_id: int, user: dict = Depends(get_current_user))
     
     return result
 
+# Announcement Routes
+@app.post("/api/rooms/{room_id}/announcements")
+async def create_announcement(room_id: int, ann: AnnouncementCreate, user: dict = Depends(get_current_user)):
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can create announcements")
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Verify room ownership
+    cursor.execute("SELECT id FROM rooms WHERE id = ? AND owner_id = ?", (room_id, user["id"]))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=404, detail="Room not found or unauthorized")
+        
+    cursor.execute(
+        "INSERT INTO announcements (room_id, teacher_id, title, content) VALUES (?, ?, ?, ?)",
+        (room_id, user["id"], ann.title, ann.content)
+    )
+    ann_id = cursor.lastrowid
+    conn.commit()
+    
+    # Notify students in room
+    cursor.execute("SELECT user_id FROM enrollments WHERE room_id = ?", (room_id,))
+    students = cursor.fetchall()
+    for s in students:
+        await trigger_socket_notify(
+            user_id=s["user_id"],
+            notify_type="new_announcement",
+            message=f"มีประกาศใหม่ในห้องเรียน: {ann.title}",
+            data={"room_id": room_id, "announcement_id": ann_id}
+        )
+        
+    conn.close()
+    return {"id": ann_id, "message": "Announcement created successfully"}
+
+@app.get("/api/rooms/{room_id}/announcements")
+async def list_announcements(room_id: int, user: dict = Depends(get_current_user)):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Verify access
+    if user["role"] == "teacher":
+        cursor.execute("SELECT id FROM rooms WHERE id = ? AND owner_id = ?", (room_id, user["id"]))
+    else:
+        cursor.execute("SELECT room_id FROM enrollments WHERE room_id = ? AND user_id = ?", (room_id, user["id"]))
+        
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=403, detail="Unauthorized")
+        
+    # Get announcements with read status for current user if student
+    if user["role"] == "student":
+        cursor.execute("""
+            SELECT a.*, (SELECT 1 FROM announcement_reads ar WHERE ar.announcement_id = a.id AND ar.student_id = ?) as is_read
+            FROM announcements a
+            WHERE a.room_id = ?
+            ORDER BY a.created_at DESC
+        """, (user["id"], room_id))
+    else:
+        cursor.execute("""
+            SELECT a.*, (SELECT COUNT(*) FROM announcement_reads ar WHERE ar.announcement_id = a.id) as read_count
+            FROM announcements a
+            WHERE a.room_id = ?
+            ORDER BY a.created_at DESC
+        """, (room_id,))
+        
+    anns = cursor.fetchall()
+    conn.close()
+    return [dict(a) for a in anns]
+
+@app.post("/api/announcements/{ann_id}/read")
+async def mark_announcement_read(ann_id: int, user: dict = Depends(get_current_user)):
+    if user["role"] != "student":
+        return {"message": "Only students need read receipts"}
+        
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Use INSERT IGNORE for MySQL or equivalent logic
+        cursor.execute(
+            "INSERT INTO announcement_reads (announcement_id, student_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE student_id=student_id",
+            (ann_id, user["id"])
+        )
+        conn.commit()
+    except Exception as e:
+        print(f"Error marking announcement read: {e}")
+        
+    conn.close()
+    return {"message": "Marked as read"}
+
+@app.get("/api/announcements/{ann_id}/read-status")
+async def get_announcement_read_status(ann_id: int, user: dict = Depends(get_current_user)):
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can view read status")
+        
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Get room_id for this announcement to verify ownership
+    cursor.execute("SELECT room_id FROM announcements WHERE id = ?", (ann_id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Announcement not found")
+        
+    room_id = row["room_id"]
+    cursor.execute("SELECT id FROM rooms WHERE id = ? AND owner_id = ?", (room_id, user["id"]))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=403, detail="Unauthorized")
+        
+    # Get all students in room and their read status
+    cursor.execute("""
+        SELECT u.id, u.name, u.student_id, ar.read_at
+        FROM enrollments e
+        JOIN users u ON e.user_id = u.id
+        LEFT JOIN announcement_reads ar ON ar.announcement_id = ? AND ar.student_id = u.id
+        WHERE e.room_id = ?
+    """, (ann_id, room_id))
+    
+    status = cursor.fetchall()
+    conn.close()
+    return [dict(s) for s in status]
+
 # Exam Routes
 import json as json_module
 
@@ -1343,6 +1531,7 @@ class TimeExtensionRequest(BaseModel):
 class GenerateRubricRequest(BaseModel):
     question_text: str
     total_score: float
+    question_images_base64: Optional[List[str]] = None
 
 class QuestionBankCreate(BaseModel):
     text: str
@@ -1394,13 +1583,10 @@ async def create_exam(room_id: int, exam: ExamCreate, user: dict = Depends(get_c
                     b64data = match.group('data')
                     img_bytes = base64.b64decode(b64data)
                     ext = mime.split('/')[-1].replace('jpeg', 'jpg')
-                    q_dir = os.path.join('uploads', 'questions', str(exam_id))
-                    os.makedirs(q_dir, exist_ok=True)
-                    fname = f"q_{q.order_index}_{img_idx}_{int(_time.time())}.{ext}"
-                    fpath = os.path.join(q_dir, fname)
-                    with open(fpath, 'wb') as imgf:
-                        imgf.write(img_bytes)
-                    image_paths.append(f"/uploads/questions/{exam_id}/{fname}")
+                    # Upload to Cloudinary
+                    c_url = upload_to_cloudinary(img_bytes, folder=f"questions/{exam_id}")
+                    if c_url:
+                        image_paths.append(c_url)
             except Exception as img_err:
                 print(f"[Question Image] Failed to save index {img_idx}: {img_err}")
 
@@ -1468,13 +1654,10 @@ async def update_exam(room_id: int, exam_id: int, exam: ExamCreate, user: dict =
                     b64data = match.group('data')
                     img_bytes = base64.b64decode(b64data)
                     ext = mime.split('/')[-1].replace('jpeg', 'jpg')
-                    q_dir = os.path.join('uploads', 'questions', str(exam_id))
-                    os.makedirs(q_dir, exist_ok=True)
-                    fname = f"q_{q.order_index}_{img_idx}_{int(_time.time())}.{ext}"
-                    fpath = os.path.join(q_dir, fname)
-                    with open(fpath, 'wb') as imgf:
-                        imgf.write(img_bytes)
-                    image_paths.append(f"/uploads/questions/{exam_id}/{fname}")
+                    # Upload to Cloudinary
+                    c_url = upload_to_cloudinary(img_bytes, folder=f"questions/{exam_id}")
+                    if c_url:
+                        image_paths.append(c_url)
             except Exception as img_err:
                 print(f"[Question Image] Failed to save index {img_idx}: {img_err}")
 
@@ -1631,6 +1814,8 @@ async def score_with_gemini(
     rubrics: Optional[list] = None,
     image_bytes_list: Optional[List[bytes]] = None,
     image_mime_list: Optional[List[str]] = None,
+    q_image_bytes_list: Optional[List[bytes]] = None,
+    q_image_mime_list: Optional[List[str]] = None,
 ) -> dict:
     """
     Score a student answer using Gemini AI.
@@ -1660,41 +1845,52 @@ async def score_with_gemini(
     if rubric_text:
         rubric_section = "## เกณฑ์การให้คะแนน\n" + rubric_text + "\n"
 
-    student_answer_section = answer_text.strip() if answer_text and answer_text.strip() else "(ไม่มีคำตอบ)"
+    student_answer_section = answer_text.strip() if answer_text and answer_text.strip() else "(ไม่มีคำตอบแบบข้อความ)"
 
     prompt = (
         "คุณคือคุณครูผู้เชี่ยวชาญในการตรวจข้อสอบอัตนัย กรุณาประเมินคำตอบของนักเรียนอย่างละเอียดและเป็นธรรมตามเกณฑ์ที่กำหนด\n\n"
-        f"## โจทย์คำถาม\n{question_text}\n\n"
+        "## ข้อมูลโจทย์\n"
+        f"ข้อความโจทย์: {question_text or '(ไม่มีข้อความโจทย์ - โปรดดูจากรูปภาพประกอบโจทย์)'}\n"
+        "**สำคัญ**: หากข้อความโจทย์ว่างเปล่า ให้คุณวิเคราะห์เนื้อหาคำถามจากรูปภาพที่อยู่ในส่วนของ 'Question Images' ที่แนบไป\n\n"
         f"## คะแนนเต็ม\n{max_score} คะแนน\n\n"
         + answer_key_section
         + rubric_section
-        + f"## คำตอบของนักเรียน\n{student_answer_section}\n\n"
-        "## คำสั่ง\n"
-        "1. วิเคราะห์คำตอบของนักเรียนอย่างรอบคอบ เปรียบเทียบกับแนวคำตอบและเกณฑ์การให้คะแนน (Chain of Thought: สิ่งที่นักเรียนตอบถูกคืออะไร ขาดอะไรไปบ้าง)\n"
-        "2. พิจารณารูปภาพประกอบ (ถ้ามี) ว่าสัมพันธ์กับคำตอบและโจทย์หรือไม่\n"
-        "3. ประเมินคะแนนและให้ข้อเสนอแนะที่สร้างสรรค์\n"
-        "4. วิเคราะห์คุณภาพเรียงความ (Essay Quality Metrics) ในด้านความยาว ความซับซ้อน และความสละสลวย\n"
+        + f"## ข้อมูลคำตอบของนักเรียน\n"
+        f"ข้อความคำตอบ: {student_answer_section}\n"
+        "**สำคัญ**: หากนักเรียนส่งรูปภาพมาในส่วนของ 'Student Answer Images' ให้คุณวิเคราะห์คำตอบจากรูปภาพเหล่านั้นประกอบด้วย\n\n"
+        "## คำสั่งการตรวจ\n"
+        "1. วิเคราะห์โจทย์: ทำความเข้าใจสิ่งที่โจทย์ต้องการ (จากข้อความหรือรูปภาพโจทย์)\n"
+        "2. วิเคราะห์คำตอบ: ตรวจสอบคำตอบของนักเรียน (จากข้อความหรือรูปภาพคำตอบ) ว่าตรงตามโจทย์และเกณฑ์การให้คะแนนหรือไม่\n"
+        "3. การให้คะแนน: พิจารณาคะแนนตามความเหมาะสม (Chain of Thought: สิ่งที่ตอบถูก ขาดส่วนไหน)\n"
+        "4. วิเคราะห์คุณภาพเรียงความ: ให้คะแนนด้านความสละสลวย ความซับซ้อน และความเหมาะสมของความยาว\n"
         "ตอบกลับเป็น JSON ที่มีรูปแบบดังนี้เท่านั้น (งดเว้นการพิมพ์ข้อความอื่นๆ นอก JSON):\n"
         "{\n"
         f'  "score": <คะแนนที่ได้ เป็นตัวเลขทศนิยม 1 ตำแหน่ง ระหว่าง 0 ถึง {max_score}>,\n'
         '  "confidence": <"high" หากมั่นใจมาก, "medium" หากปานกลาง, "low" หากไม่มั่นใจ หรือรูปภาพไม่ชัดเจน>,\n'
-        '  "feedback": <คำอธิบายการให้คะแนนและข้อเสนอแนะเป็นภาษาไทย 2-4 ประโยค ที่ช่วยให้นักเรียนเข้าใจว่าได้/เสียคะแนนตรงไหน>,\n'
+        '  "feedback": <คำอธิบายการให้คะแนนและข้อเสนอแนะเป็นภาษาไทยที่กระชับและเข้าใจง่าย>,\n'
         '  "metrics": {\n'
-        '    "length_eval": <ข้อความสรุปความยาว เช่น "เหมาะสม", "สั้นเกินไป", "ยาวแต่เนื้อหาน้อย">,\n'
-        '    "complexity_eval": <ข้อความสรุปความซับซ้อน/คลังคำศัพท์ เช่น "ดีมาก", "ปานกลาง", "ใช้คำซ้ำเยอะ">,\n'
-        '    "readability_eval": <ข้อความสรุปความลื่นไหล/อ่านง่าย เช่น "อ่านง่ายมาก", "สละสลวย", "วกวนเข้าใจยาก">\n'
+        '    "length_eval": <ข้อความสรุปความยาว>,\n'
+        '    "complexity_eval": <ข้อความสรุปความซับซ้อน>,\n'
+        '    "readability_eval": <ข้อความสรุปความลื่นไหล>\n'
         '  }\n'
         "}"
     )
 
     try:
-        # Build multimodal contents: text prompt + optional image
+        # Build multimodal contents
         contents: list = [prompt]
+        
+        # Add Question Images first
+        if q_image_bytes_list and q_image_mime_list:
+            contents.append("--- [Question Images] ---")
+            for bts, mime in zip(q_image_bytes_list, q_image_mime_list):
+                contents.append(genai_types.Part.from_bytes(data=bts, mime_type=mime))
+                
+        # Add Student Answer Images
         if image_bytes_list and image_mime_list:
+            contents.append("--- [Student Answer Images] ---")
             for bts, mime in zip(image_bytes_list, image_mime_list):
-                contents.append(
-                    genai_types.Part.from_bytes(data=bts, mime_type=mime)
-                )
+                contents.append(genai_types.Part.from_bytes(data=bts, mime_type=mime))
 
         response = await _genai_client.aio.models.generate_content(
             model=_GEMINI_MODEL,
@@ -1736,9 +1932,12 @@ async def generate_rubric(req: GenerateRubricRequest, user: dict = Depends(get_c
 
     prompt = f"""
     You are an expert exam setter and grader.
-    Given the following question and its maximum score, generate a comprehensive "Answer Key" (ธงคำตอบ)
+    Given the following question (text and/or images) and its maximum score, generate a comprehensive "Answer Key" (ธงคำตอบ)
     and a detailed "Rubrics" (เกณฑ์การให้คะแนน) broken down into specific criteria.
     The total score of all rubrics MUST equal exactly {req.total_score}.
+    
+    If question text is empty, look at the attached images to understand the question.
+    
     Output MUST be valid JSON matching this schema:
     {{
         "answer_key": "String (detailed correct answer model in Thai)",
@@ -1751,14 +1950,39 @@ async def generate_rubric(req: GenerateRubricRequest, user: dict = Depends(get_c
         ]
     }}
     
-    Question: {req.question_text}
+    Question Text: {req.question_text}
     Total Score: {req.total_score}
     """
     
     try:
+        import base64, re as _re
+        contents: list = [prompt]
+        
+        # Add images if provided
+        if req.question_images_base64:
+            for img_data in req.question_images_base64:
+                try:
+                    # Check if it's a base64 DataURL
+                    if img_data.startswith("data:"):
+                        match = _re.match(r'data:(?P<mime>[^;]+);base64,(?P<data>.+)', img_data)
+                        if match:
+                            mime = match.group('mime')
+                            data = base64.b64decode(match.group('data'))
+                            contents.append(genai_types.Part.from_bytes(data=data, mime_type=mime))
+                    # Check if it's a URL or local path
+                    else:
+                        data = await get_image_bytes(img_data)
+                        if data:
+                            ext = img_data.split(".")[-1].lower()
+                            mime = "image/png" if ext == "png" else "image/webp" if ext == "webp" else "image/jpeg"
+                            contents.append(genai_types.Part.from_bytes(data=data, mime_type=mime))
+                except Exception as e: 
+                    print(f"[Generate Rubric Image Error] {e}")
+                    continue
+
         response = _genai_client.models.generate_content(
             model=_GEMINI_MODEL,
-            contents=prompt,
+            contents=contents,
             config=genai_types.GenerateContentConfig(
                 response_mime_type="application/json",
             )
@@ -1943,14 +2167,10 @@ async def submit_exam_multipart(
                 continue
             mime = file_field.content_type or "image/jpeg"
             ext = mime.split("/")[-1].replace("jpeg", "jpg")
-            fname = f"q_{q_id}_{img_idx}.{ext}"
-            fpath = os.path.join(upload_dir, fname)
-            async with aiofiles.open(fpath, "wb") as f:
-                await f.write(raw_bytes)
-            url = f"/uploads/{exam_id}/{user['id']}/{fname}"
-            img_list.append(raw_bytes)
-            img_mime_list.append(mime)
-            img_paths.append(url)
+            # Upload to Cloudinary
+            c_url = upload_to_cloudinary(raw_bytes, folder=f"submissions/{exam_id}/{user['id']}")
+            if c_url:
+                img_paths.append(c_url)
 
         image_paths_json = json_module.dumps(img_paths) if img_paths else None
 

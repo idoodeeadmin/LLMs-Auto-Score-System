@@ -268,6 +268,33 @@ def init_db():
     )
     ''')
 
+    # Create Announcements table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS announcements (
+        id INTEGER PRIMARY KEY AUTO_INCREMENT,
+        room_id INTEGER NOT NULL,
+        teacher_id INTEGER NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        content TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (room_id) REFERENCES rooms (id) ON DELETE CASCADE,
+        FOREIGN KEY (teacher_id) REFERENCES users (id) ON DELETE CASCADE
+    )
+    ''')
+
+    # Create Announcement Reads table (Read Receipt)
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS announcement_reads (
+        id INTEGER PRIMARY KEY AUTO_INCREMENT,
+        announcement_id INTEGER NOT NULL,
+        student_id INTEGER NOT NULL,
+        read_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (announcement_id) REFERENCES announcements (id) ON DELETE CASCADE,
+        FOREIGN KEY (student_id) REFERENCES users (id) ON DELETE CASCADE,
+        UNIQUE(announcement_id, student_id)
+    )
+    ''')
+
     conn.commit()
 
     # In MySQL, adding a column that already exists will raise a pymysql.err.OperationalError

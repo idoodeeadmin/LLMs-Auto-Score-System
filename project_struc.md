@@ -9,6 +9,7 @@ Evaly Score เป็นแอปพลิเคชัน Web-based สำหร
 ## 2. สถาปัตยกรรมระบบ (System Architecture)
 
 ### 2.1 สถาปัตยกรรมแบบ 3-Tier
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Frontend (React + Vite)                 │
@@ -47,53 +48,53 @@ Evaly Score เป็นแอปพลิเคชัน Web-based สำหร
 
 ### 3.1 นักเรียน/ผู้เรียน (Student)
 
-| ฟีเจอร์ | รายละเอียด | สถานะ |
-|---------|-----------|--------|
-| **3.1.1 สมัครสมาชิก** | ลงทะเบียนด้วย ชื่อ, นามสกุล, รหัสนักเรียน, Email, Password, รูป Profile (ไม่บังคับ) | [x] |
-| **3.1.2 เข้าสู่ระบบ** | Email + Password และ Google Sign-In (Firebase Auth) | [x] |
-| **3.1.3 ยืนยันอีเมล** | ระบบส่งลิงก์ยืนยันอีเมลผ่าน SMTP | [x] |
-| **3.1.4 แก้ไขโปรไฟล์** | อัปเดต ชื่อ, นามสกุล, Password, รูป Profile | [x] |
-| **3.1.5 เข้าร่วมห้องเรียน** | Join ด้วย Class Code 6 หลัก | [x] |
-| **3.1.6 ออกจากห้องเรียน** | ลบการเข้าร่วมห้องเรียน | [x] |
-| **3.1.7 ทำข้อสอบ** | 2 รูปแบบ: พิมพ์คำตอบ / อัปโหลดรูปภาพลายมือ | [x] |
-| **3.1.8 จับเวลาสอบ** | Timer Countdown + แจ้งเตือนใกล้หมดเวลา | [x] |
-| **3.1.9 ดูสถานะการส่ง** | ยังไม่ส่ง / ส่งแล้ว (รอตรวจ) / ตรวจแล้ว | [x] |
-| **3.1.10 ดูผลคะแนน** | ดูคะแนนและข้อเสนอแนะหลังอาจารย์อนุมัติ | [x] |
-| **3.1.11 ประวัติการสอบ** | ดูประวัติการทำข้อสอบย้อนหลังทุกห้องเรียน | [x] |
-| **3.1.12 Real-time Notifications** | แจ้งเตือนเมื่อมีข้อสอบใหม่, ใกล้หมดเวลา, ประกาศผล | [x] |
+| ฟีเจอร์                            | รายละเอียด                                                                          | สถานะ |
+| ---------------------------------- | ----------------------------------------------------------------------------------- | ----- |
+| **3.1.1 สมัครสมาชิก**              | ลงทะเบียนด้วย ชื่อ, นามสกุล, รหัสนักเรียน, Email, Password, รูป Profile (ไม่บังคับ) | [x]   |
+| **3.1.2 เข้าสู่ระบบ**              | Email + Password และ Google Sign-In (Firebase Auth)                                 | [x]   |
+| **3.1.3 ยืนยันอีเมล**              | ระบบส่งลิงก์ยืนยันอีเมลผ่าน SMTP                                                    | [x]   |
+| **3.1.4 แก้ไขโปรไฟล์**             | อัปเดต ชื่อ, นามสกุล, Password, รูป Profile                                         | [x]   |
+| **3.1.5 เข้าร่วมห้องเรียน**        | Join ด้วย Class Code 6 หลัก                                                         | [x]   |
+| **3.1.6 ออกจากห้องเรียน**          | ลบการเข้าร่วมห้องเรียน                                                              | [x]   |
+| **3.1.7 ทำข้อสอบ**                 | 2 รูปแบบ: พิมพ์คำตอบ / อัปโหลดรูปภาพลายมือ                                          | [x]   |
+| **3.1.8 จับเวลาสอบ**               | Timer Countdown + แจ้งเตือนใกล้หมดเวลา                                              | [x]   |
+| **3.1.9 ดูสถานะการส่ง**            | ยังไม่ส่ง / ส่งแล้ว (รอตรวจ) / ตรวจแล้ว                                             | [x]   |
+| **3.1.10 ดูผลคะแนน**               | ดูคะแนนและข้อเสนอแนะหลังอาจารย์อนุมัติ                                              | [x]   |
+| **3.1.11 ประวัติการสอบ**           | ดูประวัติการทำข้อสอบย้อนหลังทุกห้องเรียน                                            | [x]   |
+| **3.1.12 Real-time Notifications** | แจ้งเตือนเมื่อมีข้อสอบใหม่, ใกล้หมดเวลา, ประกาศผล                                   | [x]   |
 
 ### 3.2 อาจารย์/ผู้สอน (Teacher)
 
-| ฟีเจอร์ | รายละเอียด | สถานะ |
-|---------|-----------|--------|
-| **3.2.1 สมัครสมาชิก** | ลงทะเบียนด้วย ชื่อ, นามสกุล, รหัสผู้สอน, Email, Password | [x] |
-| **3.2.2 เข้าสู่ระบบ** | Email + Password และ Google Sign-In | [x] |
-| **3.2.3 จัดการห้องเรียน** | เพิ่ม, ลบ, แก้ไขห้องเรียน + ดู Class Code | [x] |
-| **3.2.4 ค้นหาห้องเรียน** | ค้นหาด้วยชื่อหรือรหัสห้อง | [x] |
-| **3.2.5 จัดการข้อสอบ** | สร้าง, แก้ไข, ลบข้อสอบพร้อมโจทย์และธงคำตอบ | [x] |
-| **3.2.6 กำหนดเวลาสอบ** | กำหนดวัน/เวลาเริ่มต้น - สิ้นสุด (ไม่บังคับ) | [x] |
-| **3.2.7 อัปโหลดรูปโจทย์** | รองรับหลายรูปภาพต่อข้อ (base64 + จัดเก็บใน uploads) | [x] |
-| **3.2.8 กำหนด Rubrics** | กำหนดเกณฑ์การให้คะแนนแบบละเอียด | [x] |
-| **3.2.9 ตรวจสอบการส่ง** | ดูสถานะนักเรียนทุกคน (ส่งแล้ว/ยังไม่ส่ง) | [x] |
-| **3.2.10 ตรวจคำตอบ** | ดูคำตอบนักเรียน พร้อม AI Score และ Feedback | [x] |
-| **3.2.11 แก้ไขคะแนน** | แก้ไขคะแนนที่ AI ให้ + เพิ่มคอมเมนต์ส่วนตัว | [x] |
-| **3.2.12 อนุมัติผล** | อนุมัติคะแนนเพื่อประกาศให้นักเรียนทราบ | [x] |
-| **3.2.13 Bulk Approve** | อนุมัติหลายคนพร้อมกันใช้คะแนน AI | [x] |
-| **3.2.14 สถิติและ Analytics** | ดูรายงานคะแนนเฉลี่ย, การกระจายคะแนน, ความยากของข้อ | [x] |
-| **3.2.15 Export ข้อมูล** | ส่งออก CSV/XLSX รายงานคะแนน | [x] |
+| ฟีเจอร์                       | รายละเอียด                                               | สถานะ |
+| ----------------------------- | -------------------------------------------------------- | ----- |
+| **3.2.1 สมัครสมาชิก**         | ลงทะเบียนด้วย ชื่อ, นามสกุล, รหัสผู้สอน, Email, Password | [x]   |
+| **3.2.2 เข้าสู่ระบบ**         | Email + Password และ Google Sign-In                      | [x]   |
+| **3.2.3 จัดการห้องเรียน**     | เพิ่ม, ลบ, แก้ไขห้องเรียน + ดู Class Code                | [x]   |
+| **3.2.4 ค้นหาห้องเรียน**      | ค้นหาด้วยชื่อหรือรหัสห้อง                                | [x]   |
+| **3.2.5 จัดการข้อสอบ**        | สร้าง, แก้ไข, ลบข้อสอบพร้อมโจทย์และธงคำตอบ               | [x]   |
+| **3.2.6 กำหนดเวลาสอบ**        | กำหนดวัน/เวลาเริ่มต้น - สิ้นสุด (ไม่บังคับ)              | [x]   |
+| **3.2.7 อัปโหลดรูปโจทย์**     | รองรับหลายรูปภาพต่อข้อ (base64 + จัดเก็บใน uploads)      | [x]   |
+| **3.2.8 กำหนด Rubrics**       | กำหนดเกณฑ์การให้คะแนนแบบละเอียด                          | [x]   |
+| **3.2.9 ตรวจสอบการส่ง**       | ดูสถานะนักเรียนทุกคน (ส่งแล้ว/ยังไม่ส่ง)                 | [x]   |
+| **3.2.10 ตรวจคำตอบ**          | ดูคำตอบนักเรียน พร้อม AI Score และ Feedback              | [x]   |
+| **3.2.11 แก้ไขคะแนน**         | แก้ไขคะแนนที่ AI ให้ + เพิ่มคอมเมนต์ส่วนตัว              | [x]   |
+| **3.2.12 อนุมัติผล**          | อนุมัติคะแนนเพื่อประกาศให้นักเรียนทราบ                   | [x]   |
+| **3.2.13 Bulk Approve**       | อนุมัติหลายคนพร้อมกันใช้คะแนน AI                         | [x]   |
+| **3.2.14 สถิติและ Analytics** | ดูรายงานคะแนนเฉลี่ย, การกระจายคะแนน, ความยากของข้อ       | [x]   |
+| **3.2.15 Export ข้อมูล**      | ส่งออก CSV/XLSX รายงานคะแนน                              | [x]   |
 
 ### 3.3 ระบบ AI Grading (Core System)
 
-| ฟีเจอร์ | รายละเอียด | สถานะ |
-|---------|-----------|--------|
-| **3.3.1 Multimodal Scoring** | รองรับ Text + Image (Vision) ในครั้งเดียว | [x] |
-| **3.3.2 Gemini AI** | ใช้ Google Gemini 1.5 Flash/Pro เป็นตัวตรวจ | [x] |
-| **3.3.3 Prompt Engineering** | Chain-of-Thought + Few-Shot Prompting สำหรับ Data Structures | [x] |
-| **3.3.4 Rubric-based** | ตรวจตามเกณฑ์รูบริคที่อาจารย์กำหนด | [x] |
-| **3.3.5 Confidence Score** | ให้ค่าความมั่นใจ (high/medium/low) สำหรับแต่ละคำตอบ | [x] |
-| **3.3.6 Fallback Scoring** | ระบบสำรองแบบ Rule-based เมื่อ AI ไม่พร้อมใช้งาน | [x] |
-| **3.3.7 การแจ้งเตือน** | แจ้งเตือนอาจารย์เมื่อตรวจเสร็จหรือต้องตรวจเอง | [x] |
-| **3.3.8 การจำกัดข้อความ** | รองรับคำตอบสูงสุด 300 คำต่อข้อ | [x] |
+| ฟีเจอร์                      | รายละเอียด                                                   | สถานะ |
+| ---------------------------- | ------------------------------------------------------------ | ----- |
+| **3.3.1 Multimodal Scoring** | รองรับ Text + Image (Vision) ในครั้งเดียว                    | [x]   |
+| **3.3.2 Gemini AI**          | ใช้ Google Gemini 1.5 Flash/Pro เป็นตัวตรวจ                  | [x]   |
+| **3.3.3 Prompt Engineering** | Chain-of-Thought + Few-Shot Prompting สำหรับ Data Structures | [x]   |
+| **3.3.4 Rubric-based**       | ตรวจตามเกณฑ์รูบริคที่อาจารย์กำหนด                            | [x]   |
+| **3.3.5 Confidence Score**   | ให้ค่าความมั่นใจ (high/medium/low) สำหรับแต่ละคำตอบ          | [x]   |
+| **3.3.6 Fallback Scoring**   | ระบบสำรองแบบ Rule-based เมื่อ AI ไม่พร้อมใช้งาน              | [x]   |
+| **3.3.7 การแจ้งเตือน**       | แจ้งเตือนอาจารย์เมื่อตรวจเสร็จหรือต้องตรวจเอง                | [x]   |
+| **3.3.8 การจำกัดข้อความ**    | รองรับคำตอบสูงสุด 300 คำต่อข้อ                               | [x]   |
 
 ---
 
@@ -101,71 +102,71 @@ Evaly Score เป็นแอปพลิเคชัน Web-based สำหร
 
 ### 4.1 Frontend Stack
 
-| เทคโนโลยี | รุ่น | วัตถุประสงค์ |
-|-----------|------|--------------|
-| React | 18.3.1 | UI Library |
-| TypeScript | 5.9.2 | Type Safety |
-| Vite | 7.1.2 | Build Tool |
-| React Router DOM | 6.30.1 | SPA Routing |
-| TailwindCSS | 3.4.17 | CSS Framework |
-| Radix UI | latest | Headless UI Components |
-| TanStack Query | 5.84.2 | Data Fetching & Caching |
-| Socket.io Client | 4.8.3 | Real-time Communication |
-| Firebase | 12.12.0 | Authentication (Google Sign-In) |
-| Recharts | 2.12.7 | Data Visualization |
-| Framer Motion | 12.23.12 | Animations |
-| React Hook Form | 7.62.0 | Form Management |
-| Zod | 3.25.76 | Schema Validation |
-| date-fns | 4.1.0 | Date Manipulation |
-| Lucide React | 0.539.0 | Icons |
+| เทคโนโลยี        | รุ่น     | วัตถุประสงค์                    |
+| ---------------- | -------- | ------------------------------- |
+| React            | 18.3.1   | UI Library                      |
+| TypeScript       | 5.9.2    | Type Safety                     |
+| Vite             | 7.1.2    | Build Tool                      |
+| React Router DOM | 6.30.1   | SPA Routing                     |
+| TailwindCSS      | 3.4.17   | CSS Framework                   |
+| Radix UI         | latest   | Headless UI Components          |
+| TanStack Query   | 5.84.2   | Data Fetching & Caching         |
+| Socket.io Client | 4.8.3    | Real-time Communication         |
+| Firebase         | 12.12.0  | Authentication (Google Sign-In) |
+| Recharts         | 2.12.7   | Data Visualization              |
+| Framer Motion    | 12.23.12 | Animations                      |
+| React Hook Form  | 7.62.0   | Form Management                 |
+| Zod              | 3.25.76  | Schema Validation               |
+| date-fns         | 4.1.0    | Date Manipulation               |
+| Lucide React     | 0.539.0  | Icons                           |
 
 ### 4.2 Backend Stack
 
-| เทคโนโลยี | รุ่น | วัตถุประสงค์ |
-|-----------|------|--------------|
-| FastAPI | latest | Python Web Framework |
-| Uvicorn | latest | ASGI Server |
-| SQLite | 3.x | Database |
-| better-sqlite3 | 12.8.0 | SQLite Driver (Node) |
-| python-jose | latest | JWT Handling |
-| google-genai | latest | Gemini API Client |
-| firebase-admin | latest | Firebase Admin SDK |
-| python-dotenv | latest | Environment Variables |
-| aiofiles | latest | Async File Operations |
-| httpx | latest | HTTP Client |
-| openpyxl | latest | XLSX Export |
+| เทคโนโลยี      | รุ่น   | วัตถุประสงค์          |
+| -------------- | ------ | --------------------- |
+| FastAPI        | latest | Python Web Framework  |
+| Uvicorn        | latest | ASGI Server           |
+| SQLite         | 3.x    | Database              |
+| better-sqlite3 | 12.8.0 | SQLite Driver (Node)  |
+| python-jose    | latest | JWT Handling          |
+| google-genai   | latest | Gemini API Client     |
+| firebase-admin | latest | Firebase Admin SDK    |
+| python-dotenv  | latest | Environment Variables |
+| aiofiles       | latest | Async File Operations |
+| httpx          | latest | HTTP Client           |
+| openpyxl       | latest | XLSX Export           |
 
 ### 4.3 Real-time & Socket Server
 
-| เทคโนโลยี | รุ่น | วัตถุประสงค์ |
-|-----------|------|--------------|
-| Node.js | 18+ | Runtime |
-| Express | 4.x | Web Framework |
-| Socket.io | 4.x | WebSocket Server |
-| CORS | latest | Cross-origin handling |
+| เทคโนโลยี | รุ่น   | วัตถุประสงค์          |
+| --------- | ------ | --------------------- |
+| Node.js   | 18+    | Runtime               |
+| Express   | 4.x    | Web Framework         |
+| Socket.io | 4.x    | WebSocket Server      |
+| CORS      | latest | Cross-origin handling |
 
 ### 4.4 Security & Authentication
 
-| เทคนิค/เทคโนโลยี | รายละเอียด |
-|------------------|-----------|
-| JWT (JSON Web Token) | Access Token อายุ 7 วัน |
-| PBKDF2-SHA256 | Password Hashing (100,000 rounds) |
-| Rate Limiting | IP-based limiting (login, register) |
-| CORS | Cross-Origin Resource Sharing |
-| Email Verification | 24-hour expiry token |
-| Password Reset | 1-hour expiry token + self-service |
-| Firebase Auth | Google Sign-In integration |
+| เทคนิค/เทคโนโลยี     | รายละเอียด                          |
+| -------------------- | ----------------------------------- |
+| JWT (JSON Web Token) | Access Token อายุ 7 วัน             |
+| PBKDF2-SHA256        | Password Hashing (100,000 rounds)   |
+| Rate Limiting        | IP-based limiting (login, register) |
+| CORS                 | Cross-Origin Resource Sharing       |
+| Email Verification   | 24-hour expiry token                |
+| Password Reset       | 1-hour expiry token + self-service  |
+| Firebase Auth        | Google Sign-In integration          |
 
 ### 4.5 AI & Prompt Engineering
 
-| เทคนิค | รายละเอียด |
-|--------|-----------|
-| Chain-of-Thought | ให้ AI คิดเป็นขั้นตอนก่อนตอบ |
-| Few-Shot Prompting | ตัวอย่างการให้คะแนนในพรอมต์ |
-| Multimodal Input | ส่งทั้งข้อความและรูปภาพ |
-| Temperature Control | 0.2 (consistent scoring) |
-| Confidence Scoring | วิเคราะห์ความมั่นใจของคำตอบ |
-| Fallback Heuristic | กรณี AI ไม่พร้อมใช้งาน |
+| เทคนิค              | รายละเอียด                   |
+| ------------------- | ---------------------------- |
+| Chain-of-Thought    | ให้ AI คิดเป็นขั้นตอนก่อนตอบ |
+| Few-Shot Prompting  | ตัวอย่างการให้คะแนนในพรอมต์  |
+| Multimodal Input    | ส่งทั้งข้อความและรูปภาพ      |
+| Temperature Control | 0.2 (consistent scoring)     |
+| Confidence Scoring  | วิเคราะห์ความมั่นใจของคำตอบ  |
+| Fallback Heuristic  | กรณี AI ไม่พร้อมใช้งาน       |
 
 ---
 
@@ -231,67 +232,67 @@ Evaly Score เป็นแอปพลิเคชัน Web-based สำหร
 
 ### 6.1 Authentication (`/api/auth/*`)
 
-| Method | Endpoint | คำอธิบาย |
-|--------|----------|---------|
-| POST | `/register` | สมัครสมาชิก + ส่งอีเมลยืนยัน |
-| POST | `/login` | เข้าสู่ระบบ |
-| POST | `/firebase-login` | เข้าสู่ระบบด้วย Google |
-| POST | `/link-google` | เชื่อมโยงบัญชี Google |
-| GET | `/me` | ดูข้อมูลผู้ใช้ปัจจุบัน |
-| PUT | `/profile` | อัปเดตโปรไฟล์ |
-| POST | `/forgot-password` | ขอรีเซ็ตรหัสผ่าน |
-| POST | `/reset-password` | รีเซ็ตรหัสผ่านด้วย token |
-| POST | `/verify-email` | ยืนยันอีเมล |
-| POST | `/resend-verification` | ส่งอีเมลยืนยันอีกครั้ง |
-| DELETE | `/account` | ลบบัญชี |
+| Method | Endpoint               | คำอธิบาย                     |
+| ------ | ---------------------- | ---------------------------- |
+| POST   | `/register`            | สมัครสมาชิก + ส่งอีเมลยืนยัน |
+| POST   | `/login`               | เข้าสู่ระบบ                  |
+| POST   | `/firebase-login`      | เข้าสู่ระบบด้วย Google       |
+| POST   | `/link-google`         | เชื่อมโยงบัญชี Google        |
+| GET    | `/me`                  | ดูข้อมูลผู้ใช้ปัจจุบัน       |
+| PUT    | `/profile`             | อัปเดตโปรไฟล์                |
+| POST   | `/forgot-password`     | ขอรีเซ็ตรหัสผ่าน             |
+| POST   | `/reset-password`      | รีเซ็ตรหัสผ่านด้วย token     |
+| POST   | `/verify-email`        | ยืนยันอีเมล                  |
+| POST   | `/resend-verification` | ส่งอีเมลยืนยันอีกครั้ง       |
+| DELETE | `/account`             | ลบบัญชี                      |
 
 ### 6.2 Rooms (`/api/rooms/*`)
 
-| Method | Endpoint | คำอธิบาย |
-|--------|----------|---------|
-| POST | `/` | สร้างห้องเรียน |
-| GET | `/` | ดูห้องเรียนทั้งหมด |
-| PUT | `/{id}` | แก้ไขห้อง |
-| DELETE | `/{id}` | ลบห้อง |
-| POST | `/join` | เข้าร่วมห้องด้วย Class Code |
-| GET | `/{id}` | ดูรายละเอียดห้อง |
-| GET | `/{id}/members` | ดูสมาชิกในห้อง |
-| GET | `/{id}/analytics` | ดูสถิติระดับห้อง |
-| GET | `/{id}/export-summary-csv` | Export สรุปคะแนนทั้งห้อง |
+| Method | Endpoint                   | คำอธิบาย                    |
+| ------ | -------------------------- | --------------------------- |
+| POST   | `/`                        | สร้างห้องเรียน              |
+| GET    | `/`                        | ดูห้องเรียนทั้งหมด          |
+| PUT    | `/{id}`                    | แก้ไขห้อง                   |
+| DELETE | `/{id}`                    | ลบห้อง                      |
+| POST   | `/join`                    | เข้าร่วมห้องด้วย Class Code |
+| GET    | `/{id}`                    | ดูรายละเอียดห้อง            |
+| GET    | `/{id}/members`            | ดูสมาชิกในห้อง              |
+| GET    | `/{id}/analytics`          | ดูสถิติระดับห้อง            |
+| GET    | `/{id}/export-summary-csv` | Export สรุปคะแนนทั้งห้อง    |
 
 ### 6.3 Exams (`/api/rooms/{room_id}/exams/*`)
 
-| Method | Endpoint | คำอธิบาย |
-|--------|----------|---------|
-| POST | `/` | สร้างข้อสอบ |
-| GET | `/` | ดูข้อสอบทั้งหมดในห้อง |
-| GET | `/{exam_id}` | ดูรายละเอียดข้อสอบ |
-| PUT | `/{exam_id}` | แก้ไขข้อสอบ |
-| DELETE | `/{exam_id}` | ลบข้อสอบ |
-| POST | `/{exam_id}/submit` | ส่งคำตอบ (JSON) |
-| POST | `/{exam_id}/submit-multipart` | ส่งคำตอบ (FormData + รูปภาพ) |
-| GET | `/{exam_id}/submissions` | ดูรายการส่งทั้งหมด |
-| GET | `/{exam_id}/submissions/me` | ดูคำตอบตัวเอง |
-| GET | `/{exam_id}/submissions/{student_id}` | ดูคำตอบนักเรียน |
-| PUT | `/{exam_id}/submissions/{student_id}/approve` | อนุมัติคะแนน |
-| POST | `/{exam_id}/bulk-approve` | อนุมัติหลายคนพร้อมกัน |
-| GET | `/{exam_id}/analytics` | ดูสถิติข้อสอบ |
-| GET | `/{exam_id}/export-csv` | Export CSV |
-| GET | `/{exam_id}/export?format=xlsx` | Export XLSX |
+| Method | Endpoint                                      | คำอธิบาย                     |
+| ------ | --------------------------------------------- | ---------------------------- |
+| POST   | `/`                                           | สร้างข้อสอบ                  |
+| GET    | `/`                                           | ดูข้อสอบทั้งหมดในห้อง        |
+| GET    | `/{exam_id}`                                  | ดูรายละเอียดข้อสอบ           |
+| PUT    | `/{exam_id}`                                  | แก้ไขข้อสอบ                  |
+| DELETE | `/{exam_id}`                                  | ลบข้อสอบ                     |
+| POST   | `/{exam_id}/submit`                           | ส่งคำตอบ (JSON)              |
+| POST   | `/{exam_id}/submit-multipart`                 | ส่งคำตอบ (FormData + รูปภาพ) |
+| GET    | `/{exam_id}/submissions`                      | ดูรายการส่งทั้งหมด           |
+| GET    | `/{exam_id}/submissions/me`                   | ดูคำตอบตัวเอง                |
+| GET    | `/{exam_id}/submissions/{student_id}`         | ดูคำตอบนักเรียน              |
+| PUT    | `/{exam_id}/submissions/{student_id}/approve` | อนุมัติคะแนน                 |
+| POST   | `/{exam_id}/bulk-approve`                     | อนุมัติหลายคนพร้อมกัน        |
+| GET    | `/{exam_id}/analytics`                        | ดูสถิติข้อสอบ                |
+| GET    | `/{exam_id}/export-csv`                       | Export CSV                   |
+| GET    | `/{exam_id}/export?format=xlsx`               | Export XLSX                  |
 
 ### 6.4 Notifications (`/api/notifications`)
 
-| Method | Endpoint | คำอธิบาย |
-|--------|----------|---------|
-| GET | `/` | ดูการแจ้งเตือนทั้งหมด |
+| Method | Endpoint | คำอธิบาย              |
+| ------ | -------- | --------------------- |
+| GET    | `/`      | ดูการแจ้งเตือนทั้งหมด |
 
 ### 6.5 Socket Server (`server-node/index.js`)
 
-| Event | Direction | คำอธิบาย |
-|-------|-----------|---------|
-| `join_room` | Client → Server | เข้าร่วมห้องแจ้งเตือน |
-| `new_notification` | Server → Client | ส่งการแจ้งเตือน |
-| `emit-notification` | Python → Node | Bridge ส่งการแจ้งเตือน |
+| Event               | Direction       | คำอธิบาย               |
+| ------------------- | --------------- | ---------------------- |
+| `join_room`         | Client → Server | เข้าร่วมห้องแจ้งเตือน  |
+| `new_notification`  | Server → Client | ส่งการแจ้งเตือน        |
+| `emit-notification` | Python → Node   | Bridge ส่งการแจ้งเตือน |
 
 ---
 
@@ -376,6 +377,7 @@ LLMs-Auto-Score-System-main/
 ## 8. ฟีเจอร์เสริมและเทคนิคพิเศษ (Additional Features)
 
 ### 8.1 Real-time Features
+
 - **Socket.io WebSocket**: การแจ้งเตือนแบบ Real-time
 - **Auto-join Room**: เข้าห้องแจ้งเตือนอัตโนมัติตาม user_id
 - **Notification Types**:
@@ -386,6 +388,7 @@ LLMs-Auto-Score-System-main/
   - ประกาศผล (result_published)
 
 ### 8.2 Security Features
+
 - **Rate Limiting**: จำกัดจำนวน request ต่อ IP
   - Register: 5 ครั้ง/ชั่วโมง
   - Login: 10 ครั้ง/นาที
@@ -395,23 +398,27 @@ LLMs-Auto-Score-System-main/
 - **CORS**: Cross-origin protection
 
 ### 8.3 Data Export Features
+
 - **CSV Export**: UTF-8 with BOM สำหรับ Excel
 - **XLSX Export**: Excel format พร้อม styling
 - **Summary Export**: สรุปคะแนนทั้งห้องเรียน
 
 ### 8.4 Analytics Features
+
 - **Score Distribution**: การกระจายคะแนน (buckets)
 - **Mean/Median**: ค่าเฉลี่ยและมัธยฐาน
 - **Question Difficulty**: วิเคราะห์ความยากของแต่ละข้อ
 - **Submission Rate**: อัตราการส่งงาน
 
 ### 8.5 Image Handling
+
 - **Base64 Upload**: รูปภาพแปลงเป็น base64 ก่อนส่ง
 - **Multiple Images**: รองรับหลายรูปต่อข้อ
 - **UUID Filename**: ป้องกันการซ้ำของชื่อไฟล์
 - **Static File Serving**: /uploads path
 
 ### 8.6 Error Handling
+
 - **Graceful Degradation**: ระบบทำงานต่อได้แม้ AI ล่ม
 - **Fallback Scoring**: ให้คะแนนด้วย heuristic กรณี Gemini ไม่พร้อม
 - **Validation**: Zod schema validation ทั้ง client และ server
@@ -453,12 +460,13 @@ PORT=8001
 ```bash
 # Install dependencies
 pnpm install
-cd server-node && npm install
+cd server-node && pnpm install
 
 # Development (run all servers)
-pnpm dev          # Vite dev server (port 8080)
-pnpm dev:backend  # FastAPI server (port 8001)
-node server-node/index.js  # Socket server (port 3001)
+pnpm dev:all      # รันทุกอย่างพร้อมกัน (Frontend, Backend, Socket)
+pnpm dev          # เฉพาะ Vite dev server (port 8080)
+pnpm dev:backend  # เฉพาะ FastAPI server (port 8001)
+pnpm dev:socket   # เฉพาะ Socket server (port 3001)
 
 # Build
 pnpm build        # Production build
@@ -486,37 +494,41 @@ uvicorn server.main:app --reload --port 8001
 ## 12. ฟีเจอร์ที่กำลังจะปรับปรุงหรือเพิ่มเติม (Features to Consider)
 
 ### 12.1 ระบบ Authentication & Security
+
 - **[x] Session Management** - จัดการ session แบบ revoke token เมื่อเปลี่ยนรหัสผ่าน
 - **[x] Audit Log** - บันทึกการกระทำสำคัญทั้งหมด (login, delete, grade changes)
 
 ### 12.2 AI Grading System
+
 - **[x] Confidence Threshold** - Auto-flag คำตอบที่ AI มั่นใจต่ำกว่า threshold
 - **[x] Batch Grading Queue** - ระบบ queue สำหรับประมวลผลจำนวนมากแบบ async
 
 ### 12.3 Exam & Question Management
+
 - **[x] Question Bank** - คลังข้อสอบที่ใช้ซ้ำได้ข้ามห้องเรียน
 - **[x] Randomized Questions** - สุ่มคำถาม/ตัวเลือกสำหรับแต่ละนักเรียน
 - **[x] Time Extension** - ฟีเจอร์ขยายเวลาสอบสำหรับนักเรียนพิเศษ
 - **[x] Auto-save Draft** - บันทึกคำตอบอัตโนมัติระหว่างทำข้อสอบ
 
 ### 12.4 Analytics & Reporting
+
 - **[-] Comparative Analysis** - เปรียบเทียบผลสอบระหว่างห้องเรียน/เทอม (ข้าม)
 
-
 ### 12.5 User Experience
-- **[] Dark Mode** - โหมดมืดสำหรับการใช้งานกลางคืน
+
+- **[x] Dark Mode** - โหมดมืดสำหรับการใช้งานกลางคืน
 
 ### 12.6 Infrastructure
-- **[ ] Cloud Storage** - ใช้ AWS S3/Google Cloud Storage แทน local storage 
+
+- **[x] Cloud Storage** - ใช้ Cloudinary
 - **[ ] Docker Compose** - Containerization สำหรับ deployment ที่ง่ายขึ้น
 - **[ ] CI/CD Pipeline** - Automated testing และ deployment
 
 ### 12.7 Collaboration
-- **[ ] Group Assignments** - รองรับการส่งงานกลุ่ม
-- **[ ] Discussion Forum** - กระดานถาม-ตอบสำหรับแต่ละห้องเรียน
-- **[ ] Announcement System** - ระบบประกาศจากอาจารย์พร้อม read receipt
+- **[x] Announcement System** - ระบบประกาศจากอาจารย์พร้อม read receipt
 
 ### 12.8 AI Enhancements
+
 - **[x] Auto-rubric Generation** - AI สร้างเกณฑ์คะแนนอัตโนมัติจากคำถาม
 - **[x] Smart Rescoring** - ปรับคะแนนอัตโนมัติเมื่อมีการเปลี่ยน rubric
 - **[x] Essay Quality Metrics** - วิเคราะห์ความยาว, ความซับซ้อน, readability

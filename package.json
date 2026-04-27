@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "vite",
     "dev:backend": "python -m uvicorn server.main:app --reload --port 8001",
+    "dev:socket": "pnpm --prefix server-node dev",
+    "dev:all": "concurrently -n \"web,api,ws\" -c \"cyan,magenta,yellow\" \"pnpm dev\" \"pnpm dev:backend\" \"pnpm dev:socket\"",
     "build": "vite build",
     "test": "vitest --run",
     "format.fix": "prettier --write .",
@@ -65,6 +67,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "concurrently": "^9.2.1",
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.23.12",

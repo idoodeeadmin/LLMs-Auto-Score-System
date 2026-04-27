@@ -4,7 +4,9 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { io, Socket } from "socket.io-client";
 
-const SOCKET_SERVER_URL = "http://localhost:3001";
+const SOCKET_SERVER_URL = import.meta.env.PROD 
+  ? window.location.origin 
+  : "http://localhost:3001";
 
 interface User {
   id: number;
