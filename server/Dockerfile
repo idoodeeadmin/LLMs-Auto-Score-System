@@ -16,9 +16,6 @@ RUN pip install --no-cache-dir cloudinary  # Added as we recently integrated it
 
 # Copy the server code
 COPY server/ /app/server/
-# Copy the .env file if it exists in root (for direct run)
-COPY .env /app/.env
-
 # Create uploads directory
 RUN mkdir -p /app/uploads
 
