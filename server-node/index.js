@@ -62,7 +62,7 @@ app.post('/emit-notification', (req, res) => {
     res.json({ success: true });
 });
 
-const PORT = process.env.SOCKET_PORT || 3001;
+const PORT = process.env.PORT || process.env.SOCKET_PORT || 3001;
 server.listen(PORT, () => {
     console.log(`Socket server running on port ${PORT}`);
 });
