@@ -27,8 +27,8 @@ Evaly Score เป็นแอปพลิเคชัน Web-based สำหร
 │  │  FastAPI (Py)   │  │  Node.js Socket │                    │
 │  │  Port: 8001     │  │  Port: 3001     │                    │
 │  │  - REST API     │  │  - WebSocket    │                    │
-│  │  - AI Grading   │  │  - Real-time    │                    │
-│  │  - Auth JWT     │  │    Notifications│                    │
+│  │  - AI Grading   │  │  - Push Noti    │                    │
+│  │  - Cloudinary SDK│  │                 │                    │
 │  └─────────────────┘  └─────────────────┘                    │
 └─────────────────────────────────────────────────────────────┘
                               │
@@ -62,6 +62,8 @@ Evaly Score เป็นแอปพลิเคชัน Web-based สำหร
 | **3.1.10 ดูผลคะแนน**               | ดูคะแนนและข้อเสนอแนะหลังอาจารย์อนุมัติ                                              | [x]   |
 | **3.1.11 ประวัติการสอบ**           | ดูประวัติการทำข้อสอบย้อนหลังทุกห้องเรียน                                            | [x]   |
 | **3.1.12 Real-time Notifications** | แจ้งเตือนเมื่อมีข้อสอบใหม่, ใกล้หมดเวลา, ประกาศผล                                   | [x]   |
+| **3.1.13 Auto-save Draft**        | บันทึกคำตอบอัตโนมัติระหว่างทำข้อสอบ ป้องกันข้อมูลหาย                                | [x]   |
+| **3.1.14 Time Extension**         | รองรับการขยายเวลาสอบรายบุคคลตามที่อาจารย์กำหนด                                     | [x]   |
 
 ### 3.2 อาจารย์/ผู้สอน (Teacher)
 
@@ -79,9 +81,13 @@ Evaly Score เป็นแอปพลิเคชัน Web-based สำหร
 | **3.2.10 ตรวจคำตอบ**          | ดูคำตอบนักเรียน พร้อม AI Score และ Feedback              | [x]   |
 | **3.2.11 แก้ไขคะแนน**         | แก้ไขคะแนนที่ AI ให้ + เพิ่มคอมเมนต์ส่วนตัว              | [x]   |
 | **3.2.12 อนุมัติผล**          | อนุมัติคะแนนเพื่อประกาศให้นักเรียนทราบ                   | [x]   |
-| **3.2.13 Bulk Approve**       | อนุมัติหลายคนพร้อมกันใช้คะแนน AI                         | [x]   |
-| **3.2.14 สถิติและ Analytics** | ดูรายงานคะแนนเฉลี่ย, การกระจายคะแนน, ความยากของข้อ       | [x]   |
-| **3.2.15 Export ข้อมูล**      | ส่งออก CSV/XLSX รายงานคะแนน                              | [x]   |
+| **3.2.13 Bulk Approve**       | อนุมัติหลายคนพร้อมกันผ่าน Floating Action Bar (Selective Approve)    | [x]   |
+| **3.2.14 สถิติและ Analytics** | ดูรายงานคะแนนเฉลี่ย, การกระจายคะแนน, ความยากของข้อ                       | [x]   |
+| **3.2.15 Export ข้อมูล**          | ส่งออก CSV/XLSX รองรับภาษาไทย 100% พร้อมหัวตารางที่กระชับและอ่านง่าย | [x]   |
+| **3.2.16 Question Bank**          | คลังข้อสอบส่วนตัวที่ใช้ซ้ำได้ข้ามห้องเรียน                                          | [x]   |
+| **3.2.17 Announcements**          | ระบบประกาศข่าวสารภายในห้องเรียน พร้อมระบบ Read Receipt                             | [x]   |
+| **3.2.18 Audit Log**              | ตรวจสอบประวัติการใช้งานและการแก้ไขคะแนนย้อนหลัง                                     | [x]   |
+| **3.2.19 Time Extension Management**| จัดการเพิ่มเวลาสอบให้นักเรียนรายบุคคล                                              | [x]   |
 
 ### 3.3 ระบบ AI Grading (Core System)
 
@@ -95,6 +101,10 @@ Evaly Score เป็นแอปพลิเคชัน Web-based สำหร
 | **3.3.6 Fallback Scoring**   | ระบบสำรองแบบ Rule-based เมื่อ AI ไม่พร้อมใช้งาน              | [x]   |
 | **3.3.7 การแจ้งเตือน**       | แจ้งเตือนอาจารย์เมื่อตรวจเสร็จหรือต้องตรวจเอง                | [x]   |
 | **3.3.8 การจำกัดข้อความ**    | รองรับคำตอบสูงสุด 300 คำต่อข้อ                               | [x]   |
+| **3.3.9 Auto-rubric Generation**| AI ช่วยสร้างเกณฑ์การให้คะแนนอัตโนมัติจากโจทย์                | [x]   |
+| **3.3.10 Batch Grading Queue** | ระบบ Queue ประมวลผลการตรวจจำนวนมากแบบเบื้องหลัง (Async)      | [x]   |
+| **3.3.11 Smart Rescoring**     | ปรับคะแนนอัตโนมัติเมื่อมีการแก้ไขเกณฑ์รูบริคย้อนหลัง          | [x]   |
+| **3.3.12 Essay Quality Metrics**| วิเคราะห์คุณภาพคำตอบ (ความยาว, ความซับซ้อน, Readability)    | [x]   |
 
 ---
 
@@ -126,8 +136,8 @@ Evaly Score เป็นแอปพลิเคชัน Web-based สำหร
 | -------------- | ------ | --------------------- |
 | FastAPI        | latest | Python Web Framework  |
 | Uvicorn        | latest | ASGI Server           |
-| SQLite         | 3.x    | Database              |
-| better-sqlite3 | 12.8.0 | SQLite Driver (Node)  |
+| TiDB Cloud      | 4000   | Cloud MySQL Database |
+| PyMySQL         | latest | MySQL Driver (Python)|
 | python-jose    | latest | JWT Handling          |
 | google-genai   | latest | Gemini API Client     |
 | firebase-admin | latest | Firebase Admin SDK    |
@@ -135,6 +145,7 @@ Evaly Score เป็นแอปพลิเคชัน Web-based สำหร
 | aiofiles       | latest | Async File Operations |
 | httpx          | latest | HTTP Client           |
 | openpyxl       | latest | XLSX Export           |
+| Cloudinary      | latest | Image Cloud Storage   |
 
 ### 4.3 Real-time & Socket Server
 
@@ -237,7 +248,7 @@ Evaly Score เป็นแอปพลิเคชัน Web-based สำหร
 | POST   | `/register`            | สมัครสมาชิก + ส่งอีเมลยืนยัน |
 | POST   | `/login`               | เข้าสู่ระบบ                  |
 | POST   | `/firebase-login`      | เข้าสู่ระบบด้วย Google       |
-| POST   | `/link-google`         | เชื่อมโยงบัญชี Google        |
+| POST   | `/set-role`            | กำหนดบทบาทผู้ใช้ (Teacher/Student) |
 | GET    | `/me`                  | ดูข้อมูลผู้ใช้ปัจจุบัน       |
 | PUT    | `/profile`             | อัปเดตโปรไฟล์                |
 | POST   | `/forgot-password`     | ขอรีเซ็ตรหัสผ่าน             |
@@ -257,6 +268,8 @@ Evaly Score เป็นแอปพลิเคชัน Web-based สำหร
 | POST   | `/join`                    | เข้าร่วมห้องด้วย Class Code |
 | GET    | `/{id}`                    | ดูรายละเอียดห้อง            |
 | GET    | `/{id}/members`            | ดูสมาชิกในห้อง              |
+| POST   | `/{id}/announcements`      | สร้างประกาศใหม่             |
+| GET    | `/{id}/announcements`      | ดูประกาศทั้งหมดในห้อง       |
 | GET    | `/{id}/analytics`          | ดูสถิติระดับห้อง            |
 | GET    | `/{id}/export-summary-csv` | Export สรุปคะแนนทั้งห้อง    |
 
@@ -271,20 +284,38 @@ Evaly Score เป็นแอปพลิเคชัน Web-based สำหร
 | DELETE | `/{exam_id}`                                  | ลบข้อสอบ                     |
 | POST   | `/{exam_id}/submit`                           | ส่งคำตอบ (JSON)              |
 | POST   | `/{exam_id}/submit-multipart`                 | ส่งคำตอบ (FormData + รูปภาพ) |
+| POST   | `/{exam_id}/draft`                            | บันทึก Draft (Auto-save)     |
+| GET    | `/{exam_id}/draft`                            | ดึงข้อมูล Draft              |
 | GET    | `/{exam_id}/submissions`                      | ดูรายการส่งทั้งหมด           |
 | GET    | `/{exam_id}/submissions/me`                   | ดูคำตอบตัวเอง                |
 | GET    | `/{exam_id}/submissions/{student_id}`         | ดูคำตอบนักเรียน              |
 | PUT    | `/{exam_id}/submissions/{student_id}/approve` | อนุมัติคะแนน                 |
 | POST   | `/{exam_id}/bulk-approve`                     | อนุมัติหลายคนพร้อมกัน        |
-| GET    | `/{exam_id}/analytics`                        | ดูสถิติข้อสอบ                |
-| GET    | `/{exam_id}/export-csv`                       | Export CSV                   |
-| GET    | `/{exam_id}/export?format=xlsx`               | Export XLSX                  |
+| POST   | `/{exam_id}/extensions`                       | เพิ่มเวลาสอบรายบุคคล         |
+| GET    | `/{exam_id}/export`                           | Export คะแนน (CSV/XLSX)      |
 
 ### 6.4 Notifications (`/api/notifications`)
 
 | Method | Endpoint | คำอธิบาย              |
 | ------ | -------- | --------------------- |
 | GET    | `/`      | ดูการแจ้งเตือนทั้งหมด |
+
+### 6.5 Question Bank (`/api/question-bank/*`)
+
+| Method | Endpoint              | คำอธิบาย                     |
+| ------ | --------------------- | ---------------------------- |
+| GET    | `/`                   | ดูคลังข้อสอบทั้งหมด          |
+| POST   | `/`                   | เพิ่มข้อสอบเข้าคลัง          |
+| DELETE | `/{question_id}`      | ลบข้อสอบจากคลัง              |
+| POST   | `/save-from-exam`     | บันทึกจากข้อสอบที่มีอยู่แล้ว |
+
+### 6.6 AI & Utilities
+
+| Method | Endpoint                  | คำอธิบาย                          |
+| ------ | ------------------------- | --------------------------------- |
+| POST   | `/api/gemini/generate-rubric` | ให้ AI ช่วยสร้างเกณฑ์คะแนน (Rubrics) |
+| GET    | `/api/audit-logs`         | ดูประวัติการใช้งาน (Audit Logs)   |
+| GET    | `/api/ping`               | เช็คสถานะ Server                  |
 
 ### 6.5 Socket Server (`server-node/index.js`)
 
@@ -354,8 +385,8 @@ LLMs-Auto-Score-System-main/
 │   ├── index.js                     # Socket.io Server
 │   └── package.json                 # Node Dependencies
 │
-├── prisma/                          # Prisma Schema (SQLite)
-│   └── schema.prisma                # Database Schema
+├── prisma/                          # Prisma Schema (MySQL)
+│   └── schema.prisma                # Database Schema (TiDB)
 │
 ├── uploads/                         # File Storage
 │   ├── questions/                   # Question Images
@@ -399,9 +430,24 @@ LLMs-Auto-Score-System-main/
 
 ### 8.3 Data Export Features
 
-- **CSV Export**: UTF-8 with BOM สำหรับ Excel
-- **XLSX Export**: Excel format พร้อม styling
+- **CSV Export**: UTF-8 with BOM สำหรับ Excel (รองรับภาษาไทย)
+- **XLSX Export**: Excel format พร้อมการจัดรูปแบบ (Styling) และหัวตารางภาษาไทย
+- **Simplified Layout**: ลบข้อมูลทางเทคนิคที่ไม่จำเป็นออก (เช่น Database ID, Email) เพื่อให้รายงานสะอาดตา
 - **Summary Export**: สรุปคะแนนทั้งห้องเรียน
+
+### 8.4 Infrastructure & DevOps
+
+- **Docker Containerization**: แยก Service (Frontend, Backend, Socket) ชัดเจน รันง่ายด้วย Docker Compose
+- **CI/CD Pipeline**: ระบบ Automated Testing และ Deployment ผ่าน GitHub Actions
+- **Cloud Database**: ใช้ TiDB Cloud (MySQL) รองรับการขยายตัวและมีความปลอดภัยสูง
+- **Cloud Storage**: ใช้ Cloudinary จัดเก็บรูปภาพประกอบข้อสอบและลายมือนักเรียน
+
+### 8.5 Security & Session Management
+
+- **Token Revocation**: ระบบ Revoke Token ทันทีเมื่อมีการเปลี่ยนรหัสผ่านหรือ Logout
+- **Audit Logging**: บันทึกทุกการกระทำสำคัญ (IP, Timestamp, Action) เพื่อความโปร่งใส
+- **Rate Limiting**: ป้องกันการ Brute-force และการเรียกใช้ API เกินความจำเป็น
+- **Email Verification**: ระบบยืนยันตัวตนผ่านอีเมลก่อนเริ่มใช้งานระบบสอบ
 
 ### 8.4 Analytics Features
 
@@ -457,25 +503,51 @@ PORT=8001
 
 ## 10. คำสั่งที่ใช้ในการพัฒนา (Development Commands)
 
+### 10.1 เริ่มต้นใช้งานครั้งแรก (Initial Setup)
 ```bash
-# Install dependencies
+# 1. ติดตั้ง Dependencies
 pnpm install
 cd server-node && pnpm install
 
-# Development (run all servers)
-pnpm dev:all      # รันทุกอย่างพร้อมกัน (Frontend, Backend, Socket)
+# 2. เตรียมไฟล์ Environment
+cp .env.example .env
+
+# 3. ติดตั้ง Python Dependencies
+pip install -r server/requirements.txt
+
+# 4. สร้างฐานข้อมูล (Optional)
+python -m server.database
+```
+
+### 10.2 การรันในโหมดพัฒนา (Development)
+```bash
+# รันทุกอย่างพร้อมกัน (Frontend, Backend, Socket)
+pnpm dev:all
+
+# รันแยกส่วน
 pnpm dev          # เฉพาะ Vite dev server (port 8080)
 pnpm dev:backend  # เฉพาะ FastAPI server (port 8001)
 pnpm dev:socket   # เฉพาะ Socket server (port 3001)
+```
 
-# Build
-pnpm build        # Production build
-pnpm typecheck    # TypeScript validation
-pnpm test         # Run Vitest tests
+### 10.3 การใช้งาน Docker
+```bash
+# บิลด์และรันทุก Service ในพื้นหลัง
+docker-compose up -d --build
 
-# Python
-pip install -r server/requirements.txt
-uvicorn server.main:app --reload --port 8001
+# ดู Log ของทุก Service
+docker-compose logs -f
+
+# หยุดการทำงาน
+docker-compose down
+```
+
+### 10.4 คำสั่งอื่นๆ (Utility Commands)
+```bash
+pnpm format.fix    # จัดรูปแบบโค้ด (Prettier)
+pnpm typecheck     # ตรวจสอบ TypeScript Types
+pnpm test          # รัน Unit Tests (Vitest)
+pnpm build         # บิลด์สำหรับการทำ Production
 ```
 
 ---
@@ -485,56 +557,13 @@ uvicorn server.main:app --reload --port 8001
 1. **AI Model**: ใช้ Gemini 1.5 Flash (อาจมี cost ในอนาคต)
 2. **Image Limit**: สูงสุด 5 รูปต่อคำตอบ (ป้องกัน token overload)
 3. **Text Limit**: 300 คำต่อคำตอบ
-4. **Database**: SQLite (เหมาะสำหรับ development, ควรเปลี่ยนเป็น PostgreSQL สำหรับ production)
-5. **File Storage**: Local filesystem (ควรใช้ Cloud Storage สำหรับ production)
+4. **Database**: TiDB Cloud MySQL (Production-ready)
+5. **File Storage**: Cloudinary (Cloud Storage)
 6. **Email**: ต้องตั้งค่า SMTP หรือใช้ Dev Mode
 
 ---
 
-## 12. ฟีเจอร์ที่กำลังจะปรับปรุงหรือเพิ่มเติม (Features to Consider)
-
-### 12.1 ระบบ Authentication & Security
-
-- **[x] Session Management** - จัดการ session แบบ revoke token เมื่อเปลี่ยนรหัสผ่าน
-- **[x] Audit Log** - บันทึกการกระทำสำคัญทั้งหมด (login, delete, grade changes)
-
-### 12.2 AI Grading System
-
-- **[x] Confidence Threshold** - Auto-flag คำตอบที่ AI มั่นใจต่ำกว่า threshold
-- **[x] Batch Grading Queue** - ระบบ queue สำหรับประมวลผลจำนวนมากแบบ async
-
-### 12.3 Exam & Question Management
-
-- **[x] Question Bank** - คลังข้อสอบที่ใช้ซ้ำได้ข้ามห้องเรียน
-- **[x] Randomized Questions** - สุ่มคำถาม/ตัวเลือกสำหรับแต่ละนักเรียน
-- **[x] Time Extension** - ฟีเจอร์ขยายเวลาสอบสำหรับนักเรียนพิเศษ
-- **[x] Auto-save Draft** - บันทึกคำตอบอัตโนมัติระหว่างทำข้อสอบ
-
-### 12.4 Analytics & Reporting
-
-- **[-] Comparative Analysis** - เปรียบเทียบผลสอบระหว่างห้องเรียน/เทอม (ข้าม)
-
-### 12.5 User Experience
-
-- **[x] Dark Mode** - โหมดมืดสำหรับการใช้งานกลางคืน
-
-### 12.6 Infrastructure
-
-- **[x] Cloud Storage** - ใช้ Cloudinary
-- **[ ] Docker Compose** - Containerization สำหรับ deployment ที่ง่ายขึ้น
-- **[ ] CI/CD Pipeline** - Automated testing และ deployment
-
-### 12.7 Collaboration
-- **[x] Announcement System** - ระบบประกาศจากอาจารย์พร้อม read receipt
-
-### 12.8 AI Enhancements
-
-- **[x] Auto-rubric Generation** - AI สร้างเกณฑ์คะแนนอัตโนมัติจากคำถาม
-- **[x] Smart Rescoring** - ปรับคะแนนอัตโนมัติเมื่อมีการเปลี่ยน rubric
-- **[x] Essay Quality Metrics** - วิเคราะห์ความยาว, ความซับซ้อน, readability
-
----
 
 **สร้างเมื่อ**: April 2026  
-**อัปเดตล่าสุด**: April 2026  
-**เวอร์ชัน**: 1.0.0
+**อัปเดตล่าสุด**: 27 April 2026  
+**เวอร์ชัน**: 1.3.0 (Deterministic Randomization Added)
