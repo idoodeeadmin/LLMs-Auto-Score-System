@@ -23,6 +23,7 @@ interface Question {
   questionImages: string[];  // multiple images
   answerKey: string;
   rubrics: RubricItem[];
+  gradingTone?: "simple" | "moderate" | "academic";
   isExpanded: boolean;
   isEditing: boolean;
   isGenerating?: boolean;
@@ -71,6 +72,7 @@ export default function EditExam() {
       questionImages: [],
       answerKey: "",
       rubrics: [{ id: Date.now() + 1, name: "", description: "", score: "" }],
+      gradingTone: "moderate",
       isExpanded: false,
       isEditing: true
     }
@@ -131,8 +133,40 @@ export default function EditExam() {
     fetchExam();
   }, [token, roomId, examId]);
 
-  // Track changes to mark as dirty (skip first load)
+  // --- Auto-save logic (LocalStorage) ---
+  const DRAFT_KEY = `evaly_edit_exam_draft_${examId}`;
   const isInitialLoad = useRef(true);
+
+  // 1. Check for draft after server data is loaded
+  useEffect(() => {
+    if (isLoading) return;
+    const savedDraft = localStorage.getItem(DRAFT_KEY);
+    if (savedDraft) {
+      try {
+        const draft = JSON.parse(savedDraft);
+        // Compare with current title to see if it's likely a different state
+        if (draft.examTitle !== examTitle || draft.questions?.length !== questions.length) {
+            if (window.confirm("ตรวจพบข้อมูลร่างที่คุณแก้ไขค้างไว้จากครั้งก่อน ต้องการกู้คืนข้อมูลร่างนั้นหรือไม่?")) {
+                setExamTitle(draft.examTitle || "");
+                setExamDescription(draft.examDescription || "");
+                setStartDate(draft.startDate || "");
+                setStartTime(draft.startTime || "");
+                setEndDate(draft.endDate || "");
+                setEndTime(draft.endTime || "");
+                setIsRandomized(draft.isRandomized || false);
+                if (draft.questions && draft.questions.length > 0) {
+                    setQuestions(draft.questions);
+                }
+                toast.success("กู้คืนข้อมูลร่างแล้ว");
+            }
+        }
+      } catch (e) {
+        console.error("Failed to parse draft", e);
+      }
+    }
+  }, [isLoading, DRAFT_KEY]);
+
+  // 2. Save draft on change
   useEffect(() => {
     if (isLoading) return;
     if (isInitialLoad.current) {
@@ -140,23 +174,23 @@ export default function EditExam() {
       return;
     }
     setIsDirty(true);
-  }, [examTitle, examDescription, startDate, startTime, endDate, endTime, isRandomized, questions, isLoading]);
-
-  // Handle browser-level alert (Refresh/Close Tab)
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isDirty) {
-        e.preventDefault();
-        e.returnValue = "";
-      }
+    
+    const draft = {
+        examTitle,
+        examDescription,
+        startDate,
+        startTime,
+        endDate,
+        endTime,
+        isRandomized,
+        questions
     };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [isDirty]);
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  }, [examTitle, examDescription, startDate, startTime, endDate, endTime, isRandomized, questions, isLoading, DRAFT_KEY]);
 
   const onBack = () => {
     if (isDirty) {
-      if (window.confirm("คุณยังไม่ได้บันทึกการแก้ไข ต้องการออกจากหน้านี้ใช่หรือไม่?")) {
+      if (window.confirm("คุณยังไม่ได้บันทึกการแก้ไข ต้องการออกจากหน้านี้ใช่หรือไม่? (ข้อมูลที่แก้ไขจะยังถูกเก็บเป็นร่างไว้อยู่)")) {
         navigate(`/room/${roomId}`);
       }
     } else {
@@ -205,6 +239,7 @@ export default function EditExam() {
       questionImages: [],
       answerKey: "",
       rubrics: [{ id: Date.now() + 1, name: "", description: "", score: "" }],
+      gradingTone: "moderate",
       isExpanded: false,
       isEditing: true
     }]);
@@ -252,6 +287,34 @@ export default function EditExam() {
     setQuestions(questions.filter(q => q.id !== qId));
   }
 
+  const handleSaveQuestionToBank = async (q: Question) => {
+    if (!token || !q.text.trim()) {
+      toast.error("โปรดกรอกโจทย์คำถามก่อนบันทึกเข้าคลัง");
+      return;
+    }
+    try {
+      const res = await fetch("/api/question-bank", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          text: q.text,
+          score: parseFloat(q.score) || 0,
+          answer_key: q.answerKey || null,
+          rubrics: q.rubrics.filter(r => r.name).map(r => ({ name: r.name, description: r.description, score: parseFloat(r.score) || 0 })),
+          tags: null
+        })
+      });
+      if (res.ok) {
+        toast.success("บันทึกคำถามลงคลังเรียบร้อยแล้ว");
+      } else {
+        const err = await res.json();
+        toast.error(err.detail || "ไม่สามารถบันทึกเข้าคลัง");
+      }
+    } catch {
+      toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    }
+  };
+
   const handleSave = async () => {
     const validQs = questions.filter(q => q.text.trim());
     if (validQs.length === 0) {
@@ -297,6 +360,7 @@ export default function EditExam() {
 
       if (res.ok) {
         toast.success("บันทึกข้อสอบสำเร็จ!");
+        localStorage.removeItem(DRAFT_KEY); // Clear draft on success
         setIsDirty(false); // <--- Important: reset dirty state
         navigate(`/room/${roomId}`);
       } else {
@@ -341,7 +405,8 @@ export default function EditExam() {
         body: JSON.stringify({ 
           question_text: q.text, 
           total_score: scoreVal,
-          question_images_base64: imagesToSend
+          question_images_base64: imagesToSend,
+          tone: q.gradingTone || "moderate"
         })
       });
       if (!res.ok) {
@@ -546,6 +611,9 @@ export default function EditExam() {
                   <div className="bg-[#eff6ff] px-5 py-3 border-b border-blue-100 flex justify-between items-center">
                     <span className="text-sm font-bold text-[#3B82F6]">แก้ไขคำถามข้อที่ {index + 1}</span>
                     <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => handleSaveQuestionToBank(q)} className="h-8 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-full px-4 text-xs font-bold flex items-center gap-1.5">
+                        <BookOpen size={14} /> บันทึกเข้าคลัง
+                      </Button>
                       <Button variant="ghost" size="sm" onClick={() => duplicateQuestion(q.id)} className="h-8 text-[#3B82F6] bg-blue-100 hover:bg-blue-200 rounded-full px-4 text-xs font-bold">คัดลอกข้อนี้</Button>
                       <Button variant="ghost" size="icon" onClick={() => deleteQuestion(q.id)} className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50 dark:bg-red-900/30 rounded-full"><Trash2 size={16} /></Button>
                     </div>
@@ -618,6 +686,25 @@ export default function EditExam() {
                     {/* TOGGLE BUTTON AREA */}
                     <div className="mt-8 pt-6 border-t border-gray-100 dark:border-slate-800 flex flex-col items-center gap-4">
                       
+                      <div className="flex flex-col items-center gap-2 mb-2">
+                        <span className="text-xs font-semibold text-slate-500">ระดับความเข้มข้นของเกณฑ์ AI:</span>
+                        <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-inner">
+                          {["simple", "moderate", "academic"].map((t) => (
+                            <button
+                              key={t}
+                              onClick={() => setQuestions(questions.map(x => x.id === q.id ? { ...x, gradingTone: t as any } : x))}
+                              className={`px-4 py-1.5 text-[10px] md:text-xs font-bold rounded-lg transition-all ${
+                                (q.gradingTone || "moderate") === t 
+                                ? "bg-white dark:bg-slate-800 text-indigo-600 shadow-sm border border-indigo-100 dark:border-indigo-900/50" 
+                                : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                              }`}
+                            >
+                              {t === "simple" ? "เรียบง่าย" : t === "moderate" ? "ปานกลาง" : "วิชาการ"}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
                       <Button
                         variant="default"
                         onClick={() => generateRubric(q.id)}

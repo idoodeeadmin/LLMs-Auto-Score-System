@@ -156,6 +156,25 @@ export default function RoomDetail() {
     }
   };
 
+  const handleSaveToBank = async (exam: Exam) => {
+    if (!token || !roomId) return;
+    try {
+      const res = await fetch(`/api/question-bank/save-from-exam?room_id=${roomId}&exam_id=${exam.id}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        toast.success(data.message || "บันทึกข้อสอบลงคลังเรียบร้อยแล้ว");
+      } else {
+        const err = await res.json();
+        toast.error(err.detail || "ไม่สามารถบันทึกเข้าคลัง");
+      }
+    } catch {
+      toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    }
+  };
+
   const handleDeleteExam = async () => {
     if (!token || !roomId || !examToDelete) return;
     setIsDeleting(true);
@@ -358,6 +377,9 @@ export default function RoomDetail() {
                                 <DropdownMenuContent align="end" className="w-36">
                                   <DropdownMenuItem onClick={() => navigate(`/room/${roomId}/exam/${exam.id}/edit`)}>
                                     <Pencil size={14} className="mr-2" /> แก้ไข
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleSaveToBank(exam)}>
+                                    <BookOpen size={14} className="mr-2" /> บันทึกเข้าคลัง
                                   </DropdownMenuItem>
                                   <DropdownMenuItem 
                                     className="text-red-600 focus:text-red-600" 
