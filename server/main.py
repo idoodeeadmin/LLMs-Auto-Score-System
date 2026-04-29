@@ -1544,6 +1544,7 @@ class GenerateRubricRequest(BaseModel):
     question_text: str
     total_score: float
     question_images_base64: Optional[List[str]] = None
+    tone: Optional[str] = "moderate" # "simple", "moderate", "academic"
 
 class QuestionBankCreate(BaseModel):
     text: str
@@ -1942,11 +1943,22 @@ async def generate_rubric(req: GenerateRubricRequest, user: dict = Depends(get_c
     if not _USE_GEMINI or not _genai_client:
         raise HTTPException(status_code=503, detail="Gemini AI is not configured or unavailable")
 
+    tone_instruction = ""
+    if req.tone == "simple":
+        tone_instruction = "เน้นความถูกต้องของคำตอบเป็นหลัก ไม่แบ่งเกณฑ์ย่อยเยอะ ขอแค่คำตอบถูกต้องตามประเด็นสำคัญก็ได้คะแนนเต็มทันที เหมาะสำหรับการตรวจแบบรวดเร็วที่เน้นผลลัพธ์"
+    elif req.tone == "academic":
+        tone_instruction = "ใช้ภาษาเชิงวิชาการอย่างเป็นทางการ มีความละเอียดและแม่นยำสูง เน้นความถูกต้องทางเทคนิคและหลักการที่สมบูรณ์"
+    else: # moderate
+        tone_instruction = "ใช้ภาษาที่เป็นกลาง มีความชัดเจนและครอบคลุมประเด็นสำคัญอย่างสมดุล"
+
     prompt = f"""
     You are an expert exam setter and grader.
     Given the following question (text and/or images) and its maximum score, generate a comprehensive "Answer Key" (ธงคำตอบ)
     and a detailed "Rubrics" (เกณฑ์การให้คะแนน) broken down into specific criteria.
     The total score of all rubrics MUST equal exactly {req.total_score}.
+    
+    TONE/LEVEL: {req.tone.upper()}
+    Instruction for tone: {tone_instruction}
     
     If question text is empty, look at the attached images to understand the question.
     

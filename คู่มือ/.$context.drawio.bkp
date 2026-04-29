@@ -1,0 +1,137 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/28.1.2 Chrome/138.0.7204.243 Electron/37.4.0 Safari/537.36" version="28.1.2">
+  <diagram name="Page-1" id="doNBcBPFUggXq6Hg44_-">
+    <mxGraphModel dx="2090" dy="761" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="syFbgIzQ5NQRZZvNqd2G-46" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="syFbgIzQ5NQRZZvNqd2G-2" target="syFbgIzQ5NQRZZvNqd2G-9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="syFbgIzQ5NQRZZvNqd2G-2" value="0" style="swimlane;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="330" y="350" width="220" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="syFbgIzQ5NQRZZvNqd2G-8" value="ระบบตรวจข้อสอบอัตโนมัติด้วย LLM&lt;div&gt;LLM Auto Score System&lt;/div&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="syFbgIzQ5NQRZZvNqd2G-2">
+          <mxGeometry x="10" y="40" width="200" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="syFbgIzQ5NQRZZvNqd2G-16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="syFbgIzQ5NQRZZvNqd2G-9" target="syFbgIzQ5NQRZZvNqd2G-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="syFbgIzQ5NQRZZvNqd2G-9" value="ผู้เรียน" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="-120" y="380" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="syFbgIzQ5NQRZZvNqd2G-10" value="ผู้สอน" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="850" y="380" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="syFbgIzQ5NQRZZvNqd2G-11" value="Gemini API" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="380" y="80" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="syFbgIzQ5NQRZZvNqd2G-12" value="Firebase Auth" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="130" y="700" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="syFbgIzQ5NQRZZvNqd2G-13" value="SMTP" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="640" y="690" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="syFbgIzQ5NQRZZvNqd2G-26" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.917;exitY=0;exitDx=0;exitDy=0;entryX=0.028;entryY=-0.007;entryDx=0;entryDy=0;entryPerimeter=0;exitPerimeter=0;" edge="1" parent="1" source="syFbgIzQ5NQRZZvNqd2G-9" target="syFbgIzQ5NQRZZvNqd2G-2">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="300" as="sourcePoint" />
+            <mxPoint x="330" y="270" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="-10" y="310" />
+              <mxPoint x="336" y="310" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="syFbgIzQ5NQRZZvNqd2G-29" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=0;exitDx=0;exitDy=0;entryX=0.066;entryY=0.008;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-30.000000000000227" y="380" as="sourcePoint" />
+            <mxPoint x="344.52" y="350.79999999999995" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="-20" y="380" />
+              <mxPoint x="-20" y="290" />
+              <mxPoint x="345" y="290" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="syFbgIzQ5NQRZZvNqd2G-30" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=0;exitDx=0;exitDy=0;entryX=0.101;entryY=0.008;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="syFbgIzQ5NQRZZvNqd2G-9" target="syFbgIzQ5NQRZZvNqd2G-2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="-30" y="270" />
+              <mxPoint x="352" y="270" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="syFbgIzQ5NQRZZvNqd2G-32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.14;entryY=0.008;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="syFbgIzQ5NQRZZvNqd2G-9" target="syFbgIzQ5NQRZZvNqd2G-2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="-40" y="380" />
+              <mxPoint x="-40" y="250" />
+              <mxPoint x="361" y="250" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="syFbgIzQ5NQRZZvNqd2G-33" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.185;entryY=0.008;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="syFbgIzQ5NQRZZvNqd2G-9" target="syFbgIzQ5NQRZZvNqd2G-2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="-50" y="380" />
+              <mxPoint x="-50" y="230" />
+              <mxPoint x="371" y="230" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="syFbgIzQ5NQRZZvNqd2G-34" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.23;entryY=0.001;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="syFbgIzQ5NQRZZvNqd2G-9" target="syFbgIzQ5NQRZZvNqd2G-2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="-60" y="210" />
+              <mxPoint x="381" y="210" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="syFbgIzQ5NQRZZvNqd2G-35" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=0;exitDx=0;exitDy=0;entryX=0.276;entryY=0.008;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="syFbgIzQ5NQRZZvNqd2G-9" target="syFbgIzQ5NQRZZvNqd2G-2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="-70" y="380" />
+              <mxPoint x="-70" y="190" />
+              <mxPoint x="391" y="190" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="syFbgIzQ5NQRZZvNqd2G-36" value="ข้อมูลการสมัครสมาชิก " style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="85" y="308" width="130" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="syFbgIzQ5NQRZZvNqd2G-38" value="ข้อมูลการเข้าสู่ระบบ" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="90" y="288" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="syFbgIzQ5NQRZZvNqd2G-40" value="ข้อมูลการอัปเดตโปรไฟล์และรูปภาพ" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="50" y="268" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="syFbgIzQ5NQRZZvNqd2G-41" value="รหัสเข้าร่วมห้องเรียน" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="90" y="248" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="syFbgIzQ5NQRZZvNqd2G-42" value="ข้อมูลคำตอบข้อสอบแบบข้อความ" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="55" y="228" width="190" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="syFbgIzQ5NQRZZvNqd2G-43" value="รูปภาพคำตอบข้อสอบแบบลายมือ" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="55" y="208" width="190" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="syFbgIzQ5NQRZZvNqd2G-44" value="คำสั่งบันทึกร่างคำตอบ " style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="85" y="188" width="130" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="syFbgIzQ5NQRZZvNqd2G-45" value="คำขอรีเซ็ตรหัสผ่าน" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="90" y="170" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="syFbgIzQ5NQRZZvNqd2G-47" value="สถานะการเข้าสู่ระบบและ Token" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="70" y="448" width="180" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="syFbgIzQ5NQRZZvNqd2G-48" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.917;entryY=1.012;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="syFbgIzQ5NQRZZvNqd2G-2" target="syFbgIzQ5NQRZZvNqd2G-9">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="340" y="450" />
+              <mxPoint x="340" y="490" />
+              <mxPoint x="-10" y="490" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
