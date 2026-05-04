@@ -15,6 +15,7 @@ import {
 interface NavbarProps {
   activeTab?: string;
   setActiveTab?: (tab: any) => void;
+  isSticky?: boolean;
 }
 
 interface Notification {
@@ -27,7 +28,7 @@ interface Notification {
   link: string;
 }
 
-export default function Navbar({ }: NavbarProps) {
+export default function Navbar({ activeTab, setActiveTab, isSticky = true }: NavbarProps) {
   const { user, logout, token } = useAuth();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -73,7 +74,7 @@ export default function Navbar({ }: NavbarProps) {
   const unreadCount = notifications.filter(n => !readLinks.has(n.link)).length;
 
   return (
-    <header className="bg-white/90 dark:bg-slate-800/90 border-b border-gray-100 dark:border-slate-800 px-3 md:px-6 py-2 md:py-4 sticky top-0 z-50 shadow-sm backdrop-blur-md">
+    <header className={`bg-white/90 dark:bg-slate-800/90 border-b border-gray-100 dark:border-slate-800 px-3 md:px-6 py-2 md:py-4 z-50 backdrop-blur-md ${isSticky ? 'sticky top-0 shadow-sm' : 'relative'}`}>
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 md:gap-6">
         {/* Logo */}
         <Link to="/home" className="flex items-center gap-1.5 md:gap-3 flex-shrink-0 group">
