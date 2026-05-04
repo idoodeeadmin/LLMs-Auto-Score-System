@@ -1,13 +1,36 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Plus, Trash2, Calendar, Clock, CheckCircle2, X, ChevronDown, ChevronUp, Image as ImageIcon, Edit3, ArrowLeft, Loader2, Shuffle, BookOpen, Search, Sparkles } from "lucide-react";
+import { Plus, Trash2, X, Image as ImageIcon, ArrowLeft, Loader2, BookOpen, Search, Sparkles, Copy, Settings, Check, BookmarkPlus, Bookmark } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import Navbar from "@/components/Navbar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
+
+// A simple auto-resizing textarea component
+function AutoResizingTextarea({ value, onChange, placeholder, className, minRows = 1 }: any) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+    }
+  }, [value]);
+
+  return (
+    <textarea
+      ref={textareaRef}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      className={`overflow-hidden resize-none ${className}`}
+      rows={minRows}
+    />
+  );
+}
 
 interface RubricItem {
   id: number;
@@ -20,42 +43,76 @@ interface Question {
   id: number;
   text: string;
   score: string;
-  questionImages: string[];  // multiple images
+  questionImages: string[];
   answerKey: string;
   rubrics: RubricItem[];
-  gradingTone?: "simple" | "moderate" | "academic";
-  isExpanded: boolean;
-  isEditing: boolean;
+  gradingTone: "simple" | "moderate" | "academic";
   isGenerating?: boolean;
+  isExpanded?: boolean;
 }
+
+interface RubricPreset {
+  id: string;
+  name: string;
+  rubrics: RubricItem[];
+}
+
+const newQuestion = (): Question => ({
+  id: Date.now() + Math.random(),
+  text: "",
+  score: "1",
+  questionImages: [],
+  answerKey: "",
+  rubrics: [{ id: Date.now() + Math.random(), name: "", description: "", score: "1" }],
+  gradingTone: "moderate",
+  isExpanded: false,
+});
 
 export default function EditExam() {
   const { roomId, examId } = useParams();
   const navigate = useNavigate();
   const { token } = useAuth();
+  
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
 
-  // Exam meta state
   const [examTitle, setExamTitle] = useState("");
   const [examDescription, setExamDescription] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [startTime, setStartTime] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [endTime, setEndTime] = useState("");
+  const [startDateTime, setStartDateTime] = useState("");
+  const [endDateTime, setEndDateTime] = useState("");
   const [isRandomized, setIsRandomized] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [questions, setQuestions] = useState<Question[]>([newQuestion()]);
 
-  // Question Bank state
   const [showBankModal, setShowBankModal] = useState(false);
   const [bankQuestions, setBankQuestions] = useState<any[]>([]);
   const [bankSearch, setBankSearch] = useState("");
 
+  const [rubricPresets, setRubricPresets] = useState<RubricPreset[]>(() => {
+    try {
+      const saved = localStorage.getItem("evaly_rubric_presets");
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
+  const [showPresetModal, setShowPresetModal] = useState<number | null>(null);
+  const [presetNameInput, setPresetNameInput] = useState("");
+  const [presetToDelete, setPresetToDelete] = useState<string | null>(null);
+
+  const [showExitModal, setShowExitModal] = useState(false);
+  const [draftToRestore, setDraftToRestore] = useState<any>(null);
+
+  useEffect(() => {
+    localStorage.setItem("evaly_rubric_presets", JSON.stringify(rubricPresets));
+  }, [rubricPresets]);
+
+  const DRAFT_KEY = `evaly_edit_exam_draft_${examId}`;
+  const isInitialLoad = useRef(true);
+
   const fetchBank = async () => {
     try {
-      const res = await fetch("/api/question-bank", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch("/api/question-bank", { headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) setBankQuestions(await res.json());
     } catch { /* ignore */ }
   };
@@ -63,20 +120,6 @@ export default function EditExam() {
   useEffect(() => {
     if (showBankModal) fetchBank();
   }, [showBankModal]);
-
-  const [questions, setQuestions] = useState<Question[]>([
-    {
-      id: Date.now(),
-      text: "",
-      score: "",
-      questionImages: [],
-      answerKey: "",
-      rubrics: [{ id: Date.now() + 1, name: "", description: "", score: "" }],
-      gradingTone: "moderate",
-      isExpanded: false,
-      isEditing: true
-    }
-  ]);
 
   // Load existing exam data on mount
   useEffect(() => {
@@ -91,36 +134,37 @@ export default function EditExam() {
           setExamTitle(data.title || "");
           setExamDescription(data.description || "");
           setIsRandomized(data.is_randomized === 1);
+          
           if (data.start_date) {
             const d = new Date(data.start_date);
-            setStartDate(d.toISOString().split("T")[0]);
-            setStartTime(d.toTimeString().slice(0, 5));
+            const localIso = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+            setStartDateTime(localIso);
           }
           if (data.end_date) {
             const d = new Date(data.end_date);
-            setEndDate(d.toISOString().split("T")[0]);
-            setEndTime(d.toTimeString().slice(0, 5));
+            const localIso = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+            setEndDateTime(localIso);
           }
+          
           if (data.questions && data.questions.length > 0) {
             setQuestions(data.questions.map((q: any, i: number) => ({
-              id: i + 1,
+              id: Date.now() + i,
               text: q.text || "",
               score: String(q.score || ""),
               questionImages: (q.image_paths || []).map((p: string) => {
                 if (p.startsWith('http')) return p;
-                // Handle relative path like /uploads/...
                 if (p.startsWith('/')) return `${window.location.origin}${p}`;
                 return p;
               }),
               answerKey: q.answer_key || "",
-              rubrics: (q.rubrics || []).map((r: any, j: number) => ({
-                id: j + 1,
+              rubrics: (q.rubrics || []).length > 0 ? q.rubrics.map((r: any, j: number) => ({
+                id: Date.now() + j + 100,
                 name: r.name || "",
                 description: r.description || "",
                 score: String(r.score || ""),
-              })),
+              })) : [{ id: Date.now() + 100, name: "", description: "", score: "" }],
+              gradingTone: "moderate",
               isExpanded: false,
-              isEditing: false,
             })));
           }
         }
@@ -133,40 +177,39 @@ export default function EditExam() {
     fetchExam();
   }, [token, roomId, examId]);
 
-  // --- Auto-save logic (LocalStorage) ---
-  const DRAFT_KEY = `evaly_edit_exam_draft_${examId}`;
-  const isInitialLoad = useRef(true);
-
-  // 1. Check for draft after server data is loaded
+  // Draft loading
   useEffect(() => {
     if (isLoading) return;
     const savedDraft = localStorage.getItem(DRAFT_KEY);
     if (savedDraft) {
       try {
         const draft = JSON.parse(savedDraft);
-        // Compare with current title to see if it's likely a different state
+        // Compare loosely to see if draft is significantly different
         if (draft.examTitle !== examTitle || draft.questions?.length !== questions.length) {
-            if (window.confirm("ตรวจพบข้อมูลร่างที่คุณแก้ไขค้างไว้จากครั้งก่อน ต้องการกู้คืนข้อมูลร่างนั้นหรือไม่?")) {
-                setExamTitle(draft.examTitle || "");
-                setExamDescription(draft.examDescription || "");
-                setStartDate(draft.startDate || "");
-                setStartTime(draft.startTime || "");
-                setEndDate(draft.endDate || "");
-                setEndTime(draft.endTime || "");
-                setIsRandomized(draft.isRandomized || false);
-                if (draft.questions && draft.questions.length > 0) {
-                    setQuestions(draft.questions);
-                }
-                toast.success("กู้คืนข้อมูลร่างแล้ว");
-            }
+            setDraftToRestore(draft);
         }
-      } catch (e) {
-        console.error("Failed to parse draft", e);
-      }
+      } catch (e) { /* ignore */ }
     }
-  }, [isLoading, DRAFT_KEY]);
+  }, [isLoading, DRAFT_KEY]); // Dependencies should not cause infinite loop since isLoading changes once
 
-  // 2. Save draft on change
+  const confirmRestoreDraft = () => {
+    if (!draftToRestore) return;
+    if (draftToRestore.examTitle) setExamTitle(draftToRestore.examTitle);
+    setExamDescription(draftToRestore.examDescription || "");
+    setStartDateTime(draftToRestore.startDateTime || "");
+    setEndDateTime(draftToRestore.endDateTime || "");
+    setIsRandomized(draftToRestore.isRandomized || false);
+    if (draftToRestore.questions && draftToRestore.questions.length > 0) setQuestions(draftToRestore.questions);
+    toast.success("กู้คืนข้อมูลร่างแล้ว");
+    setDraftToRestore(null);
+  };
+
+  const rejectRestoreDraft = () => {
+    localStorage.removeItem(DRAFT_KEY);
+    setDraftToRestore(null);
+  };
+
+  // Save Draft
   useEffect(() => {
     if (isLoading) return;
     if (isInitialLoad.current) {
@@ -174,198 +217,176 @@ export default function EditExam() {
       return;
     }
     setIsDirty(true);
-    
-    const draft = {
-        examTitle,
-        examDescription,
-        startDate,
-        startTime,
-        endDate,
-        endTime,
-        isRandomized,
-        questions
-    };
+    const draft = { examTitle, examDescription, startDateTime, endDateTime, isRandomized, questions };
     localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-  }, [examTitle, examDescription, startDate, startTime, endDate, endTime, isRandomized, questions, isLoading, DRAFT_KEY]);
+  }, [examTitle, examDescription, startDateTime, endDateTime, isRandomized, questions, isLoading, DRAFT_KEY]);
 
-  const onBack = () => {
-    if (isDirty) {
-      if (window.confirm("คุณยังไม่ได้บันทึกการแก้ไข ต้องการออกจากหน้านี้ใช่หรือไม่? (ข้อมูลที่แก้ไขจะยังถูกเก็บเป็นร่างไว้อยู่)")) {
-        navigate(`/room/${roomId}`);
-      }
-    } else {
-      navigate(`/room/${roomId}`);
-    }
-  };
+  const updateQuestion = (id: number, patch: Partial<Question>) =>
+    setQuestions(prev => prev.map(q => q.id === id ? { ...q, ...patch } : q));
 
-  if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-[#F4F7F9]">
-        <Loader2 className="animate-spin text-indigo-600 h-12 w-12" />
-      </div>
-    );
-  }
+  const addRubric = (qId: number) =>
+    setQuestions(prev => prev.map(q => q.id === qId
+      ? { ...q, rubrics: [...q.rubrics, { id: Date.now() + Math.random(), name: "", description: "", score: "" }] }
+      : q));
+
+  const removeRubric = (qId: number, rId: number) =>
+    setQuestions(prev => prev.map(q => q.id === qId
+      ? { ...q, rubrics: q.rubrics.filter(r => r.id !== rId) }
+      : q));
+
+  const updateRubric = (qId: number, rId: number, patch: Partial<RubricItem>) =>
+    setQuestions(prev => prev.map(q => q.id === qId
+      ? { ...q, rubrics: q.rubrics.map(r => r.id === rId ? { ...r, ...patch } : r) }
+      : q));
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, qId: number) => {
     const files = e.target.files;
-    if (!files || files.length === 0) return;
+    if (!files) return;
     Array.from(files).forEach(file => {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setQuestions(prev => prev.map(q =>
-          q.id === qId
-            ? { ...q, questionImages: [...q.questionImages, reader.result as string] }
-            : q
-        ));
-      };
+      reader.onloadend = () =>
+        setQuestions(prev => prev.map(q => q.id === qId
+          ? { ...q, questionImages: [...q.questionImages, reader.result as string] }
+          : q));
       reader.readAsDataURL(file);
     });
   };
 
-  const removeImage = (qId: number, imgIdx: number) => {
-    setQuestions(prev => prev.map(q =>
-      q.id === qId
-        ? { ...q, questionImages: q.questionImages.filter((_, i) => i !== imgIdx) }
-        : q
-    ));
-  };
-
-  const addQuestion = () => {
-    const updatedQs = questions.map(q => ({ ...q, isEditing: false }));
-    setQuestions([...updatedQs, {
-      id: Date.now(),
-      text: "",
-      score: "",
-      questionImages: [],
-      answerKey: "",
-      rubrics: [{ id: Date.now() + 1, name: "", description: "", score: "" }],
-      gradingTone: "moderate",
-      isExpanded: false,
-      isEditing: true
-    }]);
-  };
-
-  const toggleEdit = (qId: number) => {
-    setQuestions(questions.map(q =>
-      q.id === qId ? { ...q, isEditing: !q.isEditing } : q
-    ));
-  };
-
-  const toggleExpand = (qId: number) => {
-    setQuestions(questions.map(q =>
-      q.id === qId ? { ...q, isExpanded: !q.isExpanded } : q
-    ));
-  };
-
-  const addRubric = (qId: number) => {
-    setQuestions(questions.map(q =>
-      q.id === qId ? { ...q, rubrics: [...q.rubrics, { id: Date.now(), name: "", description: "", score: "" }] } : q
-    ));
-  };
-
-  const removeRubric = (qId: number, rId: number) => {
-    setQuestions(questions.map(q =>
-      q.id === qId ? { ...q, rubrics: q.rubrics.filter(r => r.id !== rId) } : q
-    ));
-  };
+  const removeImage = (qId: number, idx: number) =>
+    setQuestions(prev => prev.map(q => q.id === qId
+      ? { ...q, questionImages: q.questionImages.filter((_, i) => i !== idx) }
+      : q));
 
   const duplicateQuestion = (qId: number) => {
-    const qToCopy = questions.find(q => q.id === qId);
-    if (!qToCopy) return;
-    const updatedQs = questions.map(q => ({ ...q, isEditing: false }));
-    const newRubrics = qToCopy.rubrics.map(r => ({ ...r, id: Date.now() + Math.random() }));
-    setQuestions([...updatedQs, {
-      ...qToCopy,
-      id: Date.now(),
-      questionImages: [...qToCopy.questionImages],
-      rubrics: newRubrics,
-      isEditing: true
-    }]);
-  }
+    const src = questions.find(q => q.id === qId);
+    if (!src) return;
+    setQuestions(prev => {
+      const idx = prev.findIndex(q => q.id === qId);
+      const newQs = [...prev];
+      newQs.splice(idx + 1, 0, {
+        ...src,
+        id: Date.now() + Math.random(),
+        rubrics: src.rubrics.map(r => ({ ...r, id: Date.now() + Math.random() })),
+      });
+      return newQs;
+    });
+  };
 
-  const deleteQuestion = (qId: number) => {
-    setQuestions(questions.filter(q => q.id !== qId));
-  }
-
-  const handleSaveQuestionToBank = async (q: Question) => {
-    if (!token || !q.text.trim()) {
-      toast.error("โปรดกรอกโจทย์คำถามก่อนบันทึกเข้าคลัง");
-      return;
+  const generateRubric = async (qId: number) => {
+    const q = questions.find(x => x.id === qId);
+    if (!q) return;
+    if (!q.text.trim() && q.questionImages.length === 0) {
+      toast.error("กรอกโจทย์หรือแนบรูปก่อน"); return;
     }
+    if (!parseFloat(q.score) || parseFloat(q.score) <= 0) {
+      toast.error("ระบุคะแนนเต็มก่อน"); return;
+    }
+    updateQuestion(qId, { isGenerating: true });
     try {
-      const res = await fetch("/api/question-bank", {
+      const imagesToSend = q.questionImages.map(img => {
+        if (img.startsWith(window.location.origin)) return img.replace(window.location.origin, "");
+        return img;
+      });
+
+      const res = await fetch("/api/gemini/generate-rubric", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          text: q.text,
-          score: parseFloat(q.score) || 0,
-          answer_key: q.answerKey || null,
-          rubrics: q.rubrics.filter(r => r.name).map(r => ({ name: r.name, description: r.description, score: parseFloat(r.score) || 0 })),
-          tags: null
-        })
+        body: JSON.stringify({ question_text: q.text, total_score: parseFloat(q.score), question_images_base64: imagesToSend, tone: q.gradingTone }),
       });
-      if (res.ok) {
-        toast.success("บันทึกคำถามลงคลังเรียบร้อยแล้ว");
-      } else {
-        const err = await res.json();
-        toast.error(err.detail || "ไม่สามารถบันทึกเข้าคลัง");
-      }
-    } catch {
-      toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+      if (!res.ok) throw new Error((await res.json()).detail || "AI Error");
+      const data = await res.json();
+      updateQuestion(qId, {
+        answerKey: data.answer_key || "",
+        rubrics: data.rubrics?.map((r: any, i: number) => ({ id: Date.now() + i, name: r.name || "", description: r.description || "", score: String(r.score || 0) })) || q.rubrics,
+        isGenerating: false,
+        isExpanded: true,
+      });
+      toast.success("AI สร้างเกณฑ์สำเร็จ!");
+    } catch (e: any) {
+      toast.error(e.message);
+      updateQuestion(qId, { isGenerating: false });
     }
+  };
+
+  const saveRubricPreset = () => {
+    if (showPresetModal === null || !presetNameInput.trim()) return;
+    const q = questions.find(x => x.id === showPresetModal);
+    if (!q || q.rubrics.length === 0) return;
+    
+    const newPreset = {
+      id: Date.now().toString(),
+      name: presetNameInput.trim(),
+      rubrics: q.rubrics.map(r => ({ ...r, id: Date.now() + Math.random() }))
+    };
+    setRubricPresets(prev => [...prev, newPreset]);
+    toast.success("บันทึกเทมเพลตเกณฑ์สำเร็จ");
+    setShowPresetModal(null);
+    setPresetNameInput("");
+  };
+
+  const applyRubricPreset = (qId: number, presetId: string) => {
+    const preset = rubricPresets.find(p => p.id === presetId);
+    if (!preset) return;
+    updateQuestion(qId, { 
+      rubrics: preset.rubrics.map(r => ({ ...r, id: Date.now() + Math.random() })) 
+    });
+    toast.success("นำเทมเพลตเกณฑ์มาใช้แล้ว");
+  };
+
+  const deleteRubricPreset = () => {
+    if (!presetToDelete) return;
+    setRubricPresets(prev => prev.filter(p => p.id !== presetToDelete));
+    setPresetToDelete(null);
+    toast.success("ลบเทมเพลตสำเร็จ");
+  };
+
+  const importFromBank = (bq: any) => {
+    setQuestions(prev => [...prev, {
+      id: Date.now() + Math.random(),
+      text: bq.text,
+      score: String(bq.score),
+      questionImages: [],
+      answerKey: bq.answer_key || "",
+      rubrics: bq.rubrics?.map((r: any) => ({ id: Date.now() + Math.random(), name: r.name || "", description: r.description || "", score: String(r.score || 0) })) || [{ id: Date.now(), name: "", description: "", score: "" }],
+      gradingTone: "moderate",
+      isExpanded: false,
+    }]);
+    setShowBankModal(false);
+    toast.success("นำเข้าคำถามสำเร็จ");
   };
 
   const handleSave = async () => {
-    const validQs = questions.filter(q => q.text.trim());
-    if (validQs.length === 0) {
-      toast.error("โปรดเพิ่มคำถามอย่างน้อยหนึ่งข้อ");
-      return;
-    }
-
-    let finalTitle = examTitle.trim();
-    if (!finalTitle) {
-      finalTitle = validQs[0].text.trim();
-      if (finalTitle.length > 100) {
-        finalTitle = finalTitle.substring(0, 100) + "...";
-      }
-    }
-
+    const validQs = questions.filter(q => q.text.trim() || q.questionImages.length > 0);
+    if (!validQs.length) { toast.error("เพิ่มคำถามอย่างน้อยหนึ่งข้อ"); return; }
     setIsSaving(true);
-    // คำนวณคะแนนรวมจากข้อทั้งหมดอัตโนมัติ
-    const computedTotal = validQs.reduce((sum, q) => sum + (parseFloat(q.score) || 0), 0);
+    const total = validQs.reduce((s, q) => s + (parseFloat(q.score) || 0), 0);
     try {
-      // ... (payload generation same as above)
-      const payload = {
-        title: finalTitle,
-        description: examDescription || null,
-        total_score: computedTotal,
-        start_date: startDate && startTime ? `${startDate}T${startTime}` : null,
-        end_date: endDate && endTime ? `${endDate}T${endTime}` : null,
-        is_randomized: isRandomized ? 1 : 0,
-        questions: validQs.map((q, i) => ({
-          text: q.text,
-          score: parseFloat(q.score) || 0,
-          answer_key: q.answerKey || null,
-          rubrics: q.rubrics.filter(r => r.name).map(r => ({ name: r.name, description: r.description, score: parseFloat(r.score) || 0 })),
-          order_index: i,
-          question_images_base64: q.questionImages.length > 0 ? q.questionImages : null,
-        }))
-      };
-
       const res = await fetch(`/api/rooms/${roomId}/exams/${examId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          title: examTitle.trim() || (validQs[0].text.slice(0, 50) || "ข้อสอบใหม่"),
+          description: examDescription || null,
+          total_score: total,
+          start_date: startDateTime && startDateTime !== "" ? new Date(startDateTime).toISOString() : null,
+          end_date: endDateTime && endDateTime !== "" ? new Date(endDateTime).toISOString() : null,
+          is_randomized: isRandomized ? 1 : 0,
+          questions: validQs.map((q, i) => ({
+            text: q.text, score: parseFloat(q.score) || 0,
+            answer_key: q.answerKey || null,
+            rubrics: q.rubrics.filter(r => r.name).map(r => ({ name: r.name, description: r.description, score: parseFloat(r.score) || 0 })),
+            order_index: i,
+            question_images_base64: q.questionImages.length > 0 ? q.questionImages : null,
+          })),
+        }),
       });
-
       if (res.ok) {
-        toast.success("บันทึกข้อสอบสำเร็จ!");
-        localStorage.removeItem(DRAFT_KEY); // Clear draft on success
-        setIsDirty(false); // <--- Important: reset dirty state
+        toast.success("บันทึกการแก้ไขสำเร็จ!");
+        localStorage.removeItem(DRAFT_KEY);
+        setIsDirty(false);
         navigate(`/room/${roomId}`);
       } else {
-        const err = await res.json();
-        toast.error(err.detail || "บันทึกไม่สำเร็จ");
+        toast.error((await res.json()).detail || "บันทึกไม่สำเร็จ");
       }
     } catch {
       toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
@@ -374,523 +395,477 @@ export default function EditExam() {
     }
   };
 
-  const generateRubric = async (qId: number) => {
-    const q = questions.find(x => x.id === qId);
-    if (!q) return;
-
-    if (!q.text.trim() && (!q.questionImages || q.questionImages.length === 0)) {
-      toast.error("โปรดกรอกโจทย์คำถามหรือแนบรูปภาพก่อนสร้างเกณฑ์ด้วย AI");
-      return;
-    }
-
-    const scoreVal = parseFloat(q.score);
-    if (isNaN(scoreVal) || scoreVal <= 0) {
-      toast.error("โปรดระบุคะแนนเต็มให้มากกว่า 0");
-      return;
-    }
-
-    setQuestions(questions.map(x => x.id === qId ? { ...x, isGenerating: true } : x));
-    try {
-      // Map images back to relative paths if they are existing URLs
-      const imagesToSend = (q.questionImages || []).map(img => {
-        if (img.startsWith(window.location.origin)) {
-          return img.replace(window.location.origin, "");
-        }
-        return img;
-      });
-
-      const res = await fetch("/api/gemini/generate-rubric", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ 
-          question_text: q.text, 
-          total_score: scoreVal,
-          question_images_base64: imagesToSend,
-          tone: q.gradingTone || "moderate"
-        })
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || "AI Error");
-      }
-      const data = await res.json();
-      setQuestions(questions.map(x => x.id === qId ? { 
-        ...x, 
-        answerKey: data.answer_key || "",
-        rubrics: data.rubrics?.map((r: any, idx: number) => ({
-          id: Date.now() + idx,
-          name: r.name || "",
-          description: r.description || "",
-          score: String(r.score || 0)
-        })) || x.rubrics,
-        isExpanded: true,
-        isGenerating: false
-      } : x));
-      toast.success("AI สร้างเกณฑ์สำเร็จ!");
-    } catch (e: any) {
-      toast.error(`สร้างเกณฑ์ไม่สำเร็จ: ${e.message}`);
-      setQuestions(questions.map(x => x.id === qId ? { ...x, isGenerating: false } : x));
+  const onBack = () => {
+    if (isDirty) {
+      setShowExitModal(true);
+    } else {
+      navigate(`/room/${roomId}`);
     }
   };
 
+  const confirmExit = () => {
+    localStorage.removeItem(DRAFT_KEY);
+    navigate(`/room/${roomId}`);
+  };
+
+  const totalScore = questions.reduce((s, q) => s + (parseFloat(q.score) || 0), 0);
+
+  if (isLoading) {
+    return <div className="flex h-screen items-center justify-center bg-[#F9FBFD] dark:bg-[#111111]"><Loader2 className="animate-spin text-blue-500 h-8 w-8" /></div>;
+  }
+
   return (
-    <div className="min-h-screen bg-[#F4F7F9] pb-24 md:pb-12">
-      <Navbar />
-
-      <main className="max-w-[1000px] mx-auto p-4 md:p-8 space-y-6">
-        <button onClick={onBack} className="flex items-center gap-2 text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:text-slate-200 text-sm font-medium">
-          <ArrowLeft size={16} /> กลับหน้าห้อง
-        </button>
-
-        {/* NEW Exam Meta Section (Distinct Blue Card) */}
-        <section className="bg-gradient-to-br from-[#1E3A8A] to-[#3B82F6] p-6 md:p-8 rounded-3xl shadow-[0_10px_40px_-10px_rgba(59,130,246,0.5)] border border-blue-400/20 text-white relative overflow-hidden">
-          {/* Background decoration */}
-          <div className="absolute top-0 right-0 -mt-10 -mr-10 xl:block hidden opacity-20 pointer-events-none">
-            <svg width="250" height="250" viewBox="0 0 250 250" fill="none">
-              <circle cx="125" cy="125" r="125" fill="white" />
-            </svg>
-          </div>
-
-          <div className="relative z-10">
-            <h2 className="text-xl md:text-2xl font-bold text-white mb-6">
-              ตั้งค่าชุดข้อสอบ
-            </h2>
-
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6 items-end">
-              <div className="lg:col-span-6 space-y-2">
-                <label className="text-sm font-semibold text-blue-100">ชื่อชุดข้อสอบ</label>
-                <Input value={examTitle} onChange={e => setExamTitle(e.target.value)} className="h-12 text-lg border-blue-400/30 bg-blue-900/40 text-white placeholder:text-blue-300 focus:border-white focus:ring-1 focus:ring-white transition-all shadow-inner hover:bg-blue-900/60" placeholder="เช่น สอบกลางภาควิชา..." />
-              </div>
-              <div className="lg:col-span-4 space-y-2">
-                <label className="text-sm font-semibold text-blue-100">รายละเอียดการสอบ</label>
-                <Input value={examDescription} onChange={e => setExamDescription(e.target.value)} className="h-12 text-base border-blue-400/30 bg-blue-900/40 text-white placeholder:text-blue-300 transition-all shadow-inner hover:bg-blue-900/60" placeholder="คำอธิบายเพิ่มเติม..." />
-              </div>
-              <div className="lg:col-span-2 flex flex-col items-center justify-center bg-white/10 rounded-xl px-4 py-3 border border-white/20">
-                <span className="text-xs text-blue-200 font-semibold uppercase tracking-wider mb-1">คะแนนรวม</span>
-                <span className="text-3xl font-black text-white">
-                  {questions.reduce((sum, q) => sum + (parseFloat(q.score) || 0), 0)}
-                </span>
-                <span className="text-xs text-blue-300 mt-0.5">คะแนน (อัตโนมัติ)</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6 mt-6 pt-6 border-t border-blue-400/30">
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-blue-100 flex items-center gap-2"><Calendar className="w-4 h-4" /> เริ่มสอบ</label>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="h-11 border-blue-400/30 bg-blue-900/40 text-white flex-1 hover:bg-blue-900/60 [color-scheme:dark]" />
-                  <Input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="h-11 border-blue-400/30 bg-blue-900/40 text-white sm:w-32 hover:bg-blue-900/60 [color-scheme:dark]" />
-                </div>
-              </div>
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-blue-100 flex items-center gap-2"><Clock className="w-4 h-4" /> สิ้นสุด</label>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="h-11 border-blue-400/30 bg-blue-900/40 text-white flex-1 hover:bg-blue-900/60 [color-scheme:dark]" />
-                  <Input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="h-11 border-blue-400/30 bg-blue-900/40 text-white sm:w-32 hover:bg-blue-900/60 [color-scheme:dark]" />
-                </div>
-              </div>
-            </div>
-
-            {/* Randomized Toggle + Bank Button */}
-            <div className="mt-6 pt-5 border-t border-blue-400/30 flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-3">
-                <div>
-                  <p className="text-sm font-bold text-white flex items-center gap-1.5 mb-0.5">
-                    <Shuffle size={14} /> สุ่มลำดับข้อสอบ
-                  </p>
-                  <p className="text-xs text-blue-200">นักเรียนแต่ละคนจะเห็นลำดับข้อที่ต่างกัน</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsRandomized(!isRandomized)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm border-2 transition-all duration-200 min-w-[90px] justify-center ${
-                    isRandomized
-                      ? "bg-green-400 border-green-300 text-white shadow-lg shadow-green-500/30"
-                      : "bg-white/10 border-white/30 text-white/70 hover:bg-white/20"
-                  }`}
-                >
-                  <div className={`w-2 h-2 rounded-full ${isRandomized ? "bg-white" : "bg-white/40"}`} />
-                  {isRandomized ? "เปิด" : "ปิด"}
-                </button>
-              </div>
-
-              <button
-                onClick={() => setShowBankModal(true)}
-                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white text-sm font-bold px-4 py-2 rounded-xl border border-white/30 transition-all"
-              >
-                <BookOpen size={15} /> เลือกจากคลังข้อสอบ
-              </button>
+    <div className="min-h-screen bg-[#F9FBFD] dark:bg-[#111111] transition-colors duration-200 font-sans">
+      {/* Docs-style Toolbar */}
+      <div className="sticky top-0 z-40 bg-[#EDF2FA] dark:bg-[#1E1E1E] border-b border-gray-300 dark:border-gray-800 px-4 py-2 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <button onClick={onBack} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full text-gray-600 dark:text-gray-300 transition-colors" title="กลับ">
+            <ArrowLeft size={20} />
+          </button>
+          <div className="flex flex-col">
+            <input
+              type="text"
+              value={examTitle}
+              onChange={e => setExamTitle(e.target.value)}
+              className="bg-transparent border-none focus:bg-white dark:focus:bg-gray-800 focus:ring-1 focus:ring-blue-500 rounded px-2 py-0.5 text-lg text-gray-800 dark:text-gray-100 font-medium placeholder-gray-400 w-[200px] sm:w-[300px]"
+              placeholder="คลิกเพื่อพิมพ์ชื่อข้อสอบ..."
+            />
+            <div className="flex items-center gap-4 px-2 mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+              <span className="flex items-center gap-1"><Check size={12} /> {isDirty ? "บันทึกร่างแล้ว" : "ข้อมูลล่าสุด"}</span>
+              <span className="font-medium text-blue-600 dark:text-blue-400">คะแนนรวม: {totalScore}</span>
             </div>
           </div>
-        </section>
-
-        {/* Question Bank Modal */}
-        {showBankModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
-              <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-slate-700">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  <BookOpen size={20} className="text-blue-500" /> คลังข้อสอบของฉัน
-                </h3>
-                <button onClick={() => setShowBankModal(false)} className="text-gray-400 hover:text-gray-700 dark:hover:text-white">
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="p-4 border-b border-gray-100 dark:border-slate-700">
-                <div className="relative">
-                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    value={bankSearch}
-                    onChange={e => setBankSearch(e.target.value)}
-                    placeholder="ค้นหาคำถาม..."
-                    className="w-full pl-9 pr-4 h-10 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
-                  />
-                </div>
-              </div>
-              <div className="overflow-y-auto flex-1 p-4 space-y-3">
-                {bankQuestions.filter(q => q.text.toLowerCase().includes(bankSearch.toLowerCase())).length === 0 ? (
-                  <div className="text-center py-12 text-gray-400">
-                    <BookOpen size={32} className="mx-auto mb-2 opacity-30" />
-                    <p>ยังไม่มีคำถามในคลัง</p>
-                  </div>
-                ) : bankQuestions.filter(q => q.text.toLowerCase().includes(bankSearch.toLowerCase())).map((bq) => (
-                  <div key={bq.id} className="flex items-start gap-3 p-4 rounded-xl border border-gray-200 dark:border-slate-700 hover:border-blue-300 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-all">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-gray-800 dark:text-slate-200 font-medium leading-relaxed line-clamp-2">{bq.text}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-blue-600 font-bold">{bq.score} คะแนน</span>
-                        {bq.tags && <span className="text-xs text-gray-400">#{bq.tags}</span>}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        const updatedQs = questions.map(q => ({ ...q, isEditing: false }));
-                        setQuestions([...updatedQs, {
-                          id: Date.now(),
-                          text: bq.text,
-                          score: String(bq.score),
-                          questionImages: [],
-                          answerKey: bq.answer_key || "",
-                          rubrics: bq.rubrics?.map((r: any) => ({ id: Date.now() + Math.random(), name: r.name || "", description: r.description || "", score: String(r.score || 0) })) || [{ id: Date.now() + 1, name: "", description: "", score: "" }],
-                          isExpanded: false,
-                          isEditing: true
-                        }]);
-                        setShowBankModal(false);
-                        toast.success("นำเข้าคำถามสำเร็จ!");
-                      }}
-                      className="flex-shrink-0 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold h-8 px-3 rounded-lg transition-colors"
-                    >
-                      + เพิ่ม
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Questions Header */}
-        <div className="flex items-center justify-between pt-4">
-          <h2 className="text-xl md:text-2xl font-black text-gray-800 dark:text-slate-200 tracking-tight">คำถามทั้งหมด <span className="text-[#3B82F6]">({questions.length} ข้อ)</span></h2>
-          {questions.length > 0 && !questions.every(q => !q.isEditing) && (
-            <Button variant="ghost" className="text-sm text-gray-500 dark:text-slate-400 hover:bg-gray-200" onClick={() => setQuestions(questions.map(q => ({ ...q, isEditing: false })))}>
-              ย่อเก็บทั้งหมด
-            </Button>
-          )}
         </div>
 
-        {/* Question Cards Loop */}
-        <div className="space-y-5">
-          {questions.map((q, index) => (
-            <div key={q.id}>
-              {q.isEditing ? (
-                // -------- EDIT MODE (Fully Expanded) --------
-                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg shadow-blue-900/5 border-2 border-[#3B82F6] overflow-hidden relative transition-all duration-300 transform origin-top animate-in fade-in-0 zoom-in-[0.98]">
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <div className="w-px h-6 bg-gray-300 dark:bg-gray-700 mx-1"></div>
+          <button
+            onClick={() => setShowSettings(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded transition-colors"
+          >
+            <Settings size={16} /> การตั้งค่า
+          </button>
+          <button
+            onClick={() => { setShowBankModal(true); fetchBank(); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded transition-colors"
+          >
+            <BookOpen size={16} /> คลังข้อสอบ
+          </button>
+          <Button onClick={handleSave} disabled={isSaving} className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-5 h-9 font-medium shadow-sm ml-2">
+            {isSaving ? <Loader2 size={16} className="animate-spin" /> : "บันทึกและส่ง"}
+          </Button>
+        </div>
+      </div>
 
-                  {/* Top Control Bar for Edit Mode */}
-                  <div className="bg-[#eff6ff] px-5 py-3 border-b border-blue-100 flex justify-between items-center">
-                    <span className="text-sm font-bold text-[#3B82F6]">แก้ไขคำถามข้อที่ {index + 1}</span>
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => handleSaveQuestionToBank(q)} className="h-8 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-full px-4 text-xs font-bold flex items-center gap-1.5">
-                        <BookOpen size={14} /> บันทึกเข้าคลัง
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => duplicateQuestion(q.id)} className="h-8 text-[#3B82F6] bg-blue-100 hover:bg-blue-200 rounded-full px-4 text-xs font-bold">คัดลอกข้อนี้</Button>
-                      <Button variant="ghost" size="icon" onClick={() => deleteQuestion(q.id)} className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50 dark:bg-red-900/30 rounded-full"><Trash2 size={16} /></Button>
-                    </div>
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-md flex flex-col border border-gray-200 dark:border-gray-800">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
+              <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <Settings size={16} /> การตั้งค่าหน้ากระดาษ
+              </h3>
+              <button onClick={() => setShowSettings(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5 space-y-5">
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">วันและเวลาที่เริ่มสอบ (ไม่บังคับ)</label>
+                <Input type="datetime-local" value={startDateTime} onChange={e => setStartDateTime(e.target.value)} className="h-10 text-sm bg-gray-50 dark:bg-gray-950 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white [color-scheme:dark]" />
+              </div>
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">วันและเวลาที่สิ้นสุด (ไม่บังคับ)</label>
+                <Input type="datetime-local" value={endDateTime} onChange={e => setEndDateTime(e.target.value)} className="h-10 text-sm bg-gray-50 dark:bg-gray-950 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white [color-scheme:dark]" />
+              </div>
+              <div className="flex items-center justify-between pt-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">สุ่มลำดับข้อสอบ</label>
+                <button
+                  onClick={() => setIsRandomized(!isRandomized)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isRandomized ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-700"}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${isRandomized ? "translate-x-6" : "translate-x-1"}`} />
+                </button>
+              </div>
+            </div>
+            <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex justify-end">
+              <Button onClick={() => setShowSettings(false)} className="bg-blue-600 hover:bg-blue-700 text-white px-6">ตกลง</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Question Bank Modal */}
+      {showBankModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col border border-gray-200 dark:border-gray-800">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
+              <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <BookOpen size={16} className="text-blue-500" /> คลังข้อสอบ
+              </h3>
+              <button onClick={() => setShowBankModal(false)} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-3 border-b border-gray-100 dark:border-gray-800">
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+                <input
+                  value={bankSearch} onChange={e => setBankSearch(e.target.value)}
+                  placeholder="ค้นหาคำถาม..."
+                  className="w-full pl-8 pr-3 h-9 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-500 text-gray-900 dark:text-white"
+                />
+              </div>
+            </div>
+            <div className="overflow-y-auto flex-1 p-3 space-y-2">
+              {bankQuestions.filter(q => q.text.toLowerCase().includes(bankSearch.toLowerCase())).length === 0 ? (
+                <p className="text-center text-gray-400 dark:text-gray-500 py-8 text-sm">ไม่พบคำถาม</p>
+              ) : bankQuestions.filter(q => q.text.toLowerCase().includes(bankSearch.toLowerCase())).map(bq => (
+                <div key={bq.id} className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-gray-800 dark:text-gray-200 line-clamp-2">{bq.text}</p>
+                    <span className="text-xs text-blue-600 dark:text-blue-400 font-medium mt-1 block">{bq.score} คะแนน</span>
                   </div>
+                  <button onClick={() => importFromBank(bq)} className="shrink-0 text-xs font-medium px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                    เพิ่ม
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
-                  <div className="p-5 md:p-8 relative z-10 w-full">
-                    {/* Header Row */}
-                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-5 md:mb-6 gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center font-bold text-lg shadow-sm">
-                          {index + 1}
-                        </div>
-                        <div className="bg-red-50 dark:bg-red-900/30 text-red-600 border border-red-100 px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase">
-                          * จำเป็น
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between w-full md:w-auto gap-3 bg-gray-50 dark:bg-slate-900 px-4 py-2 rounded-xl border border-gray-200 dark:border-slate-700">
-                        <span className="text-sm md:text-base font-semibold text-gray-700 dark:text-slate-300">คะแนนเต็ม :</span>
-                        <Input className="w-20 h-10 border-gray-300 text-center font-bold text-xl text-[#3B82F6] bg-white dark:bg-slate-800 shadow-inner" placeholder="0"
-                          value={q.score} onChange={(e) => {
-                            setQuestions(questions.map(qx => qx.id === q.id ? { ...qx, score: e.target.value } : qx))
-                          }}
-                        />
-                      </div>
-                    </div>
+      {/* Preset Name Modal */}
+      {showPresetModal !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-sm flex flex-col border border-gray-200 dark:border-gray-800">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
+              <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <BookmarkPlus size={16} className="text-blue-500" /> บันทึกเทมเพลตเกณฑ์
+              </h3>
+              <button onClick={() => setShowPresetModal(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">ตั้งชื่อเทมเพลตเกณฑ์การให้คะแนนนี้</label>
+              <Input
+                value={presetNameInput}
+                onChange={e => setPresetNameInput(e.target.value)}
+                placeholder="เช่น เกณฑ์การเขียนเรียงความ..."
+                autoFocus
+                onKeyDown={e => { if (e.key === 'Enter') saveRubricPreset(); }}
+              />
+            </div>
+            <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-2">
+              <Button onClick={() => setShowPresetModal(null)} variant="outline" className="text-gray-600 dark:text-gray-300">ยกเลิก</Button>
+              <Button onClick={saveRubricPreset} className="bg-blue-600 hover:bg-blue-700 text-white">บันทึก</Button>
+            </div>
+          </div>
+        </div>
+      )}
 
-                    <Textarea
-                      className="w-full min-h-[140px] text-base md:text-lg p-5 border-gray-300 rounded-xl bg-gray-50 dark:bg-slate-900/50 hover:bg-white dark:bg-slate-800 focus:bg-white dark:bg-slate-800 transition-colors focus:ring-2 focus:ring-[#3B82F6]/20 focus:border-[#3B82F6] resize-none"
-                      placeholder="พิมพ์โจทย์คำถามที่นี่..."
+      {/* Delete Preset Confirm Modal */}
+      {presetToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-sm flex flex-col border border-gray-200 dark:border-gray-800">
+            <div className="p-6 text-center space-y-4">
+              <div className="mx-auto w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                <Trash2 size={24} className="text-red-600 dark:text-red-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">ยืนยันการลบเทมเพลต</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                คุณแน่ใจหรือไม่ว่าต้องการลบเทมเพลตนี้? การกระทำนี้ไม่สามารถย้อนกลับได้
+              </p>
+            </div>
+            <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex justify-center gap-3">
+              <Button onClick={() => setPresetToDelete(null)} variant="outline" className="flex-1 text-gray-600 dark:text-gray-300">ยกเลิก</Button>
+              <Button onClick={deleteRubricPreset} className="flex-1 bg-red-600 hover:bg-red-700 text-white">ลบเทมเพลต</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Draft Restore Modal */}
+      {draftToRestore && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-sm flex flex-col border border-gray-200 dark:border-gray-800">
+            <div className="p-6 text-center space-y-4">
+              <div className="mx-auto w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                <Check size={24} className="text-blue-600 dark:text-blue-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">พบข้อมูลร่างที่บันทึกไว้</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                คุณมีข้อมูลที่แก้ไขค้างไว้จากครั้งก่อน ต้องการกู้คืนเพื่อทำต่อหรือไม่?
+              </p>
+            </div>
+            <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex justify-center gap-3">
+              <Button onClick={rejectRestoreDraft} variant="outline" className="flex-1 text-gray-600 dark:text-gray-300">เริ่มใหม่ทั้งหมด</Button>
+              <Button onClick={confirmRestoreDraft} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white">กู้คืนข้อมูล</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Exit Without Saving Modal */}
+      {showExitModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-sm flex flex-col border border-gray-200 dark:border-gray-800">
+            <div className="p-6 text-center space-y-4">
+              <div className="mx-auto w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                <ArrowLeft size={24} className="text-orange-600 dark:text-orange-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">ยกเลิกการแก้ไข?</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                คุณมีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก หากออกจากหน้านี้ ข้อมูลที่แก้ไขจะถูกลบทิ้งทั้งหมด ยืนยันหรือไม่?
+              </p>
+            </div>
+            <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex justify-center gap-3">
+              <Button onClick={() => setShowExitModal(false)} variant="outline" className="flex-1 text-gray-600 dark:text-gray-300">แก้ไขต่อ</Button>
+              <Button onClick={confirmExit} className="flex-1 bg-orange-600 hover:bg-orange-700 text-white">ทิ้งการแก้ไข</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Docs Canvas (The Paper) */}
+      <div className="py-8 px-4 sm:px-8">
+        <div className="max-w-[816px] mx-auto bg-white dark:bg-[#1E1E1E] shadow-sm border border-gray-300 dark:border-gray-800 min-h-[1056px] p-10 sm:p-16 flex flex-col gap-8 rounded-sm">
+          
+          {/* Document Header */}
+          <div className="border-b-2 border-gray-900 dark:border-white pb-6 mb-2">
+            <AutoResizingTextarea
+              value={examDescription}
+              onChange={(e: any) => setExamDescription(e.target.value)}
+              placeholder="เพิ่มคำอธิบายข้อสอบ หรือคำชี้แจง (Optional)..."
+              className="w-full text-center text-base text-gray-600 dark:text-gray-400 bg-transparent border-none focus:ring-0 resize-none px-0 py-1 italic"
+            />
+          </div>
+
+          {/* Questions Stream */}
+          <div className="space-y-8">
+            {questions.map((q, index) => (
+              <div key={q.id} className="group relative flex gap-4 pl-4 border-l-4 border-transparent hover:border-blue-200 dark:hover:border-blue-900/50 transition-colors -ml-5 pr-4 py-2">
+                {/* Floating Actions (Left) */}
+                <div className="absolute -left-12 top-2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
+                  <button onClick={() => duplicateQuestion(q.id)} className="p-1.5 text-gray-500 hover:text-blue-600 bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-md" title="คัดลอกข้อนี้">
+                    <Copy size={14} />
+                  </button>
+                  {questions.length > 1 && (
+                    <button onClick={() => setQuestions(prev => prev.filter(x => x.id !== q.id))} className="p-1.5 text-gray-500 hover:text-red-600 bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-md" title="ลบข้อนี้">
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+
+                <div className="font-medium text-lg text-gray-900 dark:text-gray-100 pt-0.5 min-w-[24px]">
+                  {index + 1}.
+                </div>
+
+                <div className="flex-1 space-y-4">
+                  {/* Question Text & Score inline */}
+                  <div className="flex gap-4 items-start">
+                    <AutoResizingTextarea
                       value={q.text}
-                      onChange={(e) => setQuestions(questions.map(qx => qx.id === q.id ? { ...qx, text: e.target.value } : qx))}
+                      onChange={(e: any) => updateQuestion(q.id, { text: e.target.value })}
+                      placeholder="พิมพ์โจทย์คำถาม..."
+                      className="flex-1 text-lg text-gray-900 dark:text-gray-100 bg-transparent border-none focus:ring-0 px-0 py-0 font-medium leading-relaxed"
                     />
-
-                    {/* Multi-image gallery */}
-                    {q.questionImages.length > 0 && (
-                      <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        {q.questionImages.map((img, imgIdx) => (
-                          <div key={imgIdx} className="relative group rounded-xl overflow-hidden border-2 border-gray-200 dark:border-slate-700 aspect-video bg-gray-50 dark:bg-slate-900">
-                            <img src={img} alt={`รูป ${imgIdx + 1}`} className="w-full h-full object-cover" />
-                            <button
-                              onClick={() => removeImage(q.id, imgIdx)}
-                              className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <X size={12} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="mt-4">
-                      <input
-                        type="file"
-                        id={`q-upload-${q.id}`}
-                        className="hidden"
-                        accept="image/*"
-                        multiple
-                        onChange={(e) => handleImageUpload(e, q.id)}
+                    <div className="shrink-0 flex items-center gap-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 px-2 py-1 rounded-md opacity-50 group-hover:opacity-100 transition-opacity">
+                      <Input
+                        type="number"
+                        value={q.score}
+                        onChange={e => updateQuestion(q.id, { score: e.target.value })}
+                        className="w-12 h-6 text-center text-sm font-semibold bg-transparent border-none focus:ring-0 px-0"
                       />
-                      <Button
-                        variant="outline"
-                        onClick={() => document.getElementById(`q-upload-${q.id}`)?.click()}
-                        className="h-12 px-6 border-gray-300 text-gray-700 dark:text-slate-300 hover:bg-blue-50 dark:bg-blue-900/30 hover:text-[#3B82F6] hover:border-blue-200 font-semibold w-full md:w-auto shadow-sm transition-all rounded-xl"
-                      >
-                        <ImageIcon className="w-5 h-5 mr-3" />
-                        {q.questionImages.length > 0 ? `เพิ่มรูปภาพ (มีแล้ว ${q.questionImages.length} รูป)` : "แนบรูปภาพประกอบคำถาม"}
-                      </Button>
-                    </div>
-
-                    {/* TOGGLE BUTTON AREA */}
-                    <div className="mt-8 pt-6 border-t border-gray-100 dark:border-slate-800 flex flex-col items-center gap-4">
-                      
-                      <div className="flex flex-col items-center gap-2 mb-2">
-                        <span className="text-xs font-semibold text-slate-500">ระดับความเข้มข้นของเกณฑ์ AI:</span>
-                        <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-inner">
-                          {["simple", "moderate", "academic"].map((t) => (
-                            <button
-                              key={t}
-                              onClick={() => setQuestions(questions.map(x => x.id === q.id ? { ...x, gradingTone: t as any } : x))}
-                              className={`px-4 py-1.5 text-[10px] md:text-xs font-bold rounded-lg transition-all ${
-                                (q.gradingTone || "moderate") === t 
-                                ? "bg-white dark:bg-slate-800 text-indigo-600 shadow-sm border border-indigo-100 dark:border-indigo-900/50" 
-                                : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                              }`}
-                            >
-                              {t === "simple" ? "เรียบง่าย" : t === "moderate" ? "ปานกลาง" : "วิชาการ"}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <Button
-                        variant="default"
-                        onClick={() => generateRubric(q.id)}
-                        disabled={q.isGenerating}
-                        className="w-full md:w-auto h-12 px-8 rounded-full text-sm font-bold bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 text-white shadow-lg shadow-fuchsia-500/25 transition-all duration-300 hover:scale-105"
-                      >
-                        {q.isGenerating ? (
-                          <><Loader2 size={18} className="mr-2 animate-spin" /> กำลังให้ AI คิดให้...</>
-                        ) : (
-                          <><Sparkles size={18} className="mr-2" /> ✨ สร้างเกณฑ์ด้วย AI (Auto Generate)</>
-                        )}
-                      </Button>
-
-                      <Button
-                        variant="ghost"
-                        onClick={() => toggleExpand(q.id)}
-                        className={`
-                          w-full md:w-auto h-12 px-8 rounded-full text-sm font-bold transition-all duration-300
-                          ${q.isExpanded
-                            ? "bg-gray-100 text-gray-500 dark:text-slate-400 hover:bg-gray-200"
-                            : "bg-[#eff6ff] text-[#3B82F6] hover:bg-blue-100 dark:hover:bg-blue-800/40 border border-blue-200 hover:scale-105"
-                          }
-                        `}
-                      >
-                        {q.isExpanded ? (
-                          <><ChevronUp size={18} className="mr-2" /> ซ่อนรูปแบบและเกณฑ์การให้คะแนน</>
-                        ) : (
-                          <><ChevronDown size={18} className="mr-2" /> เพิ่มธงคำตอบและเกณฑ์รูบริคเอง</>
-                        )}
-                      </Button>
+                      <span className="text-xs text-gray-500">คะแนน</span>
                     </div>
                   </div>
 
-                  {/* RUBRICS & ANSWERS EXPANDED AREA */}
-                  {q.isExpanded && (
-                    <div className="bg-[#F8FAFC] border-t border-gray-200 dark:border-slate-700 p-5 md:p-8 animate-in slide-in-from-top-4 duration-300">
-
-                      <div className="space-y-8 bg-white dark:bg-slate-800 p-6 md:p-8 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm">
-                        {/* Model Answer */}
-                        <div className="space-y-4">
-                          <label className="text-lg font-bold text-gray-800 dark:text-slate-200 flex items-center justify-between">
-                            <span>แนวคำตอบที่สมบูรณ์ (ธงคำตอบ)</span>
-                            <span className="text-xs text-gray-400 dark:text-slate-500 font-bold border px-2 py-0.5 rounded uppercase tracking-wide bg-gray-50 dark:bg-slate-900">Optional</span>
-                          </label>
-                          <Textarea
-                            className="w-full min-h-[120px] text-base p-4 border-gray-300 rounded-xl bg-gray-50 dark:bg-slate-900 focus:bg-white dark:bg-slate-800 transition-colors focus:ring-2 focus:ring-[#3B82F6]/20"
-                            placeholder="พิมพ์เฉลยที่ถูกต้องเพื่อใช้เป็นต้นแบบในการตรวจ..."
-                            value={q.answerKey}
-                            onChange={(e) => setQuestions(questions.map(qx => qx.id === q.id ? { ...qx, answerKey: e.target.value } : qx))}
-                          />
-
+                  {/* Images */}
+                  {q.questionImages.length > 0 && (
+                    <div className="flex flex-wrap gap-3">
+                      {q.questionImages.map((img, i) => (
+                        <div key={i} className="relative group/img max-w-[200px] rounded-sm overflow-hidden border border-gray-300 dark:border-gray-700">
+                          <img src={img} alt="" className="w-full h-auto object-contain" />
+                          <button
+                            onClick={() => removeImage(q.id, i)}
+                            className="absolute top-1 right-1 bg-black/50 hover:bg-black/80 text-white rounded-full p-1 opacity-0 group-hover/img:opacity-100 transition-opacity"
+                          >
+                            <X size={12} />
+                          </button>
                         </div>
-
-                        {/* Rubrics */}
-                        <div className="border-t border-gray-200 dark:border-slate-700 pt-8 mt-8">
-                          <h4 className="text-xl font-bold text-[#1e293b] mb-6 flex items-center gap-3">
-                            <span className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-[#3B82F6]">
-                              <CheckCircle2 size={18} />
-                            </span>
-                            เกณฑ์การให้คะแนน (Rubrics)
-                          </h4>
-
-                          <div className="space-y-4">
-                            {/* Dynamic Rows */}
-                            {q.rubrics.map((r, rIndex) => (
-                              <div key={r.id} className="flex flex-col md:grid md:grid-cols-12 gap-3 md:gap-4 items-start bg-white dark:bg-slate-800 p-5 rounded-2xl border-2 border-gray-100 dark:border-slate-800 hover:border-[#3B82F6]/30 transition-all shadow-sm relative">
-                                <div className="absolute top-4 right-4 md:hidden text-sm text-gray-300 font-black">
-                                  #{rIndex + 1}
-                                </div>
-                                <div className="w-full md:col-span-4 flex flex-col gap-2">
-                                  <label className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">หัวข้อเกณฑ์</label>
-                                  <Input className="h-11 border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 focus:bg-white dark:bg-slate-800 pr-8 md:pr-3 rounded-lg" placeholder="เช่น ไวยากรณ์, สูตรถูกต้อง"
-                                    value={r.name} onChange={(e) => {
-                                      const newRs = q.rubrics.map(rx => rx.id === r.id ? { ...rx, name: e.target.value } : rx);
-                                      setQuestions(questions.map(qx => qx.id === q.id ? { ...qx, rubrics: newRs } : qx))
-                                    }}
-                                  />
-                                </div>
-                                <div className="w-full md:col-span-8 lg:col-span-6 flex flex-col gap-2">
-                                  <label className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">รายละเอียดเกณฑ์</label>
-                                  <Textarea className="min-h-[44px] h-11 py-2.5 border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 focus:bg-white dark:bg-slate-800 resize-none rounded-lg" placeholder="อธิบายเงื่อนไข..."
-                                    value={r.description} onChange={(e) => {
-                                      const newRs = q.rubrics.map(rx => rx.id === r.id ? { ...rx, description: e.target.value } : rx);
-                                      setQuestions(questions.map(qx => qx.id === q.id ? { ...qx, rubrics: newRs } : qx))
-                                    }}
-                                  />
-                                </div>
-
-                                <div className="flex w-full lg:contents items-center justify-between gap-4 mt-3 md:mt-0">
-                                  <div className="flex-1 lg:flex-none w-full lg:col-span-1 flex flex-col gap-2">
-                                    <label className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider lg:text-center block">คะแนน</label>
-                                    <Input className="h-11 border-blue-200 bg-blue-50 dark:bg-blue-900/30 text-center font-bold w-full text-[#3B82F6] rounded-lg text-lg shadow-inner" placeholder="0"
-                                      value={r.score} onChange={(e) => {
-                                        const newRs = q.rubrics.map(rx => rx.id === r.id ? { ...rx, score: e.target.value } : rx);
-                                        setQuestions(questions.map(qx => qx.id === q.id ? { ...qx, rubrics: newRs } : qx))
-                                      }}
-                                    />
-                                  </div>
-                                  <div className="lg:col-span-1 flex justify-center pt-6 lg:pt-8 w-auto">
-                                    <button
-                                      onClick={() => removeRubric(q.id, r.id)}
-                                      className="text-gray-400 dark:text-slate-500 hover:text-red-500 transition-colors bg-white dark:bg-slate-800 lg:bg-gray-50 dark:bg-slate-900 rounded-xl px-4 py-2.5 lg:w-11 lg:h-11 lg:px-0 lg:py-0 flex items-center justify-center shadow-sm lg:shadow-none border border-gray-200 dark:border-slate-700 lg:border-none gap-2 hover:bg-red-50 dark:bg-red-900/30"
-                                    >
-                                      <Trash2 className="w-4 h-4 lg:w-5 lg:h-5" />
-                                      <span className="text-sm font-bold lg:hidden text-red-500">ลบ</span>
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-
-                            <Button
-                              variant="outline"
-                              onClick={() => addRubric(q.id)}
-                              className="mt-4 w-full h-12 text-[#3B82F6] hover:text-[#2563eb] border-dashed border-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50 dark:bg-blue-900/30 font-bold rounded-xl"
-                            >
-                              <Plus className="w-5 h-5 mr-2" /> เพิ่มเกณฑ์ข้อใหม่
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
+                      ))}
                     </div>
                   )}
 
-                  {/* Bottom Finish Edit Bar */}
-                  <div className="bg-gray-900 p-4 flex justify-end items-center">
-                    <span className="text-gray-400 dark:text-slate-500 text-xs hidden md:block mr-4">ข้อสอบถูกบันทึกอัตโนมัติแล้ว</span>
-                    <Button className="w-full md:w-auto bg-white dark:bg-slate-800 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-slate-700 rounded-xl h-12 px-8 font-bold text-base shadow-lg" onClick={() => toggleEdit(q.id)}>
-                      <CheckCircle2 className="w-5 h-5 mr-2 text-green-500" /> พับเก็บข้อนี้ให้เรียบร้อย
-                    </Button>
+                  {/* Tools below question */}
+                  <div className={`flex items-center gap-3 pt-2 transition-opacity ${q.isExpanded ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                    <input type="file" id={`img-${q.id}`} className="hidden" accept="image/*" multiple onChange={e => handleImageUpload(e, q.id)} />
+                    <button onClick={() => document.getElementById(`img-${q.id}`)?.click()} className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-1.5 rounded-full transition-colors font-medium">
+                      <ImageIcon size={13} /> แนบรูปภาพ
+                    </button>
+                    <button onClick={() => updateQuestion(q.id, { isExpanded: !q.isExpanded })} className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-full transition-colors font-medium">
+                      {q.isExpanded ? "ซ่อนการตั้งค่าเกณฑ์" : "ตั้งค่าเฉลยและเกณฑ์ (Rubrics)"}
+                    </button>
                   </div>
+
+                  {/* Answer Key & Rubrics Area */}
+                  {q.isExpanded && (
+                    <div className="mt-4 ml-2 pl-4 border-l-2 border-blue-200 dark:border-blue-800 space-y-6 animate-in fade-in slide-in-from-top-2 duration-300 py-1">
+                      
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                          แนวคำตอบ <span className="font-normal text-gray-400 text-[10px]">(Optional)</span>
+                        </label>
+                        <AutoResizingTextarea
+                          value={q.answerKey}
+                          onChange={(e: any) => updateQuestion(q.id, { answerKey: e.target.value })}
+                          placeholder="พิมพ์ธงคำตอบสำหรับข้อนี้..."
+                          className="w-full text-sm bg-gray-50/50 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-800 focus:bg-white dark:focus:bg-gray-900 focus:ring-1 focus:ring-blue-400 rounded-lg p-3 transition-colors text-gray-800 dark:text-gray-200"
+                          minRows={2}
+                        />
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">เกณฑ์ให้คะแนน (Rubrics)</label>
+                          <div className="flex items-center gap-2 self-start sm:self-auto">
+                            <div className="flex items-center bg-gray-50 dark:bg-gray-800/80 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
+                              <span className="text-[10px] text-gray-500 pl-2 pr-1 uppercase font-semibold">AI TONE:</span>
+                              <select
+                                value={q.gradingTone}
+                                onChange={e => updateQuestion(q.id, { gradingTone: e.target.value as any })}
+                                className="text-xs border-none bg-transparent text-gray-700 dark:text-gray-300 py-1 pl-1 pr-6 focus:ring-0 cursor-pointer font-medium"
+                              >
+                                <option value="simple">เรียบง่าย</option>
+                                <option value="moderate">ปานกลาง</option>
+                                <option value="academic">วิชาการ</option>
+                              </select>
+                              <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+                              <button
+                                onClick={() => generateRubric(q.id)}
+                                disabled={q.isGenerating}
+                                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1 bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 rounded-md shadow-sm hover:bg-purple-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 border border-gray-100 dark:border-gray-600"
+                              >
+                                {q.isGenerating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                                ให้ AI ช่วยเขียน
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden shadow-sm">
+                          {/* Header row */}
+                          <div className="flex bg-gray-50/80 dark:bg-gray-900/80 border-b border-gray-200 dark:border-gray-800 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                            <div className="w-10 text-center py-2 border-r border-gray-200 dark:border-gray-800">#</div>
+                            <div className="flex-[1.5] px-3 py-2 border-r border-gray-200 dark:border-gray-800">หัวข้อเกณฑ์</div>
+                            <div className="flex-[3] px-3 py-2 border-r border-gray-200 dark:border-gray-800">คำอธิบายรายละเอียด</div>
+                            <div className="w-20 px-3 py-2 text-center">คะแนน</div>
+                            <div className="w-10"></div>
+                          </div>
+                          
+                          <div className="divide-y divide-gray-100 dark:divide-gray-800/60">
+                            {q.rubrics.map((r, rIdx) => (
+                              <div key={r.id} className="flex gap-0 items-stretch group/row bg-white dark:bg-transparent hover:bg-gray-50/50 dark:hover:bg-gray-900/20 transition-colors">
+                                <div className="w-10 shrink-0 flex items-center justify-center text-xs font-medium text-gray-400 border-r border-gray-100 dark:border-gray-800">
+                                  {rIdx + 1}
+                                </div>
+                                <Input
+                                  value={r.name}
+                                  onChange={e => updateRubric(q.id, r.id, { name: e.target.value })}
+                                  placeholder="เช่น ความถูกต้อง"
+                                  className="h-10 text-xs border-none rounded-none focus:ring-0 bg-transparent flex-[1.5] text-gray-800 dark:text-gray-200"
+                                />
+                                <div className="w-px bg-gray-100 dark:bg-gray-800" />
+                                <Input
+                                  value={r.description}
+                                  onChange={e => updateRubric(q.id, r.id, { description: e.target.value })}
+                                  placeholder="คำอธิบาย (ถ้ามี)"
+                                  className="h-10 text-xs border-none rounded-none focus:ring-0 bg-transparent flex-[3] text-gray-600 dark:text-gray-400"
+                                />
+                                <div className="w-px bg-gray-100 dark:bg-gray-800" />
+                                <Input
+                                  type="number"
+                                  value={r.score}
+                                  onChange={e => updateRubric(q.id, r.id, { score: e.target.value })}
+                                  placeholder="0"
+                                  className="h-10 text-xs w-20 text-center font-medium border-none rounded-none focus:ring-0 bg-transparent text-gray-800 dark:text-gray-200"
+                                />
+                                <button
+                                  onClick={() => removeRubric(q.id, r.id)}
+                                  disabled={q.rubrics.length === 1}
+                                  className="w-10 shrink-0 flex items-center justify-center text-gray-300 hover:text-red-500 opacity-0 group-hover/row:opacity-100 transition-all disabled:opacity-0"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center flex-wrap gap-2 pt-2">
+                          <button
+                            onClick={() => addRubric(q.id)}
+                            className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-full transition-colors"
+                          >
+                            <Plus size={12} /> เพิ่มเกณฑ์
+                          </button>
+                          
+                          <div className="w-px h-4 bg-gray-300 dark:bg-gray-700 mx-1"></div>
+
+                          <button onClick={() => { setShowPresetModal(q.id); setPresetNameInput(""); }} className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-1.5 rounded-full transition-colors">
+                            <BookmarkPlus size={12} /> บันทึกเทมเพลต
+                          </button>
+
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-1.5 rounded-full transition-colors">
+                                <Bookmark size={12} /> เลือกเทมเพลต ▼
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56">
+                              <DropdownMenuLabel>เทมเพลตเกณฑ์ของคุณ</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              {rubricPresets.length === 0 ? (
+                                <div className="p-3 text-xs text-gray-400 text-center">ยังไม่มีเทมเพลต</div>
+                              ) : (
+                                rubricPresets.map(preset => (
+                                  <DropdownMenuItem key={preset.id} onClick={() => applyRubricPreset(q.id, preset.id)} className="flex justify-between items-center cursor-pointer group">
+                                    <span className="truncate pr-2">{preset.name}</span>
+                                    <button onClick={(e) => { e.stopPropagation(); setPresetToDelete(preset.id); }} className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <X size={14} />
+                                    </button>
+                                  </DropdownMenuItem>
+                                ))
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+
+                    </div>
+                  )}
                 </div>
-              ) : (
-                // -------- VIEW MODE (Collapsed Accordion) --------
-                <div
-                  onClick={() => toggleEdit(q.id)}
-                  className="bg-white dark:bg-slate-800 p-4 h-24 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 cursor-pointer hover:border-[#3B82F6] hover:shadow-md transition-all flex items-center justify-between group overflow-hidden"
-                >
-                  <div className="flex gap-4 md:gap-5 items-center w-2/3 md:w-3/4 overflow-hidden h-full">
-                    <div className="w-12 h-12 bg-gray-50 dark:bg-slate-900 text-gray-400 dark:text-slate-500 group-hover:bg-[#ebf5ff] group-hover:text-[#3B82F6] rounded-xl flex items-center justify-center font-black text-lg shrink-0 transition-all group-hover:scale-105">
-                      {index + 1}
-                    </div>
-                    <div className="truncate text-gray-700 dark:text-slate-300 font-semibold text-base md:text-lg">
-                      {q.text ? q.text : <span className="text-gray-300 italic font-normal">กำลังสร้างคำถาม... แตะเพื่อแก้ไข</span>}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 md:gap-4 shrink-0 px-2">
-                    <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-100 px-4 py-1.5 text-sm font-bold text-[#3B82F6] rounded-xl whitespace-nowrap hidden sm:block">
-                      {q.score || '0'} คะแนน
-                    </div>
-                    <div className="w-10 h-10 rounded-full bg-gray-50 dark:bg-slate-900 group-hover:bg-[#3B82F6] flex items-center justify-center transition-all group-hover:shadow-[0_4px_10px_rgba(59,130,246,0.3)]">
-                      <Edit3 size={18} className="text-gray-400 dark:text-slate-500 group-hover:text-white" />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-
-          <Button
-            onClick={addQuestion}
-            className="w-full h-16 mt-6 text-lg font-bold bg-white dark:bg-slate-800 border-2 border-dashed border-[#d1d5db] text-gray-500 dark:text-slate-400 hover:border-[#3B82F6] hover:text-[#3B82F6] hover:bg-blue-50 dark:bg-blue-900/30/50 transition-all rounded-2xl shadow-sm"
-          >
-            <Plus className="w-6 h-6 mr-3" /> เพิ่มโจทย์ข้อที่ {questions.length + 1}
-          </Button>
-          <div className="flex flex-col md:flex-row gap-4 justify-end items-center mt-10 md:mt-12 pt-8 border-t border-gray-200 dark:border-slate-700">
-            <div className="flex-1 md:flex-none flex items-center justify-center md:justify-start w-full md:w-auto md:mr-auto">
-              <span className="text-gray-400 dark:text-slate-500 text-sm flex items-center gap-2">
-                <CheckCircle2 size={16} className="text-green-500" /> บันทึกร่างอัตโนมัติ (Autosaved)
-              </span>
-            </div>
-
-            <button onClick={() => navigate(`/room/${roomId}`)} className="w-full md:w-auto h-14 md:h-12 px-8 text-gray-500 dark:text-slate-400 hover:bg-gray-200 font-bold rounded-xl text-base transition-colors">
-              กลับไปหน้ารวม
-            </button>
-
-            <Button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="w-full md:w-auto h-14 md:h-12 px-10 bg-[#3B82F6] text-white hover:bg-blue-600 shadow-lg shadow-blue-500/25 font-black text-lg rounded-xl"
-            >
-              {isSaving ? <><Loader2 size={18} className="mr-2 animate-spin" /> กำลังบันทึก...</> : "บันทึกและพร้อมสอบ"}
-            </Button>
+              </div>
+            ))}
           </div>
+
+          {/* Add Page Break / Question Button */}
+          <div className="pt-8 pb-4 mt-8 border-t border-dashed border-gray-300 dark:border-gray-700 text-center">
+            <button
+              onClick={() => setQuestions(prev => [...prev, newQuestion()])}
+              className="inline-flex items-center justify-center gap-2 px-6 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm font-medium rounded-full transition-colors"
+            >
+              <Plus size={16} /> แทรกข้อต่อไป
+            </button>
+          </div>
+
         </div>
-      </main>
+      </div>
+
     </div>
   );
 }

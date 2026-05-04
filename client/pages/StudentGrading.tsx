@@ -188,8 +188,8 @@ export default function StudentGrading() {
 
   if (isLoading || isFetching) {
     return (
-      <div className="flex h-screen items-center justify-center bg-white dark:bg-slate-950">
-        <Loader2 className="animate-spin text-slate-400 h-10 w-10" />
+      <div className="flex h-screen items-center justify-center bg-[#F9FBFD] dark:bg-[#111111]">
+        <Loader2 className="animate-spin text-blue-500 h-8 w-8" />
       </div>
     );
   }
@@ -198,130 +198,143 @@ export default function StudentGrading() {
   const currentStudentName = studentInfo?.name ?? "...";
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+    <div className="min-h-screen bg-[#F9FBFD] dark:bg-[#111111] text-gray-900 dark:text-gray-100 font-sans">
       <Navbar activeTab="allReviews" />
 
       {/* Unified Header & Navigator */}
-      <div className="sticky top-[64px] z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-900 px-6 py-4">
-         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-6">
-               <button onClick={() => navigate(`/room/${roomId}/exam/${examId}/review`)} className="p-2 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-full transition-all">
+      <div className="sticky top-[64px] z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-4 shadow-sm">
+         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+               <button onClick={() => navigate(`/room/${roomId}/exam/${examId}/review`)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors text-gray-500 dark:text-gray-400">
                   <ArrowLeft size={20} />
                </button>
-               <div className="h-8 w-px bg-slate-100 dark:bg-slate-900 hidden md:block" />
+               <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 hidden md:block" />
                <div>
-                  <h1 className="text-xl font-black tracking-tight leading-none mb-1">{currentStudentName}</h1>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  <h1 className="text-xl font-bold tracking-tight leading-none mb-1 text-gray-900 dark:text-white">{currentStudentName}</h1>
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
                     {studentInfo?.student_code || studentInfo?.email} • ลำดับ {currentStudentIndex + 1}/{studentsList.length}
                   </p>
                </div>
             </div>
 
-            <div className="flex items-center gap-4">
-               <div className="flex bg-slate-50 dark:bg-slate-900 rounded-full p-1">
-                  <button onClick={() => navigateToStudent(currentStudentIndex - 1)} disabled={currentStudentIndex === 0} className="p-2 disabled:opacity-30 hover:bg-white dark:hover:bg-slate-800 rounded-full shadow-sm transition-all"><ChevronLeft size={18} /></button>
-                  <button onClick={() => navigateToStudent(currentStudentIndex + 1)} disabled={currentStudentIndex >= studentsList.length - 1} className="p-2 disabled:opacity-30 hover:bg-white dark:hover:bg-slate-800 rounded-full shadow-sm transition-all"><ChevronRight size={18} /></button>
+            <div className="flex items-center gap-3">
+               <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
+                  <button onClick={() => navigateToStudent(currentStudentIndex - 1)} disabled={currentStudentIndex === 0} className="p-1.5 disabled:opacity-30 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors text-gray-700 dark:text-gray-300"><ChevronLeft size={18} /></button>
+                  <button onClick={() => navigateToStudent(currentStudentIndex + 1)} disabled={currentStudentIndex >= studentsList.length - 1} className="p-1.5 disabled:opacity-30 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors text-gray-700 dark:text-gray-300"><ChevronRight size={18} /></button>
                </div>
                
-               <Button onClick={() => setIsConfirmOpen(true)} disabled={isApproving} className={`h-11 px-8 rounded-full font-black text-xs uppercase tracking-widest shadow-xl transition-all ${isApproved ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-100' : 'bg-slate-900 dark:bg-white dark:text-slate-900 text-white shadow-slate-100'}`}>
-                 {isApproving && <Loader2 size={12} className="animate-spin mr-2" />}
+               <Button onClick={() => setIsConfirmOpen(true)} disabled={isApproving} className={`h-10 px-5 rounded-lg font-medium text-sm shadow-sm transition-all ${isApproved ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}>
+                 {isApproving && <Loader2 size={16} className="animate-spin mr-2" />}
                  {isApproved ? 'บันทึกการแก้ไข' : 'อนุมัติคะแนน'}
                </Button>
             </div>
          </div>
       </div>
 
-      <main className="max-w-4xl mx-auto px-6 py-16">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-12">
         {answers.length === 0 ? (
-          <div className="text-center py-32 bg-slate-50 dark:bg-slate-900 rounded-[2.5rem]">
-            <AlertCircle className="mx-auto mb-4 text-slate-300" size={48} />
-            <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">ไม่พบข้อมูลคำตอบ</p>
+          <div className="text-center py-24 bg-white dark:bg-[#1E1E1E] rounded-xl border border-dashed border-gray-300 dark:border-gray-700 shadow-sm">
+            <AlertCircle className="mx-auto mb-4 text-gray-300 dark:text-gray-600" size={48} />
+            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">ไม่พบข้อมูลคำตอบ</p>
           </div>
         ) : (
-          <div className="space-y-32">
+          <div className="space-y-16">
             {answers.map((a, index) => (
               <div key={a.question_id} className="group relative">
                 
                 {/* Question Section */}
-                <div className="mb-12">
-                   <div className="flex items-center gap-4 mb-6">
-                      <span className="text-xs font-black text-slate-200 dark:text-slate-800">{String(index + 1).padStart(2, '0')}</span>
-                      <h3 className="text-xl font-bold leading-relaxed">{a.question_text}</h3>
+                <div className="mb-6 flex gap-4">
+                   <div className="shrink-0 mt-1">
+                      <span className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 text-sm font-semibold text-gray-500 dark:text-gray-400">
+                        {index + 1}
+                      </span>
                    </div>
-
-                   {/* Question Meta/Images */}
-                   <div className="flex flex-wrap gap-8 ml-8">
-                      {a.answer_key && (
-                        <div className="max-w-md">
-                           <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-2">แนวคำตอบ (Key)</p>
-                           <p className="text-sm text-slate-500 italic leading-relaxed">{a.answer_key}</p>
-                        </div>
-                      )}
-                      {(a.q_image_paths || a.q_image_path) && (
-                        <div className="flex gap-2">
-                           {a.q_image_paths?.map((src, i) => (
-                             <img key={i} src={src} className="h-20 w-auto rounded-lg grayscale hover:grayscale-0 transition-all cursor-zoom-in" onClick={() => setModalImage({ src, alt: "Question" })} />
-                           ))}
-                           {a.q_image_path && !a.q_image_paths && (
-                             <img src={a.q_image_path} className="h-20 w-auto rounded-lg grayscale hover:grayscale-0 transition-all cursor-zoom-in" onClick={() => setModalImage({ src: a.q_image_path!, alt: "Question" })} />
-                           )}
-                        </div>
-                      )}
+                   <div className="flex-1 space-y-4">
+                      <h3 className="text-lg font-semibold leading-relaxed text-gray-900 dark:text-gray-100">{a.question_text}</h3>
+                      
+                      {/* Question Meta/Images */}
+                      <div className="flex flex-wrap gap-6">
+                         {a.answer_key && (
+                           <div className="max-w-md bg-green-50/50 dark:bg-green-900/20 border-l-2 border-green-400 dark:border-green-500/50 p-3 rounded-r-lg">
+                              <p className="text-xs font-semibold text-green-700 dark:text-green-400 mb-1">แนวคำตอบ (Key)</p>
+                              <p className="text-sm text-gray-700 dark:text-gray-300">{a.answer_key}</p>
+                           </div>
+                         )}
+                         {(a.q_image_paths || a.q_image_path) && (
+                           <div className="flex gap-2">
+                              {a.q_image_paths?.map((src, i) => (
+                                <img key={i} src={src} className="h-20 w-auto rounded-lg border border-gray-200 dark:border-gray-700 object-cover cursor-zoom-in hover:opacity-90 transition-opacity" onClick={() => setModalImage({ src, alt: "Question" })} />
+                              ))}
+                              {a.q_image_path && !a.q_image_paths && (
+                                <img src={a.q_image_path} className="h-20 w-auto rounded-lg border border-gray-200 dark:border-gray-700 object-cover cursor-zoom-in hover:opacity-90 transition-opacity" onClick={() => setModalImage({ src: a.q_image_path!, alt: "Question" })} />
+                              )}
+                           </div>
+                         )}
+                      </div>
                    </div>
                 </div>
 
                 {/* Student Answer & AI Feedback */}
-                <div className="ml-8 space-y-8">
-                   <div className="p-8 bg-slate-50 dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800">
-                      <div className="flex justify-between items-start mb-6">
-                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">คำตอบของนักศึกษา</p>
+                <div className="ml-12 space-y-6">
+                   <div className="p-6 bg-white dark:bg-[#1A1A1A] rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+                      <div className="flex justify-between items-start mb-4">
+                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">คำตอบของนักศึกษา</p>
                          <div className="flex gap-2">
-                            {a.image_paths?.map((src, i) => <ImageIcon key={i} size={14} className="text-slate-300" />)}
+                            {a.image_paths?.map((src, i) => <ImageIcon key={i} size={16} className="text-gray-400" />)}
                          </div>
                       </div>
-                      <p className="text-lg font-medium leading-relaxed mb-6 whitespace-pre-wrap">{a.answer_text || "ไม่ได้ระบุคำตอบ"}</p>
+                      <p className="text-base text-gray-900 dark:text-gray-100 leading-relaxed whitespace-pre-wrap">{a.answer_text || <span className="text-gray-400 italic">ไม่ได้ระบุคำตอบ</span>}</p>
                       
                       {a.image_paths && a.image_paths.length > 0 && (
-                        <div className="flex flex-wrap gap-3 mb-4">
+                        <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800/60">
                            {a.image_paths.map((src, i) => (
-                             <img key={i} src={src} className="h-24 w-auto rounded-xl shadow-sm cursor-zoom-in hover:scale-105 transition-all" onClick={() => setModalImage({ src, alt: "Student Answer" })} />
+                             <img key={i} src={src} className="h-24 w-auto rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 cursor-zoom-in hover:scale-[1.02] transition-transform" onClick={() => setModalImage({ src, alt: "Student Answer" })} />
                            ))}
                         </div>
                       )}
                    </div>
 
-                   <div className="p-8 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-[2.5rem] border border-indigo-100 dark:border-indigo-900/20 relative">
-                      <div className="flex flex-col md:flex-row justify-between items-start gap-8">
-                         <div className="flex-1 space-y-6">
+                   <div className="p-6 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-900/20">
+                      <div className="flex flex-col md:flex-row justify-between items-start gap-6">
+                         <div className="flex-1 space-y-4">
                             <div className="flex items-center gap-3">
-                               <div className="bg-indigo-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">AI Assessment</div>
-                               <span className={`text-[10px] font-black uppercase tracking-widest ${a.ai_confidence === 'low' ? 'text-rose-500' : 'text-indigo-400'}`}>
+                               <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 text-xs font-semibold rounded-md border border-blue-200/60 dark:border-blue-800/40">
+                                 AI Assessment
+                               </div>
+                               <span className={`text-xs font-medium px-2 py-1 rounded-md border ${
+                                 a.ai_confidence === 'low' ? 'bg-orange-50 text-orange-700 border-orange-200 dark:border-orange-800/40 dark:bg-orange-900/30 dark:text-orange-400' 
+                                 : 'bg-green-50 text-green-700 border-green-200 dark:border-green-800/40 dark:bg-green-900/30 dark:text-green-400'
+                               }`}>
                                  Confidence: {a.ai_confidence}
                                </span>
                             </div>
-                            <p className="text-sm text-indigo-700 dark:text-indigo-300 leading-relaxed italic">"{a.ai_feedback || "ไม่มี Feedback จาก AI"}"</p>
+                            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed bg-white dark:bg-gray-900/50 p-4 rounded-lg border border-blue-50 dark:border-blue-900/20 shadow-sm">
+                              {a.ai_feedback || <span className="text-gray-400 italic">ไม่มี Feedback จาก AI</span>}
+                            </p>
                             
-                            <div className="pt-6 border-t border-indigo-100 dark:border-indigo-900/30">
-                               <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-4">อาจารย์ให้ความเห็นเพิ่มเติม</p>
+                            <div className="pt-4 mt-4 border-t border-blue-100 dark:border-blue-900/30">
+                               <p className="text-xs font-semibold text-gray-500 mb-2">อาจารย์ให้ความเห็นเพิ่มเติม</p>
                                <Textarea 
                                  placeholder="พิมพ์คอมเมนต์ให้นักศึกษา..."
-                                 className="bg-transparent border-0 border-b-2 border-indigo-100 dark:border-indigo-900/30 rounded-none focus-visible:ring-0 focus-visible:border-indigo-500 transition-all min-h-[60px] p-0 text-sm font-medium"
+                                 className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus-visible:ring-2 focus-visible:ring-blue-500/20 focus-visible:border-blue-500 transition-all min-h-[80px] text-sm resize-y"
                                  value={comments[a.question_id] || ""}
                                  onChange={(e) => handleCommentChange(a.question_id, e.target.value)}
                                />
                             </div>
                          </div>
 
-                         <div className="w-full md:w-32 bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-xl shadow-indigo-100 dark:shadow-none border border-indigo-50 dark:border-indigo-900/30 text-center">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">คะแนน</p>
-                            <Input 
-                              type="number"
-                              className="text-3xl font-black text-center h-16 border-0 focus-visible:ring-0 p-0"
-                              value={scores[a.question_id] ?? a.ai_score}
-                              onChange={(e) => handleScoreChange(a.question_id, e.target.value)}
-                              max={a.max_score}
-                            />
-                            <p className="text-xs font-bold text-slate-300 mt-2">/ {a.max_score}</p>
+                         <div className="w-full md:w-36 bg-white dark:bg-gray-900 p-5 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 text-center flex flex-col items-center justify-center shrink-0">
+                            <p className="text-xs font-semibold text-gray-500 mb-3">คะแนน</p>
+                            <div className="flex items-baseline gap-1">
+                               <Input 
+                                 type="number"
+                                 className="text-2xl font-bold text-center h-12 w-20 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus-visible:ring-2 focus-visible:ring-blue-500/20 rounded-md"
+                                 value={scores[a.question_id] ?? a.ai_score}
+                                 onChange={(e) => handleScoreChange(a.question_id, e.target.value)}
+                                 max={a.max_score}
+                               />
+                               <span className="text-sm font-medium text-gray-400">/ {a.max_score}</span>
+                            </div>
                          </div>
                       </div>
                    </div>
@@ -334,13 +347,13 @@ export default function StudentGrading() {
 
       {/* Confirmation Modal */}
       {isConfirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-           <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 max-w-sm w-full mx-6 shadow-2xl animate-in zoom-in-95 duration-200">
-              <h3 className="text-2xl font-black tracking-tight mb-4">{isApproved ? 'ยืนยันการแก้ไข?' : 'ยืนยันการอนุมัติ?'}</h3>
-              <p className="text-sm text-slate-500 leading-relaxed mb-8">คุณต้องการบันทึกผลการตรวจของ <span className="text-slate-900 dark:text-white font-bold">{currentStudentName}</span> ใช่หรือไม่?</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200 p-4">
+           <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200 border border-gray-200 dark:border-gray-800">
+              <h3 className="text-xl font-bold tracking-tight mb-2 text-gray-900 dark:text-white">{isApproved ? 'ยืนยันการแก้ไข?' : 'ยืนยันการอนุมัติ?'}</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">คุณต้องการบันทึกผลการตรวจของ <span className="text-gray-900 dark:text-gray-100 font-semibold">{currentStudentName}</span> ใช่หรือไม่?</p>
               <div className="flex gap-3">
-                 <Button variant="ghost" onClick={() => setIsConfirmOpen(false)} className="flex-1 h-12 rounded-full font-black text-xs uppercase tracking-widest">ยกเลิก</Button>
-                 <Button onClick={confirmApprove} className="flex-1 h-12 bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-full font-black text-xs uppercase tracking-widest">ตกลง</Button>
+                 <Button variant="outline" onClick={() => setIsConfirmOpen(false)} className="flex-1 h-10 rounded-lg font-medium border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">ยกเลิก</Button>
+                 <Button onClick={confirmApprove} className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-sm">ตกลง</Button>
               </div>
            </div>
         </div>

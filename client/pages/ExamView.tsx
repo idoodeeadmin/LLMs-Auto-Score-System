@@ -1,44 +1,22 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import {
-  ArrowLeft, FileText, ChevronDown, ChevronUp,
-  CheckCircle2, Loader2, Calendar, Clock, ClipboardCheck,
-  Send, AlertCircle, BarChart3, TimerReset, Users, Info, Image as ImageIcon
-} from "lucide-react";
+import { ArrowLeft, Loader2, Info, ChevronDown, ChevronUp } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
-import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import ImageModal from "@/components/ImageModal";
 
-interface Rubric {
-  name: string;
-  description: string;
-  score: number;
-}
-
+interface Rubric { name: string; description: string; score: number; }
 interface Question {
-  id: number;
-  text: string;
-  score: number;
-  answer_key?: string;
-  rubrics?: Rubric[];
-  order_index: number;
-  image_path?: string | null;
-  image_paths?: string[];
+  id: number; text: string; score: number;
+  answer_key?: string; rubrics?: Rubric[];
+  order_index: number; image_path?: string | null; image_paths?: string[];
 }
-
 interface Exam {
-  id: number;
-  room_id: number;
-  title: string;
-  description?: string;
-  total_score: number;
-  start_date?: string;
-  end_date?: string;
-  created_at: string;
-  questions: Question[];
+  id: number; room_id: number; title: string; description?: string;
+  total_score: number; start_date?: string; end_date?: string;
+  created_at: string; questions: Question[];
 }
 
 export default function ExamView() {
@@ -48,362 +26,258 @@ export default function ExamView() {
   const [exam, setExam] = useState<Exam | null>(null);
   const [isFetching, setIsFetching] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [mySubmission, setMySubmission] = useState<{
-    status: string;
-    total_score?: number;
-    answers?: any[];
-  } | null>(null);
-  const [showExtensionPanel, setShowExtensionPanel] = useState(false);
+  const [mySubmission, setMySubmission] = useState<{ status: string; total_score?: number; answers?: any[] } | null>(null);
+  const [showExtension, setShowExtension] = useState(false);
   const [extStudentId, setExtStudentId] = useState<"" | number>("");
   const [extMinutes, setExtMinutes] = useState(15);
   const [extNote, setExtNote] = useState("");
   const [isGranting, setIsGranting] = useState(false);
-  const [extensions, setExtensions] = useState<any[]>([]);
-
   const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
 
-  useEffect(() => {
-    if (!isLoading && !user) navigate("/");
-  }, [user, isLoading, navigate]);
+  useEffect(() => { if (!isLoading && !user) navigate("/"); }, [user, isLoading, navigate]);
 
   useEffect(() => {
     if (!token || !roomId || !examId) return;
-    const fetchExam = async () => {
-      try {
-        const res = await fetch(`/api/rooms/${roomId}/exams/${examId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          setExam(await res.json());
-        } else {
-          toast.error("ไม่พบข้อสอบนี้");
-          navigate(`/room/${roomId}`);
-        }
-      } catch {
-        toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
-      } finally {
-        setIsFetching(false);
-      }
-    };
-    fetchExam();
+    fetch(`/api/rooms/${roomId}/exams/${examId}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(setExam)
+      .catch(() => { toast.error("ไม่พบข้อสอบ"); navigate(`/room/${roomId}`); })
+      .finally(() => setIsFetching(false));
 
     if (user?.role === "student") {
-      let intervalId: NodeJS.Timeout;
-      const checkStatus = async () => {
+      const check = async () => {
         try {
-          const r = await fetch(`/api/rooms/${roomId}/exams/${examId}/submissions/me`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (r.ok) {
-            const data = await r.json();
-            setMySubmission(data);
-            if (data.status !== "submitted" && intervalId) {
-              clearInterval(intervalId);
-            }
-          }
-        } catch (e) {
-          console.error(e);
-        }
+          const r = await fetch(`/api/rooms/${roomId}/exams/${examId}/submissions/me`, { headers: { Authorization: `Bearer ${token}` } });
+          if (r.ok) setMySubmission(await r.json());
+        } catch { /* ignore */ }
       };
-
-      checkStatus();
-      intervalId = setInterval(checkStatus, 5000);
-
-      return () => clearInterval(intervalId);
+      check();
+      const id = setInterval(check, 5000);
+      return () => clearInterval(id);
     }
   }, [token, roomId, examId, user?.role, navigate]);
 
-  if (isLoading || isFetching || !user) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-white dark:bg-slate-950">
-        <Loader2 className="animate-spin text-slate-400 h-10 w-10" />
-      </div>
-    );
-  }
-
-  const isTeacher = user.role === "teacher";
-  const formatDate = (d?: string) => d ? new Date(d).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "-";
-
-  const fetchExtensions = async () => {
-    if (!token || !roomId || !examId) return;
-    try {
-      const res = await fetch(`/api/rooms/${roomId}/exams/${examId}/extensions`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) setExtensions(await res.json());
-    } catch { /* ignore */ }
-  };
-
   const handleGrantExtension = async () => {
-    if (!token || !roomId || !examId || extMinutes <= 0) return;
+    if (!token || extMinutes <= 0) return;
     setIsGranting(true);
     try {
       const res = await fetch(`/api/rooms/${roomId}/exams/${examId}/extensions`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          student_id: extStudentId !== "" ? extStudentId : null,
-          extra_minutes: extMinutes,
-          note: extNote || null,
-        }),
+        body: JSON.stringify({ student_id: extStudentId !== "" ? extStudentId : null, extra_minutes: extMinutes, note: extNote || null }),
       });
-      if (res.ok) {
-        toast.success("ขยายเวลาสำเร็จ!");
-        setExtStudentId("");
-        setExtNote("");
-        setExtMinutes(15);
-        fetchExtensions();
-      } else {
-        const err = await res.json();
-        toast.error(err.detail || "ไม่สามารถขยายเวลาได้");
-      }
-    } catch {
-      toast.error("เกิดข้อผิดพลาด");
-    } finally {
-      setIsGranting(false);
-    }
+      if (res.ok) { toast.success("ขยายเวลาสำเร็จ!"); setExtStudentId(""); setExtNote(""); setExtMinutes(15); }
+      else toast.error((await res.json()).detail || "ไม่สามารถขยายเวลา");
+    } catch { toast.error("เกิดข้อผิดพลาด"); }
+    finally { setIsGranting(false); }
   };
 
+  const fmt = (d?: string) => d ? new Date(d).toLocaleString("th-TH", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+
+  if (isLoading || isFetching || !user) return <div className="flex h-screen items-center justify-center dark:bg-gray-950"><Loader2 className="animate-spin text-blue-500 h-8 w-8" /></div>;
+
+  const isTeacher = user.role === "teacher";
+
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-16 transition-colors duration-200">
       <Navbar />
+      <div className="max-w-6xl mx-auto px-4 py-8">
 
-      <main className="max-w-6xl mx-auto px-6 py-10">
+        {/* Back */}
+        <button onClick={() => navigate(`/room/${roomId}`)} className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors mb-6">
+          <ArrowLeft size={15} /> กลับห้องเรียน
+        </button>
 
-        {/* Navigation Breadcrumb */}
-        <div className="mb-12">
-          <button
-            onClick={() => navigate(`/room/${roomId}`)}
-            className="group flex items-center gap-2 text-slate-400 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors text-xs font-bold uppercase tracking-widest"
-          >
-            <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
-            กลับหน้าห้องเรียน
-          </button>
-        </div>
-
-        <div className="flex flex-col lg:flex-row gap-16">
-
-          {/* Main Content Area - Single Surface feeling */}
-          <div className="flex-1 min-w-0">
-            <header className="mb-16">
-              <h1 className="text-4xl md:text-5xl font-black mb-6 tracking-tighter leading-tight">
-                {exam?.title}
-              </h1>
-              {exam?.description && (
-                <p className="text-slate-500 dark:text-slate-400 text-lg leading-relaxed max-w-2xl mb-8">
-                  {exam.description}
-                </p>
-              )}
-
-              <div className="flex flex-wrap gap-8 py-6 border-y border-slate-100 dark:border-slate-900">
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">วันที่เริ่ม</span>
-                  <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{formatDate(exam?.start_date)}</span>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          
+          {/* Left Column: Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            
+            {/* Exam Header */}
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-8 transition-colors duration-200">
+              <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-2">
+                <div className="flex-1">
+                  <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">{exam?.title}</h1>
+                  {exam?.description && <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{exam.description}</p>}
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">วันที่สิ้นสุด</span>
-                  <span className="text-sm font-bold text-rose-500">{formatDate(exam?.end_date)}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">คะแนนเต็ม</span>
-                  <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{exam?.total_score} คะแนน</span>
-                </div>
+                {isTeacher && (
+                  <Button variant="outline" onClick={() => navigate(`/room/${roomId}/exam/${examId}/analytics`)} className="shrink-0 h-10 text-sm font-medium border-gray-200 dark:border-gray-700 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-400 hover:border-blue-200 dark:hover:border-blue-800 transition-all text-gray-700 dark:text-gray-300 w-full sm:w-auto">
+                    ดูสถิติการสอบ
+                  </Button>
+                )}
               </div>
-            </header>
-
-            <section className="space-y-16">
-              <div className="flex items-center justify-between mb-8">
-                <h3 className="text-xl font-black flex items-center gap-2">
-                  <span className="w-1.5 h-6 bg-slate-900 dark:bg-white rounded-full" />
-                  รายการคำถาม
-                </h3>
+              <div className="flex flex-wrap gap-8 text-sm border-t border-gray-100 dark:border-gray-800 pt-5 mt-2">
+                <div><span className="text-xs text-gray-500 dark:text-gray-400 block mb-1">เริ่มสอบ</span><span className="font-medium text-gray-800 dark:text-gray-200">{fmt(exam?.start_date)}</span></div>
+                <div><span className="text-xs text-gray-500 dark:text-gray-400 block mb-1">สิ้นสุด</span><span className="font-medium text-gray-800 dark:text-gray-200">{fmt(exam?.end_date)}</span></div>
+                <div><span className="text-xs text-gray-500 dark:text-gray-400 block mb-1">คะแนนรวม</span><span className="font-medium text-blue-600 dark:text-blue-400">{exam?.total_score} คะแนน</span></div>
               </div>
+            </div>
 
-              {exam?.questions.map((q, idx) => (
-                <div key={q.id} className="group pb-12 border-b border-slate-50 dark:border-slate-900 last:border-0">
-                  <div className="flex gap-6">
-                    <span className="text-xs font-black text-slate-300 dark:text-slate-600 pt-1">
-                      {String(idx + 1).padStart(2, '0')}
-                    </span>
-                    <div className="flex-1 space-y-6">
-                      <div className="flex justify-between items-start gap-4">
-                        <p className="text-xl font-bold leading-relaxed pr-8 text-slate-900 dark:text-white">{q.text}</p>
-                        <span className="text-[10px] font-black px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                          {q.score} คะแนน
-                        </span>
+            {/* Questions List */}
+            <div className="space-y-4">
+              <div className="px-2">
+                <h2 className="text-sm font-medium text-gray-700 dark:text-gray-300">คำถามทั้งหมด ({exam?.questions.length} ข้อ)</h2>
+              </div>
+              
+              <div className="space-y-4">
+                {exam?.questions.map((q, idx) => (
+                  <div key={q.id} className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 px-6 py-6 space-y-4 hover:border-blue-100 dark:hover:border-blue-900/50 transition-colors">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex gap-4 flex-1">
+                        <span className="text-sm font-medium text-gray-400 dark:text-gray-500 pt-0.5 shrink-0">{String(idx + 1).padStart(2, "0")}.</span>
+                        <p className="text-base text-gray-800 dark:text-gray-200 leading-relaxed">{q.text}</p>
                       </div>
+                      <span className="shrink-0 text-xs font-medium text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2.5 py-1 rounded-md border border-blue-100 dark:border-blue-800/50">{q.score} คะแนน</span>
+                    </div>
 
-                      {/* Images */}
-                      {(q.image_paths && q.image_paths.length > 0) ? (
-                        <div className="flex flex-wrap gap-3">
-                          {q.image_paths.map((src, i) => (
-                            <img key={i} src={src} className="h-32 w-auto rounded-xl transition-all cursor-zoom-in" onClick={() => setModalImage({ src, alt: "Question" })} />
-                          ))}
-                        </div>
-                      ) : q.image_path ? (
-                        <img src={q.image_path} className="h-48 w-auto rounded-xl transition-all cursor-zoom-in" onClick={() => setModalImage({ src: q.image_path!, alt: "Question" })} />
-                      ) : null}
+                    {/* Images */}
+                    {q.image_paths && q.image_paths.length > 0 ? (
+                      <div className="flex flex-wrap gap-2 pl-14">
+                        {q.image_paths.map((src, i) => (
+                          <img key={i} src={src} alt="" className="h-32 w-auto rounded-xl border border-gray-200 dark:border-gray-700 cursor-zoom-in hover:opacity-90 transition-opacity shadow-sm" onClick={() => setModalImage({ src, alt: `รูป ${i+1}` })} />
+                        ))}
+                      </div>
+                    ) : q.image_path ? (
+                      <img src={q.image_path} alt="" className="h-40 w-auto rounded-xl border border-gray-200 dark:border-gray-700 pl-14 cursor-zoom-in hover:opacity-90 transition-opacity shadow-sm" onClick={() => setModalImage({ src: q.image_path!, alt: "รูปโจทย์" })} />
+                    ) : null}
 
-                      {/* Teacher's Key */}
-                      {isTeacher && (
-                        <div className="pt-4">
-                          <button onClick={() => setExpandedId(expandedId === q.id ? null : q.id)} className="text-[10px] font-black text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors uppercase tracking-[0.2em]">
-                            {expandedId === q.id ? "ซ่อนรายละเอียด —" : "ดูเฉลยและเกณฑ์คะแนน +"}
-                          </button>
-                          <AnimatePresence>
-                            {expandedId === q.id && (
-                              <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-4 p-6 bg-slate-50 dark:bg-slate-900 rounded-2xl">
-                                {q.answer_key && (
-                                  <div className="mb-6">
-                                    <p className="text-[10px] font-black uppercase text-slate-400 mb-2">แนวคำตอบ</p>
-                                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{q.answer_key}</p>
-                                  </div>
-                                )}
-                                {q.rubrics && q.rubrics.length > 0 && (
-                                  <div>
-                                    <p className="text-[10px] font-black uppercase text-slate-400 mb-2">เกณฑ์การให้คะแนน</p>
-                                    <div className="grid gap-2">
-                                      {q.rubrics.map((r, i) => (
-                                        <div key={i} className="flex justify-between items-center text-xs border-b border-slate-100 dark:border-slate-800 pb-2 last:border-0">
-                                          <span className="text-slate-600 dark:text-slate-400">{r.name}</span>
-                                          <span className="font-bold text-slate-900 dark:text-slate-200">+{r.score}</span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </motion.div>
+                    {/* Teacher: answer key toggle */}
+                    {isTeacher && (q.answer_key || (q.rubrics && q.rubrics.length > 0)) && (
+                      <div className="pl-8 pt-2 border-t border-gray-50 dark:border-gray-800 mt-4">
+                        <button onClick={() => setExpandedId(expandedId === q.id ? null : q.id)} className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium transition-colors flex items-center gap-1.5">
+                          {expandedId === q.id ? "ซ่อนเฉลยและเกณฑ์ ▲" : "แสดงเฉลยและเกณฑ์ ▼"}
+                        </button>
+                        {expandedId === q.id && (
+                          <div className="mt-4 space-y-5 text-sm animate-in fade-in slide-in-from-top-2">
+                            {q.answer_key && (
+                              <div>
+                                <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">แนวคำตอบ</p>
+                                <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">{q.answer_key}</p>
+                              </div>
                             )}
-                          </AnimatePresence>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </section>
-          </div>
-
-          {/* Sidebar Area - Subtle and Fixed when scrolling on Desktop */}
-          <aside className="lg:w-80 space-y-12">
-
-            {/* Action Section */}
-            <div className="space-y-8">
-              {!isTeacher ? (
-                <div className="space-y-6">
-                  {!mySubmission || mySubmission.status === "missing" ? (
-                    <div className="p-8 bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-[2.5rem]">
-                      <h3 className="text-lg font-black mb-4">เริ่มทำข้อสอบของคุณ</h3>
-                      <p className="text-xs text-slate-400 mb-8 leading-relaxed">เมื่อเริ่มแล้ว ระบบจะบันทึกความคืบหน้า โปรดตรวจสอบการเชื่อมต่อของคุณ</p>
-                      <Button onClick={() => navigate(`/room/${roomId}/exam/${examId}/submit`)} className="w-full bg-white text-black dark:bg-slate-900 dark:text-white h-12 rounded-full font-black text-xs uppercase tracking-widest">
-                        เข้าสู่หน้าทำข้อสอบ
-                      </Button>
-                    </div>
-                  ) : mySubmission.status === "approved" ? (
-                    <div className="text-center space-y-4">
-                      <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">คะแนนที่ได้</p>
-                      <div className="text-6xl font-black text-slate-900 dark:text-white">{mySubmission.total_score}<span className="text-lg text-slate-300 dark:text-slate-600 font-medium">/{exam?.total_score}</span></div>
-                      <Button variant="outline" className="w-full h-11 rounded-xl text-xs font-bold border-2" onClick={() => document.getElementById('feedback')?.scrollIntoView({ behavior: 'smooth' })}>
-                        ดูผลคะแนนและคำแนะนำ
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="p-8 bg-slate-50 dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 text-center">
-                      <Loader2 className="animate-spin mx-auto mb-4 text-slate-300" size={24} />
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-                        {mySubmission.status === 'submitted' ? 'กำลังประเมินด้วย AI...' : 'รอการตรวจสอบ'}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <Button onClick={() => navigate(`/room/${roomId}/exam/${examId}/review`)} className="w-full h-12 bg-slate-900 dark:bg-white dark:text-slate-900 rounded-full font-black text-xs uppercase tracking-widest shadow-xl shadow-slate-100 dark:shadow-none">
-                    ตรวจงาน
-                  </Button>
-                  <Button variant="outline" onClick={() => navigate(`/room/${roomId}/exam/${examId}/analytics`)} className="w-full h-12 rounded-full font-black text-xs uppercase tracking-widest border-2">
-                    ดูสถิติ (Analytics)
-                  </Button>
-                </div>
-              )}
-
-              {/* Time Management Tool for Teacher */}
-              {isTeacher && (
-                <div className="pt-8 border-t border-slate-100 dark:border-slate-800 space-y-6">
-                  <div className="flex justify-between items-center">
-                    <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">เครื่องมือขยายเวลา</h4>
-                    <button onClick={() => setShowExtensionPanel(!showExtensionPanel)} className="text-[10px] font-black underline">
-                      {showExtensionPanel ? 'ปิด' : 'จัดการ'}
-                    </button>
-                  </div>
-                  {showExtensionPanel && (
-                    <div className="space-y-3">
-                      <input type="number" placeholder="รหัสนักศึกษา (ไม่บังคับ)" value={extStudentId} onChange={e => setExtStudentId(e.target.value ? parseInt(e.target.value) : "")} className="w-full h-10 px-4 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs outline-none focus:ring-1 ring-slate-200" />
-                      <input type="number" value={extMinutes} onChange={e => setExtMinutes(parseInt(e.target.value) || 1)} className="w-full h-10 px-4 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs font-bold outline-none" />
-                      <Button onClick={handleGrantExtension} disabled={isGranting} className="w-full h-10 rounded-xl bg-slate-200 dark:bg-slate-800 dark:text-white text-black hover:bg-slate-300 text-[10px] font-black uppercase tracking-widest">ขยายเวลา</Button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Quick Insights */}
-            <div className="p-8 bg-indigo-50 dark:bg-indigo-900/20 rounded-[2.5rem] border border-indigo-100 dark:border-indigo-900/30">
-              <Info className="text-indigo-500 mb-4" size={18} />
-              <p className="text-xs font-bold leading-relaxed text-indigo-700 dark:text-indigo-300">
-                ผลคะแนนประมวลผลโดย AI เบื้องต้น แต่อาจารย์จะเป็นผู้ตรวจสอบสุดท้ายเสมอ
-              </p>
-            </div>
-          </aside>
-        </div>
-
-        {/* Feedback Area - Also Continuous */}
-        {!isTeacher && mySubmission?.status === "approved" && mySubmission.answers && (
-          <div id="feedback" className="mt-32 space-y-16">
-            <h2 className="text-3xl font-black tracking-tighter text-slate-900 dark:text-white">วิเคราะห์ผลคะแนนรายข้อ</h2>
-            {mySubmission.answers.map((ans, idx) => (
-              <div key={idx} className="pb-16 border-b border-slate-100 dark:border-slate-800 last:border-0 space-y-8">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-black text-slate-300 dark:text-slate-700">
-                    {String(ans.order_index + 1).padStart(2, '0')}
-                  </span>
-                  <div className="text-right">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">คะแนน</p>
-                    <p className="text-2xl font-black">{ans.teacher_score ?? ans.ai_score ?? 0} <span className="text-sm font-medium text-slate-300">/ {ans.max_score}</span></p>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <p className="text-xl font-bold text-slate-900 dark:text-white">{ans.question_text}</p>
-                  <div className="p-6 bg-slate-50 dark:bg-slate-900 rounded-2xl text-sm leading-relaxed border border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-200">
-                    {ans.answer_text || <span className="italic opacity-30">ไม่ได้ระบุคำตอบ</span>}
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-6 pt-4">
-                    <div className="space-y-2">
-                      <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest">คำแนะนำจาก AI</p>
-                      <p className="text-xs text-slate-500 italic leading-relaxed">"{ans.ai_feedback || "ไม่มีข้อมูลคำแนะนำจาก AI"}"</p>
-                    </div>
-                    {ans.teacher_comment && (
-                      <div className="space-y-2">
-                        <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">ความเห็นจากอาจารย์</p>
-                        <p className="text-xs font-bold leading-relaxed">{ans.teacher_comment}</p>
+                            {q.rubrics && q.rubrics.length > 0 && (
+                              <div>
+                                <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">เกณฑ์การให้คะแนน</p>
+                                <div className="space-y-2">
+                                  {q.rubrics.map((r, i) => (
+                                    <div key={i} className="flex justify-between items-start bg-gray-50 dark:bg-gray-800/50 p-3 rounded-xl border border-gray-100 dark:border-gray-700 gap-4">
+                                      <div>
+                                        <span className="text-gray-800 dark:text-gray-200 block">{r.name}</span>
+                                        {r.description && <span className="text-xs text-gray-500 dark:text-gray-400 block mt-1">{r.description}</span>}
+                                      </div>
+                                      <span className="text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-md shrink-0 border border-blue-100 dark:border-blue-800/50 font-medium">+{r.score}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Feedback Section (student, approved) */}
+            {!isTeacher && mySubmission?.status === "approved" && mySubmission.answers && (
+              <div id="feedback" className="space-y-6 pt-8 mt-4 border-t border-gray-200 dark:border-gray-800">
+                <h2 className="text-lg font-medium text-gray-900 dark:text-white px-2">ผลคะแนนและคำแนะนำรายข้อ</h2>
+                {mySubmission.answers.map((ans, idx) => (
+                  <div key={idx} className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 space-y-5">
+                    <div className="flex items-start justify-between gap-6 border-b border-gray-100 dark:border-gray-800 pb-5">
+                      <p className="text-base text-gray-800 dark:text-gray-200 flex-1 leading-relaxed"><span className="text-blue-500 dark:text-blue-400 font-medium mr-2">{idx + 1}.</span> {ans.question_text}</p>
+                      <div className="text-right shrink-0">
+                        <span className="text-2xl font-semibold text-blue-600 dark:text-blue-400">{ans.teacher_score ?? ans.ai_score ?? 0}</span>
+                        <span className="text-sm text-gray-400 dark:text-gray-500"> / {ans.max_score}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">คำตอบของคุณ</p>
+                      <div className="text-sm text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-xl p-4 leading-relaxed">
+                        {ans.answer_text || <span className="italic text-gray-400 dark:text-gray-500">ไม่ได้ระบุคำตอบ</span>}
+                      </div>
+                    </div>
+
+                    {ans.ai_feedback && (
+                      <div className="bg-blue-50/50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/50 rounded-xl p-4 mt-2">
+                        <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-2">คำแนะนำจาก AI</p>
+                        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{ans.ai_feedback}</p>
+                      </div>
+                    )}
+                    {ans.teacher_comment && (
+                      <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4 mt-2">
+                        <p className="text-xs text-gray-600 dark:text-gray-400 font-medium mb-2">ความเห็นจากอาจารย์</p>
+                        <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">{ans.teacher_comment}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Right Column: Actions (Sticky) */}
+          <div className="space-y-6 lg:sticky lg:top-24">
+            
+            {/* Action Panel */}
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 space-y-4">
+              {!isTeacher ? (
+                <>
+                  {(!mySubmission || mySubmission.status === "missing") && (
+                    <Button onClick={() => navigate(`/room/${roomId}/exam/${examId}/submit`)} className="w-full h-12 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white text-base font-medium rounded-xl transition-all shadow-sm">
+                      เริ่มต้นทำข้อสอบ
+                    </Button>
+                  )}
+                  {mySubmission?.status === "approved" && (
+                    <div className="text-center py-6 border border-blue-100 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-900/20 rounded-xl">
+                      <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-2">คะแนนที่ได้</p>
+                      <p className="text-4xl font-bold text-blue-600 dark:text-blue-400">{mySubmission.total_score}<span className="text-lg text-blue-400 dark:text-blue-500/70 ml-1">/ {exam?.total_score}</span></p>
+                      <button onClick={() => document.getElementById("feedback")?.scrollIntoView({ behavior: "smooth" })} className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 mt-4 block mx-auto transition-colors">ดูผลคะแนนรายข้อ ↓</button>
+                    </div>
+                  )}
+                  {mySubmission?.status && mySubmission.status !== "missing" && mySubmission.status !== "approved" && (
+                    <div className="flex flex-col items-center gap-3 text-sm text-gray-600 dark:text-gray-400 justify-center py-6 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700">
+                      <Loader2 className="animate-spin text-blue-500" size={24} />
+                      <span className="text-center px-4">
+                        {mySubmission.status === "submitted" ? "กำลังประมวลผลคำตอบ..." : "รอการตรวจสอบและอนุมัติ"}
+                      </span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <Button onClick={() => navigate(`/room/${roomId}/exam/${examId}/review`)} className="w-full h-12 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white text-sm font-medium rounded-xl transition-all shadow-sm">
+                    ตรวจงาน
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Teacher: Time Extension */}
+            {isTeacher && (
+              <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 space-y-4">
+                <h3 className="text-sm font-medium text-gray-800 dark:text-gray-200">ขยายเวลาสอบ</h3>
+                <div className="space-y-3">
+                  <input type="number" placeholder="รหัสนักศึกษา (ว่าง = ทุกคน)" value={extStudentId} onChange={e => setExtStudentId(e.target.value ? parseInt(e.target.value) : "")} className="w-full h-10 px-3 text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500" />
+                  <div className="flex items-center gap-2">
+                    <input type="number" value={extMinutes} onChange={e => setExtMinutes(parseInt(e.target.value) || 1)} className="h-10 px-3 text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-gray-900 dark:text-white rounded-xl w-full focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500" />
+                    <span className="text-sm text-gray-500 dark:text-gray-400 shrink-0 w-10">นาที</span>
+                  </div>
+                  <input type="text" placeholder="หมายเหตุ (ไม่บังคับ)" value={extNote} onChange={e => setExtNote(e.target.value)} className="w-full h-10 px-3 text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500" />
+                  <Button onClick={handleGrantExtension} disabled={isGranting} className="w-full h-10 text-sm font-medium rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">
+                    {isGranting ? <Loader2 size={14} className="animate-spin mr-2" /> : null} ยืนยันการขยายเวลา
+                  </Button>
                 </div>
               </div>
-            ))}
+            )}
+            
           </div>
-        )}
-      </main>
-
-      <ImageModal
-        isOpen={!!modalImage}
-        onClose={() => setModalImage(null)}
-        src={modalImage?.src || ""}
-        alt={modalImage?.alt}
-      />
+        </div>
+      </div>
+      <ImageModal isOpen={!!modalImage} onClose={() => setModalImage(null)} src={modalImage?.src || ""} alt={modalImage?.alt} />
     </div>
   );
 }
