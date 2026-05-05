@@ -1,4 +1,5 @@
 import os
+import json as json_module_top
 import asyncio
 import httpx
 import time
@@ -111,10 +112,12 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _FIREBASE_CREDENTIALS_PATH and (not os.path.isabs(_FIREBASE_CREDENTIALS_PATH)):
     _FIREBASE_CREDENTIALS_PATH = os.path.join(_PROJECT_ROOT, _FIREBASE_CREDENTIALS_PATH)
 _firebase_app = None
+auth = None
 _FIREBASE_JSON = os.getenv('FIREBASE_SERVICE_ACCOUNT_JSON', '')
 if _FIREBASE_JSON:
     import firebase_admin
-    from firebase_admin import credentials, auth
+    from firebase_admin import credentials, auth as firebase_auth
+    auth = firebase_auth
     try:
         cred_dict = json_module_top.loads(_FIREBASE_JSON)
         cred = credentials.Certificate(cred_dict)
@@ -124,7 +127,8 @@ if _FIREBASE_JSON:
         print(f'[Firebase] Failed to initialize Admin SDK from ENV: {e}')
 elif _FIREBASE_CREDENTIALS_PATH and os.path.exists(_FIREBASE_CREDENTIALS_PATH):
     import firebase_admin
-    from firebase_admin import credentials, auth
+    from firebase_admin import credentials, auth as firebase_auth
+    auth = firebase_auth
     try:
         cred = credentials.Certificate(_FIREBASE_CREDENTIALS_PATH)
         _firebase_app = firebase_admin.initialize_app(cred)

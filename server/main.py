@@ -40,9 +40,13 @@ app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, 
 
 @app.on_event('startup')
 async def startup_event():
+    print("[Startup] Initializing database...")
     init_db()
+    print("[Startup] Database initialized.")
     os.makedirs('uploads', exist_ok=True)
+    print("[Startup] Starting grading worker...")
     asyncio.create_task(grading_worker())
+    print("[Startup] Recovering pending submissions...")
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT id, exam_id, student_id FROM submissions WHERE status = 'submitted'")
@@ -55,6 +59,7 @@ async def startup_event():
     conn.close()
     if pending:
         print(f'[Startup] Recovered {len(pending)} pending submissions into grading queue')
+    print("[Startup] Startup complete.")
 try:
     app.mount('/uploads', StaticFiles(directory='uploads'), name='uploads')
     app.mount('/api/uploads', StaticFiles(directory='uploads'), name='api_uploads')
