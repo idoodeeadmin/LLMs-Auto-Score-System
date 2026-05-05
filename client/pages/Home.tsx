@@ -38,8 +38,9 @@ export default function Home() {
   const [sectionClass, setSectionClass] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeMenuId, setActiveMenuId] = useState<string | number | null>(null);
-  const [editingRoom, setEditingRoom] = useState<ExamRoom | null>(null);
+   const [editingRoom, setEditingRoom] = useState<ExamRoom | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<string | number | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Redirect if not logged in and not loading
@@ -104,9 +105,10 @@ export default function Home() {
     (room.section && room.section.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const handleCreateRoom = async () => {
-    if (!subjectName.trim()) return;
+   const handleCreateRoom = async () => {
+    if (!subjectName.trim() || isSubmitting) return;
 
+    setIsSubmitting(true);
     try {
       const res = await fetch("/api/rooms", {
         method: "POST",
@@ -121,21 +123,23 @@ export default function Home() {
         const newRoom = await res.json();
         setExamRooms([...examRooms, newRoom]);
         toast.success(`สร้างห้องสอบสำเร็จ (รหัสเชิญ: ${newRoom.class_code})`);
+        setShowCreateModal(false);
+        setSubjectName("");
+        setSectionClass("");
       } else {
         toast.error("สร้างห้องสอบไม่สำเร็จ");
       }
     } catch {
       toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setShowCreateModal(false);
-    setSubjectName("");
-    setSectionClass("");
   };
 
-  const handleEditRoom = async () => {
-    if (!editingRoom || !subjectName.trim()) return;
+   const handleEditRoom = async () => {
+    if (!editingRoom || !subjectName.trim() || isSubmitting) return;
 
+    setIsSubmitting(true);
     try {
       const res = await fetch(`/api/rooms/${editingRoom.id}`, {
         method: "PUT",
@@ -153,16 +157,17 @@ export default function Home() {
           )
         );
         toast.success("อัปเดตข้อมูลสำเร็จ");
+        setShowEditModal(false);
+        setEditingRoom(null);
+        setSubjectName("");
+        setSectionClass("");
+        setActiveMenuId(null);
       }
     } catch {
       toast.error("อัปเดตไม่สำเร็จ");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setShowEditModal(false);
-    setEditingRoom(null);
-    setSubjectName("");
-    setSectionClass("");
-    setActiveMenuId(null);
   };
 
   const handleDeleteRoom = async (id: string | number) => {
@@ -185,9 +190,10 @@ export default function Home() {
     setActiveMenuId(null);
   };
 
-  const handleJoinRoom = async () => {
-    if (!joinRoomCode.trim()) return;
+   const handleJoinRoom = async () => {
+    if (!joinRoomCode.trim() || isSubmitting) return;
     
+    setIsSubmitting(true);
     try {
       const res = await fetch("/api/rooms/join", {
         method: "POST",
@@ -210,6 +216,8 @@ export default function Home() {
       }
     } catch {
       toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -504,12 +512,12 @@ export default function Home() {
                   </div>
                 </div>
 
-                <Button
+                 <Button
                   onClick={handleCreateRoom}
-                  disabled={!subjectName.trim()}
+                  disabled={!subjectName.trim() || isSubmitting}
                   className="w-full h-12 text-base bg-indigo-600 hover:bg-indigo-700 mt-2"
                 >
-                  บันทึกข้อมูล
+                  {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : "บันทึกข้อมูล"}
                 </Button>
               </div>
             </motion.div>
@@ -560,12 +568,12 @@ export default function Home() {
                   </div>
                 </div>
 
-                <Button
+                 <Button
                   onClick={handleEditRoom}
-                  disabled={!subjectName.trim()}
+                  disabled={!subjectName.trim() || isSubmitting}
                   className="w-full h-12 text-base bg-indigo-600 hover:bg-indigo-700 mt-2"
                 >
-                  บันทึกข้อมูล
+                  {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : "บันทึกข้อมูล"}
                 </Button>
               </div>
             </motion.div>
@@ -654,12 +662,12 @@ export default function Home() {
                   </div>
                 </div>
 
-                <Button
+                 <Button
                   onClick={handleJoinRoom}
-                  disabled={!joinRoomCode.trim()}
+                  disabled={!joinRoomCode.trim() || isSubmitting}
                   className="w-full h-12 text-base bg-teal-600 hover:bg-teal-700 mt-2"
                 >
-                  เข้าร่วมห้องเรียน
+                  {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : "เข้าร่วมห้องเรียน"}
                 </Button>
               </div>
             </motion.div>

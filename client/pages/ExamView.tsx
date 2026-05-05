@@ -57,7 +57,7 @@ export default function ExamView() {
     }
   }, [token, roomId, examId, user?.role, navigate]);
 
-  const handleGrantExtension = async () => {
+   const handleGrantExtension = async () => {
     if (!token || extMinutes <= 0) return;
     setIsGranting(true);
     try {
@@ -70,6 +70,36 @@ export default function ExamView() {
       else toast.error((await res.json()).detail || "ไม่สามารถขยายเวลา");
     } catch { toast.error("เกิดข้อผิดพลาด"); }
     finally { setIsGranting(false); }
+  };
+
+  const getExamStatus = () => {
+    if (!exam) return null;
+    const now = new Date();
+    const start = exam.start_date ? new Date(exam.start_date) : null;
+    const end = exam.end_date ? new Date(exam.end_date) : null;
+
+    if (end && now > end) {
+      return { 
+        label: "สิ้นสุดแล้ว", 
+        color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+      };
+    }
+    
+    if (start && now < start) {
+      return { 
+        label: "ยังไม่เริ่ม", 
+        color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+      };
+    }
+
+    if (end) {
+      return { 
+        label: "กำลังเปิดรับ", 
+        color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800",
+      };
+    }
+
+    return null;
   };
 
   const fmt = (d?: string) => d ? new Date(d).toLocaleString("th-TH", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
@@ -95,9 +125,11 @@ export default function ExamView() {
             
             {/* Exam Header */}
             <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-8 transition-colors duration-200">
-              <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-2">
+               <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-2">
                 <div className="flex-1">
-                  <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">{exam?.title}</h1>
+                  <div className="flex items-center gap-3 mb-2">
+                    <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{exam?.title}</h1>
+                  </div>
                   {exam?.description && <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{exam.description}</p>}
                 </div>
                 {isTeacher && (

@@ -51,6 +51,7 @@ export default function ExamSubmit() {
   const [autoSaved, setAutoSaved] = useState(false);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
+  const [showExitModal, setShowExitModal] = useState(false);
   const localStorageKey = `draft_${roomId}_${examId}`;
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
@@ -186,158 +187,243 @@ export default function ExamSubmit() {
 
   useEffect(() => { if (isTimeUp && !isSubmitting) { toast.error("หมดเวลา! ระบบส่งคำตอบอัตโนมัติ", { duration: 5000 }); handleSubmit(); } }, [isTimeUp]);
 
+  const handleDiscardAndExit = async () => {
+    try {
+      localStorage.removeItem(localStorageKey);
+      await fetch(`/api/rooms/${roomId}/exams/${examId}/draft`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      toast.success("ล้างร่างคำตอบและออกจากระบบ");
+      navigate(`/room/${roomId}/exam/${examId}`);
+    } catch {
+      toast.error("เกิดข้อผิดพลาดในการลบร่างคำตอบ");
+      navigate(`/room/${roomId}/exam/${examId}`);
+    }
+  };
+
   const answeredCount = Object.values(answers).filter(a => a.text.trim() || a.images.length > 0).length;
   const totalQ = exam?.questions.length ?? 0;
   const progress = totalQ > 0 ? (answeredCount / totalQ) * 100 : 0;
   const isLow = timeLeft && (timeLeft.startsWith("00:0") || timeLeft.startsWith("00:1"));
 
-  if (isLoading || isFetching) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-gray-400 h-8 w-8" /></div>;
+   if (isLoading || isFetching) return <div className="flex h-screen items-center justify-center bg-[#F9FBFD] dark:bg-[#111111]"><Loader2 className="animate-spin text-blue-500 h-8 w-8" /></div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-28">
-      <Navbar />
+    <div className="min-h-screen bg-[#F9FBFD] dark:bg-[#111111] transition-colors duration-200 font-sans">
+
+      {/* Docs-style Toolbar */}
+      <div className="sticky top-0 z-40 bg-[#EDF2FA] dark:bg-[#1E1E1E] border-b border-gray-300 dark:border-gray-800 px-2 sm:px-4 py-2 flex items-center justify-between gap-2 sm:gap-4 shadow-sm">
+        <div className="flex items-center gap-1 sm:gap-2 min-w-0">
+          <button 
+            onClick={() => {
+              if (answeredCount > 0) setShowExitModal(true);
+              else navigate(`/room/${roomId}/exam/${examId}`);
+            }} 
+            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full text-gray-600 dark:text-gray-300 transition-colors shrink-0" 
+            title="กลับ"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <div className="flex flex-col min-w-0">
+            <h1 className="text-base sm:text-lg text-gray-800 dark:text-gray-100 font-medium truncate">{exam?.title}</h1>
+            <div className="flex items-center gap-2 sm:gap-4 px-0 mt-0.5 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
+              <span className="flex items-center gap-1 shrink-0">{autoSaved ? <span className="text-green-600 dark:text-green-400 flex items-center gap-1">บันทึกแล้ว ✓</span> : "กำลังพิมพ์..."}</span>
+              <span className="font-medium text-blue-600 dark:text-blue-400 shrink-0">ตอบแล้ว {answeredCount}/{totalQ}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 sm:gap-4">
+          {/* Timer */}
+          {timeLeft && (
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-mono font-bold border transition-colors ${isLow ? "bg-red-50 text-red-600 border-red-200 animate-pulse" : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 shadow-sm"}`}>
+              <Clock size={16} className={isLow ? "text-red-500" : "text-gray-400"} />
+              {timeLeft}
+              {extraMinutes > 0 && <span className="text-[10px] font-sans font-medium text-green-600 ml-1">+{extraMinutes}m</span>}
+            </div>
+          )}
+
+          <Button 
+            onClick={() => setIsSubmitConfirm(true)} 
+            disabled={isSubmitting} 
+            className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-4 sm:px-6 h-8 sm:h-10 text-xs sm:text-sm font-medium shadow-md transition-all active:scale-95 shrink-0"
+          >
+            {isSubmitting ? <Loader2 size={16} className="animate-spin mr-2" /> : <Send size={16} className="mr-2" />}
+            ส่งคำตอบ
+          </Button>
+        </div>
+      </div>
+
+      {/* Progress Bar (Subtle) */}
+      <div className="sticky top-[48px] sm:top-[56px] z-30 w-full bg-gray-200 dark:bg-gray-800 h-1 overflow-hidden">
+        <div className="h-full bg-blue-500 transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
+      </div>
 
       {/* Confirm Modal */}
       {isSubmitConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full">
-            <div className="text-center mb-5">
-              <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Send size={20} className="text-blue-500" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 max-w-sm w-full border border-gray-200 dark:border-gray-800 animate-in zoom-in-95 duration-200">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Send size={24} className="text-blue-500" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">ยืนยันการส่ง?</h3>
-              <p className="text-sm text-gray-500">
-                คุณตอบแล้ว <span className="font-bold text-blue-600">{answeredCount}/{totalQ}</span> ข้อ
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">ยืนยันการส่งข้อสอบ?</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                คุณตอบคำถามแล้ว <span className="font-bold text-blue-600 dark:text-blue-400">{answeredCount}</span> จากทั้งหมด <span className="font-bold text-blue-600 dark:text-blue-400">{totalQ}</span> ข้อ
               </p>
-              <p className="text-xs text-red-500 mt-2 font-medium">ไม่สามารถแก้ไขได้หลังส่ง</p>
+              {answeredCount < totalQ && (
+                <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 p-3 rounded-lg text-xs flex items-start gap-2 text-left mb-4">
+                  <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                  <span>ยังมีข้อสอบที่ยังไม่ได้ตอบอีก {totalQ - answeredCount} ข้อ โปรดตรวจสอบให้แน่ใจก่อนส่ง</span>
+                </div>
+              )}
+              <p className="text-xs text-gray-400 dark:text-gray-500 font-medium italic">เมื่อส่งแล้วจะไม่สามารถกลับมาแก้ไขได้อีก</p>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setIsSubmitConfirm(false)} className="flex-1 h-9 text-sm">กลับไปตรวจ</Button>
-              <Button onClick={handleSubmit} disabled={isSubmitting} className="flex-1 h-9 text-sm bg-blue-600 hover:bg-blue-700">
-                {isSubmitting ? <Loader2 size={14} className="animate-spin mr-1" /> : <Send size={14} className="mr-1" />}
-                ส่งเลย
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setIsSubmitConfirm(false)} className="flex-1 h-11 rounded-xl border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">กลับไปทวน</Button>
+              <Button onClick={handleSubmit} disabled={isSubmitting} className="flex-1 h-11 rounded-xl bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 dark:shadow-none">
+                {isSubmitting ? <Loader2 size={18} className="animate-spin mr-2" /> : "ยืนยันส่ง"}
               </Button>
             </div>
           </div>
         </div>
       )}
 
-      <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
-        {/* Header */}
-        <div>
-          <button onClick={() => navigate(`/room/${roomId}/exam/${examId}`)} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-3 transition-colors">
-            <ArrowLeft size={15} /> กลับ
-          </button>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h1 className="text-lg font-semibold text-gray-900">{exam?.title}</h1>
-              {exam?.description && <p className="text-sm text-gray-500 mt-0.5">{exam.description}</p>}
-            </div>
-            {/* Timer */}
-            {timeLeft && (
-              <div className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-mono font-bold border ${isLow ? "bg-red-50 text-red-600 border-red-200" : "bg-gray-100 text-gray-700 border-gray-200"}`}>
-                <Clock size={13} /> {timeLeft}
-                {extraMinutes > 0 && <span className="text-xs font-sans font-medium text-green-600">+{extraMinutes}m</span>}
+      {/* Exit Modal */}
+      {showExitModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 max-w-sm w-full border border-gray-200 dark:border-gray-800 animate-in zoom-in-95 duration-200">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-amber-50 dark:bg-amber-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle size={24} className="text-amber-500" />
               </div>
-            )}
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">คุณต้องการออกจากหน้าทำข้อสอบ?</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                คุณตอบคำถามค้างไว้ <span className="font-bold text-blue-600 dark:text-blue-400">{answeredCount} ข้อ</span> ระบบได้บันทึกร่างคำตอบของคุณไว้แล้ว
+              </p>
+            </div>
+            <div className="flex flex-col gap-2.5">
+              <Button onClick={() => setShowExitModal(false)} className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium">
+                ทำข้อสอบต่อ
+              </Button>
+              <Button variant="outline" onClick={() => navigate(`/room/${roomId}/exam/${examId}`)} className="w-full h-11 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-medium">
+                บันทึกร่างและออก
+              </Button>
+              <Button variant="ghost" onClick={handleDiscardAndExit} className="w-full h-11 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl font-medium">
+                ทิ้งร่างและออก
+              </Button>
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Question Cards */}
-        {exam?.questions.map((q, index) => {
-          const ans = answers[q.id] || { text: "", images: [], imagePreviews: [] };
-          const hasAnswer = ans.text.trim() || ans.images.length > 0;
-          return (
-            <div key={q.id} className={`bg-white rounded-xl border-2 overflow-hidden transition-colors ${hasAnswer ? "border-blue-200" : "border-gray-200"}`}>
-              <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${hasAnswer ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-500"}`}>
-                    {hasAnswer ? <CheckCircle2 size={13} /> : index + 1}
-                  </span>
-                  <span className="text-xs text-gray-500">{q.score} คะแนน</span>
-                </div>
-                {autoSaved && <span className="text-xs text-green-500">บันทึกแล้ว ✓</span>}
-              </div>
+      {/* Docs Canvas (The Paper) */}
+      <div className="py-4 sm:py-10 px-2 sm:px-8">
+        <div className="max-w-[816px] mx-auto bg-white dark:bg-[#1E1E1E] shadow-xl border border-gray-300 dark:border-gray-800 min-h-screen sm:min-h-[1056px] p-6 sm:p-16 flex flex-col gap-8 rounded-sm transition-colors duration-200">
+          
+          {/* Document Header */}
+          <div className="border-b-2 border-gray-900 dark:border-white pb-6 mb-2">
+             <div className="flex justify-between items-start gap-4">
+               <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex-1">{exam?.title}</h2>
+               <div className="text-right shrink-0">
+                 <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">คะแนนเต็ม</p>
+                 <p className="text-xl font-bold text-blue-600 dark:text-blue-400">{exam?.total_score}</p>
+               </div>
+             </div>
+             {exam?.description && <p className="text-base text-gray-600 dark:text-gray-400 mt-2 italic">{exam.description}</p>}
+          </div>
 
-              <div className="p-4 space-y-3">
-                {/* Question text */}
-                <p className="text-sm text-gray-800 leading-relaxed font-medium">{q.text}</p>
-
-                {/* Question images */}
-                {q.image_paths && q.image_paths.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {q.image_paths.map((src, i) => (
-                      <img key={i} src={src} alt="" className="h-28 w-auto rounded-lg border border-gray-200 cursor-zoom-in" onClick={() => setModalImage({ src, alt: `รูปโจทย์ ${i+1}` })} />
-                    ))}
+          {/* Questions Stream */}
+          <div className="space-y-12">
+            {exam?.questions.map((q, index) => {
+              const ans = answers[q.id] || { text: "", images: [], imagePreviews: [] };
+              const hasAnswer = ans.text.trim() || ans.images.length > 0;
+              
+              return (
+                <div key={q.id} className="group relative flex gap-4 pl-4 border-l-4 border-transparent hover:border-blue-200 dark:hover:border-blue-900/50 transition-colors -ml-5 pr-4 py-2">
+                  
+                  <div className={`font-medium text-lg pt-0.5 min-w-[28px] transition-colors ${hasAnswer ? "text-blue-600 dark:text-blue-400" : "text-gray-400"}`}>
+                    {index + 1}.
                   </div>
-                ) : q.image_path ? (
-                  <img src={q.image_path} alt="" className="max-h-48 w-auto rounded-lg border border-gray-200 cursor-zoom-in" onClick={() => setModalImage({ src: q.image_path!, alt: "รูปโจทย์" })} />
-                ) : null}
 
-                {/* Text Answer */}
-                <Textarea
-                  id={`answer-${q.id}`}
-                  placeholder="พิมพ์คำตอบที่นี่..."
-                  className="min-h-[100px] resize-none text-sm border-gray-200 focus:border-blue-400 bg-gray-50"
-                  value={ans.text}
-                  onChange={e => handleTextChange(q.id, e.target.value)}
-                />
+                  <div className="flex-1 space-y-4">
+                    {/* Question Header */}
+                    <div className="flex justify-between items-start gap-4">
+                      <p className="text-lg text-gray-900 dark:text-gray-100 font-medium leading-relaxed flex-1">
+                        {q.text}
+                      </p>
+                      <div className="shrink-0 flex items-center gap-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 px-2 py-0.5 rounded-md text-xs font-semibold text-gray-500">
+                        {q.score} คะแนน
+                      </div>
+                    </div>
 
-                {/* Answer images preview */}
-                {ans.imagePreviews.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {ans.imagePreviews.map((src, i) => (
-                      <div key={i} className="relative group w-20 h-20 rounded-lg overflow-hidden border border-gray-200">
-                        <img src={src} alt="" className="w-full h-full object-cover cursor-zoom-in" onClick={() => setModalImage({ src, alt: `คำตอบ ${i+1}` })} />
-                        <button onClick={e => { e.stopPropagation(); handleRemoveImage(q.id, i); }} className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Trash2 size={10} />
+                    {/* Question Images */}
+                    {q.image_paths && q.image_paths.length > 0 ? (
+                      <div className="flex flex-wrap gap-3">
+                        {q.image_paths.map((src, i) => (
+                          <img key={i} src={src} alt="" className="max-h-48 w-auto rounded-lg border border-gray-300 dark:border-gray-700 cursor-zoom-in hover:shadow-md transition-shadow" onClick={() => setModalImage({ src, alt: `รูปโจทย์ ${i+1}` })} />
+                        ))}
+                      </div>
+                    ) : q.image_path ? (
+                      <img src={q.image_path} alt="" className="max-h-64 w-auto rounded-lg border border-gray-300 dark:border-gray-700 cursor-zoom-in hover:shadow-md transition-shadow" onClick={() => setModalImage({ src: q.image_path!, alt: "รูปโจทย์" })} />
+                    ) : null}
+
+                    {/* Answer Input */}
+                    <div className="space-y-3 pt-2">
+                      <label htmlFor={`answer-${q.id}`} className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest block">คำตอบของคุณ</label>
+                      <textarea
+                        id={`answer-${q.id}`}
+                        placeholder="พิมพ์คำตอบที่นี่..."
+                        className="w-full min-h-[160px] p-4 text-base bg-gray-50/50 dark:bg-gray-900/30 border-2 border-gray-100 dark:border-gray-800 rounded-xl focus:bg-white dark:focus:bg-gray-900 focus:border-blue-400 dark:focus:border-blue-600 focus:ring-0 transition-all outline-none text-gray-800 dark:text-gray-100 resize-y"
+                        value={ans.text}
+                        onChange={e => handleTextChange(q.id, e.target.value)}
+                      />
+                      
+                      {/* Answer images preview */}
+                      {ans.imagePreviews.length > 0 && (
+                        <div className="flex flex-wrap gap-3 pt-2">
+                          {ans.imagePreviews.map((src, i) => (
+                            <div key={i} className="relative group/img w-24 h-24 rounded-xl overflow-hidden border-2 border-gray-200 dark:border-gray-700 shadow-sm">
+                              <img src={src} alt="" className="w-full h-full object-cover cursor-zoom-in" onClick={() => setModalImage({ src, alt: `คำตอบ ${i+1}` })} />
+                              <button 
+                                onClick={e => { e.stopPropagation(); handleRemoveImage(q.id, i); }} 
+                                className="absolute top-1 right-1 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-all shadow-md active:scale-90"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Image actions */}
+                      <div className="flex gap-2 pt-1">
+                        <input ref={el => { fileInputRefs.current[q.id] = el; }} type="file" accept="image/*" multiple className="hidden" onChange={e => { if (e.target.files) handleImageSelect(q.id, e.target.files); e.target.value = ""; }} />
+                        <input id={`cam-${q.id}`} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => { if (e.target.files) handleImageSelect(q.id, e.target.files); e.target.value = ""; }} />
+                        
+                        <button 
+                          onClick={() => document.getElementById(`cam-${q.id}`)?.click()} 
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                        >
+                          <Camera size={14} /> ถ่ายรูปแนบ
+                        </button>
+                        
+                        <button 
+                          onClick={() => fileInputRefs.current[q.id]?.click()} 
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                        >
+                          <ImageIcon size={14} /> เลือกรูปภาพ
                         </button>
                       </div>
-                    ))}
+                    </div>
                   </div>
-                )}
-
-                {/* Upload buttons */}
-                <div className="flex gap-2">
-                  <input ref={el => { fileInputRefs.current[q.id] = el; }} type="file" accept="image/*" multiple className="hidden" onChange={e => { if (e.target.files) handleImageSelect(q.id, e.target.files); e.target.value = ""; }} />
-                  <input id={`cam-${q.id}`} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => { if (e.target.files) handleImageSelect(q.id, e.target.files); e.target.value = ""; }} />
-                  <button onClick={() => document.getElementById(`cam-${q.id}`)?.click()} className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-dashed border-gray-200 hover:border-blue-300 hover:bg-blue-50/30 rounded-lg text-xs text-gray-400 hover:text-blue-500 transition-colors">
-                    <Camera size={13} /> ถ่ายรูป
-                  </button>
-                  <button onClick={() => fileInputRefs.current[q.id]?.click()} className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-dashed border-gray-200 hover:border-blue-300 hover:bg-blue-50/30 rounded-lg text-xs text-gray-400 hover:text-blue-500 transition-colors">
-                    <ImageIcon size={13} /> เลือกรูป{ans.images.length > 0 ? ` (${ans.images.length})` : ""}
-                  </button>
                 </div>
-              </div>
-            </div>
-          );
-        })}
-
-        {/* Warning */}
-        {answeredCount < totalQ && (
-          <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
-            <AlertCircle size={13} className="shrink-0 mt-0.5" />
-            <span>ยังเหลือ {totalQ - answeredCount} ข้อที่ยังไม่ตอบ</span>
+              );
+            })}
           </div>
-        )}
-      </main>
 
-      {/* Floating Submit Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 z-40">
-        <div className="max-w-2xl mx-auto flex items-center gap-4">
-          <div className="flex-1">
-            <div className="flex justify-between text-xs text-gray-400 mb-1">
-              <span>ตอบแล้ว</span>
-              <span className="font-medium text-gray-600">{answeredCount}/{totalQ} ข้อ</span>
-            </div>
-            <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-              <div className="h-full bg-blue-500 rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
-            </div>
+          {/* Paper Footer */}
+          <div className="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800 text-center">
+            <p className="text-xs text-gray-400 dark:text-gray-600 font-medium">-- สิ้นสุดข้อสอบ --</p>
           </div>
-          <Button onClick={() => setIsSubmitConfirm(true)} disabled={isSubmitting} className="shrink-0 bg-blue-600 hover:bg-blue-700 h-9 px-5 text-sm font-medium">
-            {isSubmitting ? <Loader2 size={14} className="animate-spin mr-1" /> : <Send size={14} className="mr-1" />}
-            ส่งคำตอบ
-          </Button>
         </div>
       </div>
 
