@@ -326,43 +326,52 @@ export default function CreateExam() {
   return (
     <div className="min-h-screen bg-[#F9FBFD] dark:bg-[#111111] transition-colors duration-200 font-sans">
       {/* Docs-style Toolbar */}
-      <div className="sticky top-0 z-40 bg-[#EDF2FA] dark:bg-[#1E1E1E] border-b border-gray-300 dark:border-gray-800 px-4 py-2 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <button onClick={onBack} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full text-gray-600 dark:text-gray-300 transition-colors" title="กลับ">
+      <div className="sticky top-0 z-40 bg-[#EDF2FA] dark:bg-[#1E1E1E] border-b border-gray-300 dark:border-gray-800 px-2 sm:px-4 py-2 flex items-center justify-between gap-2 sm:gap-4">
+        <div className="flex items-center gap-1 sm:gap-2 min-w-0">
+          <button onClick={onBack} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full text-gray-600 dark:text-gray-300 transition-colors shrink-0" title="กลับ">
             <ArrowLeft size={20} />
           </button>
-          <div className="flex flex-col">
+          <div className="flex flex-col min-w-0">
             <input
               type="text"
               value={examTitle}
               onChange={e => setExamTitle(e.target.value)}
-              className="bg-transparent border-none focus:bg-white dark:focus:bg-gray-800 focus:ring-1 focus:ring-blue-500 rounded px-2 py-0.5 text-lg text-gray-800 dark:text-gray-100 font-medium placeholder-gray-400 w-[200px] sm:w-[300px]"
-              placeholder="คลิกเพื่อพิมพ์ชื่อข้อสอบ..."
+              className="bg-transparent border-none focus:bg-white dark:focus:bg-gray-800 focus:ring-1 focus:ring-blue-500 rounded px-2 py-0.5 text-base sm:text-lg text-gray-800 dark:text-gray-100 font-medium placeholder-gray-400 w-full"
+              placeholder="ชื่อข้อสอบ..."
             />
-            <div className="flex items-center gap-4 px-2 mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-              <span className="flex items-center gap-1"><Check size={12} /> บันทึกร่างแล้ว</span>
-              <span className="font-medium text-blue-600 dark:text-blue-400">คะแนนรวม: {totalScore}</span>
+            <div className="flex items-center gap-2 sm:gap-4 px-2 mt-0.5 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">
+              <span className="flex items-center gap-1 shrink-0"><Check size={12} className="hidden sm:block" /> บันทึกร่างแล้ว</span>
+              <span className="font-medium text-blue-600 dark:text-blue-400 shrink-0">คะแนน: {totalScore}</span>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          <div className="w-px h-6 bg-gray-300 dark:bg-gray-700 mx-1"></div>
+        <div className="flex items-center gap-1 sm:gap-2">
+          <div className="hidden sm:block">
+            <ThemeToggle />
+          </div>
+          <div className="hidden sm:block w-px h-6 bg-gray-300 dark:bg-gray-700 mx-1"></div>
+          
           <button
             onClick={() => setShowSettings(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded transition-colors"
+            className="p-2 sm:px-3 sm:py-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded transition-colors"
+            title="การตั้งค่า"
           >
-            <Settings size={16} /> การตั้งค่า
+            <Settings size={18} className="sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline ml-1.5 text-sm font-medium">การตั้งค่า</span>
           </button>
+          
           <button
             onClick={() => { setShowBankModal(true); fetchBank(); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded transition-colors"
+            className="p-2 sm:px-3 sm:py-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded transition-colors"
+            title="คลังข้อสอบ"
           >
-            <BookOpen size={16} /> คลังข้อสอบ
+            <BookOpen size={18} className="sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline ml-1.5 text-sm font-medium">คลังข้อสอบ</span>
           </button>
-          <Button onClick={handleSave} disabled={isSaving} className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-5 h-9 font-medium shadow-sm ml-2">
-            {isSaving ? <Loader2 size={16} className="animate-spin" /> : "บันทึกและส่ง"}
+          
+          <Button onClick={handleSave} disabled={isSaving} className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-4 sm:px-5 h-8 sm:h-9 text-xs sm:text-sm font-medium shadow-sm ml-1 sm:ml-2 shrink-0">
+            {isSaving ? <Loader2 size={16} className="animate-spin" /> : "ส่ง"}
           </Button>
         </div>
       </div>
@@ -522,8 +531,8 @@ export default function CreateExam() {
       )}
 
       {/* Docs Canvas (The Paper) */}
-      <div className="py-8 px-4 sm:px-8">
-        <div className="max-w-[816px] mx-auto bg-white dark:bg-[#1E1E1E] shadow-sm border border-gray-300 dark:border-gray-800 min-h-[1056px] p-10 sm:p-16 flex flex-col gap-8 rounded-sm">
+      <div className="py-4 sm:py-8 px-2 sm:px-8">
+        <div className="max-w-[816px] mx-auto bg-white dark:bg-[#1E1E1E] shadow-sm border border-gray-300 dark:border-gray-800 min-h-screen sm:min-h-[1056px] p-4 sm:p-16 flex flex-col gap-6 sm:gap-8 rounded-sm">
           
           {/* Document Header */}
           <div className="border-b-2 border-gray-900 dark:border-white pb-6 mb-2">
@@ -538,14 +547,14 @@ export default function CreateExam() {
           {/* Questions Stream */}
           <div className="space-y-8">
             {questions.map((q, index) => (
-              <div key={q.id} className="group relative flex gap-4 pl-4 border-l-4 border-transparent hover:border-blue-200 dark:hover:border-blue-900/50 transition-colors -ml-5 pr-4 py-2">
-                {/* Floating Actions (Left) */}
-                <div className="absolute -left-12 top-2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
-                  <button onClick={() => duplicateQuestion(q.id)} className="p-1.5 text-gray-500 hover:text-blue-600 bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-md" title="คัดลอกข้อนี้">
+              <div key={q.id} className="group relative flex flex-col sm:flex-row gap-2 sm:gap-4 pl-0 sm:pl-4 border-l-4 border-transparent sm:hover:border-blue-200 dark:sm:hover:border-blue-900/50 transition-colors sm:-ml-5 pr-0 sm:pr-4 py-2">
+                {/* Actions (Floating on desktop, top-right on mobile) */}
+                <div className="absolute right-0 sm:-left-12 top-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity flex flex-row sm:flex-col gap-1 z-10">
+                  <button onClick={() => duplicateQuestion(q.id)} className="p-1.5 text-gray-500 hover:text-blue-600 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-sm border border-gray-200 dark:border-gray-700 rounded-md" title="คัดลอกข้อนี้">
                     <Copy size={14} />
                   </button>
                   {questions.length > 1 && (
-                    <button onClick={() => setQuestions(prev => prev.filter(x => x.id !== q.id))} className="p-1.5 text-gray-500 hover:text-red-600 bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-md" title="ลบข้อนี้">
+                    <button onClick={() => setQuestions(prev => prev.filter(x => x.id !== q.id))} className="p-1.5 text-gray-500 hover:text-red-600 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-sm border border-gray-200 dark:border-gray-700 rounded-md" title="ลบข้อนี้">
                       <Trash2 size={14} />
                     </button>
                   )}
@@ -593,19 +602,19 @@ export default function CreateExam() {
                   )}
 
                   {/* Tools below question */}
-                  <div className={`flex items-center gap-3 pt-2 transition-opacity ${q.isExpanded ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                  <div className={`flex flex-wrap items-center gap-2 sm:gap-3 pt-2 transition-opacity ${q.isExpanded ? 'opacity-100' : 'opacity-100 sm:opacity-0 group-hover:opacity-100'}`}>
                     <input type="file" id={`img-${q.id}`} className="hidden" accept="image/*" multiple onChange={e => handleImageUpload(e, q.id)} />
-                    <button onClick={() => document.getElementById(`img-${q.id}`)?.click()} className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-1.5 rounded-full transition-colors font-medium">
+                    <button onClick={() => document.getElementById(`img-${q.id}`)?.click()} className="flex items-center gap-1.5 text-[11px] sm:text-xs text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-1.5 rounded-full transition-colors font-medium">
                       <ImageIcon size={13} /> แนบรูปภาพ
                     </button>
-                    <button onClick={() => updateQuestion(q.id, { isExpanded: !q.isExpanded })} className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-full transition-colors font-medium">
-                      {q.isExpanded ? "ซ่อนการตั้งค่าเกณฑ์" : "ตั้งค่าเฉลยและเกณฑ์ (Rubrics)"}
+                    <button onClick={() => updateQuestion(q.id, { isExpanded: !q.isExpanded })} className="flex items-center gap-1.5 text-[11px] sm:text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-full transition-colors font-medium">
+                      {q.isExpanded ? "ซ่อนเฉลย/เกณฑ์" : "ตั้งค่าเฉลยและเกณฑ์"}
                     </button>
                   </div>
 
                   {/* Answer Key & Rubrics Area */}
                   {q.isExpanded && (
-                    <div className="mt-4 ml-2 pl-4 border-l-2 border-blue-200 dark:border-blue-800 space-y-6 animate-in fade-in slide-in-from-top-2 duration-300 py-1">
+                    <div className="mt-4 ml-0 sm:ml-2 pl-3 sm:pl-4 border-l-2 border-blue-200 dark:border-blue-800 space-y-6 animate-in fade-in slide-in-from-top-2 duration-300 py-1">
                       
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -623,13 +632,13 @@ export default function CreateExam() {
                       <div className="space-y-3">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                           <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">เกณฑ์ให้คะแนน (Rubrics)</label>
-                          <div className="flex items-center gap-2 self-start sm:self-auto">
-                            <div className="flex items-center bg-gray-50 dark:bg-gray-800/80 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
-                              <span className="text-[10px] text-gray-500 pl-2 pr-1 uppercase font-semibold">AI TONE:</span>
+                          <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <div className="flex items-center bg-gray-50 dark:bg-gray-800/80 rounded-lg p-1 border border-gray-200 dark:border-gray-700 w-full sm:w-auto">
+                              <span className="text-[10px] text-gray-500 pl-2 pr-1 uppercase font-semibold hidden sm:inline">AI TONE:</span>
                               <select
                                 value={q.gradingTone}
                                 onChange={e => updateQuestion(q.id, { gradingTone: e.target.value as any })}
-                                className="text-xs border-none bg-transparent text-gray-700 dark:text-gray-300 py-1 pl-1 pr-6 focus:ring-0 cursor-pointer font-medium"
+                                className="text-xs border-none bg-transparent text-gray-700 dark:text-gray-300 py-1 pl-1 pr-6 focus:ring-0 cursor-pointer font-medium flex-1 sm:flex-none"
                               >
                                 <option value="simple">เรียบง่าย</option>
                                 <option value="moderate">ปานกลาง</option>
@@ -639,18 +648,18 @@ export default function CreateExam() {
                               <button
                                 onClick={() => generateRubric(q.id)}
                                 disabled={q.isGenerating}
-                                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1 bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 rounded-md shadow-sm hover:bg-purple-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 border border-gray-100 dark:border-gray-600"
+                                className="flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-1 bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 rounded-md shadow-sm hover:bg-purple-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 border border-gray-100 dark:border-gray-600 flex-1 sm:flex-none"
                               >
                                 {q.isGenerating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                                ให้ AI ช่วยเขียน
+                                <span className="truncate">ให้ AI ช่วยเขียน</span>
                               </button>
                             </div>
                           </div>
                         </div>
 
                         <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden shadow-sm">
-                          {/* Header row */}
-                          <div className="flex bg-gray-50/80 dark:bg-gray-900/80 border-b border-gray-200 dark:border-gray-800 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                          {/* Header row - Hidden on mobile */}
+                          <div className="hidden sm:flex bg-gray-50/80 dark:bg-gray-900/80 border-b border-gray-200 dark:border-gray-800 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
                             <div className="w-10 text-center py-2 border-r border-gray-200 dark:border-gray-800">#</div>
                             <div className="flex-[1.5] px-3 py-2 border-r border-gray-200 dark:border-gray-800">หัวข้อเกณฑ์</div>
                             <div className="flex-[3] px-3 py-2 border-r border-gray-200 dark:border-gray-800">คำอธิบายรายละเอียด</div>
@@ -660,35 +669,44 @@ export default function CreateExam() {
                           
                           <div className="divide-y divide-gray-100 dark:divide-gray-800/60">
                             {q.rubrics.map((r, rIdx) => (
-                              <div key={r.id} className="flex gap-0 items-stretch group/row bg-white dark:bg-transparent hover:bg-gray-50/50 dark:hover:bg-gray-900/20 transition-colors">
-                                <div className="w-10 shrink-0 flex items-center justify-center text-xs font-medium text-gray-400 border-r border-gray-100 dark:border-gray-800">
+                              <div key={r.id} className="flex flex-col sm:flex-row gap-0 items-stretch group/row bg-white dark:bg-transparent hover:bg-gray-50/50 dark:hover:bg-gray-900/20 transition-colors p-3 sm:p-0 relative">
+                                <div className="hidden sm:flex w-10 shrink-0 items-center justify-center text-xs font-medium text-gray-400 border-r border-gray-100 dark:border-gray-800">
                                   {rIdx + 1}
                                 </div>
-                                <Input
-                                  value={r.name}
-                                  onChange={e => updateRubric(q.id, r.id, { name: e.target.value })}
-                                  placeholder="เช่น ความถูกต้อง"
-                                  className="h-10 text-xs border-none rounded-none focus:ring-0 bg-transparent flex-[1.5] text-gray-800 dark:text-gray-200"
-                                />
-                                <div className="w-px bg-gray-100 dark:bg-gray-800" />
-                                <Input
-                                  value={r.description}
-                                  onChange={e => updateRubric(q.id, r.id, { description: e.target.value })}
-                                  placeholder="คำอธิบาย (ถ้ามี)"
-                                  className="h-10 text-xs border-none rounded-none focus:ring-0 bg-transparent flex-[3] text-gray-600 dark:text-gray-400"
-                                />
-                                <div className="w-px bg-gray-100 dark:bg-gray-800" />
-                                <Input
-                                  type="number"
-                                  value={r.score}
-                                  onChange={e => updateRubric(q.id, r.id, { score: e.target.value })}
-                                  placeholder="0"
-                                  className="h-10 text-xs w-20 text-center font-medium border-none rounded-none focus:ring-0 bg-transparent text-gray-800 dark:text-gray-200"
-                                />
+                                <div className="flex flex-col sm:flex-row flex-1">
+                                  <div className="flex-[1.5] border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-gray-800">
+                                    <label className="sm:hidden text-[10px] font-bold text-gray-400 uppercase mb-1 block">หัวข้อเกณฑ์</label>
+                                    <Input
+                                      value={r.name}
+                                      onChange={e => updateRubric(q.id, r.id, { name: e.target.value })}
+                                      placeholder="เช่น ความถูกต้อง"
+                                      className="h-8 sm:h-10 text-xs border-none rounded-none focus:ring-0 bg-transparent w-full text-gray-800 dark:text-gray-200 px-0 sm:px-3"
+                                    />
+                                  </div>
+                                  <div className="flex-[3] border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-gray-800 pt-2 sm:pt-0">
+                                    <label className="sm:hidden text-[10px] font-bold text-gray-400 uppercase mb-1 block">คำอธิบายรายละเอียด</label>
+                                    <Input
+                                      value={r.description}
+                                      onChange={e => updateRubric(q.id, r.id, { description: e.target.value })}
+                                      placeholder="คำอธิบาย (ถ้ามี)"
+                                      className="h-8 sm:h-10 text-xs border-none rounded-none focus:ring-0 bg-transparent w-full text-gray-600 dark:text-gray-400 px-0 sm:px-3"
+                                    />
+                                  </div>
+                                  <div className="w-full sm:w-20 pt-2 sm:pt-0">
+                                    <label className="sm:hidden text-[10px] font-bold text-gray-400 uppercase mb-1 block">คะแนน</label>
+                                    <Input
+                                      type="number"
+                                      value={r.score}
+                                      onChange={e => updateRubric(q.id, r.id, { score: e.target.value })}
+                                      placeholder="0"
+                                      className="h-8 sm:h-10 text-xs w-full sm:w-20 text-left sm:text-center font-medium border-none rounded-none focus:ring-0 bg-transparent text-gray-800 dark:text-gray-200 px-0 sm:px-3"
+                                    />
+                                  </div>
+                                </div>
                                 <button
                                   onClick={() => removeRubric(q.id, r.id)}
                                   disabled={q.rubrics.length === 1}
-                                  className="w-10 shrink-0 flex items-center justify-center text-gray-300 hover:text-red-500 opacity-0 group-hover/row:opacity-100 transition-all disabled:opacity-0"
+                                  className="absolute top-2 right-2 sm:static sm:w-10 shrink-0 flex items-center justify-center text-gray-300 hover:text-red-500 opacity-100 sm:opacity-0 sm:group-hover/row:opacity-100 transition-all disabled:opacity-0"
                                 >
                                   <X size={14} />
                                 </button>
@@ -700,21 +718,21 @@ export default function CreateExam() {
                         <div className="flex items-center flex-wrap gap-2 pt-2">
                           <button
                             onClick={() => addRubric(q.id)}
-                            className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-full transition-colors"
+                            className="flex items-center gap-1.5 text-[11px] sm:text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-full transition-colors"
                           >
                             <Plus size={12} /> เพิ่มเกณฑ์
                           </button>
                           
-                          <div className="w-px h-4 bg-gray-300 dark:bg-gray-700 mx-1"></div>
+                          <div className="hidden sm:block w-px h-4 bg-gray-300 dark:bg-gray-700 mx-1"></div>
 
-                          <button onClick={() => { setShowPresetModal(q.id); setPresetNameInput(""); }} className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-1.5 rounded-full transition-colors">
+                          <button onClick={() => { setShowPresetModal(q.id); setPresetNameInput(""); }} className="flex items-center gap-1.5 text-[11px] sm:text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-1.5 rounded-full transition-colors">
                             <BookmarkPlus size={12} /> บันทึกเทมเพลต
                           </button>
 
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <button className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-1.5 rounded-full transition-colors">
-                                <Bookmark size={12} /> เลือกเทมเพลต ▼
+                              <button className="flex items-center gap-1.5 text-[11px] sm:text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-1.5 rounded-full transition-colors">
+                                <Bookmark size={12} /> เลือกเทมเพลต <span className="hidden sm:inline">▼</span>
                               </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-56">

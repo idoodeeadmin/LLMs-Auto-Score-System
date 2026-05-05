@@ -175,28 +175,39 @@ export default function RoomDetail() {
     }
   };
 
-  const handleDeleteExam = async () => {
-    if (!token || !roomId || !examToDelete) return;
-    setIsDeleting(true);
-    try {
-      const res = await fetch(`/api/rooms/${roomId}/exams/${examToDelete.id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        toast.success("ลบข้อสอบเรียบร้อยแล้ว");
-        setExams(prev => prev.filter(e => e.id !== examToDelete.id));
-      } else {
-        const err = await res.json();
-        toast.error(err.detail || "ไม่สามารถลบข้อสอบ");
-      }
-    } catch {
-      toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
-    } finally {
-      setIsDeleting(false);
-      setShowDeleteModal(false);
-      setExamToDelete(null);
+   const getExamStatus = (exam: Exam) => {
+    const now = new Date();
+    const start = exam.start_date ? new Date(exam.start_date) : null;
+    const end = exam.end_date ? new Date(exam.end_date) : null;
+
+    if (end && now > end) {
+      return { 
+        label: "สิ้นสุดแล้ว", 
+        color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+        icon: <Trash2 size={12} className="mr-1" />,
+        dateText: `สิ้นสุดเมื่อ ${end.toLocaleDateString('th-TH')} ${end.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}`
+      };
     }
+    
+    if (start && now < start) {
+      return { 
+        label: "ยังไม่เริ่ม", 
+        color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+        icon: <Calendar size={12} className="mr-1" />,
+        dateText: `เริ่ม ${start.toLocaleDateString('th-TH')} ${start.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}`
+      };
+    }
+
+    if (end) {
+      return { 
+        label: "กำลังรับคำตอบ", 
+        color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800",
+        icon: <FileText size={12} className="mr-1" />,
+        dateText: `หมดเขต ${end.toLocaleDateString('th-TH')} ${end.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}`
+      };
+    }
+
+    return null;
   };
 
   if (isLoading || isFetching || !user) {
@@ -350,14 +361,25 @@ export default function RoomDetail() {
                           <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
                             <FileText size={20} className="text-indigo-600" />
                           </div>
-                          <div>
-                            <h3 className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 transition-colors">{exam.title}</h3>
+                           <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 transition-colors">{exam.title}</h3>
+                            </div>
                             {exam.description && <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 mt-0.5 line-clamp-1">{exam.description}</p>}
-                            {exam.start_date && (
-                              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 flex items-center gap-1">
-                                <Calendar size={12} /> {new Date(exam.start_date).toLocaleDateString('th-TH')}
-                              </p>
-                            )}
+                            
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5">
+                              {exam.start_date && (
+                                <p className="text-[11px] text-slate-400 dark:text-slate-500 flex items-center gap-1">
+                                  <Calendar size={11} /> {new Date(exam.start_date).toLocaleDateString('th-TH')} {new Date(exam.start_date).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+                                </p>
+                              )}
+                              {getExamStatus(exam)?.dateText && (
+                                <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                  <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                                  {getExamStatus(exam)?.dateText}
+                                </p>
+                              )}
+                            </div>
                           </div>
                         </div>
                         <div className="flex items-start gap-4">
