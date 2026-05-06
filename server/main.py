@@ -1,5 +1,5 @@
-from server.utils import grading_queue
 from server.services.ai_service import grading_worker
+from server.services.notification_service import deadline_notification_worker
 import asyncio
 from fastapi import FastAPI, Depends, HTTPException, status, Header, UploadFile, File, Form, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -46,6 +46,8 @@ async def startup_event():
     os.makedirs('uploads', exist_ok=True)
     print("[Startup] Starting grading worker...")
     asyncio.create_task(grading_worker())
+    print("[Startup] Starting deadline notification worker...")
+    asyncio.create_task(deadline_notification_worker())
     print("[Startup] Recovering pending submissions...")
     conn = get_db_connection()
     cursor = conn.cursor()

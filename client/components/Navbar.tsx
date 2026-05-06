@@ -145,12 +145,16 @@ export default function Navbar({ activeTab, setActiveTab, isSticky = true }: Nav
                               new_exam:        "bg-blue-100 text-blue-600",
                               deadline_soon:   "bg-red-100 text-red-600",
                               result_published:"bg-purple-100 text-purple-600",
-                            }[notif.type] ?? "bg-gray-100 text-gray-500 dark:text-slate-400 dark:text-slate-500"}`}>
+                              ai_alert:        "bg-red-100 text-red-600",
+                              ai_complete:     "bg-green-100 text-green-600",
+                            }[notif.type] ?? "bg-gray-100 text-gray-500"}`}>
                             {notif.type === "deadline_passed" && <Clock size={16} />}
                             {notif.type === "ai_graded"       && <CheckCircle2 size={16} />}
                             {notif.type === "new_exam"        && <BookOpen size={16} />}
                             {notif.type === "deadline_soon"   && <AlertTriangle size={16} />}
                             {notif.type === "result_published"&& <Trophy size={16} />}
+                            {notif.type === "ai_alert"        && <AlertTriangle size={16} />}
+                            {notif.type === "ai_complete"     && <Trophy size={16} />}
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className={`text-sm leading-tight ${isRead ? "font-normal text-gray-600 dark:text-slate-400 dark:text-slate-500" : "font-semibold text-gray-800 dark:text-slate-200"}`}>
