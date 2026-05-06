@@ -271,11 +271,19 @@ export default function ExamView() {
                     </div>
                   )}
                   {mySubmission?.status && mySubmission.status !== "missing" && mySubmission.status !== "approved" && (
-                    <div className="flex flex-col items-center gap-3 text-sm text-gray-600 dark:text-gray-400 justify-center py-6 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700">
-                      <Loader2 className="animate-spin text-blue-500" size={24} />
-                      <span className="text-center px-4">
-                        {mySubmission.status === "submitted" ? "กำลังประมวลผลคำตอบ..." : "รอการตรวจสอบและอนุมัติ"}
-                      </span>
+                    <div className="flex flex-col items-center gap-4 text-sm justify-center py-10 px-4 bg-green-50/50 dark:bg-green-900/10 rounded-2xl border border-green-100/50 dark:border-green-900/30">
+                      <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center text-green-600 dark:text-green-400 mb-2">
+                        <CheckCircle2 size={40} />
+                      </div>
+                      <div className="text-center space-y-2">
+                        <p className="font-bold text-green-900 dark:text-green-200 text-xl">
+                          ส่งคำตอบสำเร็จ!
+                        </p>
+                        <p className="text-[14px] text-green-700 dark:text-green-400/80 leading-relaxed max-w-[280px] mx-auto">
+                          ระบบได้รับคำตอบของคุณเรียบร้อยแล้ว <br/>
+                          โปรดรอการประกาศคะแนนจากอาจารย์
+                        </p>
+                      </div>
                     </div>
                   )}
                 </>
