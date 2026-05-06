@@ -103,6 +103,29 @@ export default function EditExam() {
   const [showExitModal, setShowExitModal] = useState(false);
   const [draftToRestore, setDraftToRestore] = useState<any>(null);
 
+  // Helper to format date for datetime-local input (YYYY-MM-DDTHH:mm)
+  const formatDateTime = (date: Date) => {
+    const tzOffset = date.getTimezoneOffset() * 60000;
+    const localISOTime = new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+    return localISOTime;
+  };
+
+  const setQuickStart = (type: "now" | "15m" | "tomorrow") => {
+    const d = new Date();
+    if (type === "15m") d.setMinutes(d.getMinutes() + 15);
+    if (type === "tomorrow") {
+      d.setDate(d.getDate() + 1);
+      d.setHours(8, 30, 0, 0);
+    }
+    setStartDateTime(formatDateTime(d));
+  };
+
+  const setQuickEnd = (minutes: number) => {
+    const base = startDateTime ? new Date(startDateTime) : new Date();
+    const d = new Date(base.getTime() + minutes * 60000);
+    setEndDateTime(formatDateTime(d));
+  };
+
   useEffect(() => {
     localStorage.setItem("evaly_rubric_presets", JSON.stringify(rubricPresets));
   }, [rubricPresets]);
@@ -445,20 +468,20 @@ export default function EditExam() {
           
           <button
             onClick={() => setShowSettings(true)}
-            className="p-2 sm:px-3 sm:py-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded transition-colors"
+            className="flex items-center gap-1.5 p-1.5 sm:px-3 sm:py-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded transition-colors"
             title="การตั้งค่า"
           >
-            <Settings size={18} className="sm:w-4 sm:h-4" />
-            <span className="hidden sm:inline ml-1.5 text-sm font-medium">การตั้งค่า</span>
+            <Settings size={18} className="shrink-0" />
+            <span className="text-[11px] sm:text-sm font-medium whitespace-nowrap">การตั้งค่า</span>
           </button>
           
           <button
             onClick={() => { setShowBankModal(true); fetchBank(); }}
-            className="p-2 sm:px-3 sm:py-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded transition-colors"
+            className="flex items-center gap-1.5 p-1.5 sm:px-3 sm:py-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded transition-colors"
             title="คลังข้อสอบ"
           >
-            <BookOpen size={18} className="sm:w-4 sm:h-4" />
-            <span className="hidden sm:inline ml-1.5 text-sm font-medium">คลังข้อสอบ</span>
+            <BookOpen size={18} className="shrink-0" />
+            <span className="text-[11px] sm:text-sm font-medium whitespace-nowrap">คลังข้อสอบ</span>
           </button>
           
           <Button onClick={handleSave} disabled={isSaving} className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-4 sm:px-5 h-8 sm:h-9 text-xs sm:text-sm font-medium shadow-sm ml-1 sm:ml-2 shrink-0">
@@ -481,11 +504,25 @@ export default function EditExam() {
             </div>
             <div className="p-5 space-y-5">
               <div className="space-y-3">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">วันและเวลาที่เริ่มสอบ (ไม่บังคับ)</label>
+                <div className="flex justify-between items-center">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">วันและเวลาที่เริ่มสอบ (ไม่บังคับ)</label>
+                  <div className="flex gap-1.5">
+                    <button onClick={() => setQuickStart("now")} className="text-[10px] bg-gray-100 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-600 dark:text-gray-400 hover:text-blue-600 px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700 transition-colors">ตอนนี้</button>
+                    <button onClick={() => setQuickStart("tomorrow")} className="text-[10px] bg-gray-100 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-600 dark:text-gray-400 hover:text-blue-600 px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700 transition-colors">พรุ่งนี้เช้า</button>
+                  </div>
+                </div>
                 <Input type="datetime-local" value={startDateTime} onChange={e => setStartDateTime(e.target.value)} className="h-10 text-sm bg-gray-50 dark:bg-gray-950 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white [color-scheme:dark]" />
               </div>
               <div className="space-y-3">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">วันและเวลาที่สิ้นสุด (ไม่บังคับ)</label>
+                <div className="flex justify-between items-center">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">วันและเวลาที่สิ้นสุด (ไม่บังคับ)</label>
+                  <div className="flex gap-1.5">
+                    <button onClick={() => setQuickEnd(30)} className="text-[10px] bg-gray-100 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-600 dark:text-gray-400 hover:text-blue-600 px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700 transition-colors">+30น.</button>
+                    <button onClick={() => setQuickEnd(60)} className="text-[10px] bg-gray-100 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-600 dark:text-gray-400 hover:text-blue-600 px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700 transition-colors">+1ชม.</button>
+                    <button onClick={() => setQuickEnd(120)} className="text-[10px] bg-gray-100 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-600 dark:text-gray-400 hover:text-blue-600 px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700 transition-colors">+2ชม.</button>
+                    <button onClick={() => setQuickEnd(1440)} className="text-[10px] bg-gray-100 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-600 dark:text-gray-400 hover:text-blue-600 px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700 transition-colors">+1วัน</button>
+                  </div>
+                </div>
                 <Input type="datetime-local" value={endDateTime} onChange={e => setEndDateTime(e.target.value)} className="h-10 text-sm bg-gray-50 dark:bg-gray-950 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white [color-scheme:dark]" />
               </div>
               <div className="flex items-center justify-between pt-2">
@@ -827,21 +864,21 @@ export default function EditExam() {
                         <div className="flex items-center flex-wrap gap-2 pt-2">
                           <button
                             onClick={() => addRubric(q.id)}
-                            className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-full transition-colors"
+                            className="flex items-center gap-1.5 text-[11px] sm:text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-full transition-colors"
                           >
                             <Plus size={12} /> เพิ่มเกณฑ์
                           </button>
                           
-                          <div className="w-px h-4 bg-gray-300 dark:bg-gray-700 mx-1"></div>
+                          <div className="hidden sm:block w-px h-4 bg-gray-300 dark:bg-gray-700 mx-1"></div>
 
-                          <button onClick={() => { setShowPresetModal(q.id); setPresetNameInput(""); }} className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-1.5 rounded-full transition-colors">
+                          <button onClick={() => { setShowPresetModal(q.id); setPresetNameInput(""); }} className="flex items-center gap-1.5 text-[11px] sm:text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-1.5 rounded-full transition-colors">
                             <BookmarkPlus size={12} /> บันทึกเทมเพลต
                           </button>
 
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <button className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-1.5 rounded-full transition-colors">
-                                <Bookmark size={12} /> เลือกเทมเพลต ▼
+                              <button className="flex items-center gap-1.5 text-[11px] sm:text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-1.5 rounded-full transition-colors">
+                                <Bookmark size={12} /> เลือกเทมเพลต <span className="hidden sm:inline">▼</span>
                               </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-56">

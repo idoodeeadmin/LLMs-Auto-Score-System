@@ -99,10 +99,53 @@ async def grading_worker():
             new_total_score = total_score_row['total'] if total_score_row and total_score_row['total'] else 0.0
             cursor.execute('UPDATE submissions SET status = ?, total_score = ?, graded_by_ai = 1 WHERE id = ?', (new_status, round(new_total_score, 1), submission_id))
             conn.commit()
-            cursor.execute('SELECT owner_id FROM rooms WHERE id = ?', (room_id,))
+            cursor.execute('SELECT r.owner_id, r.name as room_name FROM rooms r WHERE r.id = ?', (room_id,))
             teacher_row = cursor.fetchone()
             if teacher_row:
-                await trigger_socket_notify(user_id=teacher_row['owner_id'], notify_type='ai_graded', message=f'มีนักศึกษาส่งข้อสอบใหม่ในห้องของคุณ และ AI ตรวจเสร็จแล้ว!', data={'exam_id': exam_id, 'room_id': room_id, 'submission_id': submission_id})
+                teacher_id = teacher_row['owner_id']
+                room_name = teacher_row['room_name']
+                
+                # 2. เมื่อ AI ไม่มั่นใจ (Notify for low confidence)
+                if new_status == 'needs_review':
+                    await trigger_socket_notify(
+                        user_id=teacher_id,
+                        notify_type='ai_alert',
+                        message=f'[{room_name}] AI ไม่มั่นใจในผลตรวจข้อสอบบางส่วน โปรดตรวจสอบด้วยตนเอง',
+                        data={'exam_id': exam_id, 'room_id': room_id}
+                    )
+
+                # 1. เมื่อข้อสอบมีนักเรียนส่งครบทุกคนเเละ ai ประเมินครบเเล้ว
+                cursor.execute('SELECT COUNT(*) as count FROM enrollments WHERE room_id = ?', (room_id,))
+                total_students = cursor.fetchone()['count']
+                cursor.execute('SELECT COUNT(*) as count FROM submissions WHERE exam_id = ?', (exam_id,))
+                total_submissions = cursor.fetchone()['count']
+                cursor.execute('SELECT COUNT(*) as count FROM submissions WHERE exam_id = ? AND graded_by_ai = 1', (exam_id,))
+                total_graded = cursor.fetchone()['count']
+
+                if total_students > 0 and total_students == total_submissions == total_graded:
+                    await trigger_socket_notify(
+                        user_id=teacher_id,
+                        notify_type='ai_complete',
+                        message=f'[{room_name}] นักเรียนส่งครบทุกคนและ AI ตรวจเสร็จสิ้นทั้งหมดแล้ว!',
+                        data={'exam_id': exam_id, 'room_id': room_id}
+                    )
+                else:
+                    # Fallback to the debounced "item graded" notification if not complete yet
+                    import time
+                    now = time.time()
+                    key = f"{teacher_id}_{exam_id}"
+                    if not hasattr(grading_worker, "_last_notify"):
+                        grading_worker._last_notify = {}
+                    
+                    last_time = grading_worker._last_notify.get(key, 0)
+                    if now - last_time > 30:
+                        await trigger_socket_notify(
+                            user_id=teacher_id,
+                            notify_type='ai_graded',
+                            message=f'[{room_name}] AI กำลังตรวจข้อสอบ (มีรายการใหม่ตรวจเสร็จแล้ว)',
+                            data={'exam_id': exam_id, 'room_id': room_id}
+                        )
+                        grading_worker._last_notify[key] = now
             conn.close()
             print(f'[Grading Worker] Finished submission {submission_id}')
         except Exception as e:
