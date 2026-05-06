@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader2, Info, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Loader2, Info, ChevronDown, ChevronUp, CheckCircle2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
