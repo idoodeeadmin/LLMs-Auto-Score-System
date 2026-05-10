@@ -71,6 +71,13 @@ async def update_exam(room_id: int, exam_id: int, exam: ExamCreate, user: dict=D
     if not cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=404, detail='Room not found or unauthorized')
+    
+    # Check if there are any submissions before allowing edits
+    cursor.execute('SELECT id FROM submissions WHERE exam_id = ?', (exam_id,))
+    if cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=400, detail='ไม่สามารถแก้ไขข้อสอบได้ เนื่องจากมีนักเรียนเริ่มทำหรือส่งคำตอบมาแล้ว')
+        
     computed_total_score = sum((float(q.score) for q in exam.questions))
     cursor.execute('UPDATE exams SET title = ?, description = ?, total_score = ?, start_date = ?, end_date = ?, is_randomized = ? WHERE id = ?', (exam.title, exam.description, computed_total_score, exam.start_date, exam.end_date, exam.is_randomized, exam_id))
     cursor.execute('DELETE FROM questions WHERE exam_id = ?', (exam_id,))
@@ -192,26 +199,29 @@ async def submit_exam_multipart(request: Request, room_id: int, exam_id: int, us
     end_date_str = exam_row['end_date']
     if end_date_str:
         try:
-            from datetime import datetime, timezone
+            from datetime import datetime, timezone, timedelta
             deadline = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
             if deadline.tzinfo is None:
                 deadline = deadline.replace(tzinfo=timezone.utc)
+            
+            cursor.execute('SELECT COALESCE(SUM(extra_minutes), 0) as total_extra FROM exam_time_extensions WHERE exam_id = ? AND (student_id = ? OR student_id IS NULL)', (exam_id, user['id']))
+            ext_row = cursor.fetchone()
+            extra_minutes = int(ext_row['total_extra']) if ext_row else 0
+            if extra_minutes > 0:
+                deadline += timedelta(minutes=extra_minutes)
+                
             now = datetime.now(timezone.utc)
-            if now > deadline:
+            if now > deadline + timedelta(minutes=1): # Add 1 min grace period
                 conn.close()
                 raise HTTPException(status_code=403, detail='เลยกำหนดเวลาส่งคำตอบข้อสอบแล้ว (Deadline Passed)')
         except (ValueError, TypeError):
             pass
+            
     cursor.execute('SELECT id, status FROM submissions WHERE exam_id = ? AND student_id = ?', (exam_id, user['id']))
     existing = cursor.fetchone()
-    if existing and existing['status'] not in ('missing', 'submitted'):
+    if existing and existing['status'] != 'missing':
         conn.close()
-        raise HTTPException(status_code=409, detail='คุณส่งคำตอบข้อสอบนี้ไปแล้ว ไม่สามารถส่งซ้ำได้')
-    if existing and existing['status'] == 'submitted':
-        pass
-    if existing and existing['status'] in ('ready', 'needs_review', 'approved'):
-        conn.close()
-        raise HTTPException(status_code=409, detail='คุณส่งคำตอบข้อสอบนี้ไปแล้ว ไม่สามารถส่งซ้ำได้')
+        raise HTTPException(status_code=409, detail='คุณได้ส่งคำตอบข้อสอบนี้ไปแล้ว ไม่สามารถส่งซ้ำได้')
     form = await request.form()
     answers_json = form.get('answers', '[]')
     try:
