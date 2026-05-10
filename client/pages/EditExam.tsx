@@ -694,19 +694,39 @@ export default function EditExam() {
           <div className="space-y-8">
             {questions.map((q, index) => (
               <div key={q.id} className="group relative flex flex-col sm:flex-row gap-2 sm:gap-4 pl-0 sm:pl-4 border-l-4 border-transparent sm:hover:border-blue-200 dark:sm:hover:border-blue-900/50 transition-colors sm:-ml-5 pr-0 sm:pr-4 py-2">
-                {/* Actions (Floating on desktop, top-right on mobile) */}
-                <div className="absolute right-0 sm:-left-12 top-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity flex flex-row sm:flex-col gap-1 z-10">
-                  <button onClick={() => duplicateQuestion(q.id)} className="p-1.5 text-gray-500 hover:text-blue-600 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-sm border border-gray-200 dark:border-gray-700 rounded-md" title="คัดลอกข้อนี้">
-                    <Copy size={14} />
+
+
+                {/* Floating Actions (Left Margin - Desktop) */}
+                <div className="hidden sm:flex absolute -left-12 top-1 flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                  <button onClick={() => duplicateQuestion(q.id)} className="p-2.5 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 bg-white dark:bg-[#252525] shadow-md hover:shadow-lg border border-gray-200 dark:border-gray-700 rounded-full transition-all hover:scale-110" title="คัดลอกข้อนี้">
+                    <Copy size={16} />
                   </button>
                   {questions.length > 1 && (
-                    <button onClick={() => setQuestions(prev => prev.filter(x => x.id !== q.id))} className="p-1.5 text-gray-500 hover:text-red-600 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-sm border border-gray-200 dark:border-gray-700 rounded-md" title="ลบข้อนี้">
-                      <Trash2 size={14} />
+                    <button onClick={() => setQuestions(prev => prev.filter(x => x.id !== q.id))} className="p-2.5 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 bg-white dark:bg-[#252525] shadow-md hover:shadow-lg border border-gray-200 dark:border-gray-700 rounded-full transition-all hover:scale-110" title="ลบข้อนี้">
+                      <Trash2 size={16} />
                     </button>
                   )}
                 </div>
 
-                <div className="font-medium text-lg text-gray-900 dark:text-gray-100 pt-0.5 min-w-[24px]">
+                {/* Mobile Header (Number + Actions) */}
+                <div className="flex flex-row items-center gap-2 sm:hidden mb-1">
+                  <div className="font-medium text-lg text-gray-900 dark:text-gray-100 shrink-0">
+                    {index + 1}.
+                  </div>
+                  <div className="flex flex-row gap-1.5 ml-auto">
+                    <button onClick={() => duplicateQuestion(q.id)} className="p-1.5 text-gray-400 hover:text-blue-600 dark:text-gray-500 dark:hover:text-blue-400 bg-gray-50 dark:bg-gray-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors" title="คัดลอกข้อนี้">
+                      <Copy size={16} />
+                    </button>
+                    {questions.length > 1 && (
+                      <button onClick={() => setQuestions(prev => prev.filter(x => x.id !== q.id))} className="p-1.5 text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-400 bg-gray-50 dark:bg-gray-800/50 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors" title="ลบข้อนี้">
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Desktop Number */}
+                <div className="hidden sm:block font-medium text-lg text-gray-900 dark:text-gray-100 pt-0.5 min-w-[24px]">
                   {index + 1}.
                 </div>
 

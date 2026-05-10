@@ -48,63 +48,67 @@ Evaly Score เป็นแอปพลิเคชัน Web-based สำหร
 
 ### 3.1 นักเรียน/ผู้เรียน (Student)
 
-| ฟีเจอร์                            | รายละเอียด                                                                          | สถานะ |
-| ---------------------------------- | ----------------------------------------------------------------------------------- | ----- |
-| **3.1.1 สมัครสมาชิก**              | ลงทะเบียนด้วย ชื่อ, นามสกุล, รหัสนักเรียน, Email, Password, รูป Profile (ไม่บังคับ) | [x]   |
-| **3.1.2 เข้าสู่ระบบ**              | Email + Password และ Google Sign-In (Firebase Auth)                                 | [x]   |
-| **3.1.3 ยืนยันอีเมล**              | ระบบส่งลิงก์ยืนยันอีเมลผ่าน SMTP                                                    | [x]   |
-| **3.1.4 แก้ไขโปรไฟล์**             | อัปเดต ชื่อ, นามสกุล, Password, รูป Profile                                         | [x]   |
-| **3.1.5 เข้าร่วมห้องเรียน**        | Join ด้วย Class Code 6 หลัก                                                         | [x]   |
-| **3.1.6 ออกจากห้องเรียน**          | ลบการเข้าร่วมห้องเรียน                                                              | [x]   |
-| **3.1.7 ทำข้อสอบ**                 | 2 รูปแบบ: พิมพ์คำตอบ / อัปโหลดรูปภาพลายมือ                                          | [x]   |
-| **3.1.8 จับเวลาสอบ**               | Timer Countdown + แจ้งเตือนใกล้หมดเวลา                                              | [x]   |
-| **3.1.9 ดูสถานะการส่ง**            | ยังไม่ส่ง / ส่งแล้ว (รอตรวจ) / ตรวจแล้ว                                             | [x]   |
-| **3.1.10 ดูผลคะแนน**               | ดูคะแนนและข้อเสนอแนะหลังอาจารย์อนุมัติ                                              | [x]   |
-| **3.1.11 ประวัติการสอบ**           | ดูประวัติการทำข้อสอบย้อนหลังทุกห้องเรียน                                            | [x]   |
-| **3.1.12 Real-time Notifications** | แจ้งเตือนเมื่อมีข้อสอบใหม่, ใกล้หมดเวลา, ประกาศผล                                   | [x]   |
-| **3.1.13 Auto-save Draft**        | บันทึกคำตอบอัตโนมัติระหว่างทำข้อสอบ ป้องกันข้อมูลหาย                                | [x]   |
-| **3.1.14 Time Extension**         | รองรับการขยายเวลาสอบรายบุคคลตามที่อาจารย์กำหนด                                     | [x]   |
+| ฟีเจอร์                            | รายละเอียด                                                                          | สถานะ | ไฟล์ที่เกี่ยวข้อง (Files) |
+| ---------------------------------- | ----------------------------------------------------------------------------------- | ----- | ----------------------- |
+| **3.1.1 สมัครสมาชิก**              | ลงทะเบียนด้วย ชื่อ, นามสกุล, รหัสนักเรียน, Email, Password, รูป Profile (ไม่บังคับ) | [x]   | `Register.tsx`, `auth_routes.py` |
+| **3.1.2 เข้าสู่ระบบ**              | Email + Password และ Google Sign-In (Firebase Auth)                                 | [x]   | `Index.tsx`, `auth_routes.py` |
+| **3.1.3 ยืนยันอีเมล**              | ระบบส่งลิงก์ยืนยันอีเมลผ่าน SMTP                                                    | [x]   | `VerifyEmail.tsx`, `auth_routes.py` |
+| **3.1.4 แก้ไขโปรไฟล์**             | อัปเดต ชื่อ, นามสกุล, Password, รูป Profile                                         | [x]   | `Profile.tsx`, `auth_routes.py` |
+| **3.1.5 เข้าร่วมห้องเรียน**        | Join ด้วย Class Code 6 หลัก                                                         | [x]   | `Home.tsx`, `room_routes.py` |
+| **3.1.6 ออกจากห้องเรียน**          | ลบการเข้าร่วมห้องเรียน                                                              | [x]   | `RoomDetail.tsx`, `room_routes.py` |
+| **3.1.7 ทำข้อสอบ**                 | 2 รูปแบบ: พิมพ์คำตอบ / อัปโหลดรูปภาพลายมือ                                          | [x]   | `ExamSubmit.tsx`, `exam_routes.py` |
+| **3.1.8 จับเวลาสอบ**               | Timer Countdown + แจ้งเตือนใกล้หมดเวลา                                              | [x]   | `ExamSubmit.tsx` |
+| **3.1.9 ดูสถานะการส่ง**            | ยังไม่ส่ง / ส่งแล้ว (รอตรวจ) / ตรวจแล้ว                                             | [x]   | `Home.tsx`, `RoomDetail.tsx` |
+| **3.1.10 ดูผลคะแนน**               | ดูคะแนนและข้อเสนอแนะหลังอาจารย์อนุมัติ                                              | [x]   | `StudentHistory.tsx` |
+| **3.1.11 ประวัติการสอบ**           | ดูประวัติการทำข้อสอบย้อนหลังทุกห้องเรียน                                            | [x]   | `StudentHistory.tsx` |
+| **3.1.12 Real-time Notifications** | แจ้งเตือนเมื่อมีข้อสอบใหม่, ใกล้หมดเวลา, ประกาศผล                                   | [x]   | `Navbar.tsx`, `notification_service.py` |
+| **3.1.13 Auto-save Draft**         | บันทึกคำตอบอัตโนมัติระหว่างทำข้อสอบ ป้องกันข้อมูลหาย                                | [x]   | `ExamSubmit.tsx` |
+| **3.1.14 Time Extension**          | รองรับการขยายเวลาสอบรายบุคคลตามที่อาจารย์กำหนด                                     | [x]   | `ExamSubmit.tsx`, `exam_routes.py` |
 
 ### 3.2 อาจารย์/ผู้สอน (Teacher)
 
-| ฟีเจอร์                       | รายละเอียด                                               | สถานะ |
-| ----------------------------- | -------------------------------------------------------- | ----- |
-| **3.2.1 สมัครสมาชิก**         | ลงทะเบียนด้วย ชื่อ, นามสกุล, รหัสผู้สอน, Email, Password | [x]   |
-| **3.2.2 เข้าสู่ระบบ**         | Email + Password และ Google Sign-In                      | [x]   |
-| **3.2.3 จัดการห้องเรียน**     | เพิ่ม, ลบ, แก้ไขห้องเรียน + ดู Class Code                | [x]   |
-| **3.2.4 ค้นหาห้องเรียน**      | ค้นหาด้วยชื่อหรือรหัสห้อง                                | [x]   |
-| **3.2.5 จัดการข้อสอบ**        | สร้าง, แก้ไข, ลบข้อสอบพร้อมโจทย์และธงคำตอบ               | [x]   |
-| **3.2.6 กำหนดเวลาสอบ**        | กำหนดวัน/เวลาเริ่มต้น - สิ้นสุด (ไม่บังคับ)              | [x]   |
-| **3.2.7 อัปโหลดรูปโจทย์**     | รองรับหลายรูปภาพต่อข้อ (base64 + จัดเก็บใน uploads)      | [x]   |
-| **3.2.8 กำหนด Rubrics**       | กำหนดเกณฑ์การให้คะแนนแบบละเอียด                          | [x]   |
-| **3.2.9 ตรวจสอบการส่ง**       | ดูสถานะนักเรียนทุกคน (ส่งแล้ว/ยังไม่ส่ง)                 | [x]   |
-| **3.2.10 ตรวจคำตอบ**          | ดูคำตอบนักเรียน พร้อม AI Score และ Feedback              | [x]   |
-| **3.2.11 แก้ไขคะแนน**         | แก้ไขคะแนนที่ AI ให้ + เพิ่มคอมเมนต์ส่วนตัว              | [x]   |
-| **3.2.12 อนุมัติผล**          | อนุมัติคะแนนเพื่อประกาศให้นักเรียนทราบ                   | [x]   |
-| **3.2.13 Bulk Approve**       | อนุมัติหลายคนพร้อมกันผ่าน Floating Action Bar (Selective Approve)    | [x]   |
-| **3.2.14 สถิติและ Analytics** | ดูรายงานคะแนนเฉลี่ย, การกระจายคะแนน, ความยากของข้อ                       | [x]   |
-| **3.2.15 Export ข้อมูล**          | ส่งออก CSV/XLSX รองรับภาษาไทย 100% พร้อมหัวตารางที่กระชับและอ่านง่าย | [x]   |
-| **3.2.16 Question Bank**          | คลังข้อสอบส่วนตัวที่ใช้ซ้ำได้ข้ามห้องเรียน                                          | [x]   |
-| **3.2.17 Announcements**          | ระบบประกาศข่าวสารภายในห้องเรียน พร้อมระบบ Read Receipt                             | [x]   |
-| **3.2.18 Audit Log**              | ตรวจสอบประวัติการใช้งานและการแก้ไขคะแนนย้อนหลัง                                     | [x]   |
-| **3.2.19 Time Extension Management**| จัดการเพิ่มเวลาสอบให้นักเรียนรายบุคคล                                              | [x]   |
+| ฟีเจอร์                       | รายละเอียด                                               | สถานะ | ไฟล์ที่เกี่ยวข้อง (Files) |
+| ----------------------------- | -------------------------------------------------------- | ----- | ----------------------- |
+| **3.2.1 สมัครสมาชิก**         | ลงทะเบียนด้วย ชื่อ, นามสกุล, รหัสผู้สอน, Email, Password | [x]   | `Register.tsx`, `auth_routes.py` |
+| **3.2.2 เข้าสู่ระบบ**         | Email + Password และ Google Sign-In                      | [x]   | `Index.tsx`, `auth_routes.py` |
+| **3.2.3 จัดการห้องเรียน**     | เพิ่ม, ลบ, แก้ไขห้องเรียน + ดู Class Code                | [x]   | `Home.tsx`, `room_routes.py` |
+| **3.2.4 ค้นหาห้องเรียน**      | ค้นหาด้วยชื่อหรือรหัสห้อง                                | [x]   | `Home.tsx` |
+| **3.2.5 จัดการข้อสอบ**        | สร้าง, แก้ไข, ลบข้อสอบพร้อมโจทย์และธงคำตอบ               | [x]   | `CreateExam.tsx`, `EditExam.tsx` |
+| **3.2.6 กำหนดเวลาสอบ**        | กำหนดวัน/เวลาเริ่มต้น - สิ้นสุด (ไม่บังคับ)              | [x]   | `CreateExam.tsx`, `EditExam.tsx` |
+| **3.2.7 อัปโหลดรูปโจทย์**     | รองรับหลายรูปภาพต่อข้อ (base64 + จัดเก็บใน uploads)      | [x]   | `CreateExam.tsx`, `exam_routes.py` |
+| **3.2.8 กำหนด Rubrics**       | กำหนดเกณฑ์การให้คะแนนแบบละเอียด                          | [x]   | `CreateExam.tsx`, `EditExam.tsx` |
+| **3.2.9 ตรวจสอบการส่ง**       | ดูสถานะนักเรียนทุกคน (ส่งแล้ว/ยังไม่ส่ง)                 | [x]   | `RoomReview.tsx`, `ExamScoreboard.tsx` |
+| **3.2.10 ตรวจคำตอบ**          | ดูคำตอบนักเรียน พร้อม AI Score และ Feedback              | [x]   | `StudentGrading.tsx` |
+| **3.2.11 แก้ไขคะแนน**         | แก้ไขคะแนนที่ AI ให้ + เพิ่มคอมเมนต์ส่วนตัว              | [x]   | `StudentGrading.tsx` |
+| **3.2.12 อนุมัติผล**          | อนุมัติคะแนนเพื่อประกาศให้นักเรียนทราบ                   | [x]   | `StudentGrading.tsx`, `exam_routes.py` |
+| **3.2.13 Bulk Approve**       | อนุมัติหลายคนพร้อมกันผ่าน Floating Action Bar            | [x]   | `ExamScoreboard.tsx`, `exam_routes.py` |
+| **3.2.14 สถิติและ Analytics** | ดูรายงานคะแนนเฉลี่ย, การกระจายคะแนน, ความยากของข้อ       | [x]   | `TeacherAnalytics.tsx`, `RoomAnalytics.tsx` |
+| **3.2.15 Export ข้อมูล**      | ส่งออก CSV/XLSX รองรับภาษาไทย 100%                       | [x]   | `ExamScoreboard.tsx`, `exam_routes.py` |
+| **3.2.16 Question Bank**      | คลังข้อสอบส่วนตัวที่ใช้ซ้ำได้ข้ามห้องเรียน               | [x]   | `CreateExam.tsx`, `question_bank_routes.py` |
+| **3.2.17 Announcements**      | ระบบประกาศข่าวสารภายในห้องเรียน                          | [x]   | `RoomDetail.tsx`, `room_routes.py` |
+| **3.2.18 Audit Log**          | ตรวจสอบประวัติการใช้งานและการแก้ไขคะแนนย้อนหลัง          | [x]   | `AuditLog.tsx`, `audit_routes.py` |
+| **3.2.19 Time Extension Management**| จัดการเพิ่มเวลาสอบให้นักเรียนรายบุคคล                | [x]   | `RoomReview.tsx`, `exam_routes.py` |
+| **3.2.20 Google Docs-Style Editor**| สร้างข้อสอบผ่าน UI ที่ลื่นไหล มี Floating actions        | [x]   | `CreateExam.tsx`, `EditExam.tsx` |
+| **3.2.21 Exam Auto-save Draft**    | แบบร่างข้อสอบถูกบันทึกอัตโนมัติ (LocalStorage)            | [x]   | `CreateExam.tsx`, `EditExam.tsx` |
+| **3.2.22 Rubric Presets**          | บันทึกและเรียกใช้เทมเพลตเกณฑ์การให้คะแนน                | [x]   | `CreateExam.tsx`, `exam_routes.py` |
 
 ### 3.3 ระบบ AI Grading (Core System)
 
-| ฟีเจอร์                      | รายละเอียด                                                   | สถานะ |
-| ---------------------------- | ------------------------------------------------------------ | ----- |
-| **3.3.1 Multimodal Scoring** | รองรับ Text + Image (Vision) ในครั้งเดียว                    | [x]   |
-| **3.3.2 Gemini AI**          | ใช้ Google Gemini 1.5 Flash/Pro เป็นตัวตรวจ                  | [x]   |
-| **3.3.3 Prompt Engineering** | Chain-of-Thought + Few-Shot Prompting สำหรับ Data Structures | [x]   |
-| **3.3.4 Rubric-based**       | ตรวจตามเกณฑ์รูบริคที่อาจารย์กำหนด                            | [x]   |
-| **3.3.5 Confidence Score**   | ให้ค่าความมั่นใจ (high/medium/low) สำหรับแต่ละคำตอบ          | [x]   |
-| **3.3.6 Fallback Scoring**   | ระบบสำรองแบบ Rule-based เมื่อ AI ไม่พร้อมใช้งาน              | [x]   |
-| **3.3.7 การแจ้งเตือน**       | แจ้งเตือนอาจารย์เมื่อตรวจเสร็จหรือต้องตรวจเอง                | [x]   |
-| **3.3.8 การจำกัดข้อความ**    | รองรับคำตอบสูงสุด 300 คำต่อข้อ                               | [x]   |
-| **3.3.9 Auto-rubric Generation**| AI ช่วยสร้างเกณฑ์การให้คะแนนอัตโนมัติจากโจทย์                | [x]   |
-| **3.3.10 Batch Grading Queue** | ระบบ Queue ประมวลผลการตรวจจำนวนมากแบบเบื้องหลัง (Async)      | [x]   |
-| **3.3.11 Smart Rescoring**     | ปรับคะแนนอัตโนมัติเมื่อมีการแก้ไขเกณฑ์รูบริคย้อนหลัง          | [x]   |
-| **3.3.12 Essay Quality Metrics**| วิเคราะห์คุณภาพคำตอบ (ความยาว, ความซับซ้อน, Readability)    | [x]   |
+| ฟีเจอร์                      | รายละเอียด                                                   | สถานะ | ไฟล์ที่เกี่ยวข้อง (Files) |
+| ---------------------------- | ------------------------------------------------------------ | ----- | ----------------------- |
+| **3.3.1 Multimodal Scoring** | รองรับ Text + Image (Vision) ในครั้งเดียว                    | [x]   | `ai_service.py` |
+| **3.3.2 Gemini AI**          | ใช้ Google Gemini 1.5 Flash/Pro เป็นตัวตรวจ                  | [x]   | `ai_service.py` |
+| **3.3.3 Prompt Engineering** | Chain-of-Thought + Few-Shot Prompting สำหรับ Data Structures | [x]   | `ai_service.py` |
+| **3.3.4 Rubric-based**       | ตรวจตามเกณฑ์รูบริคที่อาจารย์กำหนด                            | [x]   | `ai_service.py` |
+| **3.3.5 Confidence Score**   | ให้ค่าความมั่นใจ (high/medium/low) สำหรับแต่ละคำตอบ          | [x]   | `ai_service.py`, `StudentGrading.tsx` |
+| **3.3.6 Fallback Scoring**   | ระบบสำรองแบบ Rule-based เมื่อ AI ไม่พร้อมใช้งาน              | [x]   | `ai_service.py` |
+| **3.3.7 การแจ้งเตือน**       | แจ้งเตือนอาจารย์เมื่อตรวจเสร็จหรือต้องตรวจเอง                | [x]   | `notification_service.py`, `ai_service.py` |
+| **3.3.8 การจำกัดข้อความ**    | รองรับคำตอบสูงสุด 300 คำต่อข้อ                               | [x]   | `ExamSubmit.tsx`, `ai_service.py` |
+| **3.3.9 Auto-rubric Generation**| AI ช่วยสร้างเกณฑ์การให้คะแนนอัตโนมัติจากโจทย์                | [x]   | `CreateExam.tsx`, `ai_routes.py` |
+| **3.3.10 Grading Tone Selection**| เลือกระดับความเข้มงวดการให้คะแนน (เรียบง่าย, ปานกลาง, วิชาการ)| [x]   | `StudentGrading.tsx`, `ai_service.py` |
+| **3.3.11 Batch Grading Queue** | ระบบ Queue ประมวลผลการตรวจจำนวนมากแบบเบื้องหลัง (Async)      | [x]   | `exam_routes.py`, `ai_service.py` |
+| **3.3.12 Smart Rescoring**     | ปรับคะแนนอัตโนมัติเมื่อมีการแก้ไขเกณฑ์รูบริคย้อนหลัง          | [x]   | `StudentGrading.tsx`, `ai_service.py` |
+| **3.3.13 Essay Quality Metrics**| วิเคราะห์คุณภาพคำตอบ (ความยาว, ความซับซ้อน, Readability)    | [x]   | `ai_service.py`, `StudentGrading.tsx` |
 
 ---
 
@@ -198,6 +202,7 @@ Evaly Score เป็นแอปพลิเคชัน Web-based สำหร
 | POST   | `/register`            | สมัครสมาชิก + ส่งอีเมลยืนยัน |
 | POST   | `/login`               | เข้าสู่ระบบ                  |
 | POST   | `/firebase-login`      | เข้าสู่ระบบด้วย Google       |
+| POST   | `/link-google`         | เชื่อมโยงบัญชี Google เข้ากับบัญชีเดิม |
 | POST   | `/set-role`            | กำหนดบทบาทผู้ใช้ (Teacher/Student) |
 | GET    | `/me`                  | ดูข้อมูลผู้ใช้ปัจจุบัน       |
 | PUT    | `/profile`             | อัปเดตโปรไฟล์                |
@@ -236,12 +241,16 @@ Evaly Score เป็นแอปพลิเคชัน Web-based สำหร
 | POST   | `/{exam_id}/submit-multipart`                 | ส่งคำตอบ (FormData + รูปภาพ) |
 | POST   | `/{exam_id}/draft`                            | บันทึก Draft (Auto-save)     |
 | GET    | `/{exam_id}/draft`                            | ดึงข้อมูล Draft              |
+| DELETE | `/{exam_id}/draft`                            | ลบข้อมูล Draft               |
 | GET    | `/{exam_id}/submissions`                      | ดูรายการส่งทั้งหมด           |
 | GET    | `/{exam_id}/submissions/me`                   | ดูคำตอบตัวเอง                |
 | GET    | `/{exam_id}/submissions/{student_id}`         | ดูคำตอบนักเรียน              |
 | PUT    | `/{exam_id}/submissions/{student_id}/approve` | อนุมัติคะแนน                 |
 | POST   | `/{exam_id}/bulk-approve`                     | อนุมัติหลายคนพร้อมกัน        |
+| POST   | `/{exam_id}/questions/{question_id}/rescore`  | สั่งให้ AI ตรวจข้อนี้ใหม่ (Smart Rescore) |
 | POST   | `/{exam_id}/extensions`                       | เพิ่มเวลาสอบรายบุคคล         |
+| GET    | `/{exam_id}/extensions`                       | ดูข้อมูลการต่อเวลาทั้งหมดของข้อสอบ |
+| GET    | `/{exam_id}/extensions/me`                    | ดูข้อมูลการต่อเวลาของตัวเอง   |
 | GET    | `/{exam_id}/export`                           | Export คะแนน (CSV/XLSX)      |
 
 ### 6.4 Notifications (`/api/notifications`)
@@ -259,11 +268,14 @@ Evaly Score เป็นแอปพลิเคชัน Web-based สำหร
 | DELETE | `/{question_id}`      | ลบข้อสอบจากคลัง              |
 | POST   | `/save-from-exam`     | บันทึกจากข้อสอบที่มีอยู่แล้ว |
 
-### 6.6 AI & Utilities
+### 6.6 System, AI & Utilities
 
 | Method | Endpoint                  | คำอธิบาย                          |
 | ------ | ------------------------- | --------------------------------- |
 | POST   | `/api/gemini/generate-rubric` | ให้ AI ช่วยสร้างเกณฑ์คะแนน (Rubrics) |
+| GET    | `/api/submissions/me`     | ดูประวัติการทำข้อสอบทุกวิชารวมกัน (ของตัวเอง) |
+| POST   | `/api/announcements/{ann_id}/read` | ยืนยันการอ่านประกาศ (Read Receipt) |
+| GET    | `/api/announcements/{ann_id}/read-status` | ดูสถานะการอ่านประกาศของผู้ใช้ |
 | GET    | `/api/audit-logs`         | ดูประวัติการใช้งาน (Audit Logs)   |
 | GET    | `/api/ping`               | เช็คสถานะ Server                  |
 
@@ -326,9 +338,23 @@ LLMs-Auto-Score-System-main/
 │   └── index.html                   # HTML Template
 │
 ├── server/                          # FastAPI Backend
-│   ├── main.py                      # Main Application (2473 lines)
-│   ├── database.py                  # SQLite Schema & Connection
-│   ├── auth.py                      # JWT & Password Hashing
+│   ├── routes/                      # API Endpoints (Controllers)
+│   │   ├── auth_routes.py           # Login, Register, Profile
+│   │   ├── room_routes.py           # Room Management
+│   │   ├── exam_routes.py           # Exam & Submission Logic
+│   │   ├── ai_routes.py             # Prompt Generation & AI Routing
+│   │   ├── system_routes.py         # Submissions, Announcements, Audits
+│   │   ├── notification_routes.py   # Notifications API
+│   │   └── question_bank_routes.py  # Question Bank API
+│   ├── services/                    # Business Logic
+│   │   ├── ai_service.py            # Gemini Integration & Grading Logic
+│   │   └── notification_service.py  # Notification Logic (Debounce)
+│   ├── main.py                      # Entry Point & Route Registration
+│   ├── database.py                  # Database Schema & Connection
+│   ├── auth.py                      # JWT & Token Verification
+│   ├── models.py                    # Pydantic Models (Schemas)
+│   ├── utils.py                     # Helper Functions (Cloudinary, Rate Limit)
+│   ├── Dockerfile                   # Backend Docker Container config
 │   └── requirements.txt             # Python Dependencies
 │
 ├── server-node/                     # Node.js Socket Server
@@ -394,7 +420,7 @@ LLMs-Auto-Score-System-main/
 
 ### 8.5 Security & Session Management
 
-- **Token Revocation**: ระบบ Revoke Token ทันทีเมื่อมีการเปลี่ยนรหัสผ่านหรือ Logout
+- **Token Versioning (Revocation)**: ระบบจะเตะผู้ใช้ออกจากทุกอุปกรณ์ (Revoke) ทันทีเมื่อมีการเปลี่ยนรหัสผ่าน เพื่อยกระดับความปลอดภัย
 - **Audit Logging**: บันทึกทุกการกระทำสำคัญ (IP, Timestamp, Action) เพื่อความโปร่งใส
 - **Rate Limiting**: ป้องกันการ Brute-force และการเรียกใช้ API เกินความจำเป็น
 - **Email Verification**: ระบบยืนยันตัวตนผ่านอีเมลก่อนเริ่มใช้งานระบบสอบ
@@ -515,5 +541,5 @@ pnpm build         # บิลด์สำหรับการทำ Production
 
 
 **สร้างเมื่อ**: April 2026  
-**อัปเดตล่าสุด**: 27 April 2026  
-**เวอร์ชัน**: 1.3.0 (Deterministic Randomization Added)
+**อัปเดตล่าสุด**: 10 May 2026  
+**เวอร์ชัน**: 1.4.0 (Modern UI & AI Tone Selection)
