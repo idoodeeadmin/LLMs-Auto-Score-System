@@ -1,3 +1,7 @@
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
 from server.services.ai_service import grading_worker
 from server.services.notification_service import deadline_notification_worker
 import asyncio
@@ -8,7 +12,7 @@ from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from .database import get_db_connection, init_db
-from .auth import get_password_hash, verify_password, create_access_token, decode_token
+from .utils import grading_queue
 from .models import *
 import pymysql
 import random
@@ -18,14 +22,13 @@ import json as json_module_top
 import csv
 import io
 import statistics
-from dotenv import load_dotenv
 import aiofiles
 import httpx
 import time
 import cloudinary
 import cloudinary.uploader
 from cloudinary.utils import cloudinary_url
-load_dotenv()
+
 cloudinary.config(cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME'), api_key=os.getenv('CLOUDINARY_API_KEY'), api_secret=os.getenv('CLOUDINARY_API_SECRET'), secure=True)
 app = FastAPI(title='Evaly API')
 from server.routes import auth_routes, room_routes, exam_routes, notification_routes, question_bank_routes, ai_routes, system_routes

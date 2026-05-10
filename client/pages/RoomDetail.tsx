@@ -175,6 +175,30 @@ export default function RoomDetail() {
     }
   };
 
+  const handleDeleteExam = async () => {
+    if (!token || !roomId || !examToDelete) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/rooms/${roomId}/exams/${examToDelete.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        toast.success("ลบข้อสอบเรียบร้อยแล้ว");
+        setExams((prev) => prev.filter((e) => e.id !== examToDelete.id));
+      } else {
+        const err = await res.json();
+        toast.error(err.detail || "ไม่สามารถลบข้อสอบได้");
+      }
+    } catch {
+      toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+      setExamToDelete(null);
+    }
+  };
+
    const getExamStatus = (exam: Exam) => {
     const now = new Date();
     const start = exam.start_date ? new Date(exam.start_date) : null;

@@ -19,7 +19,7 @@ interface NavbarProps {
 }
 
 interface Notification {
-  type: "deadline_passed" | "ai_graded" | "new_exam" | "deadline_soon" | "result_published";
+  type: "deadline_passed" | "ai_graded" | "new_exam" | "deadline_soon" | "result_published" | "ai_alert" | "ai_complete";
   exam_id: number;
   exam_title: string;
   room_id: number;
