@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+
+<html lang="th">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>3.2 Data Flow and Data Structure Description - Evaly Score</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #ffffff;
+            color: #000000;
+            padding: 40px;
+            margin: 0;
+            font-size: 16px;
+        }
+        .header-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+        .table-caption {
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid #000000;
+        }
+        th, td {
+            border: 1px solid #000000;
+            padding: 10px 14px;
+            line-height: 1.5;
+        }
+        th {
+            background-color: #e5e5e5;
+            text-align: center;
+            font-weight: 700;
+            font-size: 16px;
+            border-bottom: 2px solid #000000;
+            padding: 12px;
+        }
+        .col-name { 
+            width: 16%; 
+            font-weight: 700; 
+            vertical-align: middle; 
+            text-align: center; 
+            background-color: #f8fafc; 
+        }
+        .col-desc { 
+            width: 22%; 
+            vertical-align: middle; 
+            text-align: left;
+        }
+        .col-source { 
+            width: 16%; 
+            vertical-align: middle; 
+            text-align: left;
+        }
+        .col-dest { 
+            width: 16%; 
+            vertical-align: middle; 
+            text-align: left;
+        }
+        .col-struct { 
+            width: 30%; 
+            vertical-align: middle; 
+            word-break: break-word; 
+            font-family: 'Sarabun', sans-serif; 
+            font-size: 15px; 
+            background-color: #f8fafc; 
+        }
+        .process-group {
+            background-color: #f1f5f9;
+            font-weight: 700;
+            font-size: 16px;
+            padding: 12px 16px;
+            border-top: 2px solid #000000;
+            border-bottom: 2px solid #000000;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+<div class="header-title">3.3.2 Data Flow and Data Structure Description</div>
+<div class="table-caption"><b>ตารางที่ 3.2</b> Data Flow and Data Structure Description (คำอธิบายโครงสร้างข้อมูลของทุกเส้นลูกศรในระบบ Evaly Score)</div>
+<table>
+<thead>
+<tr>
+<th>ชื่อเส้นข้อมูล</th>
+<th>คำอธิบาย</th>
+<th>แหล่งต้นทาง</th>
+<th>แหล่งปลายทาง</th>
+<th>โครงสร้างข้อมูล</th>
+</tr>
+</thead>
+<tbody>
+<!-- PROCESS 1.0 -->
+<tr>
+<td class="process-group" colspan="5">Process 1.0: จัดการบัญชีผู้ใช้งานและการเข้าสู่ระบบ</td>
+</tr>
+<!-- ข้อมูลสมัครสมาชิก (2 pairs) -->
+<tr>
+<td class="col-name" rowspan="2">ข้อมูลการสมัครสมาชิก</td>
+<td class="col-desc" rowspan="2">ข้อมูลรายละเอียดส่วนบุคคลและบัญชีที่ผู้ใช้งานกรอกเพื่อขอลงทะเบียนเข้าสู่ระบบ</td>
+<td class="col-source">ผู้เรียน</td>
+<td class="col-dest">Process 1.1 สมัครสมาชิก</td>
+<td class="col-struct" rowspan="2">อีเมล+รหัสผ่าน+ชื่อผู้ใช้งาน</td>
+</tr>
+<tr>
+<td class="col-source">ผู้สอน</td>
+<td class="col-dest">Process 1.1 สมัครสมาชิก</td>
+</tr>
+<!-- ข้อมูลผู้ใช้งาน (16 pairs) -->
+<tr>
+<td class="col-name" rowspan="16">ข้อมูลผู้ใช้งาน</td>
+<td class="col-desc" rowspan="16">ข้อมูลรายละเอียดส่วนบุคคลของผู้ใช้งาน บัญชีผู้ใช้ และสถานะการตรวจสอบสิทธิ์สำหรับใช้ในการสมัครสมาชิก เข้าสู่ระบบ ยืนยันอีเมล และจัดการโปรไฟล์</td>
+<td class="col-source">Process 1.1 สมัครสมาชิก</td>
+<td class="col-dest">ผู้เรียน</td>
+<td class="col-struct" rowspan="16">รหัสผู้ใช้งาน+อีเมล+รหัสผ่าน+ชื่อผู้ใช้งาน+บทบาทผู้ใช้+รหัสประจำตัว+รูปโปรไฟล์+สถานะการยืนยันตัวตน+เวอร์ชันโทเคน</td>
+</tr>
+<tr>
+<td class="col-source">Process 1.1 สมัครสมาชิก</td>
+<td class="col-dest">ผู้สอน</td>
+</tr>
+<tr>
+<td class="col-source">Process 1.1 สมัครสมาชิก</td>
+<td class="col-dest">D1 แฟ้มข้อมูลผู้ใช้งาน</td>
+</tr>
+<tr>
+<td class="col-source">D1 แฟ้มข้อมูลผู้ใช้งาน</td>
+<td class="col-dest">Process 1.1 สมัครสมาชิก</td>
+</tr>
+<tr>
+<td class="col-source">D1 แฟ้มข้อมูลผู้ใช้งาน</td>
+<td class="col-dest">Process 1.2 เข้าสู่ระบบ</td>
+</tr>
+<tr>
+<td class="col-source">Process 1.2 เข้าสู่ระบบ</td>
+<td class="col-dest">D1 แฟ้มข้อมูลผู้ใช้งาน</td>
+</tr>
+<tr>
+<td class="col-source">Process 1.2 เข้าสู่ระบบ</td>
+<td class="col-dest">ผู้เรียน</td>
+</tr>
+<tr>
+<td class="col-source">Process 1.2 เข้าสู่ระบบ</td>
+<td class="col-dest">ผู้สอน</td>
+</tr>
+<tr>
+<td class="col-source">D1 แฟ้มข้อมูลผู้ใช้งาน</td>
+<td class="col-dest">Process 1.3 ยืนยันอีเมล</td>
+</tr>
+<tr>
+<td class="col-source">Process 1.3 ยืนยันอีเมล</td>
+<td class="col-dest">D1 แฟ้มข้อมูลผู้ใช้งาน</td>
+</tr>
+<tr>
+<td class="col-source">ผู้เรียน</td>
+<td class="col-dest">Process 1.4 จัดการข้อมูลโปรไฟล์</td>
+</tr>
+<tr>
+<td class="col-source">Process 1.4 จัดการข้อมูลโปรไฟล์</td>
+<td class="col-dest">ผู้เรียน</td>
+</tr>
+<tr>
+<td class="col-source">ผู้สอน</td>
+<td class="col-dest">Process 1.4 จัดการข้อมูลโปรไฟล์</td>
+</tr>
+<tr>
+<td class="col-source">Process 1.4 จัดการข้อมูลโปรไฟล์</td>
+<td class="col-dest">ผู้สอน</td>
+</tr>
+<tr>
+<td class="col-source">Process 1.4 จัดการข้อมูลโปรไฟล์</td>
+<td class="col-dest">D1 แฟ้มข้อมูลผู้ใช้งาน</td>
+</tr>
+<tr>
+<td class="col-source">D1 แฟ้มข้อมูลผู้ใช้งาน</td>
+<td class="col-dest">Process 1.4 จัดการข้อมูลโปรไฟล์</td>
+</tr>
+<!-- คำสั่งเตรียมส่งอีเมล (1 pair) -->
+<tr>
+<td class="col-name">ข้อมูลสถานะการส่งอีเมล</td>
+<td class="col-desc">ข้อมูลคำสั่งและพารามิเตอร์สำหรับการทริกเกอร์ระบบเพื่อส่งอีเมลยืนยันตัวตน</td>
+<td class="col-source">Process 1.1 สมัครสมาชิก</td>
+<td class="col-dest">Process 1.3 ยืนยันอีเมล</td>
+<td class="col-struct">รหัสผู้ใช้งาน+อีเมล+รหัสโทเคนยืนยันตัวตน+วันเวลาที่ส่งคำสั่ง</td>
+</tr>
+<!-- ข้อมูลเข้าสู่ระบบ (2 pairs) -->
+<tr>
+<td class="col-name" rowspan="2">ข้อมูลการเข้าสู่ระบบ</td>
+<td class="col-desc" rowspan="2">ข้อมูลอีเมลและรหัสผ่านที่ผู้ใช้งานกรอกเพื่อขอตรวจสอบสิทธิ์เข้าสู่ระบบ</td>
+<td class="col-source">ผู้เรียน</td>
+<td class="col-dest">Process 1.2 เข้าสู่ระบบ</td>
+<td class="col-struct" rowspan="2">อีเมล+รหัสผ่าน</td>
+</tr>
+<tr>
+<td class="col-source">ผู้สอน</td>
+<td class="col-dest">Process 1.2 เข้าสู่ระบบ</td>
+</tr>
+<!-- ข้อมูลยืนยันตัวตน Google (1 pair) -->
+<tr>
+<td class="col-name">ข้อมูลโทเคนบัญชี Google</td>
+<td class="col-desc">ข้อมูลยืนยันตัวตนและโปรไฟล์ผู้ใช้ที่ได้รับจากบริการภายนอกผ่าน Google Single Sign-On</td>
+<td class="col-source">Firebase Auth</td>
+<td class="col-dest">Process 1.2 เข้าสู่ระบบ</td>
+<td class="col-struct">รหัสโทเคนกูเกิล+อีเมล+สถานะการยืนยันตัวตนกูเกิล</td>
+</tr>
+<!-- สถานะยืนยันและ Auth Token (1 pair) -->
+<tr>
+<td class="col-name">Authentication Token</td>
+<td class="col-desc">ข้อมูลสถานะการตรวจสอบสิทธิ์และโทเคนยืนยันตัวตนที่ส่งกลับระหว่างระบบกับ Firebase</td>
+<td class="col-source">Process 1.2 เข้าสู่ระบบ</td>
+<td class="col-dest">Firebase Auth</td>
+<td class="col-struct">รหัสโทเคนยืนยันสิทธิ์+ข้อมูลโปรไฟล์ผู้ใช้+รหัสสถานะ</td>
+</tr>
+<!-- ข้อมูลอีเมลสำหรับส่งยืนยันตัวตน (1 pair) -->
+<tr>
+<td class="col-name">ข้อมูลอีเมลและลิงก์ยืนยันตัวตน</td>
+<td class="col-desc">ข้อมูลเนื้อหาอีเมลและลิงก์สำหรับส่งให้ผู้ใช้งานยืนยันตัวตนผ่านเซิร์ฟเวอร์เมล์</td>
+<td class="col-source">Process 1.3 ยืนยันอีเมล</td>
+<td class="col-dest">SMTP Server</td>
+<td class="col-struct">อีเมลผู้รับ+หัวข้ออีเมล+เนื้อหาอีเมล+ลิงก์ยืนยันตัวตน</td>
+</tr>
+<!-- สถานะการจัดส่งอีเมล (1 pair) -->
+<tr>
+<td class="col-name">ข้อมูลสถานะการส่งอีเมล</td>
+<td class="col-desc">ข้อมูลสถานะตอบกลับจากเซิร์ฟเวอร์เมล์เพื่อยืนยันว่าส่งอีเมลสำเร็จหรือล้มเหลว</td>
+<td class="col-source">SMTP Server</td>
+<td class="col-dest">Process 1.3 ยืนยันอีเมล</td>
+<td class="col-struct">รหัสสถานะเซิร์ฟเวอร์เมล์+ข้อความแจ้งผลการส่ง+วันเวลาที่ส่ง</td>
+</tr>
+<!-- รหัสยืนยันอีเมล (2 pairs) -->
+<tr>
+<td class="col-name" rowspan="2">ข้อมูลอีเมลและลิงก์ยืนยันตัวตน</td>
+<td class="col-desc" rowspan="2">รหัสยืนยันตัวตนที่ผู้ใช้กดผ่านลิงก์ในอีเมลเพื่อยืนยันความเป็นเจ้าของบัญชี</td>
+<td class="col-source">ผู้เรียน</td>
+<td class="col-dest">Process 1.3 ยืนยันอีเมล</td>
+<td class="col-struct" rowspan="2">รหัสผู้ใช้งาน+รหัสโทเคนยืนยันอีเมล</td>
+</tr>
+<tr>
+<td class="col-source">ผู้สอน</td>
+<td class="col-dest">Process 1.3 ยืนยันอีเมล</td>
+</tr>
+<!-- PROCESS 2.0 -->
+<tr>
+<td class="process-group" colspan="5">Process 2.0: จัดการห้องเรียนและข่าวสาร</td>
+</tr>
+<!-- ข้อมูลผู้ใช้งาน (FK Reference / 3 pairs) -->
+<tr>
+<td class="col-name" rowspan="3">ข้อมูลผู้ใช้งาน</td>
+<td class="col-desc" rowspan="3">ข้อมูลสิทธิ์ผู้ใช้งานและโปรไฟล์ที่ดึงจากฐานข้อมูลเพื่อตรวจสอบสิทธิ์ความเป็นครูผู้สอน หรือส่งแสดงเป็นรายชื่อนักเรียนในห้อง</td>
+<td class="col-source">D1 แฟ้มข้อมูลผู้ใช้งาน</td>
+<td class="col-dest">Process 2.1 จัดการข้อมูลห้องเรียน</td>
+<td class="col-struct" rowspan="3">รหัสผู้ใช้งาน+อีเมล+รหัสผ่าน+ชื่อผู้ใช้งาน+บทบาทผู้ใช้+รหัสประจำตัวนักศึกษา+รูปโปรไฟล์+สถานะการยืนยันตัวตน+เวอร์ชันโทเคน</td>
+</tr>
+<tr>
+<td class="col-source">D1 แฟ้มข้อมูลผู้ใช้งาน</td>
+<td class="col-dest">Process 2.2 จัดการการเข้าร่วมห้องเรียน</td>
+</tr>
+<tr>
+<td class="col-source">Process 2.2 จัดการการเข้าร่วมห้องเรียน</td>
+<td class="col-dest">ผู้สอน</td>
+</tr>
+<!-- ข้อมูลห้องเรียน (8 pairs) -->
+<tr>
+<td class="col-name" rowspan="8">ข้อมูลห้องเรียน</td>
+<td class="col-desc" rowspan="8">ข้อมูลรายละเอียดของห้องเรียน การจัดการห้องเรียน และรายการห้องเรียนสำหรับผู้สอนและผู้เรียน</td>
+<td class="col-source">ผู้สอน</td>
+<td class="col-dest">Process 2.1 จัดการข้อมูลห้องเรียน</td>
+<td class="col-struct" rowspan="8">รหัสห้องเรียน+ชื่อห้องเรียน+กลุ่มเรียน+รหัสเข้าร่วมห้องเรียน+รหัสผู้สอน</td>
+</tr>
+<tr>
+<td class="col-source">Process 2.1 จัดการข้อมูลห้องเรียน</td>
+<td class="col-dest">ผู้สอน</td>
+</tr>
+<tr>
+<td class="col-source">Process 2.1 จัดการข้อมูลห้องเรียน</td>
+<td class="col-dest">D2 แฟ้มข้อมูลห้องเรียน</td>
+</tr>
+<tr>
+<td class="col-source">D2 แฟ้มข้อมูลห้องเรียน</td>
+<td class="col-dest">Process 2.1 จัดการข้อมูลห้องเรียน</td>
+</tr>
+<tr>
+<td class="col-source">ผู้สอน</td>
+<td class="col-dest">Process 2.2 จัดการการเข้าร่วมห้องเรียน</td>
+</tr>
+<tr>
+<td class="col-source">Process 2.2 จัดการการเข้าร่วมห้องเรียน</td>
+<td class="col-dest">ผู้เรียน</td>
+</tr>
+<tr>
+<td class="col-source">Process 2.2 จัดการการเข้าร่วมห้องเรียน</td>
+<td class="col-dest">D2 แฟ้มข้อมูลห้องเรียน</td>
+</tr>
+<tr>
+<td class="col-source">D2 แฟ้มข้อมูลห้องเรียน</td>
+<td class="col-dest">Process 2.2 จัดการการเข้าร่วมห้องเรียน</td>
+</tr>
+<!-- รหัสเข้าร่วมห้องเรียน 6 หลัก (1 pair) -->
+<tr>
+<td class="col-name">ข้อมูลรหัสเข้าร่วมห้องเรียน</td>
+<td class="col-desc">รหัสคลาสเรียน 6 หลักที่ผู้เรียนกรอกเพื่อขอลงทะเบียนเข้าร่วมห้องเรียน</td>
+<td class="col-source">ผู้เรียน</td>
+<td class="col-dest">Process 2.2 จัดการการเข้าร่วมห้องเรียน</td>
+<td class="col-struct">รหัสผู้เรียน+รหัสเข้าร่วมห้องเรียน6หลัก+วันเวลาที่ส่งคำขอ</td>
+</tr>
+<!-- ข้อมูลการเข้าร่วมห้องเรียน (2 pairs) -->
+<tr>
+<td class="col-name" rowspan="2">ข้อมูลการเข้าร่วมห้องเรียน</td>
+<td class="col-desc" rowspan="2">ข้อมูลการลงทะเบียนเป็นสมาชิกห้องเรียน (Enrollment) หรือการยกเลิกเป็นสมาชิก</td>
+<td class="col-source">ผู้เรียน</td>
+<td class="col-dest">Process 2.2 จัดการการเข้าร่วมห้องเรียน</td>
+<td class="col-struct" rowspan="2">รหัสการเข้าร่วม+รหัสห้องเรียน+รหัสผู้เรียน+วันที่เข้าร่วม</td>
+</tr>
+<tr>
+<td class="col-source">Process 2.2 จัดการการเข้าร่วมห้องเรียน</td>
+<td class="col-dest">D2 แฟ้มข้อมูลห้องเรียน</td>
+</tr>
+<!-- ข้อมูลประกาศข่าวสาร (6 pairs) -->
+<tr>
+<td class="col-name" rowspan="6">ข้อมูลประกาศภายในห้องเรียน</td>
+<td class="col-desc" rowspan="6">ข้อมูลหัวข้อ เนื้อหาประกาศ และสถานะการอ่านประกาศภายในห้องเรียน</td>
+<td class="col-source">ผู้สอน</td>
+<td class="col-dest">Process 2.3 จัดการประกาศข่าวสาร</td>
+<td class="col-struct" rowspan="6">รหัสประกาศ+รหัสห้องเรียน+รหัสผู้สอน+หัวข้อประกาศ+เนื้อหาประกาศ+วันที่สร้าง+รายชื่อผู้เรียนที่เปิดอ่าน(รหัสการอ่าน+รหัสผู้เรียน+วันเวลาที่เปิดอ่าน)</td>
+</tr>
+<tr>
+<td class="col-source">Process 2.3 จัดการประกาศข่าวสาร</td>
+<td class="col-dest">ผู้สอน</td>
+</tr>
+<tr>
+<td class="col-source">ผู้เรียน</td>
+<td class="col-dest">Process 2.3 จัดการประกาศข่าวสาร</td>
+</tr>
+<tr>
+<td class="col-source">Process 2.3 จัดการประกาศข่าวสาร</td>
+<td class="col-dest">ผู้เรียน</td>
+</tr>
+<tr>
+<td class="col-source">Process 2.3 จัดการประกาศข่าวสาร</td>
+<td class="col-dest">D3 แฟ้มข้อมูลประกาศ</td>
+</tr>
+<tr>
+<td class="col-source">D3 แฟ้มข้อมูลประกาศ</td>
+<td class="col-dest">Process 2.3 จัดการประกาศข่าวสาร</td>
+</tr>
+<!-- PROCESS 3.0 -->
+<tr>
+<td class="process-group" colspan="5">Process 3.0: จัดการข้อสอบและเกณฑ์รูบริค</td>
+</tr>
+<!-- ข้อมูลห้องเรียน (FK Reference / 1 pair) -->
+<tr>
+<td class="col-name">ข้อมูลห้องเรียน</td>
+<td class="col-desc">ข้อมูลรายละเอียดห้องเรียนที่ดึงมาตรวจสอบสิทธิ์ความเป็นเจ้าของห้องก่อนจัดการข้อสอบ</td>
+<td class="col-source">D2 แฟ้มข้อมูลห้องเรียน</td>
+<td class="col-dest">Process 3.1 จัดการโครงสร้างและรายละเอียดข้อสอบ</td>
+<td class="col-struct">รหัสห้องเรียน+ชื่อห้องเรียน+กลุ่มเรียน+รหัสเข้าร่วมห้องเรียน+รหัสผู้สอน</td>
+</tr>
+<!-- ข้อมูลการส่งคำตอบ (Lock Check / 1 pair) -->
+<tr>
+<td class="col-name">ข้อมูลการส่งคำตอบ</td>
+<td class="col-desc">ข้อมูลตรวจสอบว่ามีนักเรียนส่งข้อสอบแล้วหรือไม่ เพื่อใช้ล็อกห้ามแก้ไขโครงสร้างข้อสอบ</td>
+<td class="col-source">D6 แฟ้มข้อมูลการส่งคำตอบ</td>
+<td class="col-dest">Process 3.1 จัดการโครงสร้างและรายละเอียดข้อสอบ</td>
+<td class="col-struct">รหัสข้อสอบ+จำนวนผู้ส่งคำตอบ+สถานะการมีผู้ส่งคำตอบแล้ว</td>
+</tr>
+<!-- ข้อมูลข้อสอบ (9 pairs) -->
+<tr>
+<td class="col-name" rowspan="9">ข้อมูลข้อสอบ</td>
+<td class="col-desc" rowspan="9">ข้อมูลรายละเอียดโครงสร้างข้อสอบ เวลาสอบ เกณฑ์การให้คะแนนรูบริค และสถานะการเผยแพร่</td>
+<td class="col-source">ผู้สอน</td>
+<td class="col-dest">Process 3.1 จัดการโครงสร้างและรายละเอียดข้อสอบ</td>
+<td class="col-struct" rowspan="9">รหัสข้อสอบ+รหัสห้องเรียน+ชื่อข้อสอบ+คำอธิบายข้อสอบ+คะแนนเต็ม+วันเวลาเริ่มสอบ+วันเวลาสิ้นสุดการสอบ+สถานะการสลับข้อสอบ+รายการคำถาม(รหัสคำถาม+ข้อคำถาม+คะแนน+เฉลย+เกณฑ์รูบริค+ลำดับข้อ+รูปภาพประกอบ)+วันที่สร้าง</td>
+</tr>
+<tr>
+<td class="col-source">Process 3.1 จัดการโครงสร้างและรายละเอียดข้อสอบ</td>
+<td class="col-dest">ผู้สอน</td>
+</tr>
+<tr>
+<td class="col-source">Process 3.1 จัดการโครงสร้างและรายละเอียดข้อสอบ</td>
+<td class="col-dest">D4 แฟ้มข้อมูลข้อสอบ</td>
+</tr>
+<tr>
+<td class="col-source">D4 แฟ้มข้อมูลข้อสอบ</td>
+<td class="col-dest">Process 3.1 จัดการโครงสร้างและรายละเอียดข้อสอบ</td>
+</tr>
+<tr>
+<td class="col-source">Process 3.2 จัดการรูปภาพประกอบโจทย์</td>
+<td class="col-dest">D4 แฟ้มข้อมูลข้อสอบ</td>
+</tr>
+<tr>
+<td class="col-source">D4 แฟ้มข้อมูลข้อสอบ</td>
+<td class="col-dest">Process 3.2 จัดการรูปภาพประกอบโจทย์</td>
+</tr>
+<tr>
+<td class="col-source">ผู้สอน</td>
+<td class="col-dest">Process 3.3 จัดการเกณฑ์รูบริคด้วย AI และกำหนดเอง</td>
+</tr>
+<tr>
+<td class="col-source">Process 3.3 จัดการเกณฑ์รูบริคด้วย AI และกำหนดเอง</td>
+<td class="col-dest">D4 แฟ้มข้อมูลข้อสอบ</td>
+</tr>
+<tr>
+<td class="col-source">D4 แฟ้มข้อมูลข้อสอบ</td>
+<td class="col-dest">Process 3.3 จัดการเกณฑ์รูบริคด้วย AI และกำหนดเอง</td>
+</tr>
+<!-- ไฟล์รูปภาพประกอบโจทย์ (2 pairs) -->
+<tr>
+<td class="col-name" rowspan="2">ข้อมูลไฟล์รูปภาพโจทย์ข้อสอบ</td>
+<td class="col-desc" rowspan="2">ไฟล์รูปภาพคำถามหรือภาพประกอบโจทย์ที่ผู้สอนอัปโหลดเพื่อส่งไปเก็บที่ Cloudinary</td>
+<td class="col-source">ผู้สอน</td>
+<td class="col-dest">Process 3.2 จัดการรูปภาพประกอบโจทย์</td>
+<td class="col-struct" rowspan="2">ชื่อไฟล์+ประเภทไฟล์+ข้อมูลรูปภาพฐาน64+ขนาดไฟล์+ตำแหน่งจัดเก็บไฟล์</td>
+</tr>
+<tr>
+<td class="col-source">Process 3.2 จัดการรูปภาพประกอบโจทย์</td>
+<td class="col-dest">Cloudinary API</td>
+</tr>
+<!-- ข้อมูล URL รูปภาพประกอบโจทย์ (2 pairs) -->
+<tr>
+<td class="col-name" rowspan="2">ข้อมูล URL และสถานะการจัดเก็บรูปภาพ</td>
+<td class="col-desc" rowspan="2">ลิงก์ URL ของรูปภาพโจทย์ที่ได้รับจาก Cloudinary เพื่อนำมาบันทึกลงในข้อสอบ</td>
+<td class="col-source">Cloudinary API</td>
+<td class="col-dest">Process 3.2 จัดการรูปภาพประกอบโจทย์</td>
+<td class="col-struct" rowspan="2">รหัสสินทรัพย์คลาวด์+ลิงก์รูปภาพโจทย์+ความกว้างรูปภาพ+ความสูงรูปภาพ+วันเวลาที่อัปโหลด</td>
+</tr>
+<tr>
+<td class="col-source">Process 3.2 จัดการรูปภาพประกอบโจทย์</td>
+<td class="col-dest">ผู้สอน</td>
+</tr>
+<!-- ข้อมูลเกณฑ์การให้คะแนนรูบริค (1 pair) -->
+<tr>
+<td class="col-name">โครงสร้างเกณฑ์การประเมิน</td>
+<td class="col-desc">ข้อมูลเกณฑ์รูบริค (Rubrics) และระดับคะแนนที่ผู้สอนกำหนดเองหรือเลือกจาก Presets</td>
+<td class="col-source">ผู้สอน</td>
+<td class="col-dest">Process 3.3 จัดการเกณฑ์รูบริคด้วย AI และกำหนดเอง</td>
+<td class="col-struct">รหัสรูบริค+รหัสข้อสอบ+รายการเกณฑ์การประเมิน(รหัสเกณฑ์+ชื่อเกณฑ์+คำอธิบาย+คะแนนเต็ม+ระดับคะแนน)+วันที่อัปเดตล่าสุด</td>
+</tr>
+<!-- คำสั่งให้ AI สร้างเกณฑ์อัตโนมัติ (1 pair) -->
+<tr>
+<td class="col-name">ข้อมูลคำสั่งสร้างโครงสร้างเกณฑ์การประเมิน</td>
+<td class="col-desc">คำสั่งจากผู้สอนเพื่อให้ระบบเรียกใช้งาน Gemini AI ในการวิเคราะห์และสร้างเกณฑ์รูบริค</td>
+<td class="col-source">ผู้สอน</td>
+<td class="col-dest">Process 3.3 จัดการเกณฑ์รูบริคด้วย AI และกำหนดเอง</td>
+<td class="col-struct">รหัสข้อสอบ+รหัสผู้สอน+พารามิเตอร์คำสั่งปัญญาประดิษฐ์+วันเวลาที่ส่งคำสั่ง</td>
+</tr>
+<!-- ข้อมูลโจทย์ข้อสอบเพื่อขอสร้างเกณฑ์ (1 pair) -->
+<tr>
+<td class="col-name">ข้อมูลโจทย์ข้อสอบและเกณฑ์การให้คะแนน</td>
+<td class="col-desc">ข้อมูลคำถามและแนวคำตอบที่ส่งไปให้ Gemini AI ช่วยวิเคราะห์และสร้างเกณฑ์รูบริคอัตโนมัติ</td>
+<td class="col-source">Process 3.3 จัดการเกณฑ์รูบริคด้วย AI และกำหนดเอง</td>
+<td class="col-dest">Gemini API</td>
+<td class="col-struct">รหัสข้อสอบ+ชื่อข้อสอบ+คำอธิบายข้อสอบ+รายการคำถามและแนวคำตอบ+พารามิเตอร์คำสั่งปัญญาประดิษฐ์</td>
+</tr>
+<!-- เกณฑ์รูบริคฉบับร่างจาก AI (2 pairs) -->
+<tr>
+<td class="col-name" rowspan="2">ข้อมูลเกณฑ์รูบริคอัตโนมัติ</td>
+<td class="col-desc" rowspan="2">โครงสร้างเกณฑ์รูบริคที่ AI สร้างสำเร็จและส่งกลับมาให้ผู้สอนตรวจสอบก่อนกดบันทึกจริง</td>
+<td class="col-source">Gemini API</td>
+<td class="col-dest">Process 3.3 จัดการเกณฑ์รูบริคด้วย AI และกำหนดเอง</td>
+<td class="col-struct" rowspan="2">รหัสการตอบกลับปัญญาประดิษฐ์+รหัสข้อสอบ+โครงสร้างเกณฑ์รูบริคฉบับร่าง+ค่าความมั่นใจปัญญาประดิษฐ์+วันเวลาที่สร้าง</td>
+</tr>
+<tr>
+<td class="col-source">Process 3.3 จัดการเกณฑ์รูบริคด้วย AI และกำหนดเอง</td>
+<td class="col-dest">ผู้สอน</td>
+</tr>
+<!-- PROCESS 4.0 -->
+<tr>
+<td class="process-group" colspan="5">Process 4.0: จัดการคลังข้อสอบส่วนตัว</td>
+</tr>
+<!-- ข้อมูลข้อสอบ (Fetch for Copy & Import / 2 pairs) -->
+<tr>
+<td class="col-name" rowspan="2">ข้อมูลข้อสอบ</td>
+<td class="col-desc" rowspan="2">ข้อมูลข้อสอบต้นฉบับที่ดึงมาคัดลอกลงคลังส่วนตัว หรือข้อมูลข้อสอบใหม่ที่ถูกสร้างจากการ Import จากคลัง</td>
+<td class="col-source">D4 แฟ้มข้อมูลข้อสอบ</td>
+<td class="col-dest">Process 4.1 เพิ่มข้อสอบเข้าคลังส่วนตัว</td>
+<td class="col-struct" rowspan="2">รหัสข้อสอบ+รหัสห้องเรียน+ชื่อข้อสอบ+คำอธิบายข้อสอบ+คะแนนเต็ม+วันเวลาเริ่มสอบ+วันเวลาสิ้นสุดการสอบ+สถานะการสลับข้อสอบ+รายการคำถาม(รหัสคำถาม+ข้อคำถาม+คะแนน+เฉลย+เกณฑ์รูบริค+ลำดับข้อ+รูปภาพประกอบ)+วันที่สร้าง</td>
+</tr>
+<tr>
+<td class="col-source">Process 4.2 จัดการและเรียกใช้คลังข้อสอบ</td>
+<td class="col-dest">D4 แฟ้มข้อมูลข้อสอบ</td>
+</tr>
+<!-- คำสั่งเพิ่มข้อสอบเข้าคลัง (1 pair) -->
+<tr>
+<td class="col-name">ข้อมูลการจัดการคลังข้อสอบ</td>
+<td class="col-desc">คำสั่งจากผู้สอนเพื่อบันทึกข้อสอบและเกณฑ์รูบริคเก็บไว้ในคลังข้อสอบส่วนตัว</td>
+<td class="col-source">ผู้สอน</td>
+<td class="col-dest">Process 4.1 เพิ่มข้อสอบเข้าคลังส่วนตัว</td>
+<td class="col-struct">รหัสข้อสอบ+รหัสผู้สอน+วันเวลาที่ทำรายการ</td>
+</tr>
+<!-- ข้อมูลคลังข้อสอบ (7 pairs) -->
+<tr>
+<td class="col-name" rowspan="7">ข้อมูลคลังข้อสอบ</td>
+<td class="col-desc" rowspan="7">ข้อมูลรายการข้อสอบและเกณฑ์รูบริคในคลังข้อสอบส่วนตัว (Question Bank) ของผู้สอน</td>
+<td class="col-source">Process 4.1 เพิ่มข้อสอบเข้าคลังส่วนตัว</td>
+<td class="col-dest">ผู้สอน</td>
+<td class="col-struct" rowspan="7">รหัสรายการคลังข้อสอบ+รหัสผู้สอน+ข้อคำถาม+คะแนน+เฉลย+เกณฑ์รูบริค+แท็ก+วันที่สร้าง</td>
+</tr>
+<tr>
+<td class="col-source">Process 4.1 เพิ่มข้อสอบเข้าคลังส่วนตัว</td>
+<td class="col-dest">D5 แฟ้มข้อมูลคลังข้อสอบ</td>
+</tr>
+<tr>
+<td class="col-source">D5 แฟ้มข้อมูลคลังข้อสอบ</td>
+<td class="col-dest">Process 4.1 เพิ่มข้อสอบเข้าคลังส่วนตัว</td>
+</tr>
+<tr>
+<td class="col-source">ผู้สอน</td>
+<td class="col-dest">Process 4.2 จัดการและเรียกใช้คลังข้อสอบ</td>
+</tr>
+<tr>
+<td class="col-source">Process 4.2 จัดการและเรียกใช้คลังข้อสอบ</td>
+<td class="col-dest">ผู้สอน</td>
+</tr>
+<tr>
+<td class="col-source">Process 4.2 จัดการและเรียกใช้คลังข้อสอบ</td>
+<td class="col-dest">D5 แฟ้มข้อมูลคลังข้อสอบ</td>
+</tr>
+<tr>
+<td class="col-source">D5 แฟ้มข้อมูลคลังข้อสอบ</td>
+<td class="col-dest">Process 4.2 จัดการและเรียกใช้คลังข้อสอบ</td>
+</tr>
+<!-- คำสั่งดึงข้อสอบไปใช้งาน (1 pair) -->
+<tr>
+<td class="col-name">ข้อมูลการดึงข้อสอบจากคลัง</td>
+<td class="col-desc">คำสั่งจากผู้สอนเพื่อดึงข้อสอบจากคลังส่วนตัวไปสร้างเป็นข้อสอบใหม่ในห้องเรียน</td>
+<td class="col-source">ผู้สอน</td>
+<td class="col-dest">Process 4.2 จัดการและเรียกใช้คลังข้อสอบ</td>
+<td class="col-struct">รหัสรายการคลังข้อสอบ+รหัสห้องเรียนปลายทาง+รหัสผู้สอน+วันเวลาที่ดึงไปใช้</td>
+</tr>
+<!-- PROCESS 5.0 -->
+<tr>
+<td class="process-group" colspan="5">Process 5.0: จัดการการทำข้อสอบและส่งคำตอบ</td>
+</tr>
+<!-- ข้อมูลรหัสข้อสอบเพื่อเริ่มสอบ (1 pair) -->
+<tr>
+<td class="col-name">ข้อมูลรหัสข้อสอบเพื่อเริ่มสอบ</td>
+<td class="col-desc">คำสั่งจากผู้เรียนเพื่อขอเริ่มทำข้อสอบและเริ่มนับเวลาถอยหลังการสอบ</td>
+<td class="col-source">ผู้เรียน</td>
+<td class="col-dest">Process 5.1 จัดการการเริ่มทำข้อสอบและจับเวลา</td>
+<td class="col-struct">รหัสผู้เรียน+รหัสข้อสอบ+รหัสห้องเรียน+วันเวลาที่ขอเริ่มสอบ</td>
+</tr>
+<!-- ข้อมูลผู้ใช้งาน (User Verification / 1 pair) -->
+<tr>
+<td class="col-name">ข้อมูลผู้ใช้งาน</td>
+<td class="col-desc">ข้อมูลสิทธิ์ผู้เรียนที่ดึงจากฐานข้อมูลเพื่อตรวจสอบสถานะก่อนอนุญาตให้เข้าทำข้อสอบ</td>
+<td class="col-source">D1 แฟ้มข้อมูลผู้ใช้งาน</td>
+<td class="col-dest">Process 5.1 จัดการการเริ่มทำข้อสอบและจับเวลา</td>
+<td class="col-struct">รหัสผู้ใช้งาน+อีเมล+รหัสผ่าน+ชื่อผู้ใช้งาน+บทบาทผู้ใช้+รหัสประจำตัวนักศึกษา+รูปโปรไฟล์+สถานะการยืนยันตัวตน+เวอร์ชันโทเคน</td>
+</tr>
+<!-- ข้อมูลข้อสอบ (2 pairs) -->
+<tr>
+<td class="col-name" rowspan="2">ข้อมูลข้อสอบ</td>
+<td class="col-desc" rowspan="2">ข้อมูลโจทย์คำถามทั้งหมดพร้อมเวลาสอบที่เหลืออยู่ (รวมเวลาที่ได้ขยายเพิ่มถ้ามี)</td>
+<td class="col-source">D4 แฟ้มข้อมูลข้อสอบ</td>
+<td class="col-dest">Process 5.1 จัดการการเริ่มทำข้อสอบและจับเวลา</td>
+<td class="col-struct" rowspan="2">รหัสข้อสอบ+รหัสห้องเรียน+ชื่อข้อสอบ+คำอธิบายข้อสอบ+คะแนนเต็ม+วันเวลาเริ่มสอบ+วันเวลาสิ้นสุดการสอบ+สถานะการสลับข้อสอบ+รายการคำถาม(รหัสคำถาม+ข้อคำถาม+คะแนน+เฉลย+เกณฑ์รูบริค+ลำดับข้อ+รูปภาพประกอบ)+เวลาสอบที่ขยายเพิ่ม+เวลาที่เหลืออยู่</td>
+</tr>
+<tr>
+<td class="col-source">Process 5.1 จัดการการเริ่มทำข้อสอบและจับเวลา</td>
+<td class="col-dest">ผู้เรียน</td>
+</tr>
+<!-- ข้อมูลแบบร่างคำตอบ (4 pairs) -->
+<tr>
+<td class="col-name" rowspan="4">ข้อมูลแบบร่างคำตอบ</td>
+<td class="col-desc" rowspan="4">ข้อมูลคำตอบที่ผู้เรียนพิมพ์หรือเขียนมือซึ่งระบบทำการบันทึกอัตโนมัติ (Auto-save) ระหว่างการสอบ</td>
+<td class="col-source">ผู้เรียน</td>
+<td class="col-dest">Process 5.2 บันทึกแบบร่างและอัปโหลดรูปลายมือ</td>
+<td class="col-struct" rowspan="4">รหัสแบบร่าง+รหัสข้อสอบ+รหัสผู้เรียน+ข้อมูลแบบร่างคำตอบ+วันเวลาที่อัปเดตล่าสุด</td>
+</tr>
+<tr>
+<td class="col-source">Process 5.2 บันทึกแบบร่างและอัปโหลดรูปลายมือ</td>
+<td class="col-dest">D7 แฟ้มข้อมูลแบบร่าง</td>
+</tr>
+<tr>
+<td class="col-source">D7 แฟ้มข้อมูลแบบร่าง</td>
+<td class="col-dest">Process 5.2 บันทึกแบบร่างและอัปโหลดรูปลายมือ</td>
+</tr>
+<tr>
+<td class="col-source">D7 แฟ้มข้อมูลแบบร่าง</td>
+<td class="col-dest">Process 5.3 ยืนยันการส่งคำตอบ</td>
+</tr>
+<!-- ไฟล์รูปภาพลายมือคำตอบ (2 pairs) -->
+<tr>
+<td class="col-name" rowspan="2">ข้อมูลไฟล์รูปภาพคำตอบลายมือเขียน</td>
+<td class="col-desc" rowspan="2">ไฟล์รูปภาพกระดาษคำตอบเขียนมือที่ผู้เรียนอัปโหลดเพื่อส่งไปเก็บที่ Cloudinary</td>
+<td class="col-source">ผู้เรียน</td>
+<td class="col-dest">Process 5.2 บันทึกแบบร่างและอัปโหลดรูปลายมือ</td>
+<td class="col-struct" rowspan="2">ชื่อไฟล์+ประเภทไฟล์+ข้อมูลรูปภาพฐาน64+ขนาดไฟล์+รหัสผู้เรียน+รหัสข้อสอบ+รหัสคำถาม</td>
+</tr>
+<tr>
+<td class="col-source">Process 5.2 บันทึกแบบร่างและอัปโหลดรูปลายมือ</td>
+<td class="col-dest">Cloudinary API</td>
+</tr>
+<!-- ข้อมูล URL รูปภาพลายมือคำตอบ (2 pairs) -->
+<tr>
+<td class="col-name" rowspan="2">ข้อมูล URL และสถานะการจัดเก็บรูปภาพ</td>
+<td class="col-desc" rowspan="2">ลิงก์ URL ของรูปภาพคำตอบลายมือที่ได้รับจาก Cloudinary เพื่อนำมาบันทึกลงในแบบร่าง</td>
+<td class="col-source">Cloudinary API</td>
+<td class="col-dest">Process 5.2 บันทึกแบบร่างและอัปโหลดรูปลายมือ</td>
+<td class="col-struct" rowspan="2">รหัสสินทรัพย์คลาวด์+ลิงก์รูปภาพคำตอบลายมือ+รหัสผู้เรียน+รหัสข้อสอบ+รหัสคำถาม+วันเวลาที่อัปโหลด</td>
+</tr>
+<tr>
+<td class="col-source">Process 5.2 บันทึกแบบร่างและอัปโหลดรูปลายมือ</td>
+<td class="col-dest">D7 แฟ้มข้อมูลแบบร่าง</td>
+</tr>
+<!-- ข้อมูลการส่งคำตอบ (4 pairs) -->
+<tr>
+<td class="col-name" rowspan="4">ข้อมูลการส่งคำตอบ</td>
+<td class="col-desc" rowspan="4">ข้อมูลกระดาษคำตอบฉบับสมบูรณ์ที่ผู้เรียนกดยืนยันส่งเข้าสู่ระบบ พร้อมบันทึกสถานะการส่ง</td>
+<td class="col-source">ผู้เรียน</td>
+<td class="col-dest">Process 5.3 ยืนยันการส่งคำตอบ</td>
+<td class="col-struct" rowspan="4">รหัสการส่งคำตอบ+รหัสข้อสอบ+รหัสผู้เรียน+สถานะการส่ง+คะแนนรวม+วันเวลาที่ส่ง+สถานะการตรวจด้วยAI+รายการคำตอบ(รหัสคำตอบ+รหัสคำถาม+ข้อความคำตอบ+คะแนนAI+คำติชมAI+ระดับความมั่นใจAI+คะแนนผู้สอน+ความคิดเห็นผู้สอน+รูปภาพคำตอบ)</td>
+</tr>
+<tr>
+<td class="col-source">Process 5.3 ยืนยันการส่งคำตอบ</td>
+<td class="col-dest">ผู้เรียน</td>
+</tr>
+<tr>
+<td class="col-source">Process 5.3 ยืนยันการส่งคำตอบ</td>
+<td class="col-dest">D6 แฟ้มข้อมูลการส่งคำตอบ</td>
+</tr>
+<tr>
+<td class="col-source">D6 แฟ้มข้อมูลการส่งคำตอบ</td>
+<td class="col-dest">Process 5.3 ยืนยันการส่งคำตอบ</td>
+</tr>
+<!-- PROCESS 6.0 -->
+<tr>
+<td class="process-group" colspan="5">Process 6.0: ประเมินผลคำตอบด้วย AI</td>
+</tr>
+<!-- ข้อมูลการส่งคำตอบ (3 pairs) -->
+<tr>
+<td class="col-name" rowspan="3">ข้อมูลการส่งคำตอบ</td>
+<td class="col-desc" rowspan="3">ข้อมูลคำตอบและ URL รูปภาพลายมือของนักเรียนที่ดึงมารอการตรวจ หรือข้อมูลผลคะแนนและฟีดแบ็กจาก AI ที่นำมาบันทึกอัปเดต</td>
+<td class="col-source">D6 แฟ้มข้อมูลการส่งคำตอบ</td>
+<td class="col-dest">Process 6.1 เตรียมข้อมูลคำตอบและเกณฑ์รูบริค</td>
+<td class="col-struct" rowspan="3">รหัสการส่งคำตอบ+รหัสข้อสอบ+รหัสผู้เรียน+สถานะการส่ง+คะแนนรวม+วันเวลาที่ส่ง+สถานะการตรวจด้วยAI+รายการคำตอบ(รหัสคำตอบ+รหัสคำถาม+ข้อความคำตอบ+คะแนนAI+คำติชมAI+ระดับความมั่นใจAI+คะแนนผู้สอน+ความคิดเห็นผู้สอน+รูปภาพคำตอบ)</td>
+</tr>
+<tr>
+<td class="col-source">Process 6.3 บันทึกคะแนนและข้อเสนอแนะ</td>
+<td class="col-dest">D6 แฟ้มข้อมูลการส่งคำตอบ</td>
+</tr>
+<tr>
+<td class="col-source">D6 แฟ้มข้อมูลการส่งคำตอบ</td>
+<td class="col-dest">Process 6.3 บันทึกคะแนนและข้อเสนอแนะ</td>
+</tr>
+<!-- ข้อมูลข้อสอบ (1 pair) -->
+<tr>
+<td class="col-name">ข้อมูลข้อสอบ</td>
+<td class="col-desc">ข้อมูลเกณฑ์รูบริคของข้อสอบข้อนั้นที่ดึงมาเพื่อใช้เป็นกรอบในการให้คะแนนของ AI</td>
+<td class="col-source">D4 แฟ้มข้อมูลข้อสอบ</td>
+<td class="col-dest">Process 6.1 เตรียมข้อมูลคำตอบและเกณฑ์รูบริค</td>
+<td class="col-struct">รหัสข้อสอบ+รายการเกณฑ์การประเมิน(รหัสเกณฑ์+ชื่อเกณฑ์+คำอธิบาย+คะแนนเต็ม+ระดับคะแนน)</td>
+</tr>
+<!-- ข้อมูลคำตอบนักเรียนและเกณฑ์รูบริค (2 pairs) -->
+<tr>
+<td class="col-name" rowspan="2">ข้อมูลคำตอบของนักเรียน</td>
+<td class="col-desc" rowspan="2">ชุดข้อมูลและคำสั่ง Prompt ฉบับสมบูรณ์ที่ส่งไปยัง Gemini API เพื่อให้ AI ทำการวิเคราะห์และประเมินผล</td>
+<td class="col-source">Process 6.1 เตรียมข้อมูลคำตอบและเกณฑ์รูบริค</td>
+<td class="col-dest">Process 6.2 ประมวลผลและประเมินผ่าน AI</td>
+<td class="col-struct" rowspan="2">คำสั่งระบบปัญญาประดิษฐ์+ข้อความคำตอบผู้เรียน+ลิงก์รูปภาพลายมือผู้เรียน+ข้อคำถามข้อสอบ+รายการเกณฑ์รูบริค+คะแนนเต็ม</td>
+</tr>
+<tr>
+<td class="col-source">Process 6.2 ประมวลผลและประเมินผ่าน AI</td>
+<td class="col-dest">Gemini API</td>
+</tr>
+<!-- ผลการประเมินคะแนนและข้อเสนอแนะจาก AI (2 pairs) -->
+<tr>
+<td class="col-name" rowspan="2">ผลการประเมินและข้อเสนอแนะอัจฉริยะ</td>
+<td class="col-desc" rowspan="2">ผลคะแนน ค่าความมั่นใจ (Confidence) และคำอธิบายฟีดแบ็กรายจุดที่ AI ตรวจเสร็จและส่งกลับมา</td>
+<td class="col-source">Gemini API</td>
+<td class="col-dest">Process 6.2 ประมวลผลและประเมินผ่าน AI</td>
+<td class="col-struct" rowspan="2">รหัสการส่งคำตอบ+คะแนนรวม+ระดับความมั่นใจปัญญาประดิษฐ์+ข้อเสนอแนะรายจุด+คะแนนรูบริครายข้อ+เวลาที่ใช้ประมวลผล</td>
+</tr>
+<tr>
+<td class="col-source">Process 6.2 ประมวลผลและประเมินผ่าน AI</td>
+<td class="col-dest">Process 6.3 บันทึกคะแนนและข้อเสนอแนะ</td>
+</tr>
+<!-- PROCESS 7.0 -->
+<tr>
+<td class="process-group" colspan="5">Process 7.0: ตรวจสอบและประกาศผลคะแนน</td>
+</tr>
+<!-- ข้อมูลข้อสอบ (1 pair) -->
+<tr>
+<td class="col-name">ข้อมูลข้อสอบ</td>
+<td class="col-desc">ข้อมูลเฉลยและเกณฑ์รูบริคที่ดึงมาแสดงประกอบให้ผู้สอนใช้เปรียบเทียบในการตรวจทาน</td>
+<td class="col-source">D4 แฟ้มข้อมูลข้อสอบ</td>
+<td class="col-dest">Process 7.1 ตรวจสอบและปรับปรุงคะแนน</td>
+<td class="col-struct">รหัสข้อสอบ+ชื่อข้อสอบ+แนวคำตอบเฉลย+รายการเกณฑ์รูบริค</td>
+</tr>
+<!-- ข้อมูลการส่งคำตอบ (9 pairs) -->
+<tr>
+<td class="col-name" rowspan="9">ข้อมูลการส่งคำตอบ</td>
+<td class="col-desc" rowspan="9">ข้อมูลรายการคำตอบของนักเรียนพร้อมคะแนน AI ที่ส่งให้ผู้สอนตรวจสอบ การปรับปรุงคะแนนโดยผู้สอน และการประกาศผลสอบให้ผู้เรียน</td>
+<td class="col-source">ผู้สอน</td>
+<td class="col-dest">Process 7.1 ตรวจสอบและปรับปรุงคะแนน</td>
+<td class="col-struct" rowspan="9">รหัสการส่งคำตอบ+รหัสข้อสอบ+รหัสผู้เรียน+สถานะการส่ง+คะแนนรวม+วันเวลาที่ส่ง+สถานะการตรวจด้วยAI+รายการคำตอบ(รหัสคำตอบ+รหัสคำถาม+ข้อความคำตอบ+คะแนนAI+คำติชมAI+ระดับความมั่นใจAI+คะแนนผู้สอน+ความคิดเห็นผู้สอน+รูปภาพคำตอบ)</td>
+</tr>
+<tr>
+<td class="col-source">Process 7.1 ตรวจสอบและปรับปรุงคะแนน</td>
+<td class="col-dest">ผู้สอน</td>
+</tr>
+<tr>
+<td class="col-source">Process 7.1 ตรวจสอบและปรับปรุงคะแนน</td>
+<td class="col-dest">D6 แฟ้มข้อมูลการส่งคำตอบ</td>
+</tr>
+<tr>
+<td class="col-source">D6 แฟ้มข้อมูลการส่งคำตอบ</td>
+<td class="col-dest">Process 7.1 ตรวจสอบและปรับปรุงคะแนน</td>
+</tr>
+<tr>
+<td class="col-source">ผู้สอน</td>
+<td class="col-dest">Process 7.3 อนุมัติและประกาศผลคะแนน</td>
+</tr>
+<tr>
+<td class="col-source">Process 7.3 อนุมัติและประกาศผลคะแนน</td>
+<td class="col-dest">D6 แฟ้มข้อมูลการส่งคำตอบ</td>
+</tr>
+<tr>
+<td class="col-source">D6 แฟ้มข้อมูลการส่งคำตอบ</td>
+<td class="col-dest">Process 7.3 อนุมัติและประกาศผลคะแนน</td>
+</tr>
+<tr>
+<td class="col-source">Process 7.3 อนุมัติและประกาศผลคะแนน</td>
+<td class="col-dest">ผู้สอน</td>
+</tr>
+<tr>
+<td class="col-source">Process 7.3 อนุมัติและประกาศผลคะแนน</td>
+<td class="col-dest">ผู้เรียน</td>
+</tr>
+<!-- ข้อมูลประวัติการแก้ไขคะแนน (3 pairs) -->
+<tr>
+<td class="col-name" rowspan="3">ข้อมูลประวัติการแก้ไขคะแนน</td>
+<td class="col-desc" rowspan="3">ข้อมูลบันทึกประวัติการแก้ไขคะแนน (Audit Log) เพื่อความโปร่งใสและสามารถตรวจสอบย้อนหลังได้</td>
+<td class="col-source">Process 7.1 ตรวจสอบและปรับปรุงคะแนน</td>
+<td class="col-dest">Process 7.2 จัดการประวัติการแก้ไขคะแนน</td>
+<td class="col-struct" rowspan="3">รหัสบันทึกประวัติ+รหัสผู้ใช้งาน+ประเภทการกระทำ+รหัสเอนทิตี+รายละเอียดการแก้ไข+ไอพีแอดเดรส+วันเวลาที่บันทึก</td>
+</tr>
+<tr>
+<td class="col-source">Process 7.2 จัดการประวัติการแก้ไขคะแนน</td>
+<td class="col-dest">D9 แฟ้มข้อมูลประวัติการใช้งาน</td>
+</tr>
+<tr>
+<td class="col-source">D9 แฟ้มข้อมูลประวัติการใช้งาน</td>
+<td class="col-dest">Process 7.2 จัดการประวัติการแก้ไขคะแนน</td>
+</tr>
+<!-- คำขอตรวจสอบผลสอบที่อนุมัติแล้ว (1 pair) -->
+<tr>
+<td class="col-name">ข้อมูลการเรียกดูผลคะแนน</td>
+<td class="col-desc">คำสั่งจากผู้เรียนเพื่อขอเข้าดูผลคะแนนและข้อเสนอแนะของตนเองหลังจากที่ครูประกาศผลแล้ว</td>
+<td class="col-source">ผู้เรียน</td>
+<td class="col-dest">Process 7.3 อนุมัติและประกาศผลคะแนน</td>
+<td class="col-struct">รหัสผู้เรียน+รหัสข้อสอบ+วันเวลาที่ขอดูผลสอบ</td>
+</tr>
+<tr>
+<td class="col-name">ข้อมูลการแจ้งเตือนใหม่</td>
+<td class="col-desc">ข้อมูลรายละเอียดการแจ้งเตือนที่เพิ่งถูกสร้างขึ้นเพื่อบันทึกลงประวัติ</td>
+<td class="col-source">7.0 ระบบจัดการแจ้งเตือน</td>
+<td class="col-dest">D12 แฟ้มข้อมูลประวัติแจ้งเตือน</td>
+<td class="col-struct">user_id, type, message, link, data, created_at</td>
+</tr>
+<tr>
+<td class="col-name">ข้อมูลประวัติการแจ้งเตือน</td>
+<td class="col-desc">ข้อมูลประวัติการแจ้งเตือนย้อนหลังที่ถูกดึงมาแสดงผลเมื่อผู้ใช้เรียกดู</td>
+<td class="col-source">D12 แฟ้มข้อมูลประวัติแจ้งเตือน</td>
+<td class="col-dest">7.0 ระบบจัดการแจ้งเตือน</td>
+<td class="col-struct">user_id, type, message, link, data, is_read, created_at</td>
+</tr>
+<!-- PROCESS 8.0 -->
+<tr>
+<td class="process-group" colspan="5">Process 8.0: จัดการการแจ้งเตือนและส่งออกสถิติ</td>
+</tr>
+<!-- ข้อมูลการแจ้งเตือน (10 pairs) -->
+<tr>
+<td class="col-name" rowspan="10">ข้อมูลการแจ้งเตือนแบบเรียลไทม์</td>
+<td class="col-desc" rowspan="10">ข้อมูลข้อความแจ้งเตือนระบบแบบเรียลไทม์ผ่าน Socket.io และสถานะการเปิดอ่านแจ้งเตือนของผู้ใช้งาน</td>
+<td class="col-source">Process 8.1 ส่งการแจ้งเตือนผ่าน Socket.io</td>
+<td class="col-dest">ผู้เรียน</td>
+<td class="col-struct" rowspan="10">รหัสแจ้งเตือน+รหัสผู้ใช้ปลายทาง+หัวข้อแจ้งเตือน+ข้อความแจ้งเตือน+ประเภทการแจ้งเตือน+สถานะการอ่าน+วันที่สร้าง+วันที่เปิดอ่าน</td>
+</tr>
+<tr>
+<td class="col-source">Process 8.1 ส่งการแจ้งเตือนผ่าน Socket.io</td>
+<td class="col-dest">ผู้สอน</td>
+</tr>
+<tr>
+<td class="col-source">Process 8.1 ส่งการแจ้งเตือนผ่าน Socket.io</td>
+<td class="col-dest">D8 แฟ้มข้อมูลการแจ้งเตือน</td>
+</tr>
+<tr>
+<td class="col-source">D8 แฟ้มข้อมูลการแจ้งเตือน</td>
+<td class="col-dest">Process 8.1 ส่งการแจ้งเตือนผ่าน Socket.io</td>
+</tr>
+<tr>
+<td class="col-source">ผู้เรียน</td>
+<td class="col-dest">Process 8.2 จัดการสถานะการอ่านแจ้งเตือน</td>
+</tr>
+<tr>
+<td class="col-source">Process 8.2 จัดการสถานะการอ่านแจ้งเตือน</td>
+<td class="col-dest">ผู้เรียน</td>
+</tr>
+<tr>
+<td class="col-source">ผู้สอน</td>
+<td class="col-dest">Process 8.2 จัดการสถานะการอ่านแจ้งเตือน</td>
+</tr>
+<tr>
+<td class="col-source">Process 8.2 จัดการสถานะการอ่านแจ้งเตือน</td>
+<td class="col-dest">ผู้สอน</td>
+</tr>
+<tr>
+<td class="col-source">Process 8.2 จัดการสถานะการอ่านแจ้งเตือน</td>
+<td class="col-dest">D8 แฟ้มข้อมูลการแจ้งเตือน</td>
+</tr>
+<tr>
+<td class="col-source">D8 แฟ้มข้อมูลการแจ้งเตือน</td>
+<td class="col-dest">Process 8.2 จัดการสถานะการอ่านแจ้งเตือน</td>
+</tr>
+<!-- คำสั่งขอส่งออกข้อมูลสถิติ (1 pair) -->
+<tr>
+<td class="col-name">ข้อมูลเงื่อนไขการส่งออกสถิติ</td>
+<td class="col-desc">คำสั่งจากผู้สอนเพื่อขอส่งออกข้อมูลคะแนนและสถิติของห้องเรียนออกมาเป็นไฟล์เอกสาร</td>
+<td class="col-source">ผู้สอน</td>
+<td class="col-dest">Process 8.3 ส่งออกรายงานและสถิติ</td>
+<td class="col-struct">รหัสข้อสอบ+รหัสผู้สอน+รูปแบบไฟล์ที่ต้องการส่งออก+วันเวลาที่ส่งคำขอ</td>
+</tr>
+<!-- ข้อมูลข้อสอบ (Header Data / 1 pair) -->
+<tr>
+<td class="col-name">ข้อมูลข้อสอบ</td>
+<td class="col-desc">ข้อมูลรายละเอียดของข้อสอบที่ดึงมาเพื่อใช้เป็นส่วนหัว (Header) ของไฟล์รายงาน</td>
+<td class="col-source">D4 แฟ้มข้อมูลข้อสอบ</td>
+<td class="col-dest">Process 8.3 ส่งออกรายงานและสถิติ</td>
+<td class="col-struct">รหัสข้อสอบ+ชื่อข้อสอบ+เวลาเริ่มสอบ+เวลาสิ้นสุดการสอบ+คะแนนเต็ม</td>
+</tr>
+<!-- ข้อมูลการส่งคำตอบ (List Data / 1 pair) -->
+<tr>
+<td class="col-name">ข้อมูลการส่งคำตอบ</td>
+<td class="col-desc">ข้อมูลผลคะแนนและสถานะการส่งของนักเรียนทุกคนในห้องที่ดึงมาเพื่อเขียนลงไฟล์รายงาน</td>
+<td class="col-source">D6 แฟ้มข้อมูลการส่งคำตอบ</td>
+<td class="col-dest">Process 8.3 ส่งออกรายงานและสถิติ</td>
+<td class="col-struct">รหัสข้อสอบ+รายการผลสอบ(รหัสผู้เรียน+ชื่อผู้เรียน+คะแนนรวม+สถานะ+ข้อเสนอแนะปัญญาประดิษฐ์+ความคิดเห็นผู้สอน)</td>
+</tr>
+<!-- ไฟล์รายงานสรุปคะแนน (1 pair) -->
+<tr>
+<td class="col-name">ไฟล์รายงานสรุปคะแนน</td>
+<td class="col-desc">ไฟล์เอกสารสเปรดชีตสรุปผลคะแนนและสถิติการสอบทั้งหมดที่ระบบสร้างสำเร็จและส่งให้ผู้สอนดาวน์โหลด</td>
+<td class="col-source">Process 8.3 ส่งออกรายงานและสถิติ</td>
+<td class="col-dest">ผู้สอน</td>
+<td class="col-struct">ส่วนหัวรายงาน+รายการผลสอบ(รหัสผู้เรียน+ชื่อผู้เรียน+สถานะการส่ง+คะแนนรวม+ข้อเสนอแนะปัญญาประดิษฐ์+ความคิดเห็นผู้สอน)+วันเวลาที่ส่งออกไฟล์</td>
+</tr>
+<tr><td class="col-source">E2 ผู้สอน</td><td class="col-name">รหัสห้องเรียนและรหัสข้อสอบ</td><td class="col-dest">Process 7.0 การแจ้งเตือนและการรายงานผล</td><td class="col-desc">คำสั่งเพื่อขอรับไฟล์รายงานผลสอบ</td></tr><tr><td class="col-source">E2 ผู้สอน</td><td class="col-name">รหัสห้องเรียนและรหัสข้อสอบ</td><td class="col-dest">Process 7.1 ออกรายงานสรุปผล</td><td class="col-desc">คำสั่งเพื่อขอรับไฟล์รายงานผลสอบ</td></tr><tr><td class="col-source">E1 ผู้เรียน</td><td class="col-name">รหัสผู้เรียนและรหัสข้อสอบ</td><td class="col-dest">Process 7.0 จัดการแจ้งเตือนและส่งออกสถิติ</td><td class="col-desc">คำสั่งจากผู้เรียนเพื่อขอเรียกดูผลคะแนนและข้อเสนอแนะ</td></tr></tbody>
+</table>
+</body>
+</html>

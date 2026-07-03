@@ -64,23 +64,26 @@ def check_rate_limit(ip: str, limit: int=10, window: int=60):
     return True
 
 async def trigger_socket_notify(user_id: int, notify_type: str, message: str, data: dict=None):
-    """Bridge to Node.js Socket server to emit real-time notifications"""
+    """Bridge to Node.js Socket server to emit real-time notifications and save to DB"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        link = data.get('link', '') if data else ''
+        import json as json_module
+        data_str = json_module.dumps(data) if data else None
+        cursor.execute("INSERT INTO notifications (user_id, type, message, link, data) VALUES (%s, %s, %s, %s, %s)",
+                       (user_id, notify_type, message, link, data_str))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f'[Notification DB Error] {e}')
+
     socket_url = f"http://localhost:{os.getenv('SOCKET_PORT', '3001')}/emit-notification"
     try:
         async with httpx.AsyncClient() as client:
             await client.post(socket_url, json={'userId': user_id, 'type': notify_type, 'message': message, 'data': data or {}}, timeout=2.0)
     except Exception as e:
         print(f'[Socket Bridge Error] {e}')
-
-def log_audit_action(user_id: int, action_type: str, entity_id: Optional[str]=None, details: Optional[str]=None, ip_address: Optional[str]=None):
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('INSERT INTO audit_logs (user_id, action_type, entity_id, details, ip_address) VALUES (?, ?, ?, ?, ?)', (user_id, action_type, entity_id, details, ip_address))
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        print(f'Failed to log audit action: {e}')
 
 def get_current_user(authorization: Optional[str]=Header(None)):
     if not authorization or not authorization.startswith('Bearer '):

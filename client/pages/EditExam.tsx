@@ -85,10 +85,6 @@ export default function EditExam() {
   const [showSettings, setShowSettings] = useState(false);
   const [questions, setQuestions] = useState<Question[]>([newQuestion()]);
 
-  const [showBankModal, setShowBankModal] = useState(false);
-  const [bankQuestions, setBankQuestions] = useState<any[]>([]);
-  const [bankSearch, setBankSearch] = useState("");
-
   const [rubricPresets, setRubricPresets] = useState<RubricPreset[]>(() => {
     try {
       const saved = localStorage.getItem("evaly_rubric_presets");
@@ -101,7 +97,6 @@ export default function EditExam() {
   const [presetToDelete, setPresetToDelete] = useState<string | null>(null);
 
   const [showExitModal, setShowExitModal] = useState(false);
-  const [draftToRestore, setDraftToRestore] = useState<any>(null);
 
   // Helper to format date for datetime-local input (YYYY-MM-DDTHH:mm)
   const formatDateTime = (date: Date) => {
@@ -130,19 +125,7 @@ export default function EditExam() {
     localStorage.setItem("evaly_rubric_presets", JSON.stringify(rubricPresets));
   }, [rubricPresets]);
 
-  const DRAFT_KEY = `evaly_edit_exam_draft_${examId}`;
-  const isInitialLoad = useRef(true);
 
-  const fetchBank = async () => {
-    try {
-      const res = await fetch("/api/question-bank", { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) setBankQuestions(await res.json());
-    } catch { /* ignore */ }
-  };
-
-  useEffect(() => {
-    if (showBankModal) fetchBank();
-  }, [showBankModal]);
 
   // Load existing exam data on mount
   useEffect(() => {
@@ -200,49 +183,7 @@ export default function EditExam() {
     fetchExam();
   }, [token, roomId, examId]);
 
-  // Draft loading
-  useEffect(() => {
-    if (isLoading) return;
-    const savedDraft = localStorage.getItem(DRAFT_KEY);
-    if (savedDraft) {
-      try {
-        const draft = JSON.parse(savedDraft);
-        // Compare loosely to see if draft is significantly different
-        if (draft.examTitle !== examTitle || draft.questions?.length !== questions.length) {
-            setDraftToRestore(draft);
-        }
-      } catch (e) { /* ignore */ }
-    }
-  }, [isLoading, DRAFT_KEY]); // Dependencies should not cause infinite loop since isLoading changes once
 
-  const confirmRestoreDraft = () => {
-    if (!draftToRestore) return;
-    if (draftToRestore.examTitle) setExamTitle(draftToRestore.examTitle);
-    setExamDescription(draftToRestore.examDescription || "");
-    setStartDateTime(draftToRestore.startDateTime || "");
-    setEndDateTime(draftToRestore.endDateTime || "");
-    setIsRandomized(draftToRestore.isRandomized || false);
-    if (draftToRestore.questions && draftToRestore.questions.length > 0) setQuestions(draftToRestore.questions);
-    toast.success("กู้คืนข้อมูลร่างแล้ว");
-    setDraftToRestore(null);
-  };
-
-  const rejectRestoreDraft = () => {
-    localStorage.removeItem(DRAFT_KEY);
-    setDraftToRestore(null);
-  };
-
-  // Save Draft
-  useEffect(() => {
-    if (isLoading) return;
-    if (isInitialLoad.current) {
-      isInitialLoad.current = false;
-      return;
-    }
-    setIsDirty(true);
-    const draft = { examTitle, examDescription, startDateTime, endDateTime, isRandomized, questions };
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-  }, [examTitle, examDescription, startDateTime, endDateTime, isRandomized, questions, isLoading, DRAFT_KEY]);
 
   const updateQuestion = (id: number, patch: Partial<Question>) =>
     setQuestions(prev => prev.map(q => q.id === id ? { ...q, ...patch } : q));
@@ -363,20 +304,7 @@ export default function EditExam() {
     toast.success("ลบเทมเพลตสำเร็จ");
   };
 
-  const importFromBank = (bq: any) => {
-    setQuestions(prev => [...prev, {
-      id: Date.now() + Math.random(),
-      text: bq.text,
-      score: String(bq.score),
-      questionImages: [],
-      answerKey: bq.answer_key || "",
-      rubrics: bq.rubrics?.map((r: any) => ({ id: Date.now() + Math.random(), name: r.name || "", description: r.description || "", score: String(r.score || 0) })) || [{ id: Date.now(), name: "", description: "", score: "" }],
-      gradingTone: "moderate",
-      isExpanded: false,
-    }]);
-    setShowBankModal(false);
-    toast.success("นำเข้าคำถามสำเร็จ");
-  };
+
 
   const handleSave = async () => {
     const validQs = questions.filter(q => q.text.trim() || q.questionImages.length > 0);
@@ -405,7 +333,6 @@ export default function EditExam() {
       });
       if (res.ok) {
         toast.success("บันทึกการแก้ไขสำเร็จ!");
-        localStorage.removeItem(DRAFT_KEY);
         setIsDirty(false);
         navigate(`/room/${roomId}`);
       } else {
@@ -427,7 +354,6 @@ export default function EditExam() {
   };
 
   const confirmExit = () => {
-    localStorage.removeItem(DRAFT_KEY);
     navigate(`/room/${roomId}`);
   };
 
@@ -454,7 +380,7 @@ export default function EditExam() {
               placeholder="ชื่อข้อสอบ..."
             />
             <div className="flex items-center gap-2 sm:gap-4 px-2 mt-0.5 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">
-              <span className="flex items-center gap-1 shrink-0"><Check size={12} className="hidden sm:block" /> {isDirty ? "บันทึกร่างแล้ว" : "ข้อมูลล่าสุด"}</span>
+              <span className="flex items-center gap-1 shrink-0"><Check size={12} className="hidden sm:block" /> {isDirty ? "มีการแก้ไข" : "ข้อมูลล่าสุด"}</span>
               <span className="font-medium text-blue-600 dark:text-blue-400 shrink-0">คะแนน: {totalScore}</span>
             </div>
           </div>
@@ -475,14 +401,7 @@ export default function EditExam() {
             <span className="text-[11px] sm:text-sm font-medium whitespace-nowrap">การตั้งค่า</span>
           </button>
           
-          <button
-            onClick={() => { setShowBankModal(true); fetchBank(); }}
-            className="flex items-center gap-1.5 p-1.5 sm:px-3 sm:py-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded transition-colors"
-            title="คลังข้อสอบ"
-          >
-            <BookOpen size={18} className="shrink-0" />
-            <span className="text-[11px] sm:text-sm font-medium whitespace-nowrap">คลังข้อสอบ</span>
-          </button>
+
           
           <Button onClick={handleSave} disabled={isSaving} className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-4 sm:px-5 h-8 sm:h-9 text-xs sm:text-sm font-medium shadow-sm ml-1 sm:ml-2 shrink-0">
             {isSaving ? <Loader2 size={16} className="animate-spin" /> : "บันทึก"}
@@ -542,46 +461,7 @@ export default function EditExam() {
         </div>
       )}
 
-      {/* Question Bank Modal */}
-      {showBankModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col border border-gray-200 dark:border-gray-800">
-            <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
-              <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                <BookOpen size={16} className="text-blue-500" /> คลังข้อสอบ
-              </h3>
-              <button onClick={() => setShowBankModal(false)} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="p-3 border-b border-gray-100 dark:border-gray-800">
-              <div className="relative">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
-                <input
-                  value={bankSearch} onChange={e => setBankSearch(e.target.value)}
-                  placeholder="ค้นหาคำถาม..."
-                  className="w-full pl-8 pr-3 h-9 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-500 text-gray-900 dark:text-white"
-                />
-              </div>
-            </div>
-            <div className="overflow-y-auto flex-1 p-3 space-y-2">
-              {bankQuestions.filter(q => q.text.toLowerCase().includes(bankSearch.toLowerCase())).length === 0 ? (
-                <p className="text-center text-gray-400 dark:text-gray-500 py-8 text-sm">ไม่พบคำถาม</p>
-              ) : bankQuestions.filter(q => q.text.toLowerCase().includes(bankSearch.toLowerCase())).map(bq => (
-                <div key={bq.id} className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-800 dark:text-gray-200 line-clamp-2">{bq.text}</p>
-                    <span className="text-xs text-blue-600 dark:text-blue-400 font-medium mt-1 block">{bq.score} คะแนน</span>
-                  </div>
-                  <button onClick={() => importFromBank(bq)} className="shrink-0 text-xs font-medium px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
-                    เพิ่ม
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Preset Name Modal */}
       {showPresetModal !== null && (
@@ -634,26 +514,7 @@ export default function EditExam() {
         </div>
       )}
 
-      {/* Draft Restore Modal */}
-      {draftToRestore && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-sm flex flex-col border border-gray-200 dark:border-gray-800">
-            <div className="p-6 text-center space-y-4">
-              <div className="mx-auto w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                <Check size={24} className="text-blue-600 dark:text-blue-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">พบข้อมูลร่างที่บันทึกไว้</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                คุณมีข้อมูลที่แก้ไขค้างไว้จากครั้งก่อน ต้องการกู้คืนเพื่อทำต่อหรือไม่?
-              </p>
-            </div>
-            <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex justify-center gap-3">
-              <Button onClick={rejectRestoreDraft} variant="outline" className="flex-1 text-gray-600 dark:text-gray-300">เริ่มใหม่ทั้งหมด</Button>
-              <Button onClick={confirmRestoreDraft} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white">กู้คืนข้อมูล</Button>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Exit Without Saving Modal */}
       {showExitModal && (

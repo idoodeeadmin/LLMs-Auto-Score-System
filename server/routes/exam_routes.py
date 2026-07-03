@@ -12,7 +12,7 @@ from typing import Optional, List
 from server.database import get_db_connection
 from server.auth import get_password_hash, verify_password, create_access_token, decode_token
 from server.models import *
-from server.utils import check_rate_limit, upload_to_cloudinary, get_current_user, log_audit_action, grading_queue, trigger_socket_notify, _distribution_buckets
+from server.utils import check_rate_limit, upload_to_cloudinary, get_current_user, grading_queue, trigger_socket_notify, _distribution_buckets
 from server.services.ai_service import _USE_GEMINI, _genai_client, _GEMINI_MODEL
 
 router = APIRouter(prefix="/api/rooms/{room_id}/exams", tags=["Exams"])
@@ -125,7 +125,6 @@ async def delete_exam(request: Request, room_id: int, exam_id: int, user: dict=D
     cursor.execute('DELETE FROM exams WHERE id = ?', (exam_id,))
     conn.commit()
     conn.close()
-    log_audit_action(user['id'], 'DELETE_EXAM', str(exam_id), f'Deleted exam {exam_id}', request.client.host)
     return {'message': 'Exam deleted successfully'}
 
 @router.get('')
@@ -203,12 +202,6 @@ async def submit_exam_multipart(request: Request, room_id: int, exam_id: int, us
             deadline = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
             if deadline.tzinfo is None:
                 deadline = deadline.replace(tzinfo=timezone.utc)
-            
-            cursor.execute('SELECT COALESCE(SUM(extra_minutes), 0) as total_extra FROM exam_time_extensions WHERE exam_id = ? AND (student_id = ? OR student_id IS NULL)', (exam_id, user['id']))
-            ext_row = cursor.fetchone()
-            extra_minutes = int(ext_row['total_extra']) if ext_row else 0
-            if extra_minutes > 0:
-                deadline += timedelta(minutes=extra_minutes)
                 
             now = datetime.now(timezone.utc)
             if now > deadline + timedelta(minutes=1): # Add 1 min grace period
@@ -525,7 +518,6 @@ async def approve_submission(request: Request, room_id: int, exam_id: int, stude
     cursor.execute("UPDATE submissions SET status = 'approved', total_score = ? WHERE id = ?", (round(total_teacher_score, 1), submission_id))
     conn.commit()
     conn.close()
-    log_audit_action(user['id'], 'GRADE_CHANGE', str(submission_id), f'Approved/Updated grade for student {student_id} on exam {exam_id}', request.client.host)
     return {'message': 'Submission approved', 'total_score': round(total_teacher_score, 1)}
 
 @router.post('/{exam_id}/questions/{question_id}/rescore')
@@ -574,90 +566,4 @@ async def bulk_approve(room_id: int, exam_id: int, body: BulkApproveRequest, use
     conn.close()
     return {'message': f'Approved {len(approved)} submissions', 'approved_student_ids': approved, 'skipped': skipped}
 
-@router.post('/{exam_id}/draft')
-async def save_draft(room_id: int, exam_id: int, body: DraftSaveRequest, user: dict=Depends(get_current_user)):
-    """Student saves answer draft to server (hybrid with localStorage)."""
-    if user['role'] != 'student':
-        raise HTTPException(status_code=403, detail='Only students can save drafts')
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    draft_json = json.dumps(body.answers, ensure_ascii=False)
-    cursor.execute('INSERT INTO submission_drafts (exam_id, student_id, draft_data)\n           VALUES (?, ?, ?)\n           ON DUPLICATE KEY UPDATE draft_data = VALUES(draft_data), updated_at = CURRENT_TIMESTAMP', (exam_id, user['id'], draft_json))
-    conn.commit()
-    conn.close()
-    return {'message': 'Draft saved'}
-
-@router.get('/{exam_id}/draft')
-async def get_draft(room_id: int, exam_id: int, user: dict=Depends(get_current_user)):
-    """Student loads saved draft from server."""
-    if user['role'] != 'student':
-        raise HTTPException(status_code=403, detail='Only students can load drafts')
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT draft_data, updated_at FROM submission_drafts WHERE exam_id = ? AND student_id = ?', (exam_id, user['id']))
-    row = cursor.fetchone()
-    conn.close()
-    if not row:
-        return {'answers': {}, 'updated_at': None}
-    try:
-        answers = json.loads(row['draft_data'])
-    except Exception:
-        answers = {}
-    return {'answers': answers, 'updated_at': str(row['updated_at'])}
-
-@router.delete('/{exam_id}/draft')
-async def delete_draft(room_id: int, exam_id: int, user: dict=Depends(get_current_user)):
-    """Delete draft after successful submission."""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('DELETE FROM submission_drafts WHERE exam_id = ? AND student_id = ?', (exam_id, user['id']))
-    conn.commit()
-    conn.close()
-    return {'message': 'Draft deleted'}
-
-@router.post('/{exam_id}/extensions')
-async def grant_time_extension(request: Request, room_id: int, exam_id: int, body: TimeExtensionRequest, user: dict=Depends(get_current_user)):
-    """Teacher grants extra time to a specific student or the whole class (student_id=None)."""
-    if user['role'] != 'teacher':
-        raise HTTPException(status_code=403, detail='Only teachers can grant time extensions')
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT id FROM rooms WHERE id = ? AND owner_id = ?', (room_id, user['id']))
-    if not cursor.fetchone():
-        conn.close()
-        raise HTTPException(status_code=404, detail='Room not found or unauthorized')
-    cursor.execute('SELECT id FROM exams WHERE id = ? AND room_id = ?', (exam_id, room_id))
-    if not cursor.fetchone():
-        conn.close()
-        raise HTTPException(status_code=404, detail='Exam not found')
-    cursor.execute('INSERT INTO exam_time_extensions (exam_id, student_id, extra_minutes, granted_by, note) VALUES (?, ?, ?, ?, ?)', (exam_id, body.student_id, body.extra_minutes, user['id'], body.note))
-    conn.commit()
-    conn.close()
-    target = f'นักเรียน ID {body.student_id}' if body.student_id else 'ทั้งห้อง'
-    log_audit_action(user['id'], 'TIME_EXTENSION', str(exam_id), f'Granted {body.extra_minutes} mins to {target} on exam {exam_id}', request.client.host)
-    return {'message': f'ขยายเวลา {body.extra_minutes} นาทีสำเร็จ'}
-
-@router.get('/{exam_id}/extensions/me')
-async def get_my_extension(room_id: int, exam_id: int, user: dict=Depends(get_current_user)):
-    """Student gets their total extra minutes for this exam."""
-    if user['role'] != 'student':
-        raise HTTPException(status_code=403, detail='Students only')
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT COALESCE(SUM(extra_minutes), 0) as total_extra\n           FROM exam_time_extensions\n           WHERE exam_id = ? AND (student_id = ? OR student_id IS NULL)', (exam_id, user['id']))
-    row = cursor.fetchone()
-    conn.close()
-    return {'extra_minutes': int(row['total_extra'] or 0)}
-
-@router.get('/{exam_id}/extensions')
-async def get_all_extensions(room_id: int, exam_id: int, user: dict=Depends(get_current_user)):
-    """Teacher views all extensions for an exam."""
-    if user['role'] != 'teacher':
-        raise HTTPException(status_code=403, detail='Teachers only')
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT e.*, u.name as student_name, u.email as student_email\n           FROM exam_time_extensions e\n           LEFT JOIN users u ON e.student_id = u.id\n           WHERE e.exam_id = ?\n           ORDER BY e.created_at DESC', (exam_id,))
-    extensions = cursor.fetchall()
-    conn.close()
-    return [dict(r) for r in extensions]
 

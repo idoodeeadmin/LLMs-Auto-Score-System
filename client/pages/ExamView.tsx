@@ -27,7 +27,6 @@ export default function ExamView() {
   const [isFetching, setIsFetching] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [mySubmission, setMySubmission] = useState<{ status: string; total_score?: number; answers?: any[] } | null>(null);
-  const [showExtension, setShowExtension] = useState(false);
   const [extStudentId, setExtStudentId] = useState<"" | number>("");
   const [extMinutes, setExtMinutes] = useState(15);
   const [extNote, setExtNote] = useState("");
@@ -56,22 +55,6 @@ export default function ExamView() {
       return () => clearInterval(id);
     }
   }, [token, roomId, examId, user?.role, navigate]);
-
-   const handleGrantExtension = async () => {
-    if (!token || extMinutes <= 0) return;
-    setIsGranting(true);
-    try {
-      const res = await fetch(`/api/rooms/${roomId}/exams/${examId}/extensions`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ student_id: extStudentId !== "" ? extStudentId : null, extra_minutes: extMinutes, note: extNote || null }),
-      });
-      if (res.ok) { toast.success("ขยายเวลาสำเร็จ!"); setExtStudentId(""); setExtNote(""); setExtMinutes(15); }
-      else toast.error((await res.json()).detail || "ไม่สามารถขยายเวลา");
-    } catch { toast.error("เกิดข้อผิดพลาด"); }
-    finally { setIsGranting(false); }
-  };
-
   const getExamStatus = () => {
     if (!exam) return null;
     const now = new Date();

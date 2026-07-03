@@ -1,0 +1,35 @@
+--- Process 1.0 ---
+IN L1 missing in L2: set()
+IN L2 extra (not in L1): set()
+OUT L1 missing in L2: set()
+OUT L2 extra (not in L1): set()
+--- Process 2.0 ---
+IN L1 missing in L2: set()
+IN L2 extra (not in L1): set()
+OUT L1 missing in L2: set()
+OUT L2 extra (not in L1): set()
+--- Process 3.0 ---
+IN L1 missing in L2: set()
+IN L2 extra (not in L1): {'ข้อมูลรายละเอียดห้องเรียน'}
+OUT L1 missing in L2: set()
+OUT L2 extra (not in L1): set()
+--- Process 4.0 ---
+IN L1 missing in L2: set()
+IN L2 extra (not in L1): set()
+OUT L1 missing in L2: set()
+OUT L2 extra (not in L1): set()
+--- Process 5.0 ---
+IN L1 missing in L2: set()
+IN L2 extra (not in L1): {'ข้อมูลผลการประเมินดิบจาก AI', 'ข้อมูลคำตอบและเกณฑ์ที่จัดรูปแบบแล้ว'}
+OUT L1 missing in L2: set()
+OUT L2 extra (not in L1): set()
+--- Process 6.0 ---
+IN L1 missing in L2: set()
+IN L2 extra (not in L1): set()
+OUT L1 missing in L2: set()
+OUT L2 extra (not in L1): set()
+--- Process 7.0 ---
+IN L1 missing in L2: set()
+IN L2 extra (not in L1): set()
+OUT L1 missing in L2: set()
+OUT L2 extra (not in L1): set()

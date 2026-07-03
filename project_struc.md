@@ -187,9 +187,148 @@ Evaly Score เป็นแอปพลิเคชัน Web-based สำหร
 
 ## 5. โครงสร้างฐานข้อมูล (Database Schema)
 
-### 5.1 Entities
+### 5.1 ภาพรวมความสัมพันธ์ (Entity Relationship Overview)
 
 ![Database Schema](./database_schema.png)
+
+### 5.2 รายละเอียดตารางข้อมูล (Tables & Entities)
+
+#### 1. `users` (ตารางผู้ใช้งาน)
+| ชื่อฟิลด์ | ชนิดข้อมูล | คีย์ | คำอธิบาย |
+| --- | --- | --- | --- |
+| `id` | INTEGER | PK | รหัสผู้ใช้งาน (Auto Increment) |
+| `email` | VARCHAR(255) | UNIQUE | อีเมลผู้ใช้งาน |
+| `password` | VARCHAR(255) | - | รหัสผ่าน (Hashed ด้วย PBKDF2) |
+| `name` | VARCHAR(255) | - | ชื่อ-นามสกุล |
+| `role` | VARCHAR(50) | - | บทบาท (`teacher` / `student`) |
+| `student_id` | VARCHAR(100) | - | รหัสนักเรียน/รหัสประจำตัว |
+| `avatar_url` | TEXT | - | ลิงก์รูปโปรไฟล์ (Cloudinary URL) |
+| `is_verified` | TINYINT | - | สถานะยืนยันอีเมล (0 = ยัง, 1 = ยืนยันแล้ว) |
+| `token_version` | INTEGER | - | เวอร์ชันของ Token (สำหรับบังคับ Logout) |
+
+#### 2. `rooms` (ตารางห้องเรียน)
+| ชื่อฟิลด์ | ชนิดข้อมูล | คีย์ | คำอธิบาย |
+| --- | --- | --- | --- |
+| `id` | INTEGER | PK | รหัสห้องเรียน (Auto Increment) |
+| `name` | VARCHAR(255) | - | ชื่อห้องเรียน/วิชา |
+| `section` | VARCHAR(100) | - | กลุ่มเรียน (Section) |
+| `class_code` | VARCHAR(50) | UNIQUE | รหัสเข้าร่วมห้องเรียน (6 หลัก) |
+| `owner_id` | INTEGER | FK | รหัสผู้สอน (อ้างอิง `users.id`) |
+
+#### 3. `enrollments` (ตารางการเข้าร่วมห้องเรียน)
+| ชื่อฟิลด์ | ชนิดข้อมูล | คีย์ | คำอธิบาย |
+| --- | --- | --- | --- |
+| `id` | INTEGER | PK | รหัสการเข้าร่วม (Auto Increment) |
+| `user_id` | INTEGER | FK | รหัสผู้เรียน (อ้างอิง `users.id`) |
+| `room_id` | INTEGER | FK | รหัสห้องเรียน (อ้างอิง `rooms.id`) |
+| `joined_at` | DATETIME | - | วันเวลาที่เข้าร่วม |
+
+#### 4. `exams` (ตารางข้อสอบ)
+| ชื่อฟิลด์ | ชนิดข้อมูล | คีย์ | คำอธิบาย |
+| --- | --- | --- | --- |
+| `id` | INTEGER | PK | รหัสข้อสอบ (Auto Increment) |
+| `room_id` | INTEGER | FK | รหัสห้องเรียน (อ้างอิง `rooms.id`) |
+| `title` | VARCHAR(255) | - | ชื่อข้อสอบ |
+| `description` | TEXT | - | คำอธิบาย/คำชี้แจง |
+| `total_score` | FLOAT | - | คะแนนรวม |
+| `start_date` | VARCHAR(100) | - | วันเวลาเปิดสอบ (ISO String) |
+| `end_date` | VARCHAR(100) | - | วันเวลาปิดสอบ (ISO String) |
+| `is_randomized` | TINYINT | - | สลับลำดับข้อสอบ (0 = ไม่สลับ, 1 = สลับ) |
+| `created_at` | DATETIME | - | วันเวลาที่สร้าง |
+
+#### 5. `questions` (ตารางโจทย์ข้อสอบ)
+| ชื่อฟิลด์ | ชนิดข้อมูล | คีย์ | คำอธิบาย |
+| --- | --- | --- | --- |
+| `id` | INTEGER | PK | รหัสข้อ (Auto Increment) |
+| `exam_id` | INTEGER | FK | รหัสข้อสอบ (อ้างอิง `exams.id`) |
+| `text` | TEXT | - | โจทย์คำถาม |
+| `score` | FLOAT | - | คะแนนประจำข้อ |
+| `answer_key` | TEXT | - | ธงคำตอบ/แนวคำตอบ |
+| `rubrics` | TEXT | - | เกณฑ์การให้คะแนน (Rubrics JSON) |
+| `order_index` | INTEGER | - | ลำดับข้อ |
+| `image_path` | TEXT | - | รูปภาพประกอบโจทย์ (รูปเดียว) |
+| `image_paths` | TEXT | - | รูปภาพประกอบโจทย์ (หลายรูป JSON) |
+
+#### 6. `submissions` (ตารางการส่งข้อสอบ)
+| ชื่อฟิลด์ | ชนิดข้อมูล | คีย์ | คำอธิบาย |
+| --- | --- | --- | --- |
+| `id` | INTEGER | PK | รหัสการส่ง (Auto Increment) |
+| `exam_id` | INTEGER | FK | รหัสข้อสอบ (อ้างอิง `exams.id`) |
+| `student_id` | INTEGER | FK | รหัสผู้เรียน (อ้างอิง `users.id`) |
+| `status` | VARCHAR(50) | - | สถานะ (`missing`, `submitted`, `graded`) |
+| `total_score` | FLOAT | - | คะแนนรวมที่ได้ |
+| `submitted_at` | DATETIME | - | วันเวลาที่ส่งคำตอบ |
+| `graded_by_ai` | TINYINT | - | สถานะการตรวจด้วย AI (0 = ยัง, 1 = ตรวจแล้ว) |
+
+#### 7. `submission_answers` (ตารางคำตอบรายข้อของนักเรียน)
+| ชื่อฟิลด์ | ชนิดข้อมูล | คีย์ | คำอธิบาย |
+| --- | --- | --- | --- |
+| `id` | INTEGER | PK | รหัสคำตอบ (Auto Increment) |
+| `submission_id` | INTEGER | FK | รหัสการส่ง (อ้างอิง `submissions.id`) |
+| `question_id` | INTEGER | FK | รหัสโจทย์ (อ้างอิง `questions.id`) |
+| `answer_text` | TEXT | - | ข้อความคำตอบที่นักเรียนพิมพ์ |
+| `ai_score` | FLOAT | - | คะแนนที่ AI ประเมิน |
+| `ai_feedback` | TEXT | - | คำอธิบาย/ข้อเสนอแนะจาก AI |
+| `ai_confidence` | VARCHAR(50) | - | ระดับความมั่นใจของ AI (`high`, `medium`, `low`) |
+| `teacher_score` | FLOAT | - | คะแนนที่อาจารย์ปรับแก้ |
+| `teacher_comment` | TEXT | - | คอมเมนต์เพิ่มเติมจากอาจารย์ |
+| `image_path` | TEXT | - | รูปภาพคำตอบลายมือ (รูปเดียว) |
+| `image_paths` | TEXT | - | รูปภาพคำตอบลายมือ (หลายรูป JSON) |
+| `quality_metrics` | TEXT | - | ข้อมูลการวิเคราะห์คุณภาพคำตอบ (JSON) |
+
+#### 8. `submission_drafts` (ตารางบันทึกร่างคำตอบอัตโนมัติ)
+| ชื่อฟิลด์ | ชนิดข้อมูล | คีย์ | คำอธิบาย |
+| --- | --- | --- | --- |
+| `id` | INTEGER | PK | รหัสบันทึกร่าง (Auto Increment) |
+| `exam_id` | INTEGER | FK | รหัสข้อสอบ (อ้างอิง `exams.id`) |
+| `student_id` | INTEGER | FK | รหัสผู้เรียน (อ้างอิง `users.id`) |
+| `draft_data` | TEXT | - | ข้อมูลร่างคำตอบ (JSON) |
+| `updated_at` | DATETIME | - | วันเวลาที่บันทึกร่างล่าสุด |
+
+#### 9. `exam_time_extensions` (ตารางการขยายเวลาสอบรายบุคคล)
+| ชื่อฟิลด์ | ชนิดข้อมูล | คีย์ | คำอธิบาย |
+| --- | --- | --- | --- |
+| `id` | INTEGER | PK | รหัสการขยายเวลา (Auto Increment) |
+| `exam_id` | INTEGER | FK | รหัสข้อสอบ (อ้างอิง `exams.id`) |
+| `student_id` | INTEGER | FK | รหัสผู้เรียน (อ้างอิง `users.id`) |
+| `extra_minutes` | INTEGER | - | จำนวนนาทีที่เพิ่มให้ |
+| `granted_by` | INTEGER | FK | รหัสผู้สอนที่อนุมัติ (อ้างอิง `users.id`) |
+| `note` | TEXT | - | หมายเหตุ/เหตุผล |
+| `created_at` | DATETIME | - | วันเวลาที่บันทึก |
+
+#### 10. `question_bank` (ตารางคลังข้อสอบส่วนตัว)
+| ชื่อฟิลด์ | ชนิดข้อมูล | คีย์ | คำอธิบาย |
+| --- | --- | --- | --- |
+| `id` | INTEGER | PK | รหัสข้อสอบในคลัง (Auto Increment) |
+| `owner_id` | INTEGER | FK | รหัสผู้สอน (อ้างอิง `users.id`) |
+| `text` | TEXT | - | โจทย์คำถาม |
+| `score` | FLOAT | - | คะแนน |
+| `answer_key` | TEXT | - | ธงคำตอบ |
+| `rubrics` | TEXT | - | เกณฑ์การให้คะแนน (Rubrics JSON) |
+| `tags` | VARCHAR(500) | - | ป้ายกำกับ (Tags สำหรับค้นหา) |
+| `created_at` | DATETIME | - | วันเวลาที่บันทึกเข้าคลัง |
+
+#### 11. `announcements` (ตารางประกาศข่าวสารในห้องเรียน)
+| ชื่อฟิลด์ | ชนิดข้อมูล | คีย์ | คำอธิบาย |
+| --- | --- | --- | --- |
+| `id` | INTEGER | PK | รหัสประกาศ (Auto Increment) |
+| `room_id` | INTEGER | FK | รหัสห้องเรียน (อ้างอิง `rooms.id`) |
+| `teacher_id` | INTEGER | FK | รหัสผู้สอน (อ้างอิง `users.id`) |
+| `title` | VARCHAR(255) | - | หัวข้อประกาศ |
+| `content` | TEXT | - | เนื้อหาประกาศ |
+| `created_at` | DATETIME | - | วันเวลาที่ประกาศ |
+
+#### 12. `announcement_reads` (ตารางสถานะการอ่านประกาศ)
+| ชื่อฟิลด์ | ชนิดข้อมูล | คีย์ | คำอธิบาย |
+| --- | --- | --- | --- |
+| `id` | INTEGER | PK | รหัสสถานะการอ่าน (Auto Increment) |
+| `announcement_id` | INTEGER | FK | รหัสประกาศ (อ้างอิง `announcements.id`) |
+| `student_id` | INTEGER | FK | รหัสผู้เรียน (อ้างอิง `users.id`) |
+| `read_at` | DATETIME | - | วันเวลาที่เปิดอ่าน |
+
+#### 13. `password_resets` & `email_verifications` (ตารางจัดการโทเค็นความปลอดภัย)
+* **`password_resets`**: ตารางเก็บ Token สำหรับรีเซ็ตรหัสผ่าน (`id`, `user_id`, `token`, `expires_at`)
+* **`email_verifications`**: ตารางเก็บ Token สำหรับยืนยันอีเมล (`id`, `user_id`, `token`, `expires_at`)
 
 ---
 
@@ -210,7 +349,6 @@ Evaly Score เป็นแอปพลิเคชัน Web-based สำหร
 | POST   | `/reset-password`      | รีเซ็ตรหัสผ่านด้วย token     |
 | POST   | `/verify-email`        | ยืนยันอีเมล                  |
 | POST   | `/resend-verification` | ส่งอีเมลยืนยันอีกครั้ง       |
-| DELETE | `/account`             | ลบบัญชี                      |
 
 ### 6.2 Rooms (`/api/rooms/*`)
 
@@ -276,7 +414,6 @@ Evaly Score เป็นแอปพลิเคชัน Web-based สำหร
 | GET    | `/api/submissions/me`     | ดูประวัติการทำข้อสอบทุกวิชารวมกัน (ของตัวเอง) |
 | POST   | `/api/announcements/{ann_id}/read` | ยืนยันการอ่านประกาศ (Read Receipt) |
 | GET    | `/api/announcements/{ann_id}/read-status` | ดูสถานะการอ่านประกาศของผู้ใช้ |
-| GET    | `/api/audit-logs`         | ดูประวัติการใช้งาน (Audit Logs)   |
 | GET    | `/api/ping`               | เช็คสถานะ Server                  |
 
 ### 6.5 Socket Server (`server-node/index.js`)

@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Process Description</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #ffffff;
+            color: #000000;
+            padding: 40px;
+            margin: 0;
+            font-size: 16px;
+        }
+        .header-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+        .image-placeholder {
+            width: 100%;
+            height: 200px;
+            background-color: #f1f5f9;
+            border: 2px dashed #94a3b8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid #000000;
+        }
+        th, td {
+            border: 1px solid #000000;
+            padding: 12px 16px;
+            line-height: 1.6;
+            vertical-align: top;
+        }
+        .col-head {
+            width: 25%;
+            font-weight: 700;
+            background-color: #e5e5e5;
+        }
+        .flow-list ul {
+            margin: 0;
+            padding-left: 0;
+            list-style-type: none;
+        }
+        .flow-list li {
+            margin-bottom: 4px;
+        }
+        .flow-list li::before {
+            content: "- ";
+        }
+        .logic-block {
+            font-family: 'Sarabun', sans-serif;
+        }
+        .logic-block div {
+            margin-bottom: 6px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1 style="text-align: center; margin-bottom: 40px;">3.8 Process Specification (คำอธิบายการประมวลผล)</h1>
+
+    
+    <div class="process-section" style="margin-bottom: 60px; page-break-inside: avoid;">
+        <h2 class="header-title">3.8.1 Process สมัครสมาชิก</h2>
+        
+        <div class="image-placeholder">
+            [ใส่รูปภาพ DFD ของ Process 1.1 ที่นี่]
+        </div>
+
+        <table>
+            <tbody>
+                <tr>
+                    <td class="col-head">Number</td>
+                    <td>1.1</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Name</td>
+                    <td>สมัครสมาชิก</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Description</td>
+                    <td>กระบวนการสมัครสมาชิกของระบบ</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Input data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ข้อมูลการสมัครสมาชิก</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Output data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ข้อมูลผู้ใช้งาน</li><li>ข้อมูลสถานะการส่งอีเมล</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Process description</td>
+                    <td class="logic-block">
+                        <div style="margin-left: 0px;">เริ่มต้น</div><div style="margin-left: 0px;">1. รับข้อมูลการสมัครสมาชิกจากผู้ใช้</div><div style="margin-left: 0px;">2. ตรวจสอบรายละเอียดของข้อมูล</div><div style="margin-left: 40px;">2.1 ถ้า(ข้อมูลรูปแบบถูกต้องและอีเมลไม่ซ้ำในระบบ)</div><div style="margin-left: 80px;">2.1.1 บันทึกข้อมูลบัญชีผู้ใช้ใหม่ลงในแฟ้มข้อมูลผู้ใช้งาน (D1)</div><div style="margin-left: 80px;">2.1.2 สร้างโทเคนสำหรับการยืนยันอีเมล</div><div style="margin-left: 80px;">2.1.3 ส่งข้อมูลสถานะการส่งอีเมลไปยัง Process 1.3</div><div style="margin-left: 40px;">2.2 ถ้า(ข้อมูลไม่ถูกต้องหรืออีเมลซ้ำ)</div><div style="margin-left: 80px;">2.2.1 แสดงข้อความแจ้งเตือนให้ผู้ใช้แก้ไข</div><div style="margin-left: 0px;">จบการทำงาน</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="process-section" style="margin-bottom: 60px; page-break-inside: avoid;">
+        <h2 class="header-title">3.8.2 Process เข้าสู่ระบบ</h2>
+        
+        <div class="image-placeholder">
+            [ใส่รูปภาพ DFD ของ Process 1.2 ที่นี่]
+        </div>
+
+        <table>
+            <tbody>
+                <tr>
+                    <td class="col-head">Number</td>
+                    <td>1.2</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Name</td>
+                    <td>เข้าสู่ระบบ</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Description</td>
+                    <td>กระบวนการเข้าสู่ระบบของระบบ</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Input data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ข้อมูลการเข้าสู่ระบบ</li><li>ข้อมูลคำขอเข้าสู่ระบบด้วยบัญชี Google</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Output data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>Authentication Token</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Process description</td>
+                    <td class="logic-block">
+                        <div style="margin-left: 0px;">เริ่มต้น</div><div style="margin-left: 0px;">1. รับข้อมูลการเข้าสู่ระบบ (อีเมลและรหัสผ่าน) หรือข้อมูลคำขอเข้าสู่ระบบด้วยบัญชี Google</div><div style="margin-left: 0px;">2. ตรวจสอบรายละเอียดของข้อมูล</div><div style="margin-left: 40px;">2.1 กรณีเข้าสู่ระบบด้วยอีเมล</div><div style="margin-left: 80px;">2.1.1 ตรวจสอบข้อมูลในฐานข้อมูล (D1)</div><div style="margin-left: 80px;">2.1.2 ถ้า(อีเมลและรหัสผ่านถูกต้อง และยืนยันตัวตนแล้ว)</div><div style="margin-left: 120px;">- สร้าง Authentication Token แจ้งเข้าสู่ระบบสำเร็จ</div><div style="margin-left: 80px;">2.1.3 ถ้า(ไม่ถูกต้อง)</div><div style="margin-left: 120px;">- แสดงข้อความเตือนข้อมูลไม่ถูกต้อง</div><div style="margin-left: 40px;">2.2 กรณีเข้าสู่ระบบด้วย Google</div><div style="margin-left: 80px;">2.2.1 ส่งโทเคนไปตรวจสอบกับ Firebase Auth</div><div style="margin-left: 80px;">2.2.2 ถ้า(ยืนยันสำเร็จ) สร้าง Authentication Token ให้ผู้ใช้</div><div style="margin-left: 0px;">จบการทำงาน</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="process-section" style="margin-bottom: 60px; page-break-inside: avoid;">
+        <h2 class="header-title">3.8.3 Process ยืนยันอีเมล</h2>
+        
+        <div class="image-placeholder">
+            [ใส่รูปภาพ DFD ของ Process 1.3 ที่นี่]
+        </div>
+
+        <table>
+            <tbody>
+                <tr>
+                    <td class="col-head">Number</td>
+                    <td>1.3</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Name</td>
+                    <td>ยืนยันอีเมล</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Description</td>
+                    <td>กระบวนการยืนยันอีเมลของระบบ</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Input data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ข้อมูลสถานะการส่งอีเมล</li><li>ข้อมูลอีเมลและลิงก์ยืนยันตัวตน</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Output data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ข้อมูลอีเมลและลิงก์ยืนยันตัวตน</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Process description</td>
+                    <td class="logic-block">
+                        <div style="margin-left: 0px;">เริ่มต้น</div><div style="margin-left: 0px;">1. รับข้อมูลสถานะการส่งอีเมล หรือ ข้อมูลลิงก์ยืนยันตัวตน</div><div style="margin-left: 0px;">2. ตรวจสอบประเภทคำสั่ง</div><div style="margin-left: 40px;">2.1 กรณีส่งอีเมล</div><div style="margin-left: 80px;">2.1.1 ส่งข้อมูลเนื้อหาและลิงก์ไปยัง SMTP Server</div><div style="margin-left: 80px;">2.1.2 รอรับรหัสสถานะจากเซิร์ฟเวอร์ และแจ้งผลให้ผู้ใช้ทราบ</div><div style="margin-left: 40px;">2.2 กรณียืนยันตัวตนผ่านลิงก์</div><div style="margin-left: 80px;">2.2.1 ตรวจสอบรหัสโทเคนในฐานข้อมูล</div><div style="margin-left: 80px;">2.2.2 ถ้า(ถูกต้อง) อัปเดตสถานะการยืนยันตัวตนใน D1</div><div style="margin-left: 0px;">จบการทำงาน</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="process-section" style="margin-bottom: 60px; page-break-inside: avoid;">
+        <h2 class="header-title">3.8.1 Process จัดการข้อมูลห้องเรียน</h2>
+        
+        <div class="image-placeholder">
+            [ใส่รูปภาพ DFD ของ Process 2.1 ที่นี่]
+        </div>
+
+        <table>
+            <tbody>
+                <tr>
+                    <td class="col-head">Number</td>
+                    <td>2.1</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Name</td>
+                    <td>จัดการข้อมูลห้องเรียน</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Description</td>
+                    <td>กระบวนการจัดการข้อมูลห้องเรียนของระบบ</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Input data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ข้อมูลผู้ใช้งาน</li><li>ข้อมูลห้องเรียน</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Output data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Process description</td>
+                    <td class="logic-block">
+                        <div style="margin-left: 0px;">เริ่มต้น</div><div style="margin-left: 0px;">1. รับข้อมูลห้องเรียนจากผู้สอน (สร้าง/แก้ไข/ลบ)</div><div style="margin-left: 0px;">2. ตรวจสอบสิทธิ์ผู้ใช้งาน</div><div style="margin-left: 40px;">2.1 ถ้า(เป็นผู้สอน)</div><div style="margin-left: 80px;">2.1.1 บันทึก หรือ ปรับปรุง ข้อมูลห้องเรียนในแฟ้มข้อมูลห้องเรียน (D2)</div><div style="margin-left: 80px;">2.1.2 สร้างรหัสเข้าร่วมห้องเรียน (Class Code) อัตโนมัติ</div><div style="margin-left: 40px;">2.2 ถ้า(ไม่มีสิทธิ์)</div><div style="margin-left: 80px;">2.2.1 ปฏิเสธการเข้าถึง</div><div style="margin-left: 0px;">จบการทำงาน</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="process-section" style="margin-bottom: 60px; page-break-inside: avoid;">
+        <h2 class="header-title">3.8.2 Process จัดการการเข้าร่วมห้องเรียน</h2>
+        
+        <div class="image-placeholder">
+            [ใส่รูปภาพ DFD ของ Process 2.2 ที่นี่]
+        </div>
+
+        <table>
+            <tbody>
+                <tr>
+                    <td class="col-head">Number</td>
+                    <td>2.2</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Name</td>
+                    <td>จัดการการเข้าร่วมห้องเรียน</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Description</td>
+                    <td>กระบวนการจัดการการเข้าร่วมห้องเรียนของระบบ</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Input data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ข้อมูลการเข้าร่วมห้องเรียน</li><li>ข้อมูลคำขอเข้าร่วมห้องเรียนพร้อมรหัสคลาส</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Output data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Process description</td>
+                    <td class="logic-block">
+                        <div style="margin-left: 0px;">เริ่มต้น</div><div style="margin-left: 0px;">1. รับข้อมูลคำขอเข้าร่วมห้องเรียน (รหัส 6 หลัก) จากผู้เรียน</div><div style="margin-left: 0px;">2. ตรวจสอบรหัสเข้าร่วมห้องเรียนใน D2</div><div style="margin-left: 40px;">2.1 ถ้า(รหัสถูกต้องและมีอยู่จริง)</div><div style="margin-left: 80px;">2.1.1 ตรวจสอบว่าผู้เรียนเคยเข้าร่วมหรือยัง</div><div style="margin-left: 80px;">2.1.2 ถ้า(ยังไม่เคย) บันทึกข้อมูลลงแฟ้มข้อมูลผู้เข้าร่วม (D3)</div><div style="margin-left: 80px;">2.1.3 แจ้งผลการเข้าร่วมสำเร็จ</div><div style="margin-left: 40px;">2.2 ถ้า(รหัสไม่ถูกต้อง)</div><div style="margin-left: 80px;">2.2.1 แจ้งเตือนข้อผิดพลาดให้ผู้เรียนทราบ</div><div style="margin-left: 0px;">จบการทำงาน</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="process-section" style="margin-bottom: 60px; page-break-inside: avoid;">
+        <h2 class="header-title">3.8.3 Process จัดการประกาศข่าวสาร</h2>
+        
+        <div class="image-placeholder">
+            [ใส่รูปภาพ DFD ของ Process 2.3 ที่นี่]
+        </div>
+
+        <table>
+            <tbody>
+                <tr>
+                    <td class="col-head">Number</td>
+                    <td>2.3</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Name</td>
+                    <td>จัดการประกาศข่าวสาร</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Description</td>
+                    <td>กระบวนการจัดการประกาศข่าวสารของระบบ</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Input data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ข้อมูลประกาศภายในห้องเรียน</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Output data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Process description</td>
+                    <td class="logic-block">
+                        <div style="margin-left: 0px;">เริ่มต้น</div><div style="margin-left: 0px;">1. รับข้อมูลประกาศภายในห้องเรียนจากผู้สอน</div><div style="margin-left: 0px;">2. ตรวจสอบสิทธิ์และความครบถ้วนของเนื้อหาประกาศ</div><div style="margin-left: 40px;">2.1 ถ้า(ถูกต้อง)</div><div style="margin-left: 80px;">2.1.1 บันทึกข้อมูลประกาศลงแฟ้มข้อมูลประกาศข่าวสาร (D8)</div><div style="margin-left: 80px;">2.1.2 สั่งการระบบแจ้งเตือน (7.0 / 8.0) ให้ส่งแจ้งเตือนไปยังผู้เรียนในห้อง</div><div style="margin-left: 40px;">2.2 ถ้า(ไม่ถูกต้อง)</div><div style="margin-left: 80px;">2.2.1 แจ้งให้ผู้สอนแก้ไขเนื้อหา</div><div style="margin-left: 0px;">จบการทำงาน</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="process-section" style="margin-bottom: 60px; page-break-inside: avoid;">
+        <h2 class="header-title">3.8.1 Process จัดการโครงสร้างและรายละเอียดข้อสอบ</h2>
+        
+        <div class="image-placeholder">
+            [ใส่รูปภาพ DFD ของ Process 3.1 ที่นี่]
+        </div>
+
+        <table>
+            <tbody>
+                <tr>
+                    <td class="col-head">Number</td>
+                    <td>3.1</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Name</td>
+                    <td>จัดการโครงสร้างและรายละเอียดข้อสอบ</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Description</td>
+                    <td>กระบวนการจัดการโครงสร้างและรายละเอียดข้อสอบของระบบ</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Input data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ข้อมูลการส่งคำตอบ</li><li>ข้อมูลข้อสอบ</li><li>ข้อมูลห้องเรียน</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Output data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Process description</td>
+                    <td class="logic-block">
+                        <div style="margin-left: 0px;">เริ่มต้น</div><div style="margin-left: 0px;">1. รับข้อมูลข้อสอบ (ชื่อ, เวลา, คะแนน) จากผู้สอน</div><div style="margin-left: 0px;">2. ตรวจสอบข้อมูลความถูกต้องของแบบฟอร์ม</div><div style="margin-left: 40px;">2.1 ถ้า(ถูกต้อง)</div><div style="margin-left: 80px;">2.1.1 บันทึกรายละเอียดข้อสอบลงแฟ้มข้อมูลข้อสอบ (D4)</div><div style="margin-left: 80px;">2.1.2 กำหนดสถานะและเชื่อมโยงรหัสห้องเรียน</div><div style="margin-left: 40px;">2.2 ถ้า(ไม่ถูกต้อง)</div><div style="margin-left: 80px;">2.2.1 แจ้งเตือนความผิดพลาด</div><div style="margin-left: 0px;">จบการทำงาน</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="process-section" style="margin-bottom: 60px; page-break-inside: avoid;">
+        <h2 class="header-title">3.8.2 Process จัดการรูปภาพประกอบโจทย์</h2>
+        
+        <div class="image-placeholder">
+            [ใส่รูปภาพ DFD ของ Process 3.2 ที่นี่]
+        </div>
+
+        <table>
+            <tbody>
+                <tr>
+                    <td class="col-head">Number</td>
+                    <td>3.2</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Name</td>
+                    <td>จัดการรูปภาพประกอบโจทย์</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Description</td>
+                    <td>กระบวนการจัดการรูปภาพประกอบโจทย์ของระบบ</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Input data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ข้อมูล URL และสถานะการจัดเก็บรูปภาพ</li><li>ข้อมูลไฟล์รูปภาพโจทย์ข้อสอบ</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Output data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Process description</td>
+                    <td class="logic-block">
+                        <div style="margin-left: 0px;">เริ่มต้น</div><div style="margin-left: 0px;">1. รับข้อมูลไฟล์รูปภาพโจทย์ข้อสอบจากผู้สอน</div><div style="margin-left: 0px;">2. ตรวจสอบประเภทและขนาดไฟล์</div><div style="margin-left: 40px;">2.1 ถ้า(ไฟล์ถูกต้องตามเงื่อนไข)</div><div style="margin-left: 80px;">2.1.1 ส่งรูปภาพไปยัง Cloudinary API เพื่ออัปโหลด</div><div style="margin-left: 80px;">2.1.2 รับข้อมูล URL ของรูปภาพกลับมา</div><div style="margin-left: 80px;">2.1.3 อัปเดตลิงก์รูปภาพลงในข้อสอบในฐานข้อมูล</div><div style="margin-left: 40px;">2.2 ถ้า(ไฟล์ไม่ถูกต้อง)</div><div style="margin-left: 80px;">2.2.1 ปฏิเสธการอัปโหลดและแจ้งเตือน</div><div style="margin-left: 0px;">จบการทำงาน</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="process-section" style="margin-bottom: 60px; page-break-inside: avoid;">
+        <h2 class="header-title">3.8.3 Process จัดการเกณฑ์รูบริคด้วย AI และกำหนดเอง</h2>
+        
+        <div class="image-placeholder">
+            [ใส่รูปภาพ DFD ของ Process 3.3 ที่นี่]
+        </div>
+
+        <table>
+            <tbody>
+                <tr>
+                    <td class="col-head">Number</td>
+                    <td>3.3</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Name</td>
+                    <td>จัดการเกณฑ์รูบริคด้วย AI และกำหนดเอง</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Description</td>
+                    <td>กระบวนการจัดการเกณฑ์รูบริคด้วย AI และกำหนดเองของระบบ</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Input data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ข้อมูลคำสั่งสร้างโครงสร้างเกณฑ์การประเมิน</li><li>ข้อมูลเกณฑ์รูบริคอัตโนมัติ</li><li>โครงสร้างเกณฑ์การประเมิน</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Output data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ข้อมูลโจทย์ข้อสอบและเกณฑ์การให้คะแนน</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Process description</td>
+                    <td class="logic-block">
+                        <div style="margin-left: 0px;">เริ่มต้น</div><div style="margin-left: 0px;">1. รับข้อมูลคำสั่งสร้างโครงสร้างเกณฑ์ หรือข้อมูลเกณฑ์รูบริคอัตโนมัติ</div><div style="margin-left: 0px;">2. ตรวจสอบรูปแบบคำสั่ง</div><div style="margin-left: 40px;">2.1 กรณีผู้สอนกำหนดเอง</div><div style="margin-left: 80px;">2.1.1 บันทึกโครงสร้างเกณฑ์การประเมินลงแฟ้มข้อมูลโจทย์ (D5)</div><div style="margin-left: 40px;">2.2 กรณีใช้ AI ช่วยสร้าง</div><div style="margin-left: 80px;">2.2.1 รวบรวมข้อมูลโจทย์และคำสั่งส่งไปยัง Gemini API</div><div style="margin-left: 80px;">2.2.2 รับข้อมูลผลลัพธ์เกณฑ์ที่ AI สร้างกลับมา</div><div style="margin-left: 80px;">2.2.3 แสดงผลให้ผู้สอนตรวจสอบก่อนบันทึก</div><div style="margin-left: 0px;">จบการทำงาน</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="process-section" style="margin-bottom: 60px; page-break-inside: avoid;">
+        <h2 class="header-title">3.8.1 Process เพิ่มข้อสอบเข้าคลังส่วนตัว</h2>
+        
+        <div class="image-placeholder">
+            [ใส่รูปภาพ DFD ของ Process 4.1 ที่นี่]
+        </div>
+
+        <table>
+            <tbody>
+                <tr>
+                    <td class="col-head">Number</td>
+                    <td>4.1</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Name</td>
+                    <td>เพิ่มข้อสอบเข้าคลังส่วนตัว</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Description</td>
+                    <td>กระบวนการเพิ่มข้อสอบเข้าคลังส่วนตัวของระบบ</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Input data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ข้อมูลการจัดการคลังข้อสอบ</li><li>ข้อมูลข้อสอบ</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Output data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ข้อมูลคลังข้อสอบ</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Process description</td>
+                    <td class="logic-block">
+                        <div style="margin-left: 0px;">เริ่มต้น</div><div style="margin-left: 0px;">1. รับข้อมูลคำสั่งการจัดการคลังข้อสอบ</div><div style="margin-left: 0px;">2. คัดลอกข้อมูลจากแฟ้มข้อมูลข้อสอบ (D4) และโจทย์ (D5)</div><div style="margin-left: 0px;">3. บันทึกเป็นฉบับร่างหรือเทมเพลตในแฟ้มข้อมูลคลังข้อสอบ (D11)</div><div style="margin-left: 0px;">4. แจ้งผลการบันทึกสำเร็จ</div><div style="margin-left: 0px;">จบการทำงาน</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="process-section" style="margin-bottom: 60px; page-break-inside: avoid;">
+        <h2 class="header-title">3.8.2 Process จัดการและเรียกใช้คลังข้อสอบ</h2>
+        
+        <div class="image-placeholder">
+            [ใส่รูปภาพ DFD ของ Process 4.2 ที่นี่]
+        </div>
+
+        <table>
+            <tbody>
+                <tr>
+                    <td class="col-head">Number</td>
+                    <td>4.2</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Name</td>
+                    <td>จัดการและเรียกใช้คลังข้อสอบ</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Description</td>
+                    <td>กระบวนการจัดการและเรียกใช้คลังข้อสอบของระบบ</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Input data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ข้อมูลการดึงข้อสอบจากคลัง</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Output data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Process description</td>
+                    <td class="logic-block">
+                        <div style="margin-left: 0px;">เริ่มต้น</div><div style="margin-left: 0px;">1. รับข้อมูลการดึงข้อสอบจากคลังจากผู้สอน</div><div style="margin-left: 0px;">2. ค้นหาเทมเพลตในแฟ้มข้อมูลคลังข้อสอบ (D11)</div><div style="margin-left: 40px;">2.1 ถ้า(พบข้อมูล)</div><div style="margin-left: 80px;">2.1.1 โคลนข้อมูลข้อสอบมาสร้างเป็นรายการใหม่ในห้องเรียนปัจจุบัน (D4)</div><div style="margin-left: 80px;">2.1.2 แสดงผลข้อสอบใหม่ให้ผู้สอนพร้อมแก้ไขเพิ่มเติม</div><div style="margin-left: 0px;">จบการทำงาน</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="process-section" style="margin-bottom: 60px; page-break-inside: avoid;">
+        <h2 class="header-title">3.8.1 Process จัดการการเริ่มทำข้อสอบและจับเวลา</h2>
+        
+        <div class="image-placeholder">
+            [ใส่รูปภาพ DFD ของ Process 5.1 ที่นี่]
+        </div>
+
+        <table>
+            <tbody>
+                <tr>
+                    <td class="col-head">Number</td>
+                    <td>5.1</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Name</td>
+                    <td>จัดการการเริ่มทำข้อสอบและจับเวลา</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Description</td>
+                    <td>กระบวนการจัดการการเริ่มทำข้อสอบและจับเวลาของระบบ</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Input data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ข้อมูลข้อสอบ</li><li>ข้อมูลคำขอเริ่มทำข้อสอบ</li><li>ข้อมูลผู้ใช้งาน</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Output data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Process description</td>
+                    <td class="logic-block">
+                        <div style="margin-left: 0px;">เริ่มต้น</div><div style="margin-left: 0px;">1. รับข้อมูลคำขอเริ่มทำข้อสอบจากผู้เรียน</div><div style="margin-left: 0px;">2. ตรวจสอบสถานะและเวลาของข้อสอบจาก (D4)</div><div style="margin-left: 40px;">2.1 ถ้า(ยังอยู่ในช่วงเวลาที่เปิดให้สอบ)</div><div style="margin-left: 80px;">2.1.1 สร้างระเบียนใหม่ในแฟ้มข้อมูลการส่งคำตอบ (D6) พร้อมกำหนดสถานะเริ่มทำ</div><div style="margin-left: 80px;">2.1.2 ดึงข้อมูลโจทย์และเริ่มนับเวลาถอยหลังที่ฝั่งผู้ใช้</div><div style="margin-left: 40px;">2.2 ถ้า(หมดเวลาหรือยังไม่ถึงเวลา)</div><div style="margin-left: 80px;">2.2.1 ปฏิเสธการเข้าสอบและแจ้งเตือน</div><div style="margin-left: 0px;">จบการทำงาน</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="process-section" style="margin-bottom: 60px; page-break-inside: avoid;">
+        <h2 class="header-title">3.8.2 Process บันทึกแบบร่างและอัปโหลดรูปลายมือ</h2>
+        
+        <div class="image-placeholder">
+            [ใส่รูปภาพ DFD ของ Process 5.2 ที่นี่]
+        </div>
+
+        <table>
+            <tbody>
+                <tr>
+                    <td class="col-head">Number</td>
+                    <td>5.2</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Name</td>
+                    <td>บันทึกแบบร่างและอัปโหลดรูปลายมือ</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Description</td>
+                    <td>กระบวนการบันทึกแบบร่างและอัปโหลดรูปลายมือของระบบ</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Input data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ข้อมูล URL และสถานะการจัดเก็บรูปภาพ</li><li>ข้อมูลแบบร่างคำตอบ</li><li>ข้อมูลไฟล์รูปภาพคำตอบลายมือเขียน</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Output data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Process description</td>
+                    <td class="logic-block">
+                        <div style="margin-left: 0px;">เริ่มต้น</div><div style="margin-left: 0px;">1. รับข้อมูลแบบร่างคำตอบ (Auto-save) ระหว่างสอบ</div><div style="margin-left: 0px;">2. รับข้อมูลรูปภาพคำตอบลายมือในกรณีส่งเป็นรูป</div><div style="margin-left: 0px;">3. อัปเดตข้อมูลการส่งคำตอบใน (D6) และ (D7) อย่างต่อเนื่องป้องกันข้อมูลสูญหาย</div><div style="margin-left: 0px;">4. ถ้ามีการอัปโหลดรูป ให้ส่งประมวลผลผ่าน Cloudinary API ก่อนจัดเก็บ</div><div style="margin-left: 0px;">จบการทำงาน</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="process-section" style="margin-bottom: 60px; page-break-inside: avoid;">
+        <h2 class="header-title">3.8.3 Process ยืนยันการส่งคำตอบ</h2>
+        
+        <div class="image-placeholder">
+            [ใส่รูปภาพ DFD ของ Process 5.3 ที่นี่]
+        </div>
+
+        <table>
+            <tbody>
+                <tr>
+                    <td class="col-head">Number</td>
+                    <td>5.3</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Name</td>
+                    <td>ยืนยันการส่งคำตอบ</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Description</td>
+                    <td>กระบวนการยืนยันการส่งคำตอบของระบบ</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Input data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ข้อมูลการส่งคำตอบ</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Output data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Process description</td>
+                    <td class="logic-block">
+                        <div style="margin-left: 0px;">เริ่มต้น</div><div style="margin-left: 0px;">1. รับข้อมูลคำสั่งยืนยันการส่งข้อสอบขั้นสุดท้าย หรือระบบบังคับส่งเมื่อหมดเวลา</div><div style="margin-left: 0px;">2. ตรวจสอบความสมบูรณ์ของคำตอบ</div><div style="margin-left: 0px;">3. อัปเดตสถานะการส่ง (Status = Submitted) ในแฟ้มข้อมูล (D6)</div><div style="margin-left: 0px;">4. ล็อคไม่ให้ผู้เรียนแก้ไขข้อมูลเพิ่มเติม</div><div style="margin-left: 0px;">5. แจ้งผลการส่งให้ผู้เรียนทราบ</div><div style="margin-left: 0px;">จบการทำงาน</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="process-section" style="margin-bottom: 60px; page-break-inside: avoid;">
+        <h2 class="header-title">3.8.1 Process เตรียมข้อมูลคำตอบและเกณฑ์รูบริค</h2>
+        
+        <div class="image-placeholder">
+            [ใส่รูปภาพ DFD ของ Process 6.1 ที่นี่]
+        </div>
+
+        <table>
+            <tbody>
+                <tr>
+                    <td class="col-head">Number</td>
+                    <td>6.1</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Name</td>
+                    <td>เตรียมข้อมูลคำตอบและเกณฑ์รูบริค</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Description</td>
+                    <td>กระบวนการเตรียมข้อมูลคำตอบและเกณฑ์รูบริคของระบบ</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Input data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ข้อมูลการส่งคำตอบ</li><li>ข้อมูลข้อสอบ</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Output data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ข้อมูลคำตอบของนักเรียน</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Process description</td>
+                    <td class="logic-block">
+                        <div style="margin-left: 0px;">เริ่มต้น</div><div style="margin-left: 0px;">1. ดึงข้อมูลคำตอบทั้งหมดจากผู้เรียน (D6, D7)</div><div style="margin-left: 0px;">2. ดึงข้อมูลโจทย์และเกณฑ์การประเมิน (Rubric) จาก (D5)</div><div style="margin-left: 0px;">3. นำข้อมูลมาจัดรูปแบบ (Format JSON/Prompt) เพื่อเตรียมส่งเข้า AI</div><div style="margin-left: 0px;">4. ส่งต่อชุดข้อมูลไปยัง Process 6.2</div><div style="margin-left: 0px;">จบการทำงาน</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="process-section" style="margin-bottom: 60px; page-break-inside: avoid;">
+        <h2 class="header-title">3.8.2 Process ประมวลผลและประเมินผ่าน AI</h2>
+        
+        <div class="image-placeholder">
+            [ใส่รูปภาพ DFD ของ Process 6.2 ที่นี่]
+        </div>
+
+        <table>
+            <tbody>
+                <tr>
+                    <td class="col-head">Number</td>
+                    <td>6.2</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Name</td>
+                    <td>ประมวลผลและประเมินผ่าน AI</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Description</td>
+                    <td>กระบวนการประมวลผลและประเมินผ่าน AIของระบบ</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Input data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ข้อมูลคำตอบของนักเรียน</li><li>ผลการประเมินและข้อเสนอแนะอัจฉริยะ</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Output data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Process description</td>
+                    <td class="logic-block">
+                        <div style="margin-left: 0px;">เริ่มต้น</div><div style="margin-left: 0px;">1. รับชุดข้อมูลที่เตรียมไว้จาก Process 6.1</div><div style="margin-left: 0px;">2. ส่งคำสั่งประมวลผลไปยัง Gemini API</div><div style="margin-left: 0px;">3. รอรับข้อมูลผลการประเมินจาก AI (คะแนน, เหตุผลวิเคราะห์, ความมั่นใจ)</div><div style="margin-left: 0px;">4. อัปเดตผลลัพธ์ลงแฟ้มข้อมูลการตรวจคำตอบ (D7) โดยระบุว่าประเมินโดย AI</div><div style="margin-left: 0px;">5. เมื่อตรวจเสร็จทั้งหมด ส่งการแจ้งเตือนไปยังผู้สอน</div><div style="margin-left: 0px;">จบการทำงาน</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="process-section" style="margin-bottom: 60px; page-break-inside: avoid;">
+        <h2 class="header-title">3.8.1 Process ตรวจสอบและปรับปรุงคะแนน</h2>
+        
+        <div class="image-placeholder">
+            [ใส่รูปภาพ DFD ของ Process 7.1 ที่นี่]
+        </div>
+
+        <table>
+            <tbody>
+                <tr>
+                    <td class="col-head">Number</td>
+                    <td>7.1</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Name</td>
+                    <td>ตรวจสอบและปรับปรุงคะแนน</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Description</td>
+                    <td>กระบวนการตรวจสอบและปรับปรุงคะแนนของระบบ</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Input data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ข้อมูลการส่งคำตอบ</li><li>ข้อมูลข้อสอบ</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Output data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ข้อมูลประวัติการแก้ไขคะแนน</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Process description</td>
+                    <td class="logic-block">
+                        <div style="margin-left: 0px;">เริ่มต้น</div><div style="margin-left: 0px;">1. รับข้อมูลผลการประเมินที่ AI ตรวจเสร็จแล้วมาแสดงให้ผู้สอนดู</div><div style="margin-left: 0px;">2. รับคำสั่งปรับปรุงคะแนนหรือให้ข้อเสนอแนะเพิ่มเติมจากผู้สอน</div><div style="margin-left: 0px;">3. อัปเดตคะแนน (Teacher Score) ลงในแฟ้มข้อมูล (D7)</div><div style="margin-left: 0px;">จบการทำงาน</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="process-section" style="margin-bottom: 60px; page-break-inside: avoid;">
+        <h2 class="header-title">3.8.2 Process จัดการประวัติการแก้ไขคะแนน</h2>
+        
+        <div class="image-placeholder">
+            [ใส่รูปภาพ DFD ของ Process 7.2 ที่นี่]
+        </div>
+
+        <table>
+            <tbody>
+                <tr>
+                    <td class="col-head">Number</td>
+                    <td>7.2</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Name</td>
+                    <td>จัดการประวัติการแก้ไขคะแนน</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Description</td>
+                    <td>กระบวนการจัดการประวัติการแก้ไขคะแนนของระบบ</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Input data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ข้อมูลประวัติการแก้ไขคะแนน</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Output data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Process description</td>
+                    <td class="logic-block">
+                        <div style="margin-left: 0px;">เริ่มต้น</div><div style="margin-left: 0px;">1. ดึงข้อมูลก่อนและหลังการปรับปรุงคะแนนจาก Process 7.1</div><div style="margin-left: 0px;">2. บันทึกข้อมูลการเปลี่ยนแปลง (Log) ลงในระบบเพื่อสามารถตรวจสอบย้อนหลังได้</div><div style="margin-left: 0px;">จบการทำงาน</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="process-section" style="margin-bottom: 60px; page-break-inside: avoid;">
+        <h2 class="header-title">3.8.3 Process อนุมัติและประกาศผลคะแนน</h2>
+        
+        <div class="image-placeholder">
+            [ใส่รูปภาพ DFD ของ Process 7.3 ที่นี่]
+        </div>
+
+        <table>
+            <tbody>
+                <tr>
+                    <td class="col-head">Number</td>
+                    <td>7.3</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Name</td>
+                    <td>อนุมัติและประกาศผลคะแนน</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Description</td>
+                    <td>กระบวนการอนุมัติและประกาศผลคะแนนของระบบ</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Input data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ข้อมูลคำขอตรวจสอบประวัติการแก้ไขคะแนน</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Output data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Process description</td>
+                    <td class="logic-block">
+                        <div style="margin-left: 0px;">เริ่มต้น</div><div style="margin-left: 0px;">1. รับคำสั่งอนุมัติผลคะแนนทั้งหมดจากผู้สอน</div><div style="margin-left: 0px;">2. อัปเดตสถานะของข้อสอบให้เป็นประกาศผล</div><div style="margin-left: 0px;">3. สร้างคำสั่งแจ้งเตือนไปยัง Process 8.1 เพื่อแจ้งผลแก่ผู้เรียนทุกคน</div><div style="margin-left: 0px;">จบการทำงาน</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="process-section" style="margin-bottom: 60px; page-break-inside: avoid;">
+        <h2 class="header-title">3.8.1 Process ส่งการแจ้งเตือนผ่าน Socket.io</h2>
+        
+        <div class="image-placeholder">
+            [ใส่รูปภาพ DFD ของ Process 8.1 ที่นี่]
+        </div>
+
+        <table>
+            <tbody>
+                <tr>
+                    <td class="col-head">Number</td>
+                    <td>8.1</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Name</td>
+                    <td>ส่งการแจ้งเตือนผ่าน Socket.io</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Description</td>
+                    <td>กระบวนการส่งการแจ้งเตือนผ่าน Socket.ioของระบบ</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Input data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Output data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ข้อมูลการแจ้งเตือนแบบเรียลไทม์</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Process description</td>
+                    <td class="logic-block">
+                        <div style="margin-left: 0px;">เริ่มต้น</div><div style="margin-left: 0px;">1. รับข้อมูลเหตุการณ์ (Event) เช่น ประกาศผล, มีประกาศใหม่ในห้องเรียน</div><div style="margin-left: 0px;">2. บันทึกรายละเอียดลงแฟ้มข้อมูลแจ้งเตือน (D10)</div><div style="margin-left: 0px;">3. กระจายข้อมูล (Broadcast) ไปยัง Client ของผู้ใช้งานที่เชื่อมต่ออยู่แบบ Real-time</div><div style="margin-left: 0px;">จบการทำงาน</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="process-section" style="margin-bottom: 60px; page-break-inside: avoid;">
+        <h2 class="header-title">3.8.3 Process ส่งออกรายงานและสถิติ</h2>
+        
+        <div class="image-placeholder">
+            [ใส่รูปภาพ DFD ของ Process 8.3 ที่นี่]
+        </div>
+
+        <table>
+            <tbody>
+                <tr>
+                    <td class="col-head">Number</td>
+                    <td>8.3</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Name</td>
+                    <td>ส่งออกรายงานและสถิติ</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Description</td>
+                    <td>กระบวนการส่งออกรายงานและสถิติของระบบ</td>
+                </tr>
+                <tr>
+                    <td class="col-head">Input data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ข้อมูลการส่งคำตอบ</li><li>ข้อมูลข้อสอบ</li><li>ข้อมูลคำขอออกรายงานสถิติ</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Output data flow</td>
+                    <td class="flow-list">
+                        <ul>
+                            <li>ไฟล์รายงานสรุปคะแนน</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-head">Process description</td>
+                    <td class="logic-block">
+                        <div style="margin-left: 0px;">เริ่มต้น</div><div style="margin-left: 0px;">1. รวบรวมข้อมูลคะแนนจาก D6 และ D7</div><div style="margin-left: 0px;">2. วิเคราะห์ข้อมูลเชิงสถิติเบื้องต้น (เช่น ค่าเฉลี่ย, จุดบกพร่องของห้องเรียน)</div><div style="margin-left: 0px;">3. ส่งออกรายงานให้อยู่ในรูปแบบสรุปผลเพื่อนำเสนอผู้สอนและผู้เรียน</div><div style="margin-left: 0px;">จบการทำงาน</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+
+</body>
+</html>

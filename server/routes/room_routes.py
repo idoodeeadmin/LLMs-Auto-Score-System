@@ -10,7 +10,7 @@ from typing import Optional, List
 from server.database import get_db_connection
 from server.auth import get_password_hash, verify_password, create_access_token, decode_token
 from server.models import *
-from server.utils import check_rate_limit, upload_to_cloudinary, get_current_user, log_audit_action, grading_queue, trigger_socket_notify, generate_class_code, _distribution_buckets
+from server.utils import check_rate_limit, upload_to_cloudinary, get_current_user, grading_queue, trigger_socket_notify, generate_class_code, _distribution_buckets
 import statistics
 router = APIRouter(prefix='/api/rooms', tags=['Room Routes'])
 
@@ -75,7 +75,6 @@ async def delete_room(request: Request, room_id: int, user: dict=Depends(get_cur
     cursor.execute('DELETE FROM rooms WHERE id = ?', (room_id,))
     conn.commit()
     conn.close()
-    log_audit_action(user['id'], 'DELETE_ROOM', str(room_id), f'Deleted room {room_id}', request.client.host)
     return {'message': 'Room deleted successfully'}
 
 @router.post('/join')

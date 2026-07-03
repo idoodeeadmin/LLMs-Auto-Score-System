@@ -10,7 +10,7 @@ from email.mime.multipart import MIMEMultipart
 from server.database import get_db_connection
 from server.auth import get_password_hash, verify_password, create_access_token, decode_token
 from server.models import *
-from server.utils import check_rate_limit, _firebase_app, auth, upload_to_cloudinary, get_current_user, log_audit_action
+from server.utils import check_rate_limit, _firebase_app, auth, upload_to_cloudinary, get_current_user
 import firebase_admin
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
@@ -84,7 +84,6 @@ async def login(user_data: UserLogin, request: Request):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Incorrect email or password', headers={'WWW-Authenticate': 'Bearer'})
     access_token = create_access_token(data={'sub': user['email'], 'token_version': user.get('token_version', 0)})
     client_ip = request.client.host if request.client else 'unknown'
-    log_audit_action(user['id'], 'LOGIN', None, 'User logged in via email', client_ip)
     user_dict = dict(user)
     user_info = {'id': user_dict['id'], 'email': user_dict['email'], 'name': user_dict['name'], 'role': user_dict['role'], 'studentId': user_dict.get('student_id'), 'avatarUrl': user_dict.get('avatar_url'), 'is_verified': user_dict.get('is_verified', 0)}
     return {'access_token': access_token, 'token_type': 'bearer', 'user': user_info}
@@ -134,18 +133,18 @@ async def set_role(req: SetRoleRequest, user: dict=Depends(get_current_user)):
         raise HTTPException(status_code=400, detail='Role already set')
     if req.role not in ['teacher', 'student']:
         raise HTTPException(status_code=400, detail='Invalid role')
-    if req.role == 'student' and (not req.student_id):
-        raise HTTPException(status_code=400, detail='Student ID is required for students')
+    if not req.identity_id:
+        raise HTTPException(status_code=400, detail='Identity ID is required')
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute('UPDATE users SET role = ?, student_id = ? WHERE id = ?', (req.role, req.student_id, user['id']))
+        cursor.execute('UPDATE users SET role = ?, student_id = ? WHERE id = ?', (req.role, req.identity_id, user['id']))
         conn.commit()
     except pymysql.err.Error as e:
         conn.close()
         raise HTTPException(status_code=500, detail=str(e))
     conn.close()
-    return {'message': 'Role updated successfully', 'role': req.role, 'student_id': req.student_id}
+    return {'message': 'Role updated successfully', 'role': req.role, 'identity_id': req.identity_id}
 
 @router.post('/forgot-password')
 async def forgot_password(req: ForgotPasswordRequest):
@@ -247,8 +246,8 @@ async def reset_password(req: ResetPasswordRequest):
         pass
     hashed_password = get_password_hash(req.new_password)
     cursor.execute('UPDATE users SET password = ?, token_version = token_version + 1 WHERE id = ?', (hashed_password, reset_record['user_id']))
-    client_ip = req.client.host if getattr(req, 'client', None) else 'unknown'
-    log_audit_action(reset_record['user_id'], 'PASSWORD_RESET', None, 'User reset their password (all sessions revoked)', client_ip)
+    client_ip = getattr(req, 'client', None)
+    client_ip = client_ip.host if client_ip else 'unknown'
     cursor.execute('DELETE FROM password_resets WHERE id = ?', (reset_record['id'],))
     conn.commit()
     conn.close()
@@ -389,8 +388,8 @@ async def firebase_login(request: FirebaseLoginRequest, req: Request):
             conn.commit()
         conn.close()
         access_token = create_access_token(data={'sub': email, 'token_version': user.get('token_version', 0)})
-        client_ip = req.client.host if getattr(req, 'client', None) else 'unknown'
-        log_audit_action(user['id'], 'LOGIN', None, 'User logged in via Firebase', client_ip)
+        client_ip = getattr(req, 'client', None)
+        client_ip = client_ip.host if client_ip else 'unknown'
         user_info = {'id': user_dict['id'], 'email': user_dict['email'], 'name': user_dict['name'], 'role': user_dict['role'], 'studentId': user_dict.get('student_id'), 'avatarUrl': google_picture or existing_avatar}
         return {'access_token': access_token, 'token_type': 'bearer', 'user': user_info}
     try:
@@ -403,7 +402,6 @@ async def firebase_login(request: FirebaseLoginRequest, req: Request):
     user_info = {'id': new_user_id, 'email': email, 'name': display_name, 'role': 'unassigned', 'studentId': None, 'avatarUrl': google_picture}
     access_token = create_access_token(data={'sub': email, 'token_version': 0})
     client_ip = req.client.host if getattr(req, 'client', None) else 'unknown'
-    log_audit_action(new_user_id, 'REGISTER', None, 'User registered via Firebase', client_ip)
     conn.close()
     return {'access_token': access_token, 'token_type': 'bearer', 'user': user_info}
 

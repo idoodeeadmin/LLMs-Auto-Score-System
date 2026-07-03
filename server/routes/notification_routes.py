@@ -11,7 +11,7 @@ from typing import Optional, List
 from server.database import get_db_connection
 from server.auth import get_password_hash, verify_password, create_access_token, decode_token
 from server.models import *
-from server.utils import check_rate_limit, upload_to_cloudinary, get_current_user, log_audit_action, grading_queue, trigger_socket_notify
+from server.utils import check_rate_limit, upload_to_cloudinary, get_current_user, grading_queue, trigger_socket_notify
 
 router = APIRouter(prefix="/api/notifications", tags=["Notification Routes"])
 
@@ -23,6 +23,29 @@ async def get_notifications(user: dict=Depends(get_current_user)):
     cursor = conn.cursor()
     now_utc = datetime.now(timezone.utc)
     notifications = []
+    
+    # Fetch from database (historical notifications)
+    try:
+        cursor.execute("SELECT * FROM notifications WHERE user_id = %s ORDER BY created_at DESC LIMIT 50", (user['id'],))
+        db_notifs = cursor.fetchall()
+        for row in db_notifs:
+            notif = {
+                'id': row['id'],
+                'type': row['type'],
+                'message': row['message'],
+                'link': row['link'],
+                'is_read': bool(row['is_read']),
+                'created_at': row['created_at'].isoformat() if row['created_at'] else None
+            }
+            if row.get('data'):
+                try:
+                    notif['data'] = json.loads(row['data'])
+                except:
+                    pass
+            notifications.append(notif)
+    except Exception as e:
+        print(f"[Notifications] DB fetch error: {e}")
+
     if user['role'] == 'teacher':
         cursor.execute('\n            SELECT e.id AS exam_id, e.title AS exam_title, e.end_date,\n                   r.id AS room_id, r.name AS room_name\n            FROM exams e\n            JOIN rooms r ON e.room_id = r.id\n            WHERE r.owner_id = ?\n            ', (user['id'],))
         exams = cursor.fetchall()

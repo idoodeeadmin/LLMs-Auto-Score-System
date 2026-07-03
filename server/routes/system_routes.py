@@ -11,7 +11,7 @@ from typing import Optional, List
 from server.database import get_db_connection
 from server.auth import get_password_hash, verify_password, create_access_token, decode_token
 from server.models import *
-from server.utils import check_rate_limit, upload_to_cloudinary, get_current_user, log_audit_action, grading_queue, trigger_socket_notify
+from server.utils import check_rate_limit, upload_to_cloudinary, get_current_user, grading_queue, trigger_socket_notify
 
 router = APIRouter(prefix="", tags=["System Routes"])
 
@@ -65,13 +65,4 @@ async def get_all_my_submissions(user: dict=Depends(get_current_user)):
 @router.get('/api/ping')
 async def ping():
     return {'message': 'pong'}
-
-@router.get('/api/audit-logs')
-async def get_audit_logs(user=Depends(get_current_user)):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT id, action_type, entity_id, details, ip_address, created_at FROM audit_logs WHERE user_id = ? ORDER BY created_at DESC LIMIT 100', (user['id'],))
-    logs = cursor.fetchall()
-    conn.close()
-    return logs
 

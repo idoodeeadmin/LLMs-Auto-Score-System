@@ -24,7 +24,6 @@ import Profile from "./pages/Profile";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import VerifyEmail from "./pages/VerifyEmail";
-import AuditLog from "./pages/AuditLog";
 import AnnouncementStats from "./pages/AnnouncementStats";
 
 const queryClient = new QueryClient();
@@ -60,7 +59,6 @@ export const App = () => (
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/room/:roomId/announcement/:annId/stats" element={<AnnouncementStats />} />
-            <Route path="/audit-log" element={<AuditLog />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
