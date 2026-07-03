@@ -1,0 +1,8 @@
+Process 1: Perfectly balanced!
+Process 2: Perfectly balanced!
+Process 3: Perfectly balanced!
+Process 4: Perfectly balanced!
+Process 5: Perfectly balanced!
+Process 6: Perfectly balanced!
+Process 7 Mismatches:
+  [OUT] Extra: {'ข้อมูลสถานะการอ่านการแจ้งเตือน'}

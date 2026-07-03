@@ -212,11 +212,7 @@ export default function Navbar({ activeTab, setActiveTab, isSticky = true }: Nav
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="rounded-lg gap-2 cursor-pointer focus:bg-blue-50 dark:bg-blue-900/30 focus:text-blue-600">
-                <Link to="/audit-log" className="flex items-center w-full">
-                  <ShieldCheck className="mr-2" size={18} />
-                  <span>ประวัติการทำรายการ</span>
-                </Link>
-              </DropdownMenuItem>
+                </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-gray-50 dark:bg-slate-900 my-2" />
               <DropdownMenuItem 
                 onClick={handleLogout}

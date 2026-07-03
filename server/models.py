@@ -45,7 +45,7 @@ class AnnouncementCreate(BaseModel):
 
 class SetRoleRequest(BaseModel):
     role: str
-    student_id: Optional[str] = None
+    identity_id: Optional[str] = None
 
 class FirebaseLoginRequest(BaseModel):
     firebase_token: str

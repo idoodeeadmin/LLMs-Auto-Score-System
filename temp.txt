@@ -1,0 +1,10 @@
+<!-- PROCESS 1.1 -->
+<div class="dfd-row">
+<div class="col-left"><div class="entity-conn">\n<div class="entity-box"><div class="duplicated-mark"></div>ผู้ใช้งานทั่วไป</div>\n<div class="flows">\n<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลการสมัครสมาชิก</div></div>\n<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลบัญชีผู้ใช้</div></div>\n</div>\n</div>
+</div>
+<div class="col-center">
+<div class="process">
+<div class="p-id">1.1</div>
+<div class="p-name">สมัครสมาชิก<br/>(Register)</div>
+</div>
+</div>

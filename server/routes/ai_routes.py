@@ -12,7 +12,7 @@ from server.database import get_db_connection
 from server.auth import get_password_hash, verify_password, create_access_token, decode_token
 from server.models import *
 from server.services.ai_service import _USE_GEMINI, _genai_client, _GEMINI_MODEL
-from server.utils import check_rate_limit, upload_to_cloudinary, get_current_user, log_audit_action, grading_queue, trigger_socket_notify, get_image_bytes
+from server.utils import check_rate_limit, upload_to_cloudinary, get_current_user, grading_queue, trigger_socket_notify, get_image_bytes
 from google.genai import types as genai_types
 
 router = APIRouter(prefix="/api/gemini", tags=["Ai Routes"])

@@ -1,0 +1,333 @@
+<style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background: #f1f5f9;
+            padding: 2rem;
+            color: #1e293b;
+            margin: 0;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 28px;
+            margin-bottom: 0.5rem;
+            color: #0f172a;
+        }
+
+        p.subtitle {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: #475569;
+            font-size: 15px;
+        }
+
+        .dfd-wrapper {
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            min-width: 1300px;
+            overflow-x: auto;
+        }
+
+        .section-title {
+            background: #1e293b;
+            color: #ffffff;
+            padding: 12px 20px;
+            font-size: 18px;
+            font-weight: 700;
+            border-radius: 8px;
+            margin: 50px 0 30px 0;
+            text-align: left;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-title:first-child {
+            margin-top: 0;
+        }
+
+        .dfd-row {
+            display: flex;
+            align-items: stretch;
+            margin-bottom: 40px;
+            padding-bottom: 40px;
+            border-bottom: 2px dashed #e2e8f0;
+            width: 100%;
+        }
+
+        .dfd-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .col-left {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            flex: 1;
+        }
+
+        .col-center {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            flex: 0 0 220px;
+            padding: 0 20px;
+        }
+
+        .col-right {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            flex: 1;
+        }
+
+        /* Entity Styles */
+        .entity-conn {
+            display: flex;
+            align-items: stretch;
+            width: 100%;
+        }
+
+        .entity-box {
+            flex: 0 0 130px;
+            border: 1.5px solid #0f172a;
+            background: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-weight: 600;
+            font-size: 14px;
+            border-radius: 6px;
+            box-shadow: 4px 4px 0 rgba(15, 23, 42, 0.06);
+            position: relative;
+            overflow: hidden;
+            min-height: 50px;
+            color: #0f172a;
+        }
+
+        
+        /* Internal Process Styles */
+        .internal-process {
+            flex: 0 0 150px; border: 2px solid #0f172a; background: #e2e8f0;
+            display: flex; align-items: center; justify-content: center; text-align: center;
+            font-weight: 700; font-size: 14px; border-radius: 8px; box-shadow: 4px 4px 0 rgba(15,23,42,0.08);
+            position: relative; overflow: hidden; min-height: 55px; color: #0f172a; padding: 0 5px;
+        }
+        
+        /* Data Store Styles */
+        .datastore-conn {
+            display: flex;
+            align-items: stretch;
+            width: 100%;
+        }
+
+        .datastore-box {
+            flex: 0 0 180px;
+            border: 1.5px solid #0f172a;
+            border-right: none;
+            background: #ffffff;
+            display: flex;
+            box-shadow: 4px 4px 0 rgba(15, 23, 42, 0.06);
+            position: relative;
+            overflow: hidden;
+            min-height: 50px;
+        }
+
+        .d-id {
+            border-right: 1.5px solid #0f172a;
+            width: 45px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 700;
+            font-size: 14px;
+            background: #f8fafc;
+            color: #0f172a;
+        }
+
+        .d-name {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 0 8px;
+            color: #0f172a;
+        }
+
+        /* Duplicated Mark (Standard DFD Top Left Diagonal) */
+        .duplicated-mark {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0;
+            height: 0;
+            border-top: 16px solid #64748b;
+            border-right: 16px solid transparent;
+            z-index: 5;
+        }
+
+        /* Flow Lines Container */
+        .flows {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-evenly;
+            padding: 10px 0;
+            gap: 15px;
+            min-width: 300px;
+        }
+
+        .flow-item {
+            position: relative;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .flow-line {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 50%;
+            height: 1.5px;
+            background: #334155;
+            z-index: 1;
+            transition: 0.2s;
+        }
+
+        .flow-text {
+            position: relative;
+            background: #ffffff;
+            padding: 0 8px;
+            font-size: 13px;
+            color: #334155;
+            z-index: 2;
+            line-height: 1;
+            font-weight: 600;
+            transition: 0.2s;
+        }
+
+        /* Hover Interactivity */
+        .flow-item:hover .flow-line {
+            background: #2563eb;
+            height: 2px;
+        }
+
+        .flow-item:hover .flow-text {
+            color: #1d4ed8;
+            font-weight: 700;
+            transform: scale(1.02);
+        }
+
+        .flow-item:hover .arrow-r {
+            border-left-color: #2563eb;
+        }
+
+        .flow-item:hover .arrow-l {
+            border-right-color: #2563eb;
+        }
+
+        /* Arrows */
+        .arrow-r {
+            position: absolute;
+            right: -1px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-top: 4px solid transparent;
+            border-bottom: 4px solid transparent;
+            border-left: 8px solid #334155;
+            transition: 0.2s;
+        }
+
+        .arrow-l {
+            position: absolute;
+            left: -1px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-top: 4px solid transparent;
+            border-bottom: 4px solid transparent;
+            border-right: 8px solid #334155;
+            transition: 0.2s;
+        }
+
+        /* Process Bubble/Box */
+        .process {
+            border: 2px solid #0f172a;
+            background: #ffffff;
+            border-radius: 12px;
+            width: 100%;
+            height: 100%;
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 4px 4px 0 rgba(15, 23, 42, 0.06);
+            overflow: hidden;
+            transition: 0.3s;
+        }
+
+        .process:hover {
+            border-color: #2563eb;
+            box-shadow: 4px 4px 0 rgba(37, 99, 235, 0.1);
+        }
+
+        .p-id {
+            border-bottom: 2px solid #0f172a;
+            height: 36px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 700;
+            font-size: 15px;
+            background: #f1f5f9;
+            color: #0f172a;
+            transition: 0.3s;
+        }
+
+        .process:hover .p-id {
+            border-color: #2563eb;
+            color: #1d4ed8;
+            background: #eff6ff;
+        }
+
+        .p-name {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 600;
+            padding: 12px;
+            line-height: 1.5;
+            color: #0f172a;
+        }
+
+        /* Internal Link (Off-page / Process-to-Process Connector) */
+        .internal-link {
+            flex: 0 0 130px;
+            border: 2px dashed #3b82f6;
+            background: #eff6ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-weight: 600;
+            font-size: 13px;
+            border-radius: 20px;
+            color: #1d4ed8;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .internal-link.right {
+            flex: 0 0 180px;
+        }
+    </style>

@@ -14,6 +14,7 @@ interface User {
   name: string;
   role: 'teacher' | 'student' | 'unassigned';
   studentId?: string;
+  teacherId?: string;
   avatarUrl?: string;
   is_verified?: number;
 }

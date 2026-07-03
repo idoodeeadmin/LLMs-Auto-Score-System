@@ -1,0 +1,22 @@
+<table>
+   <thead>
+    <tr>
+     <th>
+      ชื่อเส้นข้อมูล
+     </th>
+     <th>
+      คำอธิบาย
+     </th>
+     <th>
+      แหล่งต้นทาง
+     </th>
+     <th>
+      แหล่งปลายทาง
+     </th>
+     <th>
+      โครงสร้างข้อมูล
+     </th>
+    </tr>
+   </thead>
+   <tbody>
+<tr> <td class="col-name" rowspan="1">ข้อมูลการสมัครสมาชิก</td> <td class="col-desc" rowspan="1">ข้อมูลรายละเอียดส่วนบุคคลและบัญชีที่ผู้ใช้งานกรอกเพื่อขอลงทะเบียนเข้าสู่ระบบ</td> <td>ผู้เรียน</td> <td>Process 1.1 สมัครสมาชิก</td> <td class="col-struct" rowspan="1">อีเมล (email) <br>+ รหัสผ่าน (password) <br>+ ชื่อ (name)</td></tr><tr> <td class="col-name" rowspan="3">ข้อมูลผู้ใช้งาน</td> <td class="col-desc" rowspan="3">ข้อมูลสิทธิ์ผู้เรียนที่ดึงจากฐานข้อมูลเพื่อตรวจสอบสถานะก่อนอนุญาตให้เข้าทำข้อสอบ</td> <td>Process 1.1 สมัครสมาชิก</td> <td>ผู้เรียน</td> <td class="col-struct" rowspan="3">รหัส (id) <br>+ อีเมล (email) <br>+ รหัสผ่าน (password) <br>+ ชื่อ (name) <br>+ บทบาท (role) <br>+ รหัสนักศึกษา (student_id) <br>+ ลิงก์รูปโปรไ

@@ -1,0 +1,33 @@
+Process 1 Mismatches:
+  [IN] Missing in L2 (Should be added to L2): {'ข้อมูลบัญชีผู้ใช้เพื่อตรวจสอบ'}
+  [IN] Extra in L2 (Should be removed from L2 or added to L1): {'ข้อมูลบัญชีผู้ใช้'}
+  [OUT] Missing in L2 (Should be added to L2): {'ข้อมูลบัญชีผู้ใช้และโปรไฟล์'}
+  [OUT] Extra in L2 (Should be removed from L2 or added to L1): {'ข้อมูลสถานะการเข้าสู่ระบบ', 'ข้อมูลบัญชีผู้ใช้เพื่อตรวจสอบ'}
+Process 2 Mismatches:
+  [IN] Missing in L2 (Should be added to L2): {'ข้อมูลบัญชีผู้ใช้เพื่อตรวจสอบ'}
+  [IN] Extra in L2 (Should be removed from L2 or added to L1): {'รหัสผู้เรียนและรหัสข้อสอบ'}
+Process 3 Mismatches:
+  [IN] Missing in L2 (Should be added to L2): {'ข้อมูลรายละเอียดห้องเรียน'}
+  [IN] Extra in L2 (Should be removed from L2 or added to L1): {'ข้อมูลรายการดึงข้อสอบ'}
+  [OUT] Missing in L2 (Should be added to L2): {'ข้อมูลเกณฑ์การให้คะแนนจาก AI'}
+  [OUT] Extra in L2 (Should be removed from L2 or added to L1): {'ข้อมูลคำขอปรับแต่งรูปภาพ', 'ข้อมูลร่างเกณฑ์การให้คะแนนจาก AI'}
+Process 4 Mismatches:
+  [IN] Missing in L2 (Should be added to L2): {'ข้อมูลบัญชีผู้ใช้', 'ข้อมูลคำตอบรายข้อ', 'ข้อมูลโจทย์และเกณฑ์', 'ข้อมูลรายละเอียดข้อสอบ'}
+  [IN] Extra in L2 (Should be removed from L2 or added to L1): {'ข้อมูลแบบร่างคำตอบ'}
+  [OUT] Missing in L2 (Should be added to L2): {'ข้อมูลคำตอบของนักเรียน'}
+  [OUT] Extra in L2 (Should be removed from L2 or added to L1): {'ข้อมูลแบบร่างคำตอบ', 'ข้อมูลโจทย์และเกณฑ์', 'ข้อมูลสถานะการทำข้อสอบ', 'ข้อมูลรายละเอียดข้อสอบ'}
+Process 5 Mismatches:
+  [IN] Missing in L2 (Should be added to L2): {'ข้อมูลคำตอบรายข้อ', 'ข้อมูลสถานะการส่ง', 'ข้อมูลโจทย์และเกณฑ์', 'ข้อมูลรายละเอียดข้อสอบ'}
+  [IN] Extra in L2 (Should be removed from L2 or added to L1): {'ข้อมูลผลคะแนนรายข้อและคอมเมนต์', 'ข้อมูลผลคะแนนรวม', 'อัปเดตสถานะระบบกำลังตรวจ'}
+  [OUT] Missing in L2 (Should be added to L2): {'ข้อมูลผลคะแนนรายข้อและคอมเมนต์', 'ข้อมูลผลการประเมินจาก AI', 'ข้อมูลผลคะแนนรวม'}
+  [OUT] Extra in L2 (Should be removed from L2 or added to L1): {'ข้อมูลคำตอบรายข้อ', 'ข้อมูลสถานะการส่ง', 'ข้อมูลโจทย์และเกณฑ์', 'ข้อมูลรายละเอียดข้อสอบ'}
+Process 6 Mismatches:
+  [IN] Missing in L2 (Should be added to L2): {'ข้อมูลผลคะแนนรายข้อ', 'ข้อมูลผลการประเมินจาก AI', 'ข้อมูลผลคะแนนรวม', 'ข้อมูลคะแนนทางการ'}
+  [IN] Extra in L2 (Should be removed from L2 or added to L1): {'รหัสผู้เรียนและรหัสข้อสอบ', 'ข้อมูลประวัติการแก้ไขคะแนน', 'ข้อมูลผลคะแนนที่แก้ไข', 'ข้อมูลสถานะอนุมัติ'}
+  [OUT] Missing in L2 (Should be added to L2): {'ข้อมูลผลคะแนนที่แก้ไข', 'ข้อมูลผลคะแนนที่อนุมัติ', 'ข้อมูลสถานะอนุมัติ'}
+  [OUT] Extra in L2 (Should be removed from L2 or added to L1): {'ข้อมูลผลคะแนนรายข้อ', 'ข้อมูลคำตอบของนักเรียน', 'ข้อมูลผลคะแนนรวม', 'ข้อมูลผลการประเมินและข้อเสนอแนะ'}
+Process 7 Mismatches:
+  [IN] Missing in L2 (Should be added to L2): {'ข้อมูลคะแนนทางการ', 'ข้อมูลผลคะแนนรายข้อ', 'รหัสห้องเรียนและรหัสข้อสอบ', 'ข้อมูลผลคะแนนรวม', 'ข้อมูลรายละเอียดข้อสอบ', 'รหัสผู้เรียนและรหัสข้อสอบ', 'ข้อมูลผลการประเมินจาก AI', 'ข้อมูลประวัติการแจ้งเตือน'}
+  [IN] Extra in L2 (Should be removed from L2 or added to L1): {'ข้อมูลเงื่อนไขการส่งออกสถิติ', 'ข้อมูลการแจ้งเตือน'}
+  [OUT] Missing in L2 (Should be added to L2): {'ข้อมูลการแจ้งเตือนใหม่', 'ข้อมูลผลคะแนน', 'ข้อมูลผลการประเมินและข้อเสนอแนะอัจฉริยะ', 'ข้อมูลการแจ้งเตือนแบบเรียลไทม์', 'ไฟล์รายงานสรุปคะแนน'}
+  [OUT] Extra in L2 (Should be removed from L2 or added to L1): {'ข้อมูลประวัติการทำข้อสอบ', 'ข้อมูลผลคะแนนรายข้อ', 'ข้อมูลผลคะแนนรวม', 'ข้อมูลรายละเอียดข้อสอบ', 'ข้อมูลประวัติการแก้ไขคะแนน', 'ข้อมูลผลการประเมินจาก AI', 'ข้อมูลรายงานสรุปคะแนน', 'ข้อมูลการแจ้งเตือน'}

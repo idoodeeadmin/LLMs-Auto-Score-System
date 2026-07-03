@@ -1,0 +1,44 @@
+<div class="p-id">5.1</div>
+<div class="p-name">เตรียมข้อมูลคำตอบ<br/>และเกณฑ์รูบริค</div>
+</div>
+</div>
+<div class="col-right"><div class="datastore-conn">
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลรายละเอียดข้อสอบ</div></div>
+</div>
+<div class="datastore-box">
+<div class="duplicated-mark"></div><div class="d-id">D4</div><div class="d-name">แฟ้มข้อมูลข้อสอบ</div>
+</div>
+</div>
+<div class="datastore-conn">
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลโจทย์และเกณฑ์</div></div>
+</div>
+<div class="datastore-box">
+<div class="duplicated-mark"></div><div class="d-id">D5</div><div class="d-name">แฟ้มข้อมูลโจทย์และเกณฑ์</div>
+</div>
+</div>
+<div class="datastore-conn">
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลสถานะการส่ง</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">อัปเดตสถานะระบบกำลังตรวจ</div></div></div>
+<div class="datastore-box">
+<div class="duplicated-mark"></div><div class="d-id">D6</div><div class="d-name">แฟ้มข้อมูลการส่งข้อสอบ</div>
+</div>
+</div>
+<div class="datastore-conn">
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลคำตอบรายข้อ</div></div>
+</div>
+<div class="datastore-box">
+<div class="duplicated-mark"></div><div class="d-id">D7</div><div class="d-name">แฟ้มข้อมูลคำตอบ</div>
+</div>
+</div>
+</div>
+</div>
+<!-- PROCESS 6.2 -->
+<div class="dfd-row">
+<div class="col-left"><div class="entity-conn"><div class="entity-box"><div class="duplicated-mark"></div>Gemini API</div><div class="flows"><div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลผลการประเมิน</div></div><div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลข้อเสนอแนะการประเมิน</div></div><div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลระดับความมั่นใจของคำตอบ</div></div><div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลโจทย์ข้อสอบและเกณฑ์การให้คะแนน</div></div><div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลคำตอบของนักเรียน</div></div><div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลคำสั่งและเงื่อนไขการตรวจประเมิน</div></div></div></div>
+</div>
+<div class="col-center">
+<div class="process">

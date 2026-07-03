@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+
+<html lang="th">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Data Flow Diagram (Level 1) - Evaly Score</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<style>
+        body { 
+            font-family: 'Sarabun', sans-serif; 
+            background: #f8fafc; 
+            padding: 2rem; 
+            color: #0f172a; 
+            margin: 0;
+        }
+        h1 { text-align: center; font-size: 32px; margin-bottom: 0.5rem; color: #0f172a; font-weight: 700; }
+        p.subtitle { text-align: center; margin-bottom: 2.5rem; color: #475569; font-size: 16px; }
+        h2 { text-align: center; font-size: 26px; margin-top: 60px; margin-bottom: 30px; color: #1e293b; font-weight: 700; border-bottom: 3px solid #cbd5e1; padding-bottom: 10px; width: fit-content; margin-left: auto; margin-right: auto; }
+        
+        .dfd-wrapper { 
+            background: #ffffff; padding: 40px 50px; border-radius: 16px; 
+            box-shadow: 0 10px 30px -5px rgba(0,0,0,0.08); min-width: 1400px; max-width: 1750px; margin: 0 auto; overflow-x: auto; 
+        }
+        
+        .dfd-row {
+            display: flex; align-items: stretch; margin-bottom: 45px; padding-bottom: 45px; 
+            border-bottom: 2px dashed #cbd5e1; width: 100%;
+        }
+        .dfd-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        
+        .col-left { display: flex; flex-direction: column; gap: 25px; flex: 1; justify-content: center; }
+        .col-center { display: flex; flex-direction: column; justify-content: center; flex: 0 0 240px; padding: 0 25px; }
+        .col-right { display: flex; flex-direction: column; gap: 25px; flex: 1; justify-content: center; }
+
+        /* Entity Styles */
+        .entity-conn { display: flex; align-items: stretch; width: 100%; }
+        .entity-box {
+            flex: 0 0 150px; border: 2px solid #0f172a; background: #ffffff;
+            display: flex; align-items: center; justify-content: center; text-align: center;
+            font-weight: 700; font-size: 15px; border-radius: 8px; box-shadow: 4px 4px 0 rgba(15,23,42,0.08);
+            position: relative; overflow: hidden; min-height: 55px; color: #0f172a; padding: 0 5px;
+        }
+        
+        /* Data Store Styles */
+        .datastore-conn { display: flex; align-items: stretch; width: 100%; }
+        .datastore-box {
+            flex: 0 0 230px; border: 2px solid #0f172a; border-right: none; background: #ffffff;
+            display: flex; box-shadow: 4px 4px 0 rgba(15,23,42,0.08);
+            position: relative; overflow: hidden; min-height: 55px;
+        }
+        .d-id { 
+            border-right: 2px solid #0f172a; width: 50px; display: flex; justify-content: center; 
+            align-items: center; font-weight: 700; font-size: 15px; background: #f1f5f9; color: #0f172a;
+        }
+        .d-name { 
+            flex-grow: 1; display: flex; justify-content: center; align-items: center; 
+            text-align: center; font-size: 14px; font-weight: 600; padding: 0 10px; color: #0f172a;
+        }
+        
+        /* Internal Entity */
+        .internal-process {
+            flex: 0 0 180px; border: 2px solid #475569; border-style: dashed; background: #f8fafc;
+            display: flex; align-items: center; justify-content: center; text-align: center;
+            font-weight: 600; font-size: 14px; border-radius: 8px;
+            position: relative; overflow: hidden; min-height: 55px; color: #334155; padding: 0 5px;
+        }
+
+        /* Duplicated Mark */
+        .duplicated-mark {
+            position: absolute; top: 0; left: 0; width: 0; height: 0;
+            border-top: 18px solid #64748b; border-right: 18px solid transparent; z-index: 5;
+        }
+
+        /* Flow Lines */
+        .flows {
+            flex-grow: 1; display: flex; flex-direction: column; justify-content: space-evenly; 
+            padding: 12px 0; gap: 16px; min-width: 320px;
+        }
+        .flow-item {
+            position: relative; height: 18px; display: flex; align-items: center; justify-content: center; width: 100%;
+        }
+        .flow-line {
+            position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: #334155; z-index: 1; transition: 0.2s;
+        }
+        .flow-text {
+            position: relative; background: #ffffff; padding: 0 10px; font-size: 13.5px; color: #334155; 
+            z-index: 2; line-height: 1; font-weight: 600; transition: 0.2s;
+        }
+        
+        /* Interactivity */
+        .flow-item:hover .flow-line { background: #2563eb; height: 2.5px; }
+        .flow-item:hover .flow-text { color: #1d4ed8; font-weight: 700; transform: scale(1.03); }
+        .flow-item:hover .arrow-r { border-left-color: #2563eb; }
+        .flow-item:hover .arrow-l { border-right-color: #2563eb; }
+
+        .arrow-r { 
+            position: absolute; right: -1px; top: 50%; transform: translateY(-50%); 
+            border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 10px solid #334155; transition: 0.2s; 
+        }
+        .arrow-l { 
+            position: absolute; left: -1px; top: 50%; transform: translateY(-50%); 
+            border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-right: 10px solid #334155; transition: 0.2s; 
+        }
+
+        /* Process Box */
+        .process {
+            border: 2.5px solid #0f172a; background: #ffffff; border-radius: 14px; width: 100%; height: 100%; min-height: 110px;
+            display: flex; flex-direction: column; box-shadow: 4px 4px 0 rgba(15,23,42,0.08); overflow: hidden;
+            transition: 0.3s;
+        }
+        .process:hover { border-color: #2563eb; box-shadow: 4px 4px 0 rgba(37,99,235,0.15); transform: translateY(-2px); }
+        .p-id { 
+            border-bottom: 2.5px solid #0f172a; height: 38px; display: flex; justify-content: center; 
+            align-items: center; font-weight: 700; font-size: 16px; background: #f1f5f9; color: #0f172a;
+            transition: 0.3s;
+        }
+        .process:hover .p-id { border-color: #2563eb; color: #1d4ed8; background: #eff6ff; }
+        .p-name { 
+            flex-grow: 1; display: flex; justify-content: center; align-items: center; text-align: center; 
+            font-size: 15px; font-weight: 700; padding: 14px; line-height: 1.5; color: #0f172a;
+        }
+    </style>
+</head>
+<body>
+<h1>Data Flow Diagram (Level 1)</h1>
+<p class="subtitle">ระบบตรวจข้อสอบอัตนัยอัตโนมัติด้วย LLM (LLM Auto Score System)</p>
+<div class="dfd-wrapper">
+<!-- PROCESS 1.0 -->
+<div class="dfd-row">
+<div class="col-left">
+<div class="entity-conn">
+<div class="entity-box">
+<div class="duplicated-mark"></div>ผู้ใช้ทั่วไป
+                    </div><div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลการสมัครสมาชิก</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลการเข้าสู่ระบบ</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลอีเมลสำหรับรีเซ็ตรหัสผ่าน</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลการยืนยันตัวตนทางอีเมล</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลบัญชีผู้ใช้</div></div></div>
+</div>
+<div class="entity-conn">
+<div class="entity-box">
+<div class="duplicated-mark"></div>ผู้เรียน
+                    </div><div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลโปรไฟล์ที่เพิ่มและแก้ไข</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลบัญชีผู้ใช้</div></div></div>
+</div>
+<div class="entity-conn">
+<div class="entity-box">
+<div class="duplicated-mark"></div>ผู้สอน
+                    </div><div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลโปรไฟล์และรูปภาพที่เพิ่มและแก้ไข</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลบัญชีผู้ใช้</div></div></div>
+</div>
+<div class="entity-conn">
+<div class="entity-box">
+<div class="duplicated-mark"></div>Firebase Auth
+                    </div><div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูล Tokens บัญชี Google</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูล Tokens ตรวจสอบสิทธิ์</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">Authentication Token</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลโปรไฟล์ผู้ใช้</div></div></div>
+</div>
+<div class="entity-conn">
+<div class="entity-box"><div class="duplicated-mark"></div>SMTP</div><div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลสถานะการส่งอีเมล</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลอีเมลและลิงก์รีเซ็ตรหัสผ่าน</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลอีเมลและลิงก์ยืนยันตัวตน</div></div></div>
+</div>
+<div class="entity-conn">
+<div class="entity-box">
+<div class="duplicated-mark"></div>Cloudinary API
+                    </div><div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลไฟล์รูปภาพโปรไฟล์</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูล URL และสถานะการจัดเก็บรูปภาพ</div></div></div>
+</div>
+</div>
+<div class="col-center">
+<div class="process">
+<div class="p-id">1.0</div>
+<div class="p-name">จัดการบัญชีผู้ใช้และการเข้าสู่ระบบ</div>
+</div>
+</div>
+<div class="col-right">
+<div class="datastore-conn">
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลบัญชีผู้ใช้และโปรไฟล์</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลบัญชีผู้ใช้เพื่อตรวจสอบ</div></div>
+</div>
+<div class="datastore-box">
+<div class="duplicated-mark"></div><div class="d-id">D1</div><div class="d-name">แฟ้มข้อมูลผู้ใช้</div>
+</div>
+</div>
+<div class="datastore-conn"><div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลอีเมลสำหรับรีเซ็ตรหัสผ่าน</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลอีเมลสำหรับรีเซ็ตรหัสผ่าน</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลยืนยันตัวตน</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลยืนยันตัวตน</div></div>
+</div>
+<div class="datastore-box"><div class="duplicated-mark"></div><div class="d-id">D7</div><div class="d-name">แฟ้มข้อมูลการตรวจคำตอบ</div></div></div></div>
+</div>
+<!-- PROCESS 2.0 -->
+<div class="dfd-row">
+<div class="col-left">
+<div class="entity-conn">
+<div class="entity-box">
+<div class="duplicated-mark"></div>ผู้สอน
+                    </div><div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลห้องเรียนที่เพิ่มและแก้ไข</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลห้องเรียนที่ลบ</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลประกาศข่าวสารห้องเรียนที่เพิ่มและแก้ไข</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลประกาศข่าวสารห้องเรียนที่ลบ</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลห้องเรียน</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลสมาชิกในห้องเรียนและสถานะการส่งงาน</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลประกาศข่าวสารห้องเรียน</div></div></div>
+</div>
+<div class="entity-conn">
+<div class="entity-box">
+<div class="duplicated-mark"></div>ผู้เรียน
+                    </div><div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลรหัสเข้าร่วมห้องเรียน</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลห้องเรียน</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลประกาศข่าวสารห้องเรียน</div></div></div>
+</div>
+</div>
+<div class="col-center">
+<div class="process">
+<div class="p-id">2.0</div>
+<div class="p-name">จัดการห้องเรียนและสมาชิก</div>
+</div>
+</div>
+<div class="col-right">
+<div class="datastore-conn">
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลบัญชีผู้ใช้เพื่อตรวจสอบ</div></div>
+</div>
+<div class="datastore-box">
+<div class="duplicated-mark"></div><div class="d-id">D1</div><div class="d-name">แฟ้มข้อมูลผู้ใช้</div>
+</div>
+</div>
+<div class="datastore-conn">
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลรายละเอียดห้องเรียน</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลรายละเอียดห้องเรียน</div></div>
+</div>
+<div class="datastore-box">
+<div class="duplicated-mark"></div><div class="d-id">D2</div><div class="d-name">แฟ้มข้อมูลห้องเรียน</div>
+</div>
+</div>
+<div class="datastore-conn">
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลสมาชิกห้องเรียน</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลสมาชิกห้องเรียน</div></div>
+</div>
+<div class="datastore-box">
+<div class="duplicated-mark"></div><div class="d-id">D3</div><div class="d-name">แฟ้มข้อมูลสมาชิกห้องเรียน</div>
+</div>
+</div>
+
+<div class="datastore-conn"><div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลประกาศข่าวสาร</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลประกาศข่าวสาร</div></div>
+</div>
+<div class="datastore-box"><div class="duplicated-mark"></div><div class="d-id">D7</div><div class="d-name">แฟ้มข้อมูลการตรวจคำตอบ</div></div></div></div>
+</div>
+<!-- PROCESS 3.0 -->
+<div class="dfd-row">
+<div class="col-left">
+<div class="entity-conn">
+<div class="entity-box">
+<div class="duplicated-mark"></div>ผู้สอน
+                    </div><div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลข้อสอบที่เพิ่มและแก้ไข</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลข้อสอบที่ลบ</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลเกณฑ์การประเมินที่เพิ่มและแก้ไข</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลเกณฑ์การประเมินที่ลบ</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลข้อสอบ</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลเกณฑ์การให้คะแนนจาก AI</div></div></div>
+</div>
+<div class="entity-conn">
+<div class="entity-box">
+<div class="duplicated-mark"></div>Gemini API
+                    </div><div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลบริบทสำหรับการสร้างเกณฑ์</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลเกณฑ์รูบริคอัตโนมัติ</div></div></div>
+</div>
+<div class="entity-conn">
+<div class="entity-box">
+<div class="duplicated-mark"></div>Cloudinary API
+                    </div><div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลไฟล์รูปภาพโจทย์ข้อสอบ</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูล URL และสถานะการจัดเก็บรูปภาพ</div></div></div>
+</div>
+</div>
+<div class="col-center">
+<div class="process">
+<div class="p-id">3.0</div>
+<div class="p-name">จัดการข้อสอบและเกณฑ์ประเมิน</div>
+</div>
+</div>
+<div class="col-right">
+<div class="datastore-conn">
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลรายละเอียดห้องเรียน</div></div>
+</div>
+<div class="datastore-box">
+<div class="duplicated-mark"></div><div class="d-id">D2</div><div class="d-name">แฟ้มข้อมูลห้องเรียน</div>
+</div>
+</div>
+<div class="datastore-conn">
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลรายละเอียดข้อสอบ</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลรายละเอียดข้อสอบ</div></div>
+</div>
+<div class="datastore-box">
+<div class="duplicated-mark"></div><div class="d-id">D4</div><div class="d-name">แฟ้มข้อมูลข้อสอบ</div>
+</div>
+</div>
+<div class="datastore-conn">
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลโจทย์และเกณฑ์</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลโจทย์และเกณฑ์</div></div>
+</div>
+<div class="datastore-box">
+<div class="duplicated-mark"></div><div class="d-id">D5</div><div class="d-name">แฟ้มข้อมูลโจทย์และเกณฑ์</div>
+</div>
+</div>
+</div>
+</div>
+<!-- PROCESS 4.0 -->
+<div class="dfd-row">
+<div class="col-left">
+<div class="entity-conn">
+<div class="entity-box">
+<div class="duplicated-mark"></div>ผู้เรียน
+                    </div><div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลการส่งข้อสอบ</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลคำตอบข้อสอบ</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลข้อสอบ</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลเวลาคงเหลือในการสอบ</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลสถานะการส่งข้อสอบ</div></div></div>
+</div>
+<div class="entity-conn">
+<div class="entity-box">
+<div class="duplicated-mark"></div>ผู้สอน
+                    </div><div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลรายการส่งข้อสอบ</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลคำตอบของนักเรียน</div></div></div>
+</div>
+<div class="entity-conn">
+<div class="entity-box">
+<div class="duplicated-mark"></div>Cloudinary API
+                    </div><div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลไฟล์รูปภาพคำตอบลายมือเขียน</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูล URL และสถานะการจัดเก็บรูปภาพ</div></div></div>
+</div>
+</div>
+<div class="col-center">
+<div class="process">
+<div class="p-id">4.0</div>
+<div class="p-name">รับส่งข้อสอบ</div>
+</div>
+</div>
+<div class="col-right">
+<div class="datastore-conn">
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลบัญชีผู้ใช้</div></div>
+</div>
+<div class="datastore-box">
+<div class="duplicated-mark"></div><div class="d-id">D1</div><div class="d-name">แฟ้มข้อมูลผู้ใช้</div>
+</div>
+</div>
+<div class="datastore-conn">
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลรายละเอียดข้อสอบ</div></div>
+</div>
+<div class="datastore-box">
+<div class="duplicated-mark"></div><div class="d-id">D4</div><div class="d-name">แฟ้มข้อมูลข้อสอบ</div>
+</div>
+</div>
+<div class="datastore-conn">
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลโจทย์และเกณฑ์</div></div>
+</div>
+<div class="datastore-box">
+<div class="duplicated-mark"></div><div class="d-id">D5</div><div class="d-name">แฟ้มข้อมูลโจทย์และเกณฑ์</div>
+</div>
+</div>
+<div class="datastore-conn">
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลสถานะการส่ง</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลสถานะการส่ง</div></div>
+</div>
+<div class="datastore-box">
+<div class="duplicated-mark"></div><div class="d-id">D6</div><div class="d-name">แฟ้มข้อมูลการส่งข้อสอบ</div>
+</div>
+</div>
+<div class="datastore-conn"><div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลคำตอบรายข้อ</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลคำตอบรายข้อ</div></div>
+</div>
+<div class="datastore-box"><div class="duplicated-mark"></div><div class="d-id">D7</div><div class="d-name">แฟ้มข้อมูลการตรวจคำตอบ</div></div></div></div>
+</div>
+<!-- PROCESS 5.0 -->
+<div class="dfd-row">
+<div class="col-left">
+<div class="entity-conn">
+<div class="entity-box">
+<div class="duplicated-mark"></div>Gemini API
+                    </div><div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลโจทย์ข้อสอบและเกณฑ์การให้คะแนน</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลคำตอบของนักเรียน</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลเงื่อนไขและข้อกำหนดการตรวจ</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลข้อเสนอแนะการประเมิน</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลผลการประเมิน</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลระดับความมั่นใจของคำตอบ</div></div></div>
+</div>
+</div>
+<div class="col-center">
+<div class="process">
+<div class="p-id">5.0</div>
+<div class="p-name">ประเมินผลคำตอบด้วย AI</div>
+</div>
+</div>
+<div class="col-right">
+<div class="datastore-conn">
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลรายละเอียดข้อสอบ</div></div>
+</div>
+<div class="datastore-box">
+<div class="duplicated-mark"></div><div class="d-id">D4</div><div class="d-name">แฟ้มข้อมูลข้อสอบ</div>
+</div>
+</div>
+<div class="datastore-conn">
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลโจทย์และเกณฑ์</div></div>
+</div>
+<div class="datastore-box">
+<div class="duplicated-mark"></div><div class="d-id">D5</div><div class="d-name">แฟ้มข้อมูลโจทย์และเกณฑ์</div>
+</div>
+</div>
+<div class="datastore-conn">
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลสถานะการส่ง</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลผลคะแนนรวม</div></div>
+</div>
+<div class="datastore-box">
+<div class="duplicated-mark"></div><div class="d-id">D6</div><div class="d-name">แฟ้มข้อมูลการส่งข้อสอบ</div>
+</div>
+</div>
+<div class="datastore-conn"><div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลคำตอบรายข้อ</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลผลคะแนนรายข้อและคอมเมนต์</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลผลการประเมินจาก AI</div></div>
+</div>
+<div class="datastore-box"><div class="duplicated-mark"></div><div class="d-id">D7</div><div class="d-name">แฟ้มข้อมูลการตรวจคำตอบ</div></div></div></div>
+</div>
+<!-- PROCESS 6.0 -->
+<div class="dfd-row">
+<div class="col-left">
+<div class="entity-conn">
+<div class="entity-box">
+<div class="duplicated-mark"></div>ผู้สอน
+                    </div><div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลคะแนนและคอมเมนต์ที่เพิ่มและแก้ไข</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลสถานะการอนุมัติผลคะแนน</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลการประเมินและข้อเสนอแนะอัจฉริยะ</div></div></div>
+</div>
+<div class="entity-conn">
+<div class="entity-box">
+<div class="duplicated-mark"></div>ผู้เรียน
+                </div><div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลคะแนน</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลการประเมินและข้อเสนอแนะ</div></div></div>
+</div></div>
+<div class="col-center">
+<div class="process">
+<div class="p-id">6.0</div>
+<div class="p-name">ตรวจสอบและประกาศผลคะแนน</div>
+</div>
+</div>
+<div class="col-right">
+<div class="datastore-conn">
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลคะแนนรวม</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลสถานะอนุมัติ</div></div>
+</div>
+<div class="datastore-box">
+<div class="duplicated-mark"></div><div class="d-id">D6</div><div class="d-name">แฟ้มข้อมูลการส่งข้อสอบ</div>
+</div>
+</div>
+<div class="datastore-conn"><div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลคะแนนรายข้อ</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลผลคะแนนที่แก้ไข</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลการประเมินจาก AI</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลคะแนนทางการ</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลผลคะแนนที่อนุมัติ</div></div>
+</div>
+<div class="datastore-box"><div class="duplicated-mark"></div><div class="d-id">D7</div><div class="d-name">แฟ้มข้อมูลการตรวจคำตอบ</div></div></div></div>
+</div>
+<!-- PROCESS 7.0 -->
+<div class="dfd-row">
+<div class="col-left">
+<div class="entity-conn">
+<div class="entity-box">
+<div class="duplicated-mark"></div>ผู้สอน
+                    </div><div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">รหัสห้องเรียนและรหัสข้อสอบ</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลรายงานสรุปคะแนน</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลคะแนนของนักเรียน</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลการแจ้งเตือน</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลสถานะการอ่านแจ้งเตือน</div></div></div>
+</div>
+<div class="entity-conn">
+<div class="entity-box">
+<div class="duplicated-mark"></div>ผู้เรียน
+                    </div><div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">รหัสผู้เรียนและรหัสข้อสอบ</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลคะแนน</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลการประเมินและข้อเสนอแนะ</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลการแจ้งเตือน</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลสถานะการอ่านแจ้งเตือน</div></div></div>
+</div>
+</div>
+<div class="col-center">
+<div class="process">
+<div class="p-id">7.0</div>
+<div class="p-name">จัดการแจ้งเตือนและส่งออกสถิติ</div>
+</div>
+</div>
+<div class="col-right">
+<div class="datastore-conn">
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลการแจ้งเตือนใหม่</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลประวัติการแจ้งเตือน</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลสถานะการอ่านแจ้งเตือน</div></div>
+</div>
+<div class="datastore-box">
+<div class="duplicated-mark"></div><div class="d-id">D8</div><div class="d-name">แฟ้มข้อมูลประวัติแจ้งเตือน</div>
+</div>
+</div>
+<div class="datastore-conn">
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลรายละเอียดข้อสอบ</div></div>
+</div>
+<div class="datastore-box">
+<div class="duplicated-mark"></div><div class="d-id">D4</div><div class="d-name">แฟ้มข้อมูลข้อสอบ</div>
+</div>
+</div>
+<div class="datastore-conn">
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลคะแนนรวม</div></div>
+</div>
+<div class="datastore-box">
+<div class="duplicated-mark"></div><div class="d-id">D6</div><div class="d-name">แฟ้มข้อมูลการส่งข้อสอบ</div>
+</div>
+</div>
+<div class="datastore-conn"><div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลคะแนนรายข้อ</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลการประเมินจาก AI</div></div>
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลคะแนนทางการ</div></div>
+</div>
+<div class="datastore-box"><div class="duplicated-mark"></div><div class="d-id">D7</div><div class="d-name">แฟ้มข้อมูลการตรวจคำตอบ</div></div></div></div>
+</div>
+</div>
+</body>
+</html>

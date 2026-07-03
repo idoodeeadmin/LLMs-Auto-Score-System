@@ -10,12 +10,17 @@ export function RoleSelection() {
   const { user, token, updateUser } = useAuth();
   const [selectedRole, setSelectedRole] = useState<'teacher' | 'student' | null>(null);
   const [studentId, setStudentId] = useState("");
+  const [teacherId, setTeacherId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async () => {
     if (!selectedRole) return;
     if (selectedRole === 'student' && !studentId.trim()) {
       toast.error("กรุณากรอกรหัสนักศึกษา");
+      return;
+    }
+    if (selectedRole === 'teacher' && !teacherId.trim()) {
+      toast.error("กรุณากรอกรหัสอาจารย์");
       return;
     }
 
@@ -29,7 +34,7 @@ export function RoleSelection() {
         },
         body: JSON.stringify({
           role: selectedRole,
-          student_id: selectedRole === 'student' ? studentId : null
+          identity_id: selectedRole === 'student' ? studentId : teacherId
         })
       });
 
@@ -39,7 +44,8 @@ export function RoleSelection() {
         toast.success("บันทึกบทบาทสำเร็จ!");
         updateUser({ 
           role: selectedRole,
-          studentId: selectedRole === 'student' ? studentId : undefined
+          studentId: selectedRole === 'student' ? studentId : undefined,
+          teacherId: selectedRole === 'teacher' ? teacherId : undefined
         });
       } else {
         toast.error(data.detail || "เกิดข้อผิดพลาดในการบันทึก");
@@ -178,10 +184,28 @@ export function RoleSelection() {
                     />
                   </motion.div>
                 )}
+                {selectedRole === 'teacher' && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="w-full space-y-2"
+                  >
+                    <label className="text-sm font-medium text-slate-300 ml-1">รหัสอาจารย์ (Teacher ID)</label>
+                    <Input
+                      autoFocus
+                      type="text"
+                      value={teacherId}
+                      onChange={(e) => setTeacherId(e.target.value)}
+                      placeholder="เช่น T001 หรือ อ.12345"
+                      className="h-12 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus-visible:ring-indigo-400 text-lg"
+                    />
+                  </motion.div>
+                )}
 
                 <Button
                   onClick={handleSubmit}
-                  disabled={isLoading || (selectedRole === 'student' && !studentId.trim())}
+                  disabled={isLoading || (selectedRole === 'student' && !studentId.trim()) || (selectedRole === 'teacher' && !teacherId.trim())}
                   className={`h-12 w-full text-base font-semibold shadow-lg transition-all active:scale-[0.98] ${
                     selectedRole === 'student' 
                       ? "bg-purple-600 hover:bg-purple-700 shadow-purple-500/25" 

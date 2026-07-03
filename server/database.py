@@ -209,65 +209,6 @@ def init_db():
     )
     ''')
 
-    # Create Audit Logs table
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS audit_logs (
-        id INTEGER PRIMARY KEY AUTO_INCREMENT,
-        user_id INTEGER,
-        action_type VARCHAR(50) NOT NULL,
-        entity_id VARCHAR(50),
-        details TEXT,
-        ip_address VARCHAR(45),
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
-    )
-    ''')
-
-    # Create Submission Drafts table (Auto-save)
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS submission_drafts (
-        id INTEGER PRIMARY KEY AUTO_INCREMENT,
-        exam_id INTEGER NOT NULL,
-        student_id INTEGER NOT NULL,
-        draft_data TEXT NOT NULL,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (exam_id) REFERENCES exams (id) ON DELETE CASCADE,
-        FOREIGN KEY (student_id) REFERENCES users (id) ON DELETE CASCADE,
-        UNIQUE(exam_id, student_id)
-    )
-    ''')
-
-    # Create Exam Time Extensions table
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS exam_time_extensions (
-        id INTEGER PRIMARY KEY AUTO_INCREMENT,
-        exam_id INTEGER NOT NULL,
-        student_id INTEGER,
-        extra_minutes INTEGER NOT NULL DEFAULT 0,
-        granted_by INTEGER,
-        note TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (exam_id) REFERENCES exams (id) ON DELETE CASCADE,
-        FOREIGN KEY (student_id) REFERENCES users (id) ON DELETE CASCADE,
-        FOREIGN KEY (granted_by) REFERENCES users (id) ON DELETE SET NULL
-    )
-    ''')
-
-    # Create Question Bank table
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS question_bank (
-        id INTEGER PRIMARY KEY AUTO_INCREMENT,
-        owner_id INTEGER NOT NULL,
-        text TEXT NOT NULL,
-        score FLOAT DEFAULT 0,
-        answer_key TEXT,
-        rubrics TEXT,
-        tags VARCHAR(500),
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (owner_id) REFERENCES users (id) ON DELETE CASCADE
-    )
-    ''')
-
     # Create Announcements table
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS announcements (
@@ -292,6 +233,20 @@ def init_db():
         FOREIGN KEY (announcement_id) REFERENCES announcements (id) ON DELETE CASCADE,
         FOREIGN KEY (student_id) REFERENCES users (id) ON DELETE CASCADE,
         UNIQUE(announcement_id, student_id)
+    )
+    ''')
+    # Create Notifications table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTO_INCREMENT,
+        user_id INTEGER NOT NULL,
+        type VARCHAR(50) NOT NULL,
+        message VARCHAR(500) NOT NULL,
+        link VARCHAR(255),
+        data JSON,
+        is_read TINYINT(1) DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
     )
     ''')
 

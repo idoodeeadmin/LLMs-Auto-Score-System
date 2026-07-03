@@ -1,0 +1,69 @@
+
+<div class="dfd-row">
+<div class="col-left">
+<div class="entity-conn">
+<div class="entity-box">
+<div class="duplicated-mark"></div>ผู้สอน
+                    </div>
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลคำขอออกรายงานสถิติ</div></div><div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ไฟล์รายงานสรุปคะแนน</div></div><div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลคะแนนของนักเรียน</div></div><div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลการแจ้งเตือนแบบเรียลไทม์</div></div>
+</div>
+</div>
+<div class="entity-conn">
+<div class="entity-box">
+<div class="duplicated-mark"></div>ผู้เรียน
+                    </div>
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลคะแนน</div></div><div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ผลการประเมินและข้อเสนอแนะอัจฉริยะ</div></div><div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลประวัติการทำข้อสอบ</div></div><div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลการแจ้งเตือนแบบเรียลไทม์</div></div>
+</div>
+</div>
+</div>
+<div class="col-center">
+<div class="process">
+<div class="p-id">7.0</div>
+<div class="p-name">จัดการแจ้งเตือนและส่งออกสถิติ</div>
+</div>
+</div>
+<div class="col-right">
+<div class="datastore-conn">
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลรายละเอียดข้อสอบ</div></div>
+</div>
+<div class="datastore-box">
+<div class="duplicated-mark"></div><div class="d-id">D4</div><div class="d-name">แฟ้มข้อมูลข้อสอบ</div>
+</div>
+</div>
+<div class="datastore-conn">
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลคะแนนรวม</div></div>
+</div>
+<div class="datastore-box">
+<div class="duplicated-mark"></div><div class="d-id">D6</div><div class="d-name">แฟ้มข้อมูลการส่งข้อสอบ</div>
+</div>
+</div>
+<div class="datastore-conn">
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลคะแนนรายข้อ</div></div>
+</div>
+<div class="datastore-box">
+<div class="duplicated-mark"></div><div class="d-id">D7</div><div class="d-name">แฟ้มข้อมูลคำตอบ</div>
+</div>
+</div>
+<div class="datastore-conn">
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลการแจ้งเตือน</div></div><div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลการแจ้งเตือน</div></div><div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลประวัติการทำข้อสอบ</div></div>
+</div>
+<div class="datastore-box">
+<div class="duplicated-mark"></div><div class="d-id">D10</div><div class="d-name">แฟ้มข้อมูลประวัติระบบ</div>
+</div>
+</div>
+<div class="datastore-conn">
+<div class="flows">
+<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลการประเมินจาก AI</div></div>
+</div>
+<div class="datastore-box">
+<div class="duplicated-mark"></div><div class="d-id">D8</div><div class="d-name">แฟ้มข้อมูลผลการประเมินจาก AI</div>
+</div>
+</div></div>
+</div>
+</div>

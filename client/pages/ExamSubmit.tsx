@@ -47,12 +47,8 @@ export default function ExamSubmit() {
   const answersRef = useRef<Record<number, AnswerState>>({});
   const [timeLeft, setTimeLeft] = useState<string | null>(null);
   const [isTimeUp, setIsTimeUp] = useState(false);
-  const [extraMinutes, setExtraMinutes] = useState(0);
-  const [autoSaved, setAutoSaved] = useState(false);
-  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
   const [showExitModal, setShowExitModal] = useState(false);
-  const localStorageKey = `draft_${roomId}_${examId}`;
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   useEffect(() => { answersRef.current = answers; }, [answers]);
@@ -60,7 +56,7 @@ export default function ExamSubmit() {
   useEffect(() => {
     if (!exam?.end_date || isSubmitting || isTimeUp) return;
     const interval = setInterval(() => {
-      const diff = new Date(exam.end_date!).getTime() + extraMinutes * 60000 - Date.now();
+      const diff = new Date(exam.end_date!).getTime() - Date.now();
       if (diff <= 0) { clearInterval(interval); setTimeLeft("00:00:00"); setIsTimeUp(true); }
       else {
         const h = Math.floor(diff / 3600000);
@@ -97,57 +93,14 @@ export default function ExamSubmit() {
       const res = await fetch(`/api/rooms/${roomId}/exams/${examId}/submissions/me`, { headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) { const d = await res.json(); if (d.status && d.status !== "missing") { toast.info("คุณส่งคำตอบไปแล้ว"); navigate(`/room/${roomId}/exam/${examId}`); } }
     };
-
-    const fetchExtension = async () => {
-      try { const r = await fetch(`/api/rooms/${roomId}/exams/${examId}/extensions/me`, { headers: { Authorization: `Bearer ${token}` } }); if (r.ok) { const d = await r.json(); setExtraMinutes(d.extra_minutes || 0); } } catch { /* ignore */ }
-    };
-
-    const fetchDraft = async () => {
-      try {
-        const r = await fetch(`/api/rooms/${roomId}/exams/${examId}/draft`, { headers: { Authorization: `Bearer ${token}` } });
-        if (r.ok) {
-          const data = await r.json();
-          if (data.answers && Object.keys(data.answers).length > 0) {
-            setAnswers(prev => { const u = { ...prev }; Object.entries(data.answers).forEach(([k, v]) => { const id = parseInt(k); if (u[id]) u[id] = { ...u[id], text: v as string }; }); return u; });
-            toast.info("โหลดคำตอบที่บันทึกไว้");
-          } else {
-            const local = localStorage.getItem(localStorageKey);
-            if (local) { const parsed = JSON.parse(local); setAnswers(prev => { const u = { ...prev }; Object.entries(parsed).forEach(([k, v]) => { const id = parseInt(k); if (u[id]) u[id] = { ...u[id], text: v as string }; }); return u; }); }
-          }
-        }
-      } catch { /* ignore */ }
-    };
-
-    Promise.all([fetchExam(), checkSubmission(), fetchExtension()]).then(() => setTimeout(fetchDraft, 300));
+    Promise.all([fetchExam(), checkSubmission()]);
   }, [token, roomId, examId, navigate]);
 
   const handleTextChange = (qId: number, value: string) => {
     setAnswers(prev => ({ ...prev, [qId]: { ...prev[qId], text: value } }));
-    const updated = { ...answersRef.current, [qId]: { ...answersRef.current[qId], text: value } };
-    const textOnly: Record<string, string> = {};
-    Object.entries(updated).forEach(([k, v]) => { textOnly[k] = v.text; });
-    localStorage.setItem(localStorageKey, JSON.stringify(textOnly));
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    setAutoSaved(false);
-    autoSaveTimerRef.current = setTimeout(async () => {
-      try {
-        await fetch(`/api/rooms/${roomId}/exams/${examId}/draft`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ answers: textOnly }) });
-        setAutoSaved(true);
-      } catch { /* ignore */ }
-    }, 2000);
   };
 
-  const flushSave = useCallback(async () => {
-    const textOnly: Record<string, string> = {};
-    Object.entries(answersRef.current).forEach(([k, v]) => { textOnly[k] = v.text; });
-    if (!Object.keys(textOnly).length) return;
-    try { await fetch(`/api/rooms/${roomId}/exams/${examId}/draft`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ answers: textOnly }) }); } catch { /* ignore */ }
-  }, [token, roomId, examId]);
 
-  useEffect(() => {
-    window.addEventListener("beforeunload", flushSave);
-    return () => { window.removeEventListener("beforeunload", flushSave); if (autoSaveTimerRef.current) { clearTimeout(autoSaveTimerRef.current); flushSave(); } };
-  }, [flushSave]);
 
   const handleImageSelect = useCallback((qId: number, files: FileList) => {
     Array.from(files).filter(f => { if (f.size > 5 * 1024 * 1024) { toast.error(`${f.name}: ไฟล์ต้องไม่เกิน 5MB`); return false; } return true; })
@@ -175,8 +128,6 @@ export default function ExamSubmit() {
       const res = await fetch(`/api/rooms/${roomId}/exams/${examId}/submit-multipart`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: formData });
       const data = await res.json();
       if (res.ok) {
-        localStorage.removeItem(localStorageKey);
-        fetch(`/api/rooms/${roomId}/exams/${examId}/draft`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
         toast.success("ส่งคำตอบสำเร็จ!");
         navigate(`/room/${roomId}/exam/${examId}`);
       } else if (res.status === 409) { toast.error(data.detail || "ส่งไปแล้ว"); navigate(`/room/${roomId}/exam/${examId}`); }
@@ -187,17 +138,6 @@ export default function ExamSubmit() {
 
   useEffect(() => { if (isTimeUp && !isSubmitting) { toast.error("หมดเวลา! ระบบส่งคำตอบอัตโนมัติ", { duration: 5000 }); handleSubmit(); } }, [isTimeUp]);
 
-  const handleDiscardAndExit = async () => {
-    try {
-      localStorage.removeItem(localStorageKey);
-      await fetch(`/api/rooms/${roomId}/exams/${examId}/draft`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
-      toast.success("ล้างร่างคำตอบและออกจากระบบ");
-      navigate(`/room/${roomId}/exam/${examId}`);
-    } catch {
-      toast.error("เกิดข้อผิดพลาดในการลบร่างคำตอบ");
-      navigate(`/room/${roomId}/exam/${examId}`);
-    }
-  };
 
   const answeredCount = Object.values(answers).filter(a => a.text.trim() || a.images.length > 0).length;
   const totalQ = exam?.questions.length ?? 0;
@@ -225,7 +165,7 @@ export default function ExamSubmit() {
           <div className="flex flex-col min-w-0">
             <h1 className="text-base sm:text-lg text-gray-800 dark:text-gray-100 font-medium truncate">{exam?.title}</h1>
             <div className="flex items-center gap-2 sm:gap-4 px-0 mt-0.5 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-              <span className="flex items-center gap-1 shrink-0">{autoSaved ? <span className="text-green-600 dark:text-green-400 flex items-center gap-1">บันทึกแล้ว ✓</span> : "กำลังพิมพ์..."}</span>
+
               <span className="font-medium text-blue-600 dark:text-blue-400 shrink-0">ตอบแล้ว {answeredCount}/{totalQ}</span>
             </div>
           </div>
@@ -297,7 +237,7 @@ export default function ExamSubmit() {
               </div>
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">คุณต้องการออกจากหน้าทำข้อสอบ?</h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                คุณตอบคำถามค้างไว้ <span className="font-bold text-blue-600 dark:text-blue-400">{answeredCount} ข้อ</span> ระบบได้บันทึกร่างคำตอบของคุณไว้แล้ว
+                คุณตอบคำถามค้างไว้ <span className="font-bold text-blue-600 dark:text-blue-400">{answeredCount} ข้อ</span> 
               </p>
             </div>
             <div className="flex flex-col gap-2.5">
@@ -305,10 +245,7 @@ export default function ExamSubmit() {
                 ทำข้อสอบต่อ
               </Button>
               <Button variant="outline" onClick={() => navigate(`/room/${roomId}/exam/${examId}`)} className="w-full h-11 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-medium">
-                บันทึกร่างและออก
-              </Button>
-              <Button variant="ghost" onClick={handleDiscardAndExit} className="w-full h-11 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl font-medium">
-                ทิ้งร่างและออก
+                ออกจากข้อสอบโดยไม่ส่ง
               </Button>
             </div>
           </div>
