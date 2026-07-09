@@ -14,5 +14,3 @@ __pycache__
 *.pyc
 uploads
 dev.db
-pnpm-lock.yaml
-package-lock.json
