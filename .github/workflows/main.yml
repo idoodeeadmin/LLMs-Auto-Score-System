@@ -47,6 +47,7 @@ jobs:
 
     - name: Test Docker Build (Check if Dockerfiles work)
       run: |
+        touch .env
         docker compose build
 
     - name: Deployment Success Notification
