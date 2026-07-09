@@ -99,10 +99,10 @@ async def grading_worker():
             new_total_score = total_score_row['total'] if total_score_row and total_score_row['total'] else 0.0
             cursor.execute('UPDATE submissions SET status = ?, total_score = ?, graded_by_ai = 1 WHERE id = ?', (new_status, round(new_total_score, 1), submission_id))
             conn.commit()
-            cursor.execute('SELECT r.owner_id, r.name as room_name FROM rooms r WHERE r.id = ?', (room_id,))
+            cursor.execute('SELECT r.teacher_id, r.name as room_name FROM rooms r WHERE r.id = ?', (room_id,))
             teacher_row = cursor.fetchone()
             if teacher_row:
-                teacher_id = teacher_row['owner_id']
+                teacher_id = teacher_row['teacher_id']
                 room_name = teacher_row['room_name']
                 
                 # 2. เมื่อ AI ไม่มั่นใจ (Notify for low confidence)

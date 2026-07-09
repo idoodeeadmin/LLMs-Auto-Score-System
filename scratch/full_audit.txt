@@ -1,0 +1,96 @@
+=== DFD LEVEL 2 COMPREHENSIVE AUDIT ===
+
+
+============================================================
+Process 1.0: จัดการบัญชีผู้ใช้และการเข้าสู่ระบบ
+============================================================
+  Level 2 Sub-processes: ['1.1', '1.2', '1.3', '1.4']
+
+  --- BALANCING CHECK (Entity Flows) ---
+  [OK] All entity flows balance between Level 1 and Level 2!
+
+  --- INTERNAL FLOW STRUCTURE ---
+
+  --- DATASTORE CHECK ---
+  [OK] All datastore flows balance!
+
+============================================================
+Process 2.0: จัดการห้องเรียนและสมาชิก
+============================================================
+  Level 2 Sub-processes: ['2.1', '2.2', '2.3']
+
+  --- BALANCING CHECK (Entity Flows) ---
+  [OK] All entity flows balance between Level 1 and Level 2!
+
+  --- INTERNAL FLOW STRUCTURE ---
+
+  --- DATASTORE CHECK ---
+  [OK] All datastore flows balance!
+
+============================================================
+Process 3.0: จัดการข้อสอบและเกณฑ์ประเมิน
+============================================================
+  Level 2 Sub-processes: ['3.1', '3.2']
+
+  --- BALANCING CHECK (Entity Flows) ---
+  [OK] All entity flows balance between Level 1 and Level 2!
+
+  --- INTERNAL FLOW STRUCTURE ---
+
+  --- DATASTORE CHECK ---
+  [OK] All datastore flows balance!
+
+============================================================
+Process 4.0: รับส่งข้อสอบ
+============================================================
+  Level 2 Sub-processes: ['4.1', '4.2']
+
+  --- BALANCING CHECK (Entity Flows) ---
+  [OK] All entity flows balance between Level 1 and Level 2!
+
+  --- INTERNAL FLOW STRUCTURE ---
+
+  --- DATASTORE CHECK ---
+  [OK] All datastore flows balance!
+
+============================================================
+Process 5.0: ประเมินผลคำตอบด้วย AI
+============================================================
+  Level 2 Sub-processes: ['5.1', '5.2', '5.3', '5.4']
+
+  --- BALANCING CHECK (Entity Flows) ---
+  [OK] All entity flows balance between Level 1 and Level 2!
+
+  --- INTERNAL FLOW STRUCTURE ---
+  5.2 <-> โพรเซส 5.1เตรียมข้อมูลตรวจ: [('ข้อมูลพร้อมตรวจ', 'Incoming')]
+  5.3 <-> โพรเซส 5.2ประเมินผลด้วย Gemini: [('ผลการประเมินดิบ', 'Incoming')]
+  5.4 <-> โพรเซส 5.3แปลงรูปแบบผลการประเมิน: [('ผลคะแนนที่ประมวลผลแล้ว', 'Incoming')]
+
+  --- DATASTORE CHECK ---
+  [OK] All datastore flows balance!
+
+============================================================
+Process 6.0: ตรวจสอบและประกาศผลคะแนน
+============================================================
+  Level 2 Sub-processes: ['6.1', '6.2']
+
+  --- BALANCING CHECK (Entity Flows) ---
+  [OK] All entity flows balance between Level 1 and Level 2!
+
+  --- INTERNAL FLOW STRUCTURE ---
+
+  --- DATASTORE CHECK ---
+  [OK] All datastore flows balance!
+
+============================================================
+Process 7.0: จัดการแจ้งเตือนและส่งออกสถิติ
+============================================================
+  Level 2 Sub-processes: ['7.1', '7.2', '7.3']
+
+  --- BALANCING CHECK (Entity Flows) ---
+  [OK] All entity flows balance between Level 1 and Level 2!
+
+  --- INTERNAL FLOW STRUCTURE ---
+
+  --- DATASTORE CHECK ---
+  [OK] All datastore flows balance!

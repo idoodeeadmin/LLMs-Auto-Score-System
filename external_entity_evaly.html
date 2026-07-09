@@ -1,577 +1,79 @@
 <!DOCTYPE html>
-
 <html lang="th">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>
-   External Entity Description
-  </title>
-<style>
-   body {
-            font-family: 'Sarabun', sans-serif;
-            background-color: #ffffff;
-            color: #000000;
-            padding: 40px;
-            margin: 0;
-            font-size: 16px;
-        }
-        .header-title {
-            font-size: 18px;
-            font-weight: 700;
-            margin-bottom: 15px;
-        }
-        .table-caption {
-            font-size: 16px;
-            margin-bottom: 15px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            border: 2px solid #000000;
-            margin-bottom: 40px;
-        }
-        th, td {
-            border: 1px solid #000000;
-            padding: 10px 14px;
-            line-height: 1.5;
-            vertical-align: top;
-        }
-        th {
-            background-color: #e5e5e5;
-            text-align: center;
-            font-weight: 700;
-            font-size: 16px;
-            border-bottom: 2px solid #000000;
-            padding: 12px;
-        }
-        .col-id { width: 8%; font-weight: 700; text-align: center; vertical-align: middle; background-color: #f8fafc; }
-        .col-name { width: 16%; font-weight: 700; vertical-align: middle; text-align: center; background-color: #f8fafc; }
-        .col-desc { width: 22%; vertical-align: middle; text-align: left; }
-        .col-flow { width: 27%; vertical-align: top; text-align: left; }
-        .col-struct { width: 32%; vertical-align: middle; word-break: break-word; font-family: 'Sarabun', sans-serif; font-size: 15px; background-color: #f8fafc; }
-        ul { margin: 0; padding-left: 20px; list-style-type: none; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>External Entity Description</title>
+    <style>
+        body { font-family: 'Sarabun', Tahoma, sans-serif; padding: 20px; background-color: #f8f9fa; }
+        h2 { text-align: center; color: #333; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        th, td { border: 1px solid #ccc; padding: 12px; vertical-align: middle; }
+        th { background-color: #9e9e9e; color: white; text-align: center; font-weight: bold; font-size: 16px; }
+        td:nth-child(1) { font-weight: bold; text-align: center; vertical-align: middle; width: 15%; background-color: #f1f1f1; }
+        td:nth-child(2) { width: 25%; line-height: 1.5; text-align: left; }
+        td:nth-child(3), td:nth-child(4) { width: 30%; line-height: 1.5; text-align: left; }
+        ul { margin: 0; padding-left: 20px; list-style-type: none; text-align: left; }
         li { margin-bottom: 8px; position: relative; }
         li::before { content: "- "; position: absolute; left: -15px; }
-  </style>
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
-<div class="header-title">
-   3.3.1 คำอธิบายเอนทิตีภายนอก
-  </div>
-<div class="table-caption">
-<b>
-    ตารางที่ 3.1
-   </b>
-   คำอธิบายเอนทิตีภายนอก
-  </div>
-<table>
-<thead>
-<tr>
-<th>
-      ชื่อเอนทิตี
-     </th>
-<th>
-      คำอธิบาย
-     </th>
-<th>
-      ข้อมูลนำเข้า
-     </th>
-<th>
-      ข้อมูลส่งออก
-     </th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="col-name">
-      ผู้ใช้ทั่วไป
-     </td>
-<td class="col-desc">
-      ผู้ใช้งานที่ยังไม่ได้เข้าสู่ระบบ สามารถสมัครสมาชิก เข้าสู่ระบบ และดำเนินการเกี่ยวกับการยืนยันตัวตนได้
-     </td>
-<td class="col-flow">
-<ul>
-<li>
-        ข้อมูลการยืนยันตัวตนทางอีเมล
-       </li>
-<li>
-        ข้อมูลการสมัครสมาชิก
-       </li>
-<li>
-        ข้อมูลการเข้าสู่ระบบ
-       </li>
-<li>
-        ข้อมูลอีเมลสำหรับรีเซ็ตรหัสผ่าน
-       </li>
-</ul>
-</td>
-<td class="col-flow">
-<ul>
-<li>
-        ข้อมูลบัญชีผู้ใช้
-       </li>
-</ul>
-</td>
-</tr>
-<tr>
-<td class="col-name">
-      ผู้เรียน
-     </td>
-<td class="col-desc">
-      ผู้ใช้งานที่เข้าสู่ระบบในฐานะผู้เรียน สามารถทำข้อสอบ ดูผลคะแนน จัดการโปรไฟล์ และรับการแจ้งเตือนต่างๆ ได้
-     </td>
-<td class="col-flow">
-<ul>
-<li>
-        ข้อมูลการส่งข้อสอบ
-       </li>
-<li>
-        ข้อมูลคำตอบข้อสอบ
-       </li>
-<li>
-        ข้อมูลรหัสเข้าร่วมห้องเรียน
-       </li>
-<li>
-        ข้อมูลสถานะการอ่านแจ้งเตือน
-       </li>
-<li>
-        ข้อมูลโปรไฟล์ที่เพิ่มและแก้ไข
-       </li>
-<li>
-        รหัสผู้เรียนและรหัสข้อสอบ
-       </li>
-</ul>
-</td>
-<td class="col-flow">
-<ul>
-<li>
-        ข้อมูลการแจ้งเตือน
-       </li>
-<li>
-        ข้อมูลข้อสอบ
-       </li>
-<li>
-        ข้อมูลบัญชีผู้ใช้
-       </li>
-<li>
-        ข้อมูลประกาศข่าวสารห้องเรียน
-       </li>
-<li>
-        ข้อมูลผลการประเมินและข้อเสนอแนะ
-       </li>
-<li>
-        ข้อมูลผลคะแนน
-       </li>
-<li>
-        ข้อมูลสถานะการส่งข้อสอบ
-       </li>
-<li>
-        ข้อมูลห้องเรียน
-       </li>
-<li>
-        ข้อมูลเวลาคงเหลือในการสอบ
-       </li>
-</ul>
-</td>
-</tr>
-<tr>
-<td class="col-name">
-      ผู้สอน
-     </td>
-<td class="col-desc">
-      ผู้ใช้งานที่เข้าสู่ระบบในฐานะผู้สอน สามารถสร้างห้องเรียน จัดการข้อสอบ เกณฑ์การประเมิน อนุมัติผลคะแนน และแจ้งข่าวสารได้
-     </td>
-<td class="col-flow">
-<ul>
-<li>
-        ข้อมูลข้อสอบที่ลบ
-       </li>
-<li>
-        ข้อมูลข้อสอบที่เพิ่มและแก้ไข
-       </li>
-<li>
-        ข้อมูลคะแนนและคอมเมนต์ที่เพิ่มและแก้ไข
-       </li>
-<li>
-        ข้อมูลประกาศข่าวสารห้องเรียนที่ลบ
-       </li>
-<li>
-        ข้อมูลประกาศข่าวสารห้องเรียนที่เพิ่มและแก้ไข
-       </li>
-<li>
-        ข้อมูลสถานะการอนุมัติผลคะแนน
-       </li>
-<li>
-        ข้อมูลสถานะการอ่านแจ้งเตือน
-       </li>
-<li>
-        ข้อมูลห้องเรียนที่ลบ
-       </li>
-<li>
-        ข้อมูลห้องเรียนที่เพิ่มและแก้ไข
-       </li>
-<li>
-        ข้อมูลเกณฑ์การประเมินที่ลบ
-       </li>
-<li>
-        ข้อมูลเกณฑ์การประเมินที่เพิ่มและแก้ไข
-       </li>
-<li>
-        ข้อมูลโปรไฟล์และรูปภาพที่เพิ่มและแก้ไข
-       </li>
-<li>
-        รหัสห้องเรียนและรหัสข้อสอบ
-       </li>
-</ul>
-</td>
-<td class="col-flow">
-<ul>
-<li>
-        ข้อมูลการแจ้งเตือน
-       </li>
-<li>
-        ข้อมูลข้อสอบ
-       </li>
-<li>
-        ข้อมูลคำตอบของนักเรียน
-       </li>
-<li>
-        ข้อมูลบัญชีผู้ใช้
-       </li>
-<li>
-        ข้อมูลประกาศข่าวสารห้องเรียน
-       </li>
-<li>
-        ข้อมูลผลการประเมินและข้อเสนอแนะอัจฉริยะ
-       </li>
-<li>
-        ข้อมูลผลคะแนนของนักเรียน
-       </li>
-<li>
-        ข้อมูลรายการส่งข้อสอบ
-       </li>
-<li>
-        ข้อมูลรายงานสรุปคะแนน
-       </li>
-<li>
-        ข้อมูลสมาชิกในห้องเรียนและสถานะการส่งงาน
-       </li>
-<li>
-        ข้อมูลห้องเรียน
-       </li>
-<li>
-        ข้อมูลเกณฑ์การให้คะแนนจาก AI
-       </li>
-</ul>
-</td>
-</tr>
-<tr>
-<td class="col-name">
-      Firebase Auth
-     </td>
-<td class="col-desc">
-      บริการภายนอกสำหรับตรวจสอบสิทธิ์และจัดการการยืนยันตัวตนผู้ใช้งานผ่านบัญชี Google
-     </td>
-<td class="col-flow">
-<ul>
-<li>
-        Authentication Token
-       </li>
-<li>
-        ข้อมูลโปรไฟล์ผู้ใช้
-       </li>
-</ul>
-</td>
-<td class="col-flow">
-<ul>
-<li>
-        ข้อมูล Tokens ตรวจสอบสิทธิ์
-       </li>
-<li>
-        ข้อมูล Tokens บัญชี Google
-       </li>
-</ul>
-</td>
-</tr>
-<tr>
-<td class="col-name">
-      SMTP
-     </td>
-<td class="col-desc">
-      เซิร์ฟเวอร์ภายนอกสำหรับจัดการและส่งอีเมลแจ้งเตือน เช่น การยืนยันตัวตน และรีเซ็ตรหัสผ่าน
-     </td>
-<td class="col-flow">
-<ul>
-<li>
-        ข้อมูลสถานะการส่งอีเมล
-       </li>
-</ul>
-</td>
-<td class="col-flow">
-<ul>
-<li>
-        ข้อมูลอีเมลและลิงก์ยืนยันตัวตน
-       </li>
-<li>
-        ข้อมูลอีเมลและลิงก์รีเซ็ตรหัสผ่าน
-       </li>
-</ul>
-</td>
-</tr>
-<tr>
-<td class="col-name">
-      Cloudinary API
-     </td>
-<td class="col-desc">
-      บริการภายนอกสำหรับจัดเก็บและจัดการไฟล์รูปภาพบนคลาวด์ เช่น โปรไฟล์ และภาพข้อสอบ
-     </td>
-<td class="col-flow">
-<ul>
-<li>
-        ข้อมูล URL และสถานะการจัดเก็บรูปภาพ
-       </li>
-</ul>
-</td>
-<td class="col-flow">
-<ul>
-<li>
-        ข้อมูลไฟล์รูปภาพคำตอบลายมือเขียน
-       </li>
-<li>
-        ข้อมูลไฟล์รูปภาพโจทย์ข้อสอบ
-       </li>
-<li>
-        ข้อมูลไฟล์รูปภาพโปรไฟล์
-       </li>
-</ul>
-</td>
-</tr>
-<tr>
-<td class="col-name">
-      Gemini API
-     </td>
-<td class="col-desc">
-      บริการ AI ภายนอกสำหรับการตรวจข้อสอบอัตโนมัติ ร่างเกณฑ์การประเมิน และให้ข้อเสนอแนะแก่ผู้เรียน
-     </td>
-<td class="col-flow">
-<ul>
-<li>
-        ข้อมูลข้อเสนอแนะการประเมิน
-       </li>
-<li>
-        ข้อมูลผลการประเมิน
-       </li>
-<li>
-        ข้อมูลระดับความมั่นใจของคำตอบ
-       </li>
-<li>
-        ข้อมูลเกณฑ์รูบริคอัตโนมัติ
-       </li>
-</ul>
-</td>
-<td class="col-flow">
-<ul>
-<li>
-        ข้อมูลคำตอบของนักเรียน
-       </li>
-<li>
-        ข้อมูลบริบทสำหรับการสร้างเกณฑ์
-       </li>
-<li>
-        ข้อมูลเงื่อนไขและข้อกำหนดการตรวจ
-       </li>
-<li>
-        ข้อมูลโจทย์ข้อสอบและเกณฑ์การให้คะแนน
-       </li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<div class="header-title">
-   3.3.3 คำอธิบายแหล่งเก็บข้อมูลและโครงสร้างข้อมูล
-  </div>
-<div class="table-caption">
-<b>
-    ตารางที่ 3.2
-   </b>
-   คำอธิบายแหล่งเก็บข้อมูลและโครงสร้างข้อมูล
-  </div>
-<table>
-<thead>
-<tr>
-<th>
-      รหัส
-     </th>
-<th>
-      ชื่อแฟ้มข้อมูล
-     </th>
-<th>
-      คำอธิบาย
-     </th>
-<th>
-      โครงสร้างข้อมูล
-     </th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="col-id">
-      D1
-     </td>
-<td class="col-name">
-      แฟ้มข้อมูลผู้ใช้ (users)
-     </td>
-<td class="col-desc">
-      เก็บรายละเอียดข้อมูลของผู้ใช้งานระบบ
-     </td>
-<td class="col-struct">รหัส (id) <br/>+ อีเมล (email) <br/>+ รหัสผ่าน (password) <br/>+ ชื่อ (name) <br/>+ บทบาท (role) <br/>+ รหัสนักศึกษา (student_id) <br/>+ ลิงก์รูปโปรไฟล์ (avatar_url) <br/>+ สถานะการยืนยันตัวตน (is_verified) <br/>+ เวอร์ชันโทเคน (token_version)</td>
-</tr>
-<tr>
-<td class="col-id">
-      D2
-     </td>
-<td class="col-name">
-      แฟ้มข้อมูลห้องเรียน (rooms)
-     </td>
-<td class="col-desc">
-      เก็บรายละเอียดข้อมูลของห้องเรียนที่สร้างโดยผู้สอน
-     </td>
-<td class="col-struct">รหัส (id) <br/>+ ชื่อห้องเรียน (name) <br/>+ ตอนเรียน (section) <br/>+ รหัสเข้าห้อง (class_code) <br/>+ รหัสผู้สอน (owner_id)</td>
-</tr>
-<tr>
-<td class="col-id">
-      D3
-     </td>
-<td class="col-name">
-      แฟ้มข้อมูลสมาชิกห้องเรียน (enrollments)
-     </td>
-<td class="col-desc">
-      เก็บรายละเอียดข้อมูลการเข้าร่วมห้องเรียนของผู้เรียน
-     </td>
-<td class="col-struct">รหัส (id) <br/>+ รหัสผู้ใช้ (user_id) <br/>+ รหัสห้องเรียน (room_id) <br/>+ วันที่เข้าร่วม (joined_at)</td>
-</tr>
-<tr>
-<td class="col-id">
-      D4
-     </td>
-<td class="col-name">
-      แฟ้มข้อมูลข้อสอบ (exams)
-     </td>
-<td class="col-desc">
-      เก็บรายละเอียดข้อมูลหลักของข้อสอบและการตั้งค่า
-     </td>
-<td class="col-struct">รหัส (id) <br/>+ รหัสห้องเรียน (room_id) <br/>+ ชื่อข้อสอบ (title) <br/>+ คำอธิบาย (description) <br/>+ คะแนนรวม (total_score) <br/>+ วันที่เริ่มสอบ (start_date) <br/>+ วันที่สิ้นสุดการสอบ (end_date) <br/>+ สุ่มโจทย์ (is_randomized) <br/>+ วันที่สร้าง (created_at)</td>
-</tr>
-<tr>
-<td class="col-id">
-      D5
-     </td>
-<td class="col-name">
-      แฟ้มข้อมูลโจทย์และเกณฑ์ (questions)
-     </td>
-<td class="col-desc">
-      เก็บรายละเอียดข้อมูลโจทย์แต่ละข้อและเกณฑ์รูบริค (Rubrics)
-     </td>
-<td class="col-struct">รหัส (id) <br/>+ รหัสข้อสอบ (exam_id) <br/>+ ข้อความโจทย์ (text) <br/>+ คะแนน (score) <br/>+ เฉลย (answer_key) <br/>+ เกณฑ์การประเมิน (rubrics) <br/>+ ลำดับโจทย์ (order_index) <br/>+ รูปภาพ (image_path) <br/>+ หลายรูปภาพ (image_paths)</td>
-</tr>
-<tr>
-<td class="col-id">
-      D6
-     </td>
-<td class="col-name">
-      แฟ้มข้อมูลการส่งข้อสอบ (submissions)
-     </td>
-<td class="col-desc">
-      เก็บรายละเอียดข้อมูลสถานะและภาพรวมการส่งงานของผู้เรียน
-     </td>
-<td class="col-struct">รหัส (id) <br/>+ รหัสข้อสอบ (exam_id) <br/>+ รหัสนักศึกษา (student_id) <br/>+ สถานะการส่ง (status) <br/>+ คะแนนรวม (total_score) <br/>+ วันที่ส่ง (submitted_at) <br/>+ ตรวจโดย AI (graded_by_ai)</td>
-</tr>
-<tr>
-<td class="col-id">
-      D7
-     </td>
-<td class="col-name">
-      แฟ้มข้อมูลการตรวจคำตอบ (submission_answers)
-     </td>
-<td class="col-desc">
-      เก็บข้อมูลคำตอบของผู้เรียน ผลประเมินจาก AI และคะแนนสุทธิจากผู้สอน (ยุบรวม D7, D8, D9)
-     </td>
-<td class="col-struct">รหัส (id) <br/>+ รหัสการส่ง (submission_id) <br/>+ รหัสโจทย์ (question_id) <br/>+ ข้อความคำตอบ (answer_text) <br/>+ คะแนนจาก AI (ai_score) <br/>+ ข้อเสนอแนะจาก AI (ai_feedback) <br/>+ ระดับความมั่นใจ AI (ai_confidence) <br/>+ คะแนนจากผู้สอน (teacher_score) <br/>+ ความเห็นผู้สอน (teacher_comment) <br/>+ รูปภาพ (image_path) <br/>+ หลายรูปภาพ (image_paths) <br/>+ ตัวชี้วัดคุณภาพ (quality_metrics)</td>
-</tr>
-<tr>
-<td class="col-id">
-      D8
-     </td>
-<td class="col-name">
-      แฟ้มข้อมูลประกาศข่าวสาร (announcements)
-     </td>
-<td class="col-desc">
-      เก็บรายละเอียดข้อมูลการประกาศแจ้งเตือนภายในห้องเรียน
-     </td>
-<td class="col-struct">รหัส (id) <br/>+ รหัสห้องเรียน (room_id) <br/>+ รหัสผู้สอน (teacher_id) <br/>+ หัวข้อ (title) <br/>+ เนื้อหา (content) <br/>+ วันที่สร้าง (created_at)</td>
-</tr>
-<tr>
-<td class="col-id">
-      D9
-     </td>
-<td class="col-name">
-      แฟ้มข้อมูลสถานะการอ่านประกาศ (announcement_reads)
-     </td>
-<td class="col-desc">
-      เก็บสถานะการรับรู้ข่าวสารของผู้เรียนแต่ละคน (Read Receipt)
-     </td>
-<td class="col-struct">รหัส (id) <br/>+ รหัสประกาศ (announcement_id) <br/>+ รหัสนักศึกษา (student_id) <br/>+ วันที่อ่าน (read_at)</td>
-</tr>
-<tr>
-<td class="col-id">
-      D10
-     </td>
-<td class="col-name">
-      แฟ้มข้อมูลรายละเอียดการแจ้งเตือน (notifications)
-     </td>
-<td class="col-desc">
-      เก็บรายละเอียดการแจ้งเตือนที่ระบบสร้างขึ้น
-     </td>
-<td class="col-struct">รหัส (id) <br/>+ รหัสผู้ใช้ (user_id) <br/>+ ประเภท (type) <br/>+ ข้อความ (message) <br/>+ ลิงก์ (link) <br/>+ ข้อมูลเพิ่มเติม (data) <br/>+ สถานะการอ่าน (is_read) <br/>+ วันที่สร้าง (created_at)</td>
-</tr>
-</tbody>
-</table>
-
-  <div class="header-title">
-   3.3.3 คำอธิบายและโครงสร้างของเส้นข้อมูล (Data Flow Description and Data Structure)
-  </div>
-  <div class="table-caption">
-   <b>
-    ตารางที่ 3.3
-   </b>
-   Data Flow Description and Data Structure
-  </div>
-  <table>
-   <thead>
-    <tr>
-     <th>
-      ชื่อเส้นข้อมูล
-     </th>
-     <th>
-      คำอธิบาย
-     </th>
-     <th>
-      แหล่งต้นทาง
-     </th>
-     <th>
-      แหล่งปลายทาง
-     </th>
-     <th>
-      โครงสร้างข้อมูล
-     </th>
-    </tr>
-   </thead>
-   <tbody>
-<tr> <td class="col-name" rowspan="1">ข้อมูลการสมัครสมาชิก</td> <td class="col-desc" rowspan="1">ข้อมูลรายละเอียดส่วนบุคคลและบัญชีที่ผู้ใช้งานกรอกเพื่อขอลงทะเบียนเข้าสู่ระบบ</td> <td>ผู้เรียน</td> <td>Process 1.1 สมัครสมาชิก</td> <td class="col-struct" rowspan="1">อีเมล (email) <br>+ รหัสผ่าน (password) <br>+ ชื่อ (name)</td></tr><tr> <td class="col-name" rowspan="3">ข้อมูลผู้ใช้งาน</td> <td class="col-desc" rowspan="3">ข้อมูลสิทธิ์ผู้เรียนที่ดึงจากฐานข้อมูลเพื่อตรวจสอบสถานะก่อนอนุญาตให้เข้าทำข้อสอบ</td> <td>Process 1.1 สมัครสมาชิก</td> <td>ผู้เรียน</td> <td class="col-struct" rowspan="3">รหัส (id) <br>+ อีเมล (email) <br>+ รหัสผ่าน (password) <br>+ ชื่อ (name) <br>+ บทบาท (role) <br>+ รหัสนักศึกษา (student_id) <br>+ ลิงก์รูปโปรไฟล์ (avatar_url) <br>+ สถานะการยืนยันตัวตน (is_verified) <br>+ เวอร์ชันโทเคน (token_version)</td></tr><tr> <td>D1 แฟ้มข้อมูลผู้ใช้งาน</td> <td>Process 2.1 จัดการข้อมูลห้องเรียน</td></tr><tr> <td>D1 แฟ้มข้อมูลผู้ใช้งาน</td> <td>Process 5.1 จัดการการเริ่มทำข้อสอบและจับเวลา</td></tr><tr> <td class="col-name" rowspan="2">ข้อมูลสถานะการส่งอีเมล</td> <td class="col-desc" rowspan="2">ข้อมูลสถานะตอบกลับจากเซิร์ฟเวอร์เมล์เพื่อยืนยันว่าส่งอีเมลสำเร็จหรือล้มเหลว</td> <td>Process 1.1 สมัครสมาชิก</td> <td>Process 1.3 ยืนยันอีเมล</td> <td class="col-struct" rowspan="2">รหัส (id) <br>+ อีเมล (email) <br>+ โทเคน (token) <br>+ วันที่สร้าง (created_at)</td></tr><tr> <td>SMTP Server</td> <td>Process 1.3 ยืนยันอีเมล</td></tr><tr> <td class="col-name" rowspan="1">ข้อมูลการเข้าสู่ระบบ</td> <td class="col-desc" rowspan="1">ข้อมูลอีเมลและรหัสผ่านที่ผู้ใช้งานกรอกเพื่อขอตรวจสอบสิทธิ์เข้าสู่ระบบ</td> <td>ผู้เรียน</td> <td>Process 1.2 เข้าสู่ระบบ</td> <td class="col-struct" rowspan="1">อีเมล (email) <br>+ รหัสผ่าน (password)</td></tr><tr> <td class="col-name" rowspan="1">ข้อมูลคำขอเข้าสู่ระบบด้วยบัญชี Google</td> <td class="col-desc" rowspan="1">ข้อมูลที่ใช้ในระบบ</td> <td>Firebase Auth</td> <td>Process 1.2 เข้าสู่ระบบ</td> <td class="col-struct" rowspan="1">โทเคน (token) <br>+ อีเมล (email) <br>+ สถานะการส่ง (status)</td></tr><tr> <td class="col-name" rowspan="1">Authentication Token</td> <td class="col-desc" rowspan="1">ข้อมูลสถานะการตรวจสอบสิทธิ์และโทเคนยืนยันตัวตนที่ส่งกลับระหว่างระบบกับ Firebase</td> <td>Process 1.2 เข้าสู่ระบบ</td> <td>Firebase Auth</td> <td class="col-struct" rowspan="1">โทเคน (token) <br>+ ชื่อ (name) <br>+ อีเมล (email) <br>+ ลิงก์รูปโปรไฟล์ (avatar_url) <br>+ สถานะการส่ง (status)</td></tr><tr> <td class="col-name" rowspan="2">ข้อมูลอีเมลและลิงก์ยืนยันตัวตน</td> <td class="col-desc" rowspan="2">รหัสยืนยันตัวตนที่ผู้ใช้กดผ่านลิงก์ในอีเมลเพื่อยืนยันความเป็นเจ้าของบัญชี</td> <td>Process 1.3 ยืนยันอีเมล</td> <td>SMTP Server</td> <td class="col-struct" rowspan="2">อีเมล (email) <br>+ หัวข้อ (title) <br>+ เนื้อหา (content) <br>+ ลิงก์ (link)</td></tr><tr> <td>ผู้เรียน</td> <td>Process 1.3 ยืนยันอีเมล</td></tr><tr> <td class="col-name" rowspan="2">ข้อมูลห้องเรียน</td> <td class="col-desc" rowspan="2">ข้อมูลรายละเอียดห้องเรียนที่ดึงมาตรวจสอบสิทธิ์ความเป็นเจ้าของห้องก่อนจัดการข้อสอบ</td> <td>ผู้สอน</td> <td>Process 2.1 จัดการข้อมูลห้องเรียน</td> <td class="col-struct" rowspan="2">รหัสห้องเรียน (room_id) <br>+ ชื่อ (name) <br>+ ตอนเรียน (section) <br>+ รหัสเข้าห้อง (class_code) <br>+ รหัสผู้สอน (owner_id)</td></tr><tr> <td>D2 แฟ้มข้อมูลห้องเรียน</td> <td>Process 3.1 จัดการโครงสร้างและรายละเอียดข้อสอบ</td></tr><tr> <td class="col-name" rowspan="1">ข้อมูลคำขอเข้าร่วมห้องเรียนพร้อมรหัสคลาส</td> <td class="col-desc" rowspan="1">ข้อมูลที่ใช้ในระบบ</td> <td>ผู้เรียน</td> <td>Process 2.2 จัดการการเข้าร่วมห้องเรียน</td> <td class="col-struct" rowspan="1">รหัสผู้ใช้ (user_id) <br>+ รหัสเข้าห้อง (class_code) <br>+ วันที่สร้าง (created_at)</td></tr><tr> <td class="col-name" rowspan="1">ข้อมูลการเข้าร่วมห้องเรียน</td> <td class="col-desc" rowspan="1">ข้อมูลการลงทะเบียนเป็นสมาชิกห้องเรียน (Enrollment) หรือการยกเลิกเป็นสมาชิก</td> <td>ผู้เรียน</td> <td>Process 2.2 จัดการการเข้าร่วมห้องเรียน</td> <td class="col-struct" rowspan="1">รหัส (id) <br>+ รหัสห้องเรียน (room_id) <br>+ รหัสผู้ใช้ (user_id) <br>+ วันที่เข้าร่วม (joined_at)</td></tr><tr> <td class="col-name" rowspan="1">ข้อมูลประกาศภายในห้องเรียน</td> <td class="col-desc" rowspan="1">ข้อมูลหัวข้อ เนื้อหาประกาศ และสถานะการอ่านประกาศภายในห้องเรียน</td> <td>ผู้สอน</td> <td>Process 2.3 จัดการประกาศข่าวสาร</td> <td class="col-struct" rowspan="1">รหัส (id) <br>+ รหัสห้องเรียน (room_id) <br>+ รหัสผู้สอน (owner_id) <br>+ ชื่อข้อสอบ/หัวข้อ (title) <br>+ เนื้อหา (content) <br>+ วันที่สร้าง (created_at) <br>+ รายชื่อผู้เรียนที่เปิดอ่าน(รหัสการอ่าน <br>+ รหัสผู้ใช้ (user_id) <br>+ วันเวลาที่เปิดอ่าน)</td></tr><tr> <td class="col-name" rowspan="5">ข้อมูลการส่งคำตอบ</td> <td class="col-desc" rowspan="5">ข้อมูลผลคะแนนและสถานะการส่งของนักเรียนทุกคนในห้องที่ดึงมาเพื่อเขียนลงไฟล์รายงาน</td> <td>D6 แฟ้มข้อมูลการส่งคำตอบ</td> <td>Process 3.1 จัดการโครงสร้างและรายละเอียดข้อสอบ</td> <td class="col-struct" rowspan="5">รหัสข้อสอบ (exam_id) <br>+ จำนวน (count) <br>+ สถานะการส่ง (status)</td></tr><tr> <td>ผู้เรียน</td> <td>Process 5.3 ยืนยันการส่งคำตอบ</td></tr><tr> <td>D6 แฟ้มข้อมูลการส่งคำตอบ</td> <td>Process 6.1 เตรียมข้อมูลคำตอบและเกณฑ์รูบริค</td></tr><tr> <td>ผู้สอน</td> <td>Process 7.1 ตรวจสอบและปรับปรุงคะแนน</td></tr><tr> <td>D6 แฟ้มข้อมูลการส่งคำตอบ</td> <td>Process 8.3 ส่งออกรายงานและสถิติ</td></tr><tr> <td class="col-name" rowspan="6">ข้อมูลข้อสอบ</td> <td class="col-desc" rowspan="6">ข้อมูลรายละเอียดของข้อสอบที่ดึงมาเพื่อใช้เป็นส่วนหัว (Header) ของไฟล์รายงาน</td> <td>ผู้สอน</td> <td>Process 3.1 จัดการโครงสร้างและรายละเอียดข้อสอบ</td> <td class="col-struct" rowspan="6">รหัสข้อสอบ (exam_id) <br>+ รหัสห้องเรียน (room_id) <br>+ ชื่อข้อสอบ/หัวข้อ (title) <br>+ คำอธิบาย (description) <br>+ คะแนนรวม (total_score) <br>+ วันที่เริ่ม (start_date) <br>+ วันที่สิ้นสุด (end_date) <br>+ สุ่มโจทย์ (is_randomized) <br>+ รายการคำถาม(รหัสคำถาม <br>+ ข้อความโจทย์ (text) <br>+ คะแนน (score) <br>+ เฉลย (answer_key) <br>+ เกณฑ์การประเมิน (rubrics) <br>+ ลำดับ (order_index) <br>+ รูปภาพประกอบ) <br>+ วันที่สร้าง (created_at)</td></tr><tr> <td>D4 แฟ้มข้อมูลข้อสอบ</td> <td>Process 4.1 เพิ่มข้อสอบเข้าคลังส่วนตัว</td></tr><tr> <td>D4 แฟ้มข้อมูลข้อสอบ</td> <td>Process 5.1 จัดการการเริ่มทำข้อสอบและจับเวลา</td></tr><tr> <td>D4 แฟ้มข้อมูลข้อสอบ</td> <td>Process 6.1 เตรียมข้อมูลคำตอบและเกณฑ์รูบริค</td></tr><tr> <td>D4 แฟ้มข้อมูลข้อสอบ</td> <td>Process 7.1 ตรวจสอบและปรับปรุงคะแนน</td></tr><tr> <td>D4 แฟ้มข้อมูลข้อสอบ</td> <td>Process 8.3 ส่งออกรายงานและสถิติ</td></tr><tr> <td class="col-name" rowspan="1">ข้อมูลไฟล์รูปภาพโจทย์ข้อสอบ</td> <td class="col-desc" rowspan="1">ไฟล์รูปภาพคำถามหรือภาพประกอบโจทย์ที่ผู้สอนอัปโหลดเพื่อส่งไปเก็บที่ Cloudinary</td> <td>ผู้สอน</td> <td>Process 3.2 จัดการรูปภาพประกอบโจทย์</td> <td class="col-struct" rowspan="1">ชื่อไฟล์ <br>+ ประเภทไฟล์ <br>+ ข้อมูลรูปภาพฐาน64 <br>+ ขนาดไฟล์ <br>+ ตำแหน่งจัดเก็บไฟล์</td></tr><tr> <td class="col-name" rowspan="2">ข้อมูล URL และสถานะการจัดเก็บรูปภาพ</td> <td class="col-desc" rowspan="2">ลิงก์ URL ของรูปภาพคำตอบลายมือที่ได้รับจาก Cloudinary เพื่อนำมาบันทึกลงในแบบร่าง</td> <td>Cloudinary API</td> <td>Process 3.2 จัดการรูปภาพประกอบโจทย์</td> <td class="col-struct" rowspan="2">รหัสสินทรัพย์คลาวด์ <br>+ รูปภาพ (image_path) <br>+ ความกว้างรูปภาพ <br>+ ความสูงรูปภาพ <br>+ วันเวลาที่อัปโหลด</td></tr><tr> <td>Cloudinary API</td> <td>Process 5.2 บันทึกแบบร่างและอัปโหลดรูปลายมือ</td></tr><tr> <td class="col-name" rowspan="1">โครงสร้างเกณฑ์การประเมิน</td> <td class="col-desc" rowspan="1">ข้อมูลเกณฑ์รูบริค (Rubrics) และระดับคะแนนที่ผู้สอนกำหนดเองหรือเลือกจาก Presets</td> <td>ผู้สอน</td> <td>Process 3.3 จัดการเกณฑ์รูบริคด้วย AI และกำหนดเอง</td> <td class="col-struct" rowspan="1">รหัสรูบริค <br>+ รหัสข้อสอบ (exam_id) <br>+ รายการเกณฑ์การประเมิน(รหัสเกณฑ์ <br>+ ชื่อเกณฑ์ <br>+ คำอธิบาย (description) <br>+ คะแนนรวม (total_score) <br>+ ระดับคะแนน) <br>+ วันที่สร้าง (created_at)</td></tr><tr> <td class="col-name" rowspan="1">ข้อมูลคำสั่งสร้างโครงสร้างเกณฑ์การประเมิน</td> <td class="col-desc" rowspan="1">คำสั่งจากผู้สอนเพื่อให้ระบบเรียกใช้งาน Gemini AI ในการวิเคราะห์และสร้างเกณฑ์รูบริค</td> <td>ผู้สอน</td> <td>Process 3.3 จัดการเกณฑ์รูบริคด้วย AI และกำหนดเอง</td> <td class="col-struct" rowspan="1">รหัสข้อสอบ (exam_id) <br>+ รหัสผู้สอน (owner_id) <br>+ พารามิเตอร์คำสั่งปัญญาประดิษฐ์ <br>+ วันที่สร้าง (created_at)</td></tr><tr> <td class="col-name" rowspan="1">ข้อมูลโจทย์ข้อสอบและเกณฑ์การให้คะแนน</td> <td class="col-desc" rowspan="1">ข้อมูลคำถามและแนวคำตอบที่ส่งไปให้ Gemini AI ช่วยวิเคราะห์และสร้างเกณฑ์รูบริคอัตโนมัติ</td> <td>Process 3.3 จัดการเกณฑ์รูบริคด้วย AI และกำหนดเอง</td> <td>Gemini API</td> <td class="col-struct" rowspan="1">รหัสข้อสอบ (exam_id) <br>+ ชื่อข้อสอบ/หัวข้อ (title) <br>+ คำอธิบาย (description) <br>+ รายการคำถาม <br>+ แนวคำตอบ <br>+ พารามิเตอร์คำสั่งปัญญาประดิษฐ์</td></tr><tr> <td class="col-name" rowspan="1">ข้อมูลเกณฑ์รูบริคอัตโนมัติ</td> <td class="col-desc" rowspan="1">โครงสร้างเกณฑ์รูบริคที่ AI สร้างสำเร็จและส่งกลับมาให้ผู้สอนตรวจสอบก่อนกดบันทึกจริง</td> <td>Gemini API</td> <td>Process 3.3 จัดการเกณฑ์รูบริคด้วย AI และกำหนดเอง</td> <td class="col-struct" rowspan="1">รหัสการตอบกลับปัญญาประดิษฐ์ <br>+ รหัสข้อสอบ (exam_id) <br>+ โครงสร้างเกณฑ์รูบริคฉบับร่าง <br>+ ค่าความมั่นใจปัญญาประดิษฐ์ <br>+ วันเวลาที่สร้าง</td></tr><tr> <td class="col-name" rowspan="1">ข้อมูลการจัดการคลังข้อสอบ</td> <td class="col-desc" rowspan="1">คำสั่งจากผู้สอนเพื่อบันทึกข้อสอบและเกณฑ์รูบริคเก็บไว้ในคลังข้อสอบส่วนตัว</td> <td>ผู้สอน</td> <td>Process 4.1 เพิ่มข้อสอบเข้าคลังส่วนตัว</td> <td class="col-struct" rowspan="1">รหัสข้อสอบ (exam_id) <br>+ รหัสผู้สอน (owner_id) <br>+ วันเวลาที่ทำรายการ</td></tr><tr> <td class="col-name" rowspan="1">ข้อมูลคลังข้อสอบ</td> <td class="col-desc" rowspan="1">ข้อมูลรายการข้อสอบและเกณฑ์รูบริคในคลังข้อสอบส่วนตัว (Question Bank) ของผู้สอน</td> <td>Process 4.1 เพิ่มข้อสอบเข้าคลังส่วนตัว</td> <td>ผู้สอน</td> <td class="col-struct" rowspan="1">รหัสรายการคลังข้อสอบ <br>+ รหัสผู้สอน (owner_id) <br>+ ข้อความโจทย์ (text) <br>+ คะแนน (score) <br>+ เฉลย (answer_key) <br>+ เกณฑ์การประเมิน (rubrics) <br>+ แท็ก <br>+ วันที่สร้าง (created_at)</td></tr><tr> <td class="col-name" rowspan="1">ข้อมูลการดึงข้อสอบจากคลัง</td> <td class="col-desc" rowspan="1">คำสั่งจากผู้สอนเพื่อดึงข้อสอบจากคลังส่วนตัวไปสร้างเป็นข้อสอบใหม่ในห้องเรียน</td> <td>ผู้สอน</td> <td>Process 4.2 จัดการและเรียกใช้คลังข้อสอบ</td> <td class="col-struct" rowspan="1">รหัสรายการคลังข้อสอบ <br>+ รหัสห้องเรียนปลายทาง <br>+ รหัสผู้สอน (owner_id) <br>+ วันเวลาที่ดึงไปใช้</td></tr><tr> <td class="col-name" rowspan="1">ข้อมูลคำขอเริ่มทำข้อสอบ</td> <td class="col-desc" rowspan="1">ข้อมูลที่ใช้ในระบบ</td> <td>ผู้เรียน</td> <td>Process 5.1 จัดการการเริ่มทำข้อสอบและจับเวลา</td> <td class="col-struct" rowspan="1">รหัสผู้ใช้ (user_id) <br>+ รหัสข้อสอบ (exam_id) <br>+ รหัสห้องเรียน (room_id) <br>+ วันเวลาที่ขอเริ่มสอบ</td></tr><tr> <td class="col-name" rowspan="1">ข้อมูลแบบร่างคำตอบ</td> <td class="col-desc" rowspan="1">ข้อมูลคำตอบที่ผู้เรียนพิมพ์หรือเขียนมือซึ่งระบบทำการบันทึกอัตโนมัติ (Auto-save) ระหว่างการสอบ</td> <td>ผู้เรียน</td> <td>Process 5.2 บันทึกแบบร่างและอัปโหลดรูปลายมือ</td> <td class="col-struct" rowspan="1">รหัสแบบร่าง <br>+ รหัสข้อสอบ (exam_id) <br>+ รหัสผู้ใช้ (user_id) <br>+ ข้อมูลแบบร่างคำตอบ <br>+ วันเวลาที่อัปเดตล่าสุด</td></tr><tr> <td class="col-name" rowspan="1">ข้อมูลไฟล์รูปภาพคำตอบลายมือเขียน</td> <td class="col-desc" rowspan="1">ไฟล์รูปภาพกระดาษคำตอบเขียนมือที่ผู้เรียนอัปโหลดเพื่อส่งไปเก็บที่ Cloudinary</td> <td>ผู้เรียน</td> <td>Process 5.2 บันทึกแบบร่างและอัปโหลดรูปลายมือ</td> <td class="col-struct" rowspan="1">ชื่อไฟล์ <br>+ ประเภทไฟล์ <br>+ ข้อมูลรูปภาพฐาน64 <br>+ ขนาดไฟล์ <br>+ รหัสผู้ใช้ (user_id) <br>+ รหัสข้อสอบ (exam_id) <br>+ รหัส (id)</td></tr><tr> <td class="col-name" rowspan="1">ข้อมูลคำตอบของนักเรียน</td> <td class="col-desc" rowspan="1">ชุดข้อมูลและคำสั่ง Prompt ฉบับสมบูรณ์ที่ส่งไปยัง Gemini API เพื่อให้ AI ทำการวิเคราะห์และประเมินผล</td> <td>Process 6.1 เตรียมข้อมูลคำตอบและเกณฑ์รูบริค</td> <td>Process 6.2 ประมวลผลและประเมินผ่าน AI</td> <td class="col-struct" rowspan="1">คำสั่งระบบปัญญาประดิษฐ์ <br>+ ข้อความคำตอบผู้เรียน <br>+ ลิงก์รูปภาพลายมือผู้เรียน <br>+ ข้อคำถามข้อสอบ <br>+ รายการเกณฑ์รูบริค <br>+ คะแนนรวม (total_score)</td></tr><tr> <td class="col-name" rowspan="1">ผลการประเมินและข้อเสนอแนะอัจฉริยะ</td> <td class="col-desc" rowspan="1">ผลคะแนน ค่าความมั่นใจ (Confidence) และคำอธิบายฟีดแบ็กรายจุดที่ AI ตรวจเสร็จและส่งกลับมา</td> <td>Gemini API</td> <td>Process 6.2 ประมวลผลและประเมินผ่าน AI</td> <td class="col-struct" rowspan="1">รหัสการส่งคำตอบ <br>+ คะแนนรวม (total_score) <br>+ ระดับความมั่นใจปัญญาประดิษฐ์ <br>+ ข้อเสนอแนะรายจุด <br>+ คะแนนรูบริครายข้อ <br>+ เวลาที่ใช้ประมวลผล</td></tr><tr> <td class="col-name" rowspan="1">ข้อมูลประวัติการแก้ไขคะแนน</td> <td class="col-desc" rowspan="1">ข้อมูลบันทึกประวัติการแก้ไขคะแนน (Audit Log) เพื่อความโปร่งใสและสามารถตรวจสอบย้อนหลังได้</td> <td>Process 7.1 ตรวจสอบและปรับปรุงคะแนน</td> <td>Process 7.2 จัดการประวัติการแก้ไขคะแนน</td> <td class="col-struct" rowspan="1">รหัสบันทึกประวัติ <br>+ รหัส (id) <br>+ ประเภทการกระทำ <br>+ รหัสเอนทิตี <br>+ รายละเอียดการแก้ไข <br>+ ไอพีแอดเดรส <br>+ วันเวลาที่บันทึก</td></tr><tr> <td class="col-name" rowspan="1">ข้อมูลคำขอตรวจสอบประวัติการแก้ไขคะแนน</td> <td class="col-desc" rowspan="1">ข้อมูลที่ใช้ในระบบ</td> <td>ผู้เรียน</td> <td>Process 7.3 อนุมัติและประกาศผลคะแนน</td> <td class="col-struct" rowspan="1">รหัสผู้ใช้ (user_id) <br>+ รหัสข้อสอบ (exam_id) <br>+ วันเวลาที่ขอดูผลสอบ</td></tr><tr> <td class="col-name" rowspan="1">ข้อมูลการแจ้งเตือนใหม่</td> <td class="col-desc" rowspan="1">ข้อมูลรายละเอียดการแจ้งเตือนที่เพิ่งถูกสร้างขึ้นเพื่อบันทึกลงประวัติ</td> <td>7.0 ระบบจัดการแจ้งเตือน</td> <td>D12 แฟ้มข้อมูลประวัติแจ้งเตือน</td> <td class="col-struct" rowspan="1">user_id <br>+ type <br>+ message <br>+ link <br>+ data <br>+ created_at</td></tr><tr> <td class="col-name" rowspan="1">ข้อมูลประวัติการแจ้งเตือน</td> <td class="col-desc" rowspan="1">ข้อมูลประวัติการแจ้งเตือนย้อนหลังที่ถูกดึงมาแสดงผลเมื่อผู้ใช้เรียกดู</td> <td>D12 แฟ้มข้อมูลประวัติแจ้งเตือน</td> <td>7.0 ระบบจัดการแจ้งเตือน</td> <td class="col-struct" rowspan="1">user_id <br>+ type <br>+ message <br>+ link <br>+ data <br>+ is_read <br>+ created_at</td></tr><tr> <td class="col-name" rowspan="1">ข้อมูลการแจ้งเตือนแบบเรียลไทม์</td> <td class="col-desc" rowspan="1">ข้อมูลข้อความแจ้งเตือนระบบแบบเรียลไทม์ผ่าน Socket.io และสถานะการเปิดอ่านแจ้งเตือนของผู้ใช้งาน</td> <td>Process 8.1 ส่งการแจ้งเตือนผ่าน Socket.io</td> <td>ผู้เรียน</td> <td class="col-struct" rowspan="1">รหัสแจ้งเตือน <br>+ รหัสผู้ใช้ปลายทาง <br>+ หัวข้อแจ้งเตือน <br>+ ข้อความแจ้งเตือน <br>+ ประเภทการแจ้งเตือน <br>+ สถานะการอ่าน <br>+ วันที่สร้าง (created_at) <br>+ วันที่เปิดอ่าน</td></tr><tr> <td class="col-name" rowspan="1">ข้อมูลคำขอออกรายงานสถิติ</td> <td class="col-desc" rowspan="1">ข้อมูลที่ใช้ในระบบ</td> <td>ผู้สอน</td> <td>Process 8.3 ส่งออกรายงานและสถิติ</td> <td class="col-struct" rowspan="1">รหัสข้อสอบ (exam_id) <br>+ รหัสผู้สอน (owner_id) <br>+ รูปแบบไฟล์ที่ต้องการส่งออก <br>+ วันที่สร้าง (created_at)</td></tr><tr> <td class="col-name" rowspan="1">ไฟล์รายงานสรุปคะแนน</td> <td class="col-desc" rowspan="1">ไฟล์เอกสารสเปรดชีตสรุปผลคะแนนและสถิติการสอบทั้งหมดที่ระบบสร้างสำเร็จและส่งให้ผู้สอนดาวน์โหลด</td> <td>Process 8.3 ส่งออกรายงานและสถิติ</td> <td>ผู้สอน</td> <td class="col-struct" rowspan="1">ส่วนหัวรายงาน <br>+ รายการผลสอบ(รหัสผู้เรียน <br>+ ชื่อผู้เรียน <br>+ สถานะการส่ง <br>+ คะแนนรวม (total_score) <br>+ ข้อเสนอแนะปัญญาประดิษฐ์ <br>+ ความคิดเห็นผู้สอน) <br>+ วันเวลาที่ส่งออกไฟล์</td></tr>
-   </tbody>
-  </table>
+    <h2>ตารางที่ 3.1 External Entity Description</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Input Data Flow</th>
+                <th>Output Data Flow</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>ผู้ใช้ทั่วไป</td>
+                <td>บุคคลทั่วไปที่เข้าใช้งานเพื่อสมัครสมาชิกหรือเข้าสู่ระบบ</td>
+                <td><ul><li>ข้อมูลบัญชีผู้ใช้</li></ul></td>
+                <td><ul><li>ข้อมูลการยืนยันตัวตนทางอีเมล</li><li>ข้อมูลการสมัครสมาชิก</li><li>ข้อมูลการเข้าสู่ระบบ</li><li>ข้อมูลอีเมลสำหรับรีเซ็ตรหัสผ่าน</li></ul></td>
+            </tr>
+            <tr>
+                <td>ผู้เรียน</td>
+                <td>ผู้ใช้งานระบบที่สามารถทำข้อสอบ ดูคะแนน และรับข้อเสนอแนะ</td>
+                <td><ul><li>ข้อมูลการแจ้งเตือน</li><li>ข้อมูลข้อสอบ</li><li>ข้อมูลบัญชีผู้ใช้</li><li>ข้อมูลประกาศข่าวสารห้องเรียน</li><li>ข้อมูลผลคะแนน</li><li>ข้อมูลสถานะการส่งข้อสอบ</li><li>ข้อมูลห้องเรียน</li><li>ข้อมูลเวลาคงเหลือในการสอบ</li><li>ข้อมูลผลการประเมินและข้อเสนอแนะ</li></ul></td>
+                <td><ul><li>ข้อมูลคำตอบข้อสอบ</li><li>ข้อมูลรหัสเข้าร่วมห้องเรียน</li><li>ข้อมูลสถานะการอ่านแจ้งเตือน</li><li>ข้อมูลโปรไฟล์ที่เพิ่มและแก้ไข</li><li>รหัสผู้เรียนและรหัสข้อสอบ</li></ul></td>
+            </tr>
+            <tr>
+                <td>ผู้สอน</td>
+                <td>ผู้ใช้งานระบบที่สามารถจัดการห้องเรียน ข้อสอบ และผลคะแนน</td>
+                <td><ul><li>ข้อมูลการแจ้งเตือน</li><li>ข้อมูลข้อสอบ</li><li>ข้อมูลคำตอบของนักเรียน</li><li>ข้อมูลบัญชีผู้ใช้</li><li>ข้อมูลประกาศข่าวสารห้องเรียน</li><li>ข้อมูลผลการประเมินและข้อเสนอแนะจาก AI</li><li>ข้อมูลผลคะแนนของนักเรียน</li><li>ข้อมูลรายงานสรุปคะแนน</li><li>ข้อมูลสถานะการส่งข้อสอบ</li><li>ข้อมูลสมาชิกในห้องเรียนและสถานะการส่งงาน</li><li>ข้อมูลห้องเรียน</li><li>ข้อมูลเกณฑ์การประเมินจาก AI</li></ul></td>
+                <td><ul><li>ข้อมูลข้อสอบที่ลบ</li><li>ข้อมูลข้อสอบที่เพิ่มและแก้ไข</li><li>ข้อมูลคะแนนและคอมเมนต์ที่เพิ่มและแก้ไข</li><li>ข้อมูลประกาศข่าวสารห้องเรียนที่ลบ</li><li>ข้อมูลประกาศข่าวสารห้องเรียนที่เพิ่มและแก้ไข</li><li>ข้อมูลสถานะการอนุมัติผลคะแนน</li><li>ข้อมูลสถานะการอ่านแจ้งเตือน</li><li>ข้อมูลห้องเรียนที่ลบ</li><li>ข้อมูลห้องเรียนที่เพิ่มและแก้ไข</li><li>ข้อมูลเกณฑ์การประเมินที่ลบ</li><li>ข้อมูลเกณฑ์การประเมินที่เพิ่มและแก้ไข</li><li>ข้อมูลโปรไฟล์ที่เพิ่มและแก้ไข</li><li>รหัสห้องเรียนและรหัสข้อสอบ</li></ul></td>
+            </tr>
+            <tr>
+                <td>Firebase Auth</td>
+                <td>ระบบจัดการและยืนยันตัวตนผู้ใช้งานผ่าน Google</td>
+                <td><ul><li>ข้อมูลการยืนยันตัวตน</li></ul></td>
+                <td><ul><li>ข้อมูลโปรไฟล์ผู้ใช้</li></ul></td>
+            </tr>
+            <tr>
+                <td>SMTP</td>
+                <td>เซิร์ฟเวอร์สำหรับส่งอีเมลแจ้งเตือนอัตโนมัติ</td>
+                <td><ul><li>ข้อมูลอีเมลและลิงก์ยืนยันตัวตน</li><li>ข้อมูลอีเมลและลิงก์รีเซ็ตรหัสผ่าน</li></ul></td>
+                <td><ul><li>ข้อมูลสถานะการส่งอีเมล</li></ul></td>
+            </tr>
+            <tr>
+                <td>Cloudinary API</td>
+                <td>ระบบจัดเก็บและบริหารจัดการไฟล์รูปภาพ</td>
+                <td><ul><li>ข้อมูลรูปภาพคำตอบ</li><li>ข้อมูลรูปภาพโจทย์ข้อสอบ</li><li>ข้อมูลรูปภาพโปรไฟล์</li></ul></td>
+                <td><ul><li>ข้อมูลผลการจัดเก็บรูปภาพ</li></ul></td>
+            </tr>
+            <tr>
+                <td>Gemini API</td>
+                <td>AI สำหรับตรวจข้อสอบและช่วยสร้างเกณฑ์การประเมิน</td>
+                <td><ul><li>ข้อมูลคำตอบของนักเรียน</li><li>ข้อมูลบริบทสำหรับการสร้างเกณฑ์</li><li>ข้อมูลเงื่อนไขและข้อกำหนดการตรวจ</li><li>ข้อมูลโจทย์ข้อสอบและเกณฑ์การให้คะแนน</li></ul></td>
+                <td><ul><li>ข้อมูลข้อเสนอแนะการประเมิน</li><li>ข้อมูลผลการประเมิน</li><li>ข้อมูลเกณฑ์รูบริคอัตโนมัติ</li><li>ข้อมูลระดับความมั่นใจของคำตอบ</li></ul></td>
+            </tr>
+        </tbody>
+    </table>
 </body>
 </html>

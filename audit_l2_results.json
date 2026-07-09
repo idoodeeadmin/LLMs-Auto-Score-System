@@ -1,0 +1,45 @@
+{
+  "Process 1": {
+    "missing_in (in L1 but missing in L2)": [],
+    "extra_in (in L2 but not in L1)": [
+      "ข้อมูลเตรียมการส่งอีเมล"
+    ],
+    "missing_out (in L1 but missing in L2)": [],
+    "extra_out (in L2 but not in L1)": []
+  },
+  "Process 5": {
+    "missing_in (in L1 but missing in L2)": [],
+    "extra_in (in L2 but not in L1)": [
+      "ข้อมูลผลการประเมินดิบจาก AI",
+      "ข้อมูลคำตอบและเกณฑ์ที่จัดรูปแบบแล้ว"
+    ],
+    "missing_out (in L1 but missing in L2)": [],
+    "extra_out (in L2 but not in L1)": [
+      "ข้อมูลผลการประเมินดิบจาก AI",
+      "ข้อมูลคำตอบและเกณฑ์ที่จัดรูปแบบแล้ว"
+    ]
+  },
+  "Process 6": {
+    "missing_in (in L1 but missing in L2)": [],
+    "extra_in (in L2 but not in L1)": [],
+    "missing_out (in L1 but missing in L2)": [
+      "ข้อมูลผลการประเมินและข้อเสนอแนะ"
+    ],
+    "extra_out (in L2 but not in L1)": []
+  },
+  "Process 7": {
+    "missing_in (in L1 but missing in L2)": [
+      "ข้อมูลสถานะการอ่านแจ้งเตือน",
+      "ข้อมูลสถานะการอ่านประกาศ"
+    ],
+    "extra_in (in L2 but not in L1)": [],
+    "missing_out (in L1 but missing in L2)": [
+      "ข้อมูลสถานะการอ่านแจ้งเตือน",
+      "อัปเดตสถานะการอ่านประกาศ",
+      "ข้อมูลผลการประเมินและข้อเสนอแนะ"
+    ],
+    "extra_out (in L2 but not in L1)": [
+      "ข้อมูลผลการประเมินและข้อเสนอแนะจาก AI"
+    ]
+  }
+}

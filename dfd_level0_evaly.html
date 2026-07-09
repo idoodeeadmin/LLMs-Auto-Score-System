@@ -1,234 +1,166 @@
 <!DOCTYPE html>
-
 <html lang="th">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>DFD Level 0 (Context Diagram) - Pure Data Payload Architecture</title>
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
-<style>
-        body { 
-            font-family: 'Sarabun', sans-serif; 
-            background: #f8fafc; 
-            padding: 2.5rem; 
-            color: #0f172a; 
-            margin: 0;
-        }
-        h1 { text-align: center; font-size: 32px; margin-bottom: 0.5rem; color: #0f172a; font-weight: 700; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DFD Level 0 (Context Diagram)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background: #f8fafc; padding: 2rem; color: #0f172a; margin: 0; }
+        h1 { text-align: center; font-size: 30px; margin-bottom: 0.5rem; color: #0f172a; font-weight: 700; }
         p.subtitle { text-align: center; margin-bottom: 3rem; color: #475569; font-size: 16px; }
-        
         .context-wrapper { 
-            background: #ffffff; padding: 50px; border-radius: 20px; 
-            box-shadow: 0 10px 35px -5px rgba(0,0,0,0.08); max-width: 1800px; margin: 0 auto; overflow-x: auto;
-            display: flex; align-items: center; justify-content: space-between; gap: 40px;
+            background: #ffffff; padding: 40px; border-radius: 16px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08); max-width: 1400px; margin: 0 auto;
+            display: flex; align-items: stretch; justify-content: space-between; gap: 40px;
         }
-        
-        .col-side { 
-            display: flex; flex-direction: column; gap: 45px; flex: 1; min-width: 520px; 
+        .col-side { display: flex; flex-direction: column; gap: 30px; flex: 1; }
+        .col-center { flex: 0 0 320px; display: flex; justify-content: center; align-items: center; }
+        .process { 
+            background: #f8fafc; border: 3px solid #1e293b; border-radius: 12px; 
+            width: 100%; min-height: 400px; display: flex; flex-direction: column; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); position: relative; z-index: 10;
         }
-        
-        .col-center { 
-            flex: 0 0 340px; display: flex; justify-content: center; align-items: center; 
+        .p-id { background: #1e293b; color: white; padding: 8px; text-align: center; font-weight: 700; border-radius: 8px 8px 0 0; font-size: 16px; }
+        .p-name { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; font-weight: 700; font-size: 20px; line-height: 1.4; }
+        .p-name span { font-weight: 400; font-size: 15px; color: #475569; margin-top: 5px; }
+        .entity-conn { display: flex; align-items: stretch; width: 100%; background: #f8fafc; border-radius: 12px; padding: 15px; border: 1px solid #e2e8f0; position: relative; }
+        .entity-conn.right-align { flex-direction: row-reverse; }
+        .entity-box { 
+            background: #ffffff; border: 2px solid #334155; border-radius: 10px; 
+            width: 160px; display: flex; justify-content: center; align-items: center; 
+            font-weight: 700; font-size: 15px; text-align: center; padding: 15px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); z-index: 2; position: relative; flex-shrink: 0;
         }
-
-        /* Entity Box */
-        .entity-group { display: flex; align-items: stretch; width: 100%; background: #f8fafc; border-radius: 14px; padding: 20px; border: 1px solid #e2e8f0; }
-        .entity-group.reverse { flex-direction: row-reverse; }
-        
-        .entity-box {
-            flex: 0 0 150px; border: 2.5px solid #0f172a; background: #ffffff;
-            display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
-            font-weight: 700; font-size: 16px; border-radius: 12px; box-shadow: 4px 4px 0 rgba(15,23,42,0.08);
-            position: relative; overflow: hidden; min-height: 100px; color: #0f172a; padding: 15px;
-            z-index: 10;
+        .duplicated-mark { position: absolute; top: -2px; left: -2px; width: 0; height: 0; border-style: solid; border-width: 15px 15px 0 0; border-color: #94a3b8 transparent transparent transparent; }
+        .flows { display: flex; flex-direction: column; gap: 20px; flex: 1; justify-content: center; padding: 15px; }
+        .flow-item { position: relative; height: 12px; width: 100%; display: flex; align-items: center; }
+        .flow-line { height: 2px; background: #3b82f6; width: 100%; position: absolute; top: 50%; transform: translateY(-50%); }
+        .arrow-r { position: absolute; right: 0; top: 50%; transform: translateY(-50%); width: 0; height: 0; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-left: 8px solid #3b82f6; }
+        .arrow-l { position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 0; height: 0; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-right: 8px solid #3b82f6; }
+        .flow-text { 
+            font-size: 13px; color: #334155; background: #ffffff; padding: 2px 8px; 
+            border-radius: 10px; border: 1px solid #cbd5e1; position: absolute; 
+            top: -20px; left: 50%; transform: translateX(-50%); white-space: nowrap; z-index: 2; 
         }
-        .entity-box.external { border-color: #2563eb; color: #1d4ed8; }
-        
-        /* Duplicated Mark */
-        .duplicated-mark {
-            position: absolute; top: 0; left: 0; width: 0; height: 0;
-            border-top: 20px solid #64748b; border-right: 20px solid transparent; z-index: 5;
-        }
-
-        /* Flows Container */
-        .flows {
-            flex-grow: 1; display: flex; flex-direction: column; justify-content: space-evenly; 
-            padding: 10px 20px; gap: 12px; min-width: 340px;
-        }
-        
-        /* Flow Category Header */
-        .flow-category {
-            font-size: 12px; font-weight: 700; text-transform: uppercase; color: #64748b;
-            margin-top: 18px; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1.5px dashed #cbd5e1;
-            text-align: left; width: 100%; letter-spacing: 0.5px;
-        }
-        .flow-category:first-child { margin-top: 0; }
-        
-        .flow-item {
-            position: relative; height: 22px; display: flex; align-items: center; justify-content: center; width: 100%;
-        }
-        .flow-line {
-            position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: #334155; z-index: 1; transition: 0.2s;
-        }
-        .flow-text {
-            position: relative; background: #f8fafc; padding: 0 12px; font-size: 13.5px; color: #334155; 
-            z-index: 2; line-height: 1; font-weight: 600; transition: 0.2s;
-        }
-        
-        /* Hover Interactivity */
-        .flow-item:hover .flow-line { background: #2563eb; height: 2.5px; }
-        .flow-item:hover .flow-text { color: #1d4ed8; font-weight: 700; transform: scale(1.03); background: #eff6ff; border-radius: 4px; padding: 2px 12px; }
-        .flow-item:hover .arrow-r { border-left-color: #2563eb; }
-        .flow-item:hover .arrow-l { border-right-color: #2563eb; }
-
-        /* Arrows */
-        .arrow-r { 
-            position: absolute; right: -2px; top: 50%; transform: translateY(-50%); 
-            border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 10px solid #334155; transition: 0.2s; 
-        }
-        .arrow-l { 
-            position: absolute; left: -2px; top: 50%; transform: translateY(-50%); 
-            border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-right: 10px solid #334155; transition: 0.2s; 
-        }
-
-        /* Central System Box (Process 0) */
-        .system-box {
-            border: 3.5px solid #0f172a; background: #ffffff; border-radius: 20px; width: 100%; min-height: 450px;
-            display: flex; flex-direction: column; box-shadow: 8px 8px 0 rgba(15,23,42,0.12); overflow: hidden;
-            transition: 0.3s; z-index: 20;
-        }
-        .system-box:hover { border-color: #2563eb; box-shadow: 8px 8px 0 rgba(37,99,235,0.2); transform: translateY(-3px); }
-        .s-id { 
-            border-bottom: 3.5px solid #0f172a; height: 50px; display: flex; justify-content: center; 
-            align-items: center; font-weight: 700; font-size: 20px; background: #f1f5f9; color: #0f172a;
-            transition: 0.3s;
-        }
-        .system-box:hover .s-id { border-color: #2563eb; color: #1d4ed8; background: #eff6ff; }
-        .s-name { 
-            flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; 
-            font-size: 18px; font-weight: 700; padding: 30px; line-height: 1.6; color: #0f172a; gap: 10px;
-        }
-        .s-sub { font-size: 14px; font-weight: 500; color: #64748b; }
     </style>
 </head>
 <body>
-<h1>Data Flow Diagram (Level 0 - Context Diagram)</h1>
-<p class="subtitle">ระบบตรวจข้อสอบอัตนัยอัตโนมัติด้วย LLMs (Evaly Score v1.4.0) - Pure Data Payload Architecture</p>
-<div class="context-wrapper">
-<!-- LEFT COLUMN: CORE ENTITIES -->
-<div class="col-side">
-<!-- GUEST -->
-<div class="entity-group">
-<div class="entity-box"><div class="duplicated-mark"></div>ผู้ใช้ทั่วไป</div>
-<div class="flows">
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลการสมัครสมาชิก</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลการเข้าสู่ระบบ</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลอีเมลสำหรับรีเซ็ตรหัสผ่าน</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลการยืนยันตัวตนทางอีเมล</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลบัญชีผู้ใช้</div></div>
-</div>
-</div>
-<!-- STUDENT -->
-<div class="entity-group">
-<div class="entity-box"><div class="duplicated-mark"></div>ผู้เรียน</div>
-<div class="flows"><div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">รหัสผู้เรียนและรหัสข้อสอบ</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลการส่งข้อสอบ</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลคำตอบข้อสอบ</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลรหัสเข้าร่วมห้องเรียน</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลโปรไฟล์ที่เพิ่มและแก้ไข</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลบัญชีผู้ใช้</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลห้องเรียน</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลข้อสอบ</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลคะแนน</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลการประเมินและข้อเสนอแนะอัจฉริยะ</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลประกาศข่าวสารห้องเรียน</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลการแจ้งเตือนแบบเรียลไทม์</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลสถานะการส่งข้อสอบ</div></div><div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลเวลาคงเหลือในการสอบ</div></div></div>
-</div>
-<!-- TEACHER -->
-<div class="entity-group">
-<div class="entity-box"><div class="duplicated-mark"></div>ผู้สอน</div>
-<div class="flows">
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">รหัสห้องเรียนและรหัสข้อสอบ</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลการอนุมัติผลคะแนน</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลประกาศข่าวสารห้องเรียนที่ลบ</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลประกาศข่าวสารห้องเรียนที่เพิ่มและแก้ไข</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลเกณฑ์การประเมินที่ลบ</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลเกณฑ์การประเมินที่เพิ่มและแก้ไข</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลคะแนนและคอมเมนต์ที่เพิ่มและแก้ไข</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลข้อสอบที่ลบ</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลข้อสอบที่เพิ่มและแก้ไข</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลห้องเรียนที่ลบ</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลห้องเรียนที่เพิ่มและแก้ไข</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลโปรไฟล์และรูปภาพที่เพิ่มและแก้ไข</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลบัญชีผู้ใช้</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลห้องเรียน</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลข้อสอบ</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลรายการส่งข้อสอบ</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลสมาชิกในห้องเรียนและสถานะการส่งงาน</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลคำตอบของนักเรียน</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลเกณฑ์การให้คะแนนจาก AI</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลการประเมินและข้อเสนอแนะอัจฉริยะ</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลคะแนนของนักเรียน</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ไฟล์รายงานสรุปคะแนน</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลประกาศข่าวสารห้องเรียน</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลการแจ้งเตือนแบบเรียลไทม์</div></div>
-</div>
-</div>
-</div>
-<!-- CENTER COLUMN: SYSTEM 0 -->
-<div class="col-center">
-<div class="system-box">
-<div class="s-id">0</div>
-<div class="s-name">
-                    ระบบตรวจข้อสอบอัตนัยอัตโนมัติด้วย LLMs
-                    <div class="s-sub">(Evaly Score System v1.4.0)</div>
-</div>
-</div>
-</div>
-<!-- RIGHT COLUMN: EXTERNAL SYSTEMS -->
-<div class="col-side">
-<!-- FIREBASE AUTH -->
-<div class="entity-group reverse">
-<div class="entity-box external">Firebase Auth</div>
-<div class="flows">
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลโทเคนตรวจสอบสิทธิ์</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลโปรไฟล์ผู้ใช้</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">Authentication Token</div></div><div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลโทเคนบัญชี Google</div></div></div>
-</div>
-<!-- SMTP SERVER -->
-<div class="entity-group reverse">
-<div class="entity-box external">SMTP Server</div>
-<div class="flows">
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลอีเมลและลิงก์รีเซ็ตรหัสผ่าน</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลอีเมลและลิงก์ยืนยันตัวตน</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลสถานะการส่งอีเมล</div></div></div>
-</div>
-<!-- CLOUDINARY API -->
-<div class="entity-group reverse">
-<div class="entity-box external"><div class="duplicated-mark"></div>Cloudinary API</div>
-<div class="flows">
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลไฟล์รูปภาพโปรไฟล์</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลไฟล์รูปภาพโจทย์ข้อสอบ</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลไฟล์รูปภาพคำตอบลายมือเขียน</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูล URL และสถานะการจัดเก็บรูปภาพ</div></div>
-</div>
-</div>
-<!-- GEMINI API -->
-<div class="entity-group reverse">
-<div class="entity-box external"><div class="duplicated-mark"></div>Gemini API</div>
-<div class="flows">
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลคำสั่งสร้างเกณฑ์ประเมิน</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลคำสั่งและเงื่อนไขการตรวจประเมิน</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลโจทย์ข้อสอบและเกณฑ์การให้คะแนน</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลคำตอบของนักเรียน</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลเกณฑ์รูบริคอัตโนมัติ</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลระดับความมั่นใจของคำตอบ</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลการประเมิน</div></div>
-<div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลข้อเสนอแนะการประเมิน</div></div>
-</div>
-</div>
-</div>
-</div>
+    <h1>Data Flow Diagram - Level 0 (Context Diagram)</h1>
+    <p class="subtitle">ระบบตรวจข้อสอบอัตโนมัติด้วย LLM (LLMs Auto Score System)</p>
+    
+    <div class="context-wrapper">
+        <div class="col-side">
+            <div class="entity-conn">
+                <div class="entity-box"><div class="duplicated-mark"></div>ผู้ใช้ทั่วไป</div>
+                <div class="flows">
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลการยืนยันตัวตนทางอีเมล</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลการสมัครสมาชิก</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลการเข้าสู่ระบบ</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลอีเมลสำหรับรีเซ็ตรหัสผ่าน</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลบัญชีผู้ใช้</div></div>
+                </div>
+            </div>
+            <div class="entity-conn">
+                <div class="entity-box"><div class="duplicated-mark"></div>ผู้เรียน</div>
+                <div class="flows">
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลคำตอบข้อสอบ</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลรหัสเข้าร่วมห้องเรียน</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลสถานะการอ่านแจ้งเตือน</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลโปรไฟล์ที่เพิ่มและแก้ไข</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">รหัสผู้เรียนและรหัสข้อสอบ</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลการแจ้งเตือน</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลข้อสอบ</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลบัญชีผู้ใช้</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลประกาศข่าวสารห้องเรียน</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลคะแนน</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลสถานะการส่งข้อสอบ</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลห้องเรียน</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลเวลาคงเหลือในการสอบ</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลการประเมินและข้อเสนอแนะ</div></div>
+                </div>
+            </div>
+            <div class="entity-conn">
+                <div class="entity-box"><div class="duplicated-mark"></div>ผู้สอน</div>
+                <div class="flows">
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลข้อสอบที่ลบ</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลข้อสอบที่เพิ่มและแก้ไข</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลคะแนนและคอมเมนต์ที่เพิ่มและแก้ไข</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลประกาศข่าวสารห้องเรียนที่ลบ</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลประกาศข่าวสารห้องเรียนที่เพิ่มและแก้ไข</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลสถานะการอนุมัติผลคะแนน</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลสถานะการอ่านแจ้งเตือน</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลห้องเรียนที่ลบ</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลห้องเรียนที่เพิ่มและแก้ไข</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลเกณฑ์การประเมินที่ลบ</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลเกณฑ์การประเมินที่เพิ่มและแก้ไข</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลโปรไฟล์ที่เพิ่มและแก้ไข</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">รหัสห้องเรียนและรหัสข้อสอบ</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลการแจ้งเตือน</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลข้อสอบ</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลคำตอบของนักเรียน</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลบัญชีผู้ใช้</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลประกาศข่าวสารห้องเรียน</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลการประเมินและข้อเสนอแนะจาก AI</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลคะแนนของนักเรียน</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลรายงานสรุปคะแนน</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลสถานะการส่งข้อสอบ</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลสมาชิกในห้องเรียนและสถานะการส่งงาน</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลห้องเรียน</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลเกณฑ์การประเมินจาก AI</div></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-center">
+            <div class="process">
+                <div class="p-id">0</div>
+                <div class="p-name">
+                    ระบบตรวจข้อสอบอัตโนมัติด้วย LLM
+                    <span>LLMs Auto Score System</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-side">
+            <div class="entity-conn right-align">
+                <div class="entity-box"><div class="duplicated-mark"></div>Firebase Auth</div>
+                <div class="flows">
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลโปรไฟล์ผู้ใช้</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลการยืนยันตัวตน</div></div>
+                </div>
+            </div>
+            <div class="entity-conn right-align">
+                <div class="entity-box"><div class="duplicated-mark"></div>SMTP</div>
+                <div class="flows">
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลสถานะการส่งอีเมล</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลอีเมลและลิงก์ยืนยันตัวตน</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลอีเมลและลิงก์รีเซ็ตรหัสผ่าน</div></div>
+                </div>
+            </div>
+            <div class="entity-conn right-align">
+                <div class="entity-box"><div class="duplicated-mark"></div>Cloudinary API</div>
+                <div class="flows">
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลการจัดเก็บรูปภาพ</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลรูปภาพคำตอบ</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลรูปภาพโจทย์ข้อสอบ</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลรูปภาพโปรไฟล์</div></div>
+                </div>
+            </div>
+            <div class="entity-conn right-align">
+                <div class="entity-box"><div class="duplicated-mark"></div>Gemini API</div>
+                <div class="flows">
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลข้อเสนอแนะการประเมิน</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลผลการประเมิน</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลเกณฑ์รูบริคอัตโนมัติ</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-l"></div></div><div class="flow-text">ข้อมูลระดับความมั่นใจของคำตอบ</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลคำตอบของนักเรียน</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลบริบทสำหรับการสร้างเกณฑ์</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลเงื่อนไขและข้อกำหนดการตรวจ</div></div>
+                    <div class="flow-item"><div class="flow-line"><div class="arrow-r"></div></div><div class="flow-text">ข้อมูลโจทย์ข้อสอบและเกณฑ์การให้คะแนน</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

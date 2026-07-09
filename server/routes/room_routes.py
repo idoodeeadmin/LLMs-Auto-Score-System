@@ -22,7 +22,7 @@ async def create_room(room: RoomCreate, user: dict=Depends(get_current_user)):
     cursor = conn.cursor()
     class_code = generate_class_code()
     try:
-        cursor.execute('INSERT INTO rooms (name, section, class_code, owner_id) VALUES (?, ?, ?, ?)', (room.name, room.section, class_code, user['id']))
+        cursor.execute('INSERT INTO rooms (name, section, class_code, teacher_id) VALUES (?, ?, ?, ?)', (room.name, room.section, class_code, user['id']))
         conn.commit()
         new_room_id = cursor.lastrowid
     except pymysql.err.IntegrityError:
@@ -38,7 +38,7 @@ async def get_rooms(user: dict=Depends(get_current_user)):
     conn = get_db_connection()
     cursor = conn.cursor()
     if user['role'] == 'teacher':
-        cursor.execute('SELECT * FROM rooms WHERE owner_id = ?', (user['id'],))
+        cursor.execute('SELECT * FROM rooms WHERE teacher_id = ?', (user['id'],))
         rooms = cursor.fetchall()
     else:
         cursor.execute('\n            SELECT r.* FROM rooms r\n            JOIN enrollments e ON r.id = e.room_id\n            WHERE e.user_id = ?\n        ', (user['id'],))
@@ -52,7 +52,7 @@ async def update_room(room_id: int, room_data: RoomCreate, user: dict=Depends(ge
         raise HTTPException(status_code=403, detail='Only teachers can edit rooms')
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT * FROM rooms WHERE id = ? AND owner_id = ?', (room_id, user['id']))
+    cursor.execute('SELECT * FROM rooms WHERE id = ? AND teacher_id = ?', (room_id, user['id']))
     existing_room = cursor.fetchone()
     if not existing_room:
         conn.close()
@@ -68,7 +68,7 @@ async def delete_room(request: Request, room_id: int, user: dict=Depends(get_cur
         raise HTTPException(status_code=403, detail='Only teachers can delete rooms')
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT * FROM rooms WHERE id = ? AND owner_id = ?', (room_id, user['id']))
+    cursor.execute('SELECT * FROM rooms WHERE id = ? AND teacher_id = ?', (room_id, user['id']))
     if not cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=404, detail='Room not found or unauthorized')
@@ -105,7 +105,7 @@ async def get_room(room_id: int, user: dict=Depends(get_current_user)):
     conn = get_db_connection()
     cursor = conn.cursor()
     if user['role'] == 'teacher':
-        cursor.execute('SELECT * FROM rooms WHERE id = ? AND owner_id = ?', (room_id, user['id']))
+        cursor.execute('SELECT * FROM rooms WHERE id = ? AND teacher_id = ?', (room_id, user['id']))
     else:
         cursor.execute('\n            SELECT r.* FROM rooms r\n            JOIN enrollments e ON r.id = e.room_id\n            WHERE r.id = ? AND e.user_id = ?\n        ', (room_id, user['id']))
     room = cursor.fetchone()
@@ -119,13 +119,13 @@ async def get_room_members(room_id: int, user: dict=Depends(get_current_user)):
     conn = get_db_connection()
     cursor = conn.cursor()
     if user['role'] == 'teacher':
-        cursor.execute('SELECT id FROM rooms WHERE id = ? AND owner_id = ?', (room_id, user['id']))
+        cursor.execute('SELECT id FROM rooms WHERE id = ? AND teacher_id = ?', (room_id, user['id']))
     else:
         cursor.execute('SELECT room_id FROM enrollments WHERE room_id = ? AND user_id = ?', (room_id, user['id']))
     if not cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=403, detail='Unauthorized')
-    cursor.execute('SELECT u.id, u.name, u.email, u.student_id FROM users u JOIN rooms r ON u.id = r.owner_id WHERE r.id = ?', (room_id,))
+    cursor.execute('SELECT u.id, u.name, u.email, u.student_id FROM users u JOIN rooms r ON u.id = r.teacher_id WHERE r.id = ?', (room_id,))
     teacher_row = cursor.fetchone()
     teacher = {**dict(teacher_row), 'role': 'teacher', 'joined_at': None} if teacher_row else None
     cursor.execute('\n        SELECT u.id, u.name, u.email, u.student_id, e.joined_at\n        FROM users u\n        JOIN enrollments e ON u.id = e.user_id\n        WHERE e.room_id = ?\n        ORDER BY e.joined_at DESC\n    ', (room_id,))
@@ -144,7 +144,7 @@ async def create_announcement(room_id: int, ann: AnnouncementCreate, user: dict=
         raise HTTPException(status_code=403, detail='Only teachers can create announcements')
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT id FROM rooms WHERE id = ? AND owner_id = ?', (room_id, user['id']))
+    cursor.execute('SELECT id FROM rooms WHERE id = ? AND teacher_id = ?', (room_id, user['id']))
     if not cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=404, detail='Room not found or unauthorized')
@@ -163,14 +163,14 @@ async def list_announcements(room_id: int, user: dict=Depends(get_current_user))
     conn = get_db_connection()
     cursor = conn.cursor()
     if user['role'] == 'teacher':
-        cursor.execute('SELECT id FROM rooms WHERE id = ? AND owner_id = ?', (room_id, user['id']))
+        cursor.execute('SELECT id FROM rooms WHERE id = ? AND teacher_id = ?', (room_id, user['id']))
     else:
         cursor.execute('SELECT room_id FROM enrollments WHERE room_id = ? AND user_id = ?', (room_id, user['id']))
     if not cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=403, detail='Unauthorized')
     if user['role'] == 'student':
-        cursor.execute('\n            SELECT a.*, (SELECT 1 FROM announcement_reads ar WHERE ar.announcement_id = a.id AND ar.student_id = ?) as is_read\n            FROM announcements a\n            WHERE a.room_id = ?\n            ORDER BY a.created_at DESC\n        ', (user['id'], room_id))
+        cursor.execute('\n            SELECT a.*, (SELECT 1 FROM announcement_reads ar WHERE ar.announcement_id = a.id AND ar.user_id = ?) as is_read\n            FROM announcements a\n            WHERE a.room_id = ?\n            ORDER BY a.created_at DESC\n        ', (user['id'], room_id))
     else:
         cursor.execute('\n            SELECT a.*, (SELECT COUNT(*) FROM announcement_reads ar WHERE ar.announcement_id = a.id) as read_count\n            FROM announcements a\n            WHERE a.room_id = ?\n            ORDER BY a.created_at DESC\n        ', (room_id,))
     anns = cursor.fetchall()
@@ -184,7 +184,7 @@ async def export_room_summary_csv(room_id: int, user: dict=Depends(get_current_u
         raise HTTPException(status_code=403, detail='Only teachers can export summary')
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT name FROM rooms WHERE id = ? AND owner_id = ?', (room_id, user['id']))
+    cursor.execute('SELECT name FROM rooms WHERE id = ? AND teacher_id = ?', (room_id, user['id']))
     room_row = cursor.fetchone()
     if not room_row:
         conn.close()
@@ -196,11 +196,11 @@ async def export_room_summary_csv(room_id: int, user: dict=Depends(get_current_u
     exam_titles = [e['title'] for e in exams]
     cursor.execute('\n        SELECT u.id, u.name, u.email, u.student_id\n        FROM enrollments e\n        JOIN users u ON e.user_id = u.id\n        WHERE e.room_id = ?\n        ORDER BY u.name ASC\n    ', (room_id,))
     students = cursor.fetchall()
-    cursor.execute('\n        SELECT exam_id, student_id, total_score\n        FROM submissions\n        WHERE exam_id IN (SELECT id FROM exams WHERE room_id = ?)\n    ', (room_id,))
+    cursor.execute('\n        SELECT exam_id, user_id, total_score\n        FROM submissions\n        WHERE exam_id IN (SELECT id FROM exams WHERE room_id = ?)\n    ', (room_id,))
     submissions_list = cursor.fetchall()
     scores_map = {}
     for sub in submissions_list:
-        sid = sub['student_id']
+        sid = sub['user_id']
         eid = sub['exam_id']
         if sid not in scores_map:
             scores_map[sid] = {}
@@ -211,7 +211,7 @@ async def export_room_summary_csv(room_id: int, user: dict=Depends(get_current_u
     writer = csv.writer(output)
     writer.writerow(['Student ID', 'Name'] + exam_titles + ['Total Cumulative Score'])
     for s in students:
-        row = [s['student_id'], s['name']]
+        row = [s['user_id'], s['name']]
         cumulative_total = 0
         for eid in exam_ids:
             score = scores_map.get(s['id'], {}).get(eid, 0)
@@ -230,14 +230,14 @@ async def get_room_analytics(room_id: int, user: dict=Depends(get_current_user))
         raise HTTPException(status_code=403, detail='Only teachers can view analytics')
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT id, owner_id FROM rooms WHERE id = ?', (room_id,))
+    cursor.execute('SELECT id, teacher_id FROM rooms WHERE id = ?', (room_id,))
     room = cursor.fetchone()
     if not room:
         conn.close()
         raise HTTPException(status_code=404, detail='Room not found')
-    if str(room['owner_id']) != str(user['id']):
+    if str(room['teacher_id']) != str(user['id']):
         conn.close()
-        raise HTTPException(status_code=403, detail=f"Unauthorized: owner={room['owner_id']} != user={user['id']}")
+        raise HTTPException(status_code=403, detail=f"Unauthorized: owner={room['teacher_id']} != user={user['id']}")
     cursor.execute("\n        SELECT\n            e.id,\n            e.title,\n            e.total_score,\n            COUNT(CASE WHEN s.status IS NOT NULL AND s.status != 'missing' THEN 1 END) AS submitted_count,\n            COUNT(CASE WHEN s.status = 'approved' THEN 1 END) AS approved_count,\n            AVG(CASE WHEN s.status = 'approved' THEN s.total_score ELSE NULL END) AS approved_mean\n        FROM exams e\n        LEFT JOIN submissions s ON s.exam_id = e.id\n        WHERE e.room_id = ?\n        GROUP BY e.id, e.title, e.total_score\n        ORDER BY e.created_at DESC\n    ", (room_id,))
     exams = cursor.fetchall()
     cursor.execute('SELECT COUNT(*) AS total_students FROM enrollments WHERE room_id = ?', (room_id,))

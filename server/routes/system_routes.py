@@ -22,7 +22,7 @@ async def mark_announcement_read(ann_id: int, user: dict=Depends(get_current_use
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute('INSERT INTO announcement_reads (announcement_id, student_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE student_id=student_id', (ann_id, user['id']))
+        cursor.execute('INSERT INTO announcement_reads (announcement_id, user_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE user_id=user_id', (ann_id, user['id']))
         conn.commit()
     except Exception as e:
         print(f'Error marking announcement read: {e}')
@@ -41,11 +41,11 @@ async def get_announcement_read_status(ann_id: int, user: dict=Depends(get_curre
         conn.close()
         raise HTTPException(status_code=404, detail='Announcement not found')
     room_id = row['room_id']
-    cursor.execute('SELECT id FROM rooms WHERE id = ? AND owner_id = ?', (room_id, user['id']))
+    cursor.execute('SELECT id FROM rooms WHERE id = ? AND teacher_id = ?', (room_id, user['id']))
     if not cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=403, detail='Unauthorized')
-    cursor.execute('\n        SELECT u.id, u.name, u.student_id, ar.read_at\n        FROM enrollments e\n        JOIN users u ON e.user_id = u.id\n        LEFT JOIN announcement_reads ar ON ar.announcement_id = ? AND ar.student_id = u.id\n        WHERE e.room_id = ?\n    ', (ann_id, room_id))
+    cursor.execute('\n        SELECT u.id, u.name, u.student_id, ar.read_at\n        FROM enrollments e\n        JOIN users u ON e.user_id = u.id\n        LEFT JOIN announcement_reads ar ON ar.announcement_id = ? AND ar.user_id = u.id\n        WHERE e.room_id = ?\n    ', (ann_id, room_id))
     status = cursor.fetchall()
     conn.close()
     return [dict(s) for s in status]
@@ -57,7 +57,7 @@ async def get_all_my_submissions(user: dict=Depends(get_current_user)):
         raise HTTPException(status_code=403, detail='Only students can view their submission history')
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("\n        SELECT\n            e.id AS exam_id, e.title AS exam_title, e.total_score AS exam_total_score,\n            r.id AS room_id, r.name AS room_name,\n            s.id AS submission_id, COALESCE(s.status, 'missing') AS status, \n            s.total_score AS submission_score, s.submitted_at\n        FROM enrollments en\n        JOIN rooms r ON en.room_id = r.id\n        JOIN exams e ON e.room_id = r.id\n        LEFT JOIN submissions s ON s.exam_id = e.id AND s.student_id = en.user_id\n        WHERE en.user_id = ?\n        ORDER BY COALESCE(s.submitted_at, e.created_at) DESC\n    ", (user['id'],))
+    cursor.execute("\n        SELECT\n            e.id AS exam_id, e.title AS exam_title, e.total_score AS exam_total_score,\n            r.id AS room_id, r.name AS room_name,\n            s.id AS submission_id, COALESCE(s.status, 'missing') AS status, \n            s.total_score AS submission_score, s.submitted_at\n        FROM enrollments en\n        JOIN rooms r ON en.room_id = r.id\n        JOIN exams e ON e.room_id = r.id\n        LEFT JOIN submissions s ON s.exam_id = e.id AND s.user_id = en.user_id\n        WHERE en.user_id = ?\n        ORDER BY COALESCE(s.submitted_at, e.created_at) DESC\n    ", (user['id'],))
     results = cursor.fetchall()
     conn.close()
     return [dict(r) for r in results]
