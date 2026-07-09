@@ -278,24 +278,6 @@ export default function ExamView() {
                 </div>
               )}
             </div>
-
-            {/* Teacher: Time Extension */}
-            {isTeacher && (
-              <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 space-y-4">
-                <h3 className="text-sm font-medium text-gray-800 dark:text-gray-200">ขยายเวลาสอบ</h3>
-                <div className="space-y-3">
-                  <input type="number" placeholder="รหัสนักศึกษา (ว่าง = ทุกคน)" value={extStudentId} onChange={e => setExtStudentId(e.target.value ? parseInt(e.target.value) : "")} className="w-full h-10 px-3 text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500" />
-                  <div className="flex items-center gap-2">
-                    <input type="number" value={extMinutes} onChange={e => setExtMinutes(parseInt(e.target.value) || 1)} className="h-10 px-3 text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-gray-900 dark:text-white rounded-xl w-full focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500" />
-                    <span className="text-sm text-gray-500 dark:text-gray-400 shrink-0 w-10">นาที</span>
-                  </div>
-                  <input type="text" placeholder="หมายเหตุ (ไม่บังคับ)" value={extNote} onChange={e => setExtNote(e.target.value)} className="w-full h-10 px-3 text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500" />
-                  <Button onClick={handleGrantExtension} disabled={isGranting} className="w-full h-10 text-sm font-medium rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">
-                    {isGranting ? <Loader2 size={14} className="animate-spin mr-2" /> : null} ยืนยันการขยายเวลา
-                  </Button>
-                </div>
-              </div>
-            )}
             
           </div>
         </div>
