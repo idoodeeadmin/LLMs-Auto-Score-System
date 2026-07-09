@@ -43,7 +43,7 @@ jobs:
 
     - name: Run API Tests
       run: |
-        pytest tests/
+        PYTHONPATH=. pytest tests/
 
     - name: Test Docker Build (Check if Dockerfiles work)
       run: |

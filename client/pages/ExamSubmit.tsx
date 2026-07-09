@@ -66,7 +66,7 @@ export default function ExamSubmit() {
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [exam, isSubmitting, isTimeUp, extraMinutes]);
+  }, [exam, isSubmitting, isTimeUp]);
 
   useEffect(() => {
     if (!isLoading && !user) navigate("/");
@@ -177,7 +177,6 @@ export default function ExamSubmit() {
             <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-mono font-bold border transition-colors ${isLow ? "bg-red-50 text-red-600 border-red-200 animate-pulse" : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 shadow-sm"}`}>
               <Clock size={16} className={isLow ? "text-red-500" : "text-gray-400"} />
               {timeLeft}
-              {extraMinutes > 0 && <span className="text-[10px] font-sans font-medium text-green-600 ml-1">+{extraMinutes}m</span>}
             </div>
           )}
 
