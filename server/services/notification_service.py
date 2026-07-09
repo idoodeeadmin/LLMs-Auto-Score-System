@@ -20,7 +20,7 @@ async def deadline_notification_worker():
             
             # Fetch all exams with an end date
             cursor.execute("""
-                SELECT e.id, e.title, e.end_date, r.owner_id, r.id as room_id, r.name as room_name 
+                SELECT e.id, e.title, e.end_date, r.teacher_id, r.id as room_id, r.name as room_name 
                 FROM exams e 
                 JOIN rooms r ON e.room_id = r.id 
                 WHERE e.end_date IS NOT NULL
@@ -45,7 +45,7 @@ async def deadline_notification_worker():
                         print(f"[Notification Worker] Deadline passed for exam {exam_id}: {ex['title']}")
                         
                         await trigger_socket_notify(
-                            user_id=ex['owner_id'],
+                            user_id=ex['teacher_id'],
                             notify_type='deadline_passed',
                             message=f"[{ex['room_name']}] ชุดข้อสอบ \"{ex['title']}\" หมดเวลาส่งแล้ว!",
                             data={'exam_id': exam_id, 'room_id': ex['room_id']}

@@ -47,7 +47,7 @@ async def get_notifications(user: dict=Depends(get_current_user)):
         print(f"[Notifications] DB fetch error: {e}")
 
     if user['role'] == 'teacher':
-        cursor.execute('\n            SELECT e.id AS exam_id, e.title AS exam_title, e.end_date,\n                   r.id AS room_id, r.name AS room_name\n            FROM exams e\n            JOIN rooms r ON e.room_id = r.id\n            WHERE r.owner_id = ?\n            ', (user['id'],))
+        cursor.execute('\n            SELECT e.id AS exam_id, e.title AS exam_title, e.end_date,\n                   r.id AS room_id, r.name AS room_name\n            FROM exams e\n            JOIN rooms r ON e.room_id = r.id\n            WHERE r.teacher_id = ?\n            ', (user['id'],))
         exams = cursor.fetchall()
         for exam in exams:
             exam_id = exam['exam_id']
@@ -97,7 +97,7 @@ async def get_notifications(user: dict=Depends(get_current_user)):
                         end_dt = end_dt.replace(tzinfo=timezone.utc)
             except (ValueError, TypeError):
                 pass
-            cursor.execute('SELECT id, status FROM submissions WHERE exam_id = ? AND student_id = ?', (exam_id, student_id))
+            cursor.execute('SELECT id, status FROM submissions WHERE exam_id = ? AND user_id = ?', (exam_id, student_id))
             submission = cursor.fetchone()
             has_submitted = submission is not None
             sub_status = submission['status'] if submission else None

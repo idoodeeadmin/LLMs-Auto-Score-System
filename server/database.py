@@ -101,8 +101,8 @@ def init_db():
         name VARCHAR(255) NOT NULL,
         section VARCHAR(100),
         class_code VARCHAR(50) UNIQUE NOT NULL,
-        owner_id INTEGER,
-        FOREIGN KEY (owner_id) REFERENCES users (id) ON DELETE SET NULL
+        teacher_id INTEGER,
+        FOREIGN KEY (teacher_id) REFERENCES users (id) ON DELETE SET NULL
     )
     ''')
     
@@ -145,7 +145,6 @@ def init_db():
         answer_key TEXT,
         rubrics TEXT,
         order_index INTEGER DEFAULT 0,
-        image_path TEXT,
         image_paths TEXT,
         FOREIGN KEY (exam_id) REFERENCES exams (id) ON DELETE CASCADE
     )
@@ -156,14 +155,14 @@ def init_db():
     CREATE TABLE IF NOT EXISTS submissions (
         id INTEGER PRIMARY KEY AUTO_INCREMENT,
         exam_id INTEGER NOT NULL,
-        student_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
         status VARCHAR(50) DEFAULT 'missing',
         total_score FLOAT DEFAULT 0,
         submitted_at DATETIME,
         graded_by_ai TINYINT DEFAULT 0,
         FOREIGN KEY (exam_id) REFERENCES exams (id) ON DELETE CASCADE,
-        FOREIGN KEY (student_id) REFERENCES users (id) ON DELETE CASCADE,
-        UNIQUE(exam_id, student_id)
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+        UNIQUE(exam_id, user_id)
     )
     ''')
 
@@ -179,7 +178,6 @@ def init_db():
         ai_confidence VARCHAR(50) DEFAULT 'medium',
         teacher_score FLOAT,
         teacher_comment TEXT,
-        image_path TEXT,
         image_paths TEXT,
         FOREIGN KEY (submission_id) REFERENCES submissions (id) ON DELETE CASCADE,
         FOREIGN KEY (question_id) REFERENCES questions (id) ON DELETE CASCADE,
@@ -193,7 +191,9 @@ def init_db():
         id INTEGER PRIMARY KEY AUTO_INCREMENT,
         user_id INTEGER NOT NULL,
         token VARCHAR(255) UNIQUE NOT NULL,
+        used_at DATETIME,
         expires_at DATETIME NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
     )
     ''')
@@ -204,7 +204,9 @@ def init_db():
         id INTEGER PRIMARY KEY AUTO_INCREMENT,
         user_id INTEGER NOT NULL,
         token VARCHAR(255) UNIQUE NOT NULL,
+        verified_at DATETIME,
         expires_at DATETIME NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
     )
     ''')
@@ -228,11 +230,11 @@ def init_db():
     CREATE TABLE IF NOT EXISTS announcement_reads (
         id INTEGER PRIMARY KEY AUTO_INCREMENT,
         announcement_id INTEGER NOT NULL,
-        student_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
         read_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (announcement_id) REFERENCES announcements (id) ON DELETE CASCADE,
-        FOREIGN KEY (student_id) REFERENCES users (id) ON DELETE CASCADE,
-        UNIQUE(announcement_id, student_id)
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+        UNIQUE(announcement_id, user_id)
     )
     ''')
     # Create Notifications table
@@ -265,8 +267,10 @@ def init_db():
             pass
 
     add_column_if_not_exists("submissions", "graded_by_ai TINYINT DEFAULT 0")
-    add_column_if_not_exists("submission_answers", "image_path TEXT")
-    add_column_if_not_exists("questions", "image_path TEXT")
+    add_column_if_not_exists("password_resets", "used_at DATETIME")
+    add_column_if_not_exists("password_resets", "created_at DATETIME DEFAULT CURRENT_TIMESTAMP")
+    add_column_if_not_exists("email_verifications", "verified_at DATETIME")
+    add_column_if_not_exists("email_verifications", "created_at DATETIME DEFAULT CURRENT_TIMESTAMP")
     add_column_if_not_exists("questions", "image_paths TEXT")
     add_column_if_not_exists("submission_answers", "image_paths TEXT")
     add_column_if_not_exists("users", "name VARCHAR(255) NOT NULL DEFAULT 'User'")
@@ -286,6 +290,37 @@ def init_db():
         pass
     except Exception:
         pass
+
+
+    # Migrations for renamed/dropped columns
+    def rename_column_if_exists(table, old_col, new_col, col_type):
+        try:
+            # Check if old_col exists
+            cursor.execute(f"SHOW COLUMNS FROM {table} LIKE '{old_col}'")
+            if cursor.fetchone():
+                print(f"Migrating: Renaming {old_col} to {new_col} in {table}")
+                cursor.execute(f"ALTER TABLE {table} CHANGE {old_col} {new_col} {col_type}")
+                conn.commit()
+        except Exception as e:
+            print(f"Migration error ({table}.{old_col} -> {new_col}): {e}")
+
+    def drop_column_if_exists(table, col):
+        try:
+            cursor.execute(f"SHOW COLUMNS FROM {table} LIKE '{col}'")
+            if cursor.fetchone():
+                print(f"Migrating: Dropping {col} from {table}")
+                cursor.execute(f"ALTER TABLE {table} DROP COLUMN {col}")
+                conn.commit()
+        except Exception as e:
+            print(f"Migration error (dropping {table}.{col}): {e}")
+
+    rename_column_if_exists("rooms", "owner_id", "teacher_id", "INTEGER")
+    rename_column_if_exists("submissions", "student_id", "user_id", "INTEGER NOT NULL")
+    rename_column_if_exists("announcement_reads", "student_id", "user_id", "INTEGER NOT NULL")
+    drop_column_if_exists("questions", "image_path")
+    drop_column_if_exists("submission_answers", "image_path")
+
+    # End of migrations
 
     conn.close()
 
