@@ -116,6 +116,7 @@ def test_get_exams(mock_db):
     clear_overrides()
 
 # --- AI & Rubric Generation Mock Test ---
+@patch("server.routes.ai_routes._USE_GEMINI", True)
 @patch("server.routes.ai_routes._genai_client")
 def test_generate_rubric_mock(mock_genai):
     override_get_current_user({"id": 1, "role": "teacher"})
