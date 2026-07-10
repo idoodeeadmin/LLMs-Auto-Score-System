@@ -1,9 +1,0 @@
-Cloudinary in col: ['col-left']
-  arrow-l: ข้อมูลไฟล์รูปภาพโปรไฟล์
-  arrow-r: ข้อมูลผลการจัดเก็บรูปภาพ
-Cloudinary in col: ['col-left']
-  arrow-l: ข้อมูลรูปภาพโจทย์ข้อสอบ
-  arrow-r: ข้อมูลผลการจัดเก็บรูปภาพ
-Cloudinary in col: ['col-left']
-  arrow-l: ข้อมูลรูปภาพคำตอบลายมือเขียน
-  arrow-r: ข้อมูลผลการจัดเก็บรูปภาพ
