@@ -58,3 +58,16 @@ service-account.json
 *.pfx
 isrgrootx1.pem.txt
 
+
+# Documentation and Junk Files
+??????/
+scratch/
+*.pdf
+/*.html
+/*.txt
+!/README.txt
+/*.json
+!/package.json
+!/tsconfig.json
+!/components.json
+!/package-lock.json
