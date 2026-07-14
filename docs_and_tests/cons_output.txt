@@ -1,0 +1,8 @@
+--- ENTITIES ---
+Level 0: {'ผู้ใช้ทั่วไป', 'ผู้สอน', 'ผู้เรียน', 'Cloudinary API', 'SMTP Server', 'Gemini API', 'Firebase Auth'}
+Level 1: {'ผู้ใช้ทั่วไป', 'ผู้สอน', 'ผู้เรียน', 'Cloudinary API', 'SMTP Server', 'Gemini API', 'Firebase Auth'}
+Entities match? True
+
+--- EXTERNAL FLOWS (Approx) ---
+Count L0: 51
+Count L1: 70

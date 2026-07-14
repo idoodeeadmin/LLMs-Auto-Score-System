@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>3.6 การออกแบบฐานข้อมูล (Database Design)</title>
+    <style>
+        body { font-family: 'Sarabun', Tahoma, sans-serif; padding: 40px; background-color: #ffffff; color: #000; max-width: 900px; margin: 0 auto; }
+        h2 { text-align: left; font-size: 18px; margin-bottom: 20px; font-weight: normal; color: #000; }
+        table { width: 100%; border-collapse: collapse; font-size: 15px; margin-bottom: 30px; }
+        th, td { border: 1px solid #000; padding: 10px 15px; vertical-align: top; text-align: left; }
+        th { font-weight: normal; }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <h2>3.6 การออกแบบฐานข้อมูล (Database Design)</h2>
+    
+    <div style="page-break-inside: avoid;">
+    <h3 style="color: #000; margin-top: 30px; font-weight: normal; margin-bottom: 10px;">ตารางที่ 3.4 users (ข้อมูลผู้ใช้)</h3>
+    <table>
+        <tr>
+            <th style="width: 15%; background-color: #BFBFBF;">Column</th>
+            <th style="width: 15%; background-color: #BFBFBF;">Type</th>
+            <th style="width: 35%; background-color: #BFBFBF;">Description</th>
+            <th style="width: 20%; background-color: #BFBFBF;">Example</th>
+            <th style="width: 15%; background-color: #BFBFBF;">Constraint</th>
+        </tr>
+        
+        <tr>
+            <td>id</td>
+            <td>INTEGER</td>
+            <td>รหัสอ้างอิงข้อมูลผู้ใช้</td>
+            <td>1</td>
+            <td>PK, Auto Increment</td>
+        </tr>
+        <tr>
+            <td>email</td>
+            <td>TEXT</td>
+            <td>ที่อยู่อีเมล</td>
+            <td>student@email.com</td>
+            <td>Unique, Not null</td>
+        </tr>
+        <tr>
+            <td>password</td>
+            <td>TEXT</td>
+            <td>รหัสผ่านที่เข้ารหัสแล้ว (Hashed)</td>
+            <td>pbkdf2:sha256...</td>
+            <td>Not null</td>
+        </tr>
+        <tr>
+            <td>name</td>
+            <td>TEXT</td>
+            <td>ชื่อ-นามสกุล</td>
+            <td>สมชาย ใจดี</td>
+            <td>Not null</td>
+        </tr>
+        <tr>
+            <td>role</td>
+            <td>TEXT</td>
+            <td>ระดับสิทธิ์การใช้งาน (unassigned, teacher, student)</td>
+            <td>student</td>
+            <td>Not null</td>
+        </tr>
+        <tr>
+            <td>student_id</td>
+            <td>TEXT</td>
+            <td>รหัสนักศึกษา/รหัสประจำตัว</td>
+            <td>64010123</td>
+            <td>Null</td>
+        </tr>
+        <tr>
+            <td>avatar_url</td>
+            <td>TEXT</td>
+            <td>รูปโปรไฟล์ผู้ใช้</td>
+            <td>avatar1.png</td>
+            <td>Null</td>
+        </tr>
+        <tr>
+            <td>is_verified</td>
+            <td>INTEGER</td>
+            <td>สถานะการยืนยันอีเมล (0=ยัง, 1=ยืนยันแล้ว)</td>
+            <td>1</td>
+            <td>Default 0</td>
+        </tr>
+    </table>
+    </div>
+    
+    <div style="page-break-inside: avoid;">
+    <h3 style="color: #000; margin-top: 30px; font-weight: normal; margin-bottom: 10px;">ตารางที่ 3.5 rooms (ข้อมูลห้องเรียน)</h3>
+    <table>
+        <tr>
+            <th style="width: 15%; background-color: #BFBFBF;">Column</th>
+            <th style="width: 15%; background-color: #BFBFBF;">Type</th>
+            <th style="width: 35%; background-color: #BFBFBF;">Description</th>
+            <th style="width: 20%; background-color: #BFBFBF;">Example</th>
+            <th style="width: 15%; background-color: #BFBFBF;">Constraint</th>
+        </tr>
+        
+        <tr>
+            <td>id</td>
+            <td>INTEGER</td>
+            <td>รหัสอ้างอิงห้องเรียน</td>
+            <td>1</td>
+            <td>PK, Auto Increment</td>
+        </tr>
+        <tr>
+            <td>name</td>
+            <td>TEXT</td>
+            <td>ชื่อห้องเรียน/รายวิชา</td>
+            <td>วิศวกรรมซอฟต์แวร์ 101</td>
+            <td>Not null</td>
+        </tr>
+        <tr>
+            <td>section</td>
+            <td>TEXT</td>
+            <td>กลุ่มเรียน (Section)</td>
+            <td>Sec 1</td>
+            <td>Null</td>
+        </tr>
+        <tr>
+            <td>class_code</td>
+            <td>TEXT</td>
+            <td>รหัสเข้าร่วมห้องเรียน</td>
+            <td>XY89AB</td>
+            <td>Unique, Not null</td>
+        </tr>
+        <tr>
+            <td>owner_id</td>
+            <td>INTEGER</td>
+            <td>รหัสผู้สร้างห้องเรียน (ผู้สอน)</td>
+            <td>2</td>
+            <td>FK -> users(id), Null</td>
+        </tr>
+    </table>
+    </div>
+    
+    <div style="page-break-inside: avoid;">
+    <h3 style="color: #000; margin-top: 30px; font-weight: normal; margin-bottom: 10px;">ตารางที่ 3.6 enrollments (ข้อมูลการเข้าร่วมห้องเรียน)</h3>
+    <table>
+        <tr>
+            <th style="width: 15%; background-color: #BFBFBF;">Column</th>
+            <th style="width: 15%; background-color: #BFBFBF;">Type</th>
+            <th style="width: 35%; background-color: #BFBFBF;">Description</th>
+            <th style="width: 20%; background-color: #BFBFBF;">Example</th>
+            <th style="width: 15%; background-color: #BFBFBF;">Constraint</th>
+        </tr>
+        
+        <tr>
+            <td>id</td>
+            <td>INTEGER</td>
+            <td>รหัสอ้างอิงการเข้าร่วม</td>
+            <td>1</td>
+            <td>PK, Auto Increment</td>
+        </tr>
+        <tr>
+            <td>user_id</td>
+            <td>INTEGER</td>
+            <td>รหัสผู้ใช้ (นักเรียน)</td>
+            <td>5</td>
+            <td>FK -> users(id), Not null, Unique (with room_id)</td>
+        </tr>
+        <tr>
+            <td>room_id</td>
+            <td>INTEGER</td>
+            <td>รหัสห้องเรียน</td>
+            <td>1</td>
+            <td>FK -> rooms(id), Not null, Unique (with user_id)</td>
+        </tr>
+        <tr>
+            <td>joined_at</td>
+            <td>DATETIME</td>
+            <td>วันและเวลาที่เข้าร่วม</td>
+            <td>2026-02-15 10:30:00</td>
+            <td>Default CURRENT_TIMESTAMP</td>
+        </tr>
+    </table>
+    </div>
+    
+    <div style="page-break-inside: avoid;">
+    <h3 style="color: #000; margin-top: 30px; font-weight: normal; margin-bottom: 10px;">ตารางที่ 3.7 exams (ข้อมูลแบบทดสอบ/ข้อสอบ)</h3>
+    <table>
+        <tr>
+            <th style="width: 15%; background-color: #BFBFBF;">Column</th>
+            <th style="width: 15%; background-color: #BFBFBF;">Type</th>
+            <th style="width: 35%; background-color: #BFBFBF;">Description</th>
+            <th style="width: 20%; background-color: #BFBFBF;">Example</th>
+            <th style="width: 15%; background-color: #BFBFBF;">Constraint</th>
+        </tr>
+        
+        <tr>
+            <td>id</td>
+            <td>INTEGER</td>
+            <td>รหัสอ้างอิงข้อสอบ</td>
+            <td>1</td>
+            <td>PK, Auto Increment</td>
+        </tr>
+        <tr>
+            <td>room_id</td>
+            <td>INTEGER</td>
+            <td>รหัสห้องเรียน</td>
+            <td>1</td>
+            <td>FK -> rooms(id), Not null</td>
+        </tr>
+        <tr>
+            <td>title</td>
+            <td>TEXT</td>
+            <td>หัวข้อข้อสอบ</td>
+            <td>สอบกลางภาค</td>
+            <td>Not null</td>
+        </tr>
+        <tr>
+            <td>description</td>
+            <td>TEXT</td>
+            <td>คำอธิบายข้อสอบ</td>
+            <td>ข้อสอบอัตนัย 5 ข้อ</td>
+            <td>Null</td>
+        </tr>
+        <tr>
+            <td>total_score</td>
+            <td>REAL</td>
+            <td>คะแนนเต็มรวม</td>
+            <td>50.0</td>
+            <td>Default 0</td>
+        </tr>
+        <tr>
+            <td>start_date</td>
+            <td>TEXT</td>
+            <td>วันเวลาที่เริ่มทำข้อสอบได้</td>
+            <td>2026-03-01 09:00</td>
+            <td>Null</td>
+        </tr>
+        <tr>
+            <td>end_date</td>
+            <td>TEXT</td>
+            <td>วันเวลาที่หมดเขตทำข้อสอบ</td>
+            <td>2026-03-01 12:00</td>
+            <td>Null</td>
+        </tr>
+        <tr>
+            <td>created_at</td>
+            <td>DATETIME</td>
+            <td>วันและเวลาที่สร้าง</td>
+            <td>2026-02-20 14:00</td>
+            <td>Default CURRENT_TIMESTAMP</td>
+        </tr>
+    </table>
+    </div>
+    
+    <div style="page-break-inside: avoid;">
+    <h3 style="color: #000; margin-top: 30px; font-weight: normal; margin-bottom: 10px;">ตารางที่ 3.8 questions (ข้อมูลคำถาม)</h3>
+    <table>
+        <tr>
+            <th style="width: 15%; background-color: #BFBFBF;">Column</th>
+            <th style="width: 15%; background-color: #BFBFBF;">Type</th>
+            <th style="width: 35%; background-color: #BFBFBF;">Description</th>
+            <th style="width: 20%; background-color: #BFBFBF;">Example</th>
+            <th style="width: 15%; background-color: #BFBFBF;">Constraint</th>
+        </tr>
+        
+        <tr>
+            <td>id</td>
+            <td>INTEGER</td>
+            <td>รหัสอ้างอิงคำถาม</td>
+            <td>1</td>
+            <td>PK, Auto Increment</td>
+        </tr>
+        <tr>
+            <td>exam_id</td>
+            <td>INTEGER</td>
+            <td>รหัสข้อสอบ</td>
+            <td>1</td>
+            <td>FK -> exams(id), Not null</td>
+        </tr>
+        <tr>
+            <td>text</td>
+            <td>TEXT</td>
+            <td>เนื้อหาคำถาม/โจทย์</td>
+            <td>จงอธิบายวัฏจักร SDLC</td>
+            <td>Not null</td>
+        </tr>
+        <tr>
+            <td>score</td>
+            <td>REAL</td>
+            <td>คะแนนเต็มของข้อนี้</td>
+            <td>10.0</td>
+            <td>Default 0</td>
+        </tr>
+        <tr>
+            <td>answer_key</td>
+            <td>TEXT</td>
+            <td>แนวคำตอบ/เฉลย</td>
+            <td>ประกอบด้วย Planning, Analysis...</td>
+            <td>Null</td>
+        </tr>
+        <tr>
+            <td>rubrics</td>
+            <td>TEXT</td>
+            <td>เกณฑ์การให้คะแนนรูบริค (JSON)</td>
+            <td>[{'criteria': 'ความถูกต้อง', 'score': 5}]</td>
+            <td>Null</td>
+        </tr>
+        <tr>
+            <td>order_index</td>
+            <td>INTEGER</td>
+            <td>ลำดับของข้อคำถาม</td>
+            <td>1</td>
+            <td>Default 0</td>
+        </tr>
+        <tr>
+            <td>image_path</td>
+            <td>TEXT</td>
+            <td>รูปภาพประกอบโจทย์</td>
+            <td>q1_img.png</td>
+            <td>Null</td>
+        </tr>
+        <tr>
+            <td>image_paths</td>
+            <td>TEXT</td>
+            <td>รายการรูปภาพประกอบ (JSON Array)</td>
+            <td>['img1.png', 'img2.png']</td>
+            <td>Null</td>
+        </tr>
+    </table>
+    </div>
+    
+    <div style="page-break-inside: avoid;">
+    <h3 style="color: #000; margin-top: 30px; font-weight: normal; margin-bottom: 10px;">ตารางที่ 3.9 submissions (ข้อมูลการส่งคำตอบ)</h3>
+    <table>
+        <tr>
+            <th style="width: 15%; background-color: #BFBFBF;">Column</th>
+            <th style="width: 15%; background-color: #BFBFBF;">Type</th>
+            <th style="width: 35%; background-color: #BFBFBF;">Description</th>
+            <th style="width: 20%; background-color: #BFBFBF;">Example</th>
+            <th style="width: 15%; background-color: #BFBFBF;">Constraint</th>
+        </tr>
+        
+        <tr>
+            <td>id</td>
+            <td>INTEGER</td>
+            <td>รหัสอ้างอิงการส่งงาน</td>
+            <td>1</td>
+            <td>PK, Auto Increment</td>
+        </tr>
+        <tr>
+            <td>exam_id</td>
+            <td>INTEGER</td>
+            <td>รหัสข้อสอบ</td>
+            <td>1</td>
+            <td>FK -> exams(id), Not null, Unique (with student_id)</td>
+        </tr>
+        <tr>
+            <td>student_id</td>
+            <td>INTEGER</td>
+            <td>รหัสนักเรียนที่ส่งคำตอบ</td>
+            <td>5</td>
+            <td>FK -> users(id), Not null, Unique (with exam_id)</td>
+        </tr>
+        <tr>
+            <td>status</td>
+            <td>TEXT</td>
+            <td>สถานะการส่ง (missing, submitted, graded)</td>
+            <td>graded</td>
+            <td>Default 'missing'</td>
+        </tr>
+        <tr>
+            <td>total_score</td>
+            <td>REAL</td>
+            <td>คะแนนรวมที่ได้รับ</td>
+            <td>45.5</td>
+            <td>Default 0</td>
+        </tr>
+        <tr>
+            <td>submitted_at</td>
+            <td>DATETIME</td>
+            <td>วันเวลาที่กดส่งคำตอบ</td>
+            <td>2026-03-01 10:45:00</td>
+            <td>Null</td>
+        </tr>
+        <tr>
+            <td>graded_by_ai</td>
+            <td>INTEGER</td>
+            <td>สถานะการประเมินด้วย AI (0=ยัง, 1=ประเมินแล้ว)</td>
+            <td>1</td>
+            <td>Default 0</td>
+        </tr>
+    </table>
+    </div>
+    
+    <div style="page-break-inside: avoid;">
+    <h3 style="color: #000; margin-top: 30px; font-weight: normal; margin-bottom: 10px;">ตารางที่ 3.10 submission_answers (ข้อมูลคำตอบรายข้อ)</h3>
+    <table>
+        <tr>
+            <th style="width: 15%; background-color: #BFBFBF;">Column</th>
+            <th style="width: 15%; background-color: #BFBFBF;">Type</th>
+            <th style="width: 35%; background-color: #BFBFBF;">Description</th>
+            <th style="width: 20%; background-color: #BFBFBF;">Example</th>
+            <th style="width: 15%; background-color: #BFBFBF;">Constraint</th>
+        </tr>
+        
+        <tr>
+            <td>id</td>
+            <td>INTEGER</td>
+            <td>รหัสอ้างอิงคำตอบรายข้อ</td>
+            <td>1</td>
+            <td>PK, Auto Increment</td>
+        </tr>
+        <tr>
+            <td>submission_id</td>
+            <td>INTEGER</td>
+            <td>รหัสการส่งงานรวม</td>
+            <td>1</td>
+            <td>FK -> submissions(id), Not null, Unique (with question_id)</td>
+        </tr>
+        <tr>
+            <td>question_id</td>
+            <td>INTEGER</td>
+            <td>รหัสคำถาม</td>
+            <td>1</td>
+            <td>FK -> questions(id), Not null, Unique (with submission_id)</td>
+        </tr>
+        <tr>
+            <td>answer_text</td>
+            <td>TEXT</td>
+            <td>ข้อความคำตอบที่นักเรียนพิมพ์</td>
+            <td>SDLC มี 5 ขั้นตอน...</td>
+            <td>Null</td>
+        </tr>
+        <tr>
+            <td>ai_score</td>
+            <td>REAL</td>
+            <td>คะแนนที่ AI ประเมินได้</td>
+            <td>8.5</td>
+            <td>Default 0</td>
+        </tr>
+        <tr>
+            <td>ai_feedback</td>
+            <td>TEXT</td>
+            <td>คอมเมนต์อธิบายจาก AI</td>
+            <td>ขาดการอธิบายขั้นตอนที่ 3</td>
+            <td>Null</td>
+        </tr>
+        <tr>
+            <td>ai_confidence</td>
+            <td>TEXT</td>
+            <td>ระดับความมั่นใจของ AI (low, medium, high)</td>
+            <td>high</td>
+            <td>Default 'medium'</td>
+        </tr>
+        <tr>
+            <td>teacher_score</td>
+            <td>REAL</td>
+            <td>คะแนนที่ผู้สอนปรับแก้ขั้นสุดท้าย</td>
+            <td>9.0</td>
+            <td>Null</td>
+        </tr>
+        <tr>
+            <td>teacher_comment</td>
+            <td>TEXT</td>
+            <td>คอมเมนต์จากผู้สอน</td>
+            <td>อธิบายได้ดีมาก แต่เพิ่มน้ำขิงหน่อย</td>
+            <td>Null</td>
+        </tr>
+        <tr>
+            <td>image_path</td>
+            <td>TEXT</td>
+            <td>รูปภาพประกอบคำตอบ (ถ้ามี)</td>
+            <td>ans_1.png</td>
+            <td>Null</td>
+        </tr>
+        <tr>
+            <td>image_paths</td>
+            <td>TEXT</td>
+            <td>รายการรูปภาพประกอบคำตอบ (JSON Array)</td>
+            <td>['ans_img1.png']</td>
+            <td>Null</td>
+        </tr>
+    </table>
+    </div>
+    
+    <div style="page-break-inside: avoid;">
+    <h3 style="color: #000; margin-top: 30px; font-weight: normal; margin-bottom: 10px;">ตารางที่ 3.11 password_resets (ข้อมูลคำขอรีเซ็ตรหัสผ่าน)</h3>
+    <table>
+        <tr>
+            <th style="width: 15%; background-color: #BFBFBF;">Column</th>
+            <th style="width: 15%; background-color: #BFBFBF;">Type</th>
+            <th style="width: 35%; background-color: #BFBFBF;">Description</th>
+            <th style="width: 20%; background-color: #BFBFBF;">Example</th>
+            <th style="width: 15%; background-color: #BFBFBF;">Constraint</th>
+        </tr>
+        
+        <tr>
+            <td>id</td>
+            <td>INTEGER</td>
+            <td>รหัสอ้างอิง</td>
+            <td>1</td>
+            <td>PK, Auto Increment</td>
+        </tr>
+        <tr>
+            <td>user_id</td>
+            <td>INTEGER</td>
+            <td>รหัสผู้ใช้งาน</td>
+            <td>3</td>
+            <td>FK -> users(id), Not null</td>
+        </tr>
+        <tr>
+            <td>token</td>
+            <td>TEXT</td>
+            <td>รหัสโทเคนสำหรับรีเซ็ต</td>
+            <td>abc123xyz...</td>
+            <td>Unique, Not null</td>
+        </tr>
+        <tr>
+            <td>expires_at</td>
+            <td>DATETIME</td>
+            <td>เวลาหมดอายุของโทเคน</td>
+            <td>2026-02-16 12:00:00</td>
+            <td>Not null</td>
+        </tr>
+    </table>
+    </div>
+    
+    <div style="page-break-inside: avoid;">
+    <h3 style="color: #000; margin-top: 30px; font-weight: normal; margin-bottom: 10px;">ตารางที่ 3.12 email_verifications (ข้อมูลโทเคนยืนยันอีเมล)</h3>
+    <table>
+        <tr>
+            <th style="width: 15%; background-color: #BFBFBF;">Column</th>
+            <th style="width: 15%; background-color: #BFBFBF;">Type</th>
+            <th style="width: 35%; background-color: #BFBFBF;">Description</th>
+            <th style="width: 20%; background-color: #BFBFBF;">Example</th>
+            <th style="width: 15%; background-color: #BFBFBF;">Constraint</th>
+        </tr>
+        
+        <tr>
+            <td>id</td>
+            <td>INTEGER</td>
+            <td>รหัสอ้างอิง</td>
+            <td>1</td>
+            <td>PK, Auto Increment</td>
+        </tr>
+        <tr>
+            <td>user_id</td>
+            <td>INTEGER</td>
+            <td>รหัสผู้ใช้งาน</td>
+            <td>5</td>
+            <td>FK -> users(id), Not null</td>
+        </tr>
+        <tr>
+            <td>token</td>
+            <td>TEXT</td>
+            <td>รหัสโทเคนสำหรับยืนยันอีเมล</td>
+            <td>def456uvw...</td>
+            <td>Unique, Not null</td>
+        </tr>
+        <tr>
+            <td>expires_at</td>
+            <td>DATETIME</td>
+            <td>เวลาหมดอายุของโทเคน</td>
+            <td>2026-02-16 12:00:00</td>
+            <td>Not null</td>
+        </tr>
+    </table>
+    </div>
+    
+</body>
+</html>

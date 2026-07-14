@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Design</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #ffffff;
+            color: #000000;
+            padding: 40px;
+            margin: 0;
+            font-size: 16px;
+        }
+        .header-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .table-section {
+            margin-bottom: 60px;
+            page-break-inside: avoid;
+        }
+        .table-caption {
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid #000000;
+        }
+        th, td {
+            border: 1px solid #000000;
+            padding: 12px 16px;
+            line-height: 1.6;
+            vertical-align: top;
+        }
+        th {
+            background-color: #e5e5e5;
+            font-weight: 700;
+            text-align: left;
+        }
+        td:nth-child(1) {
+            /* Column */
+            width: 15%;
+        }
+        td:nth-child(2) {
+            /* Type */
+            width: 15%;
+        }
+        td:nth-child(3) {
+            /* Description */
+            width: 30%;
+        }
+        td:nth-child(4) {
+            /* Example */
+            width: 20%;
+        }
+        td:nth-child(5) {
+            /* Constraint */
+            width: 20%;
+        }
+    </style>
+</head>
+<body>
+
+    <h1 class="header-title">3.10 การออกแบบฐานข้อมูล (Database Design)</h1>
+
+    
+    <div class="table-section">
+        <div class="table-caption"><b>ตารางที่ 3.4</b> ตารางผู้ใช้ (users)</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Example</th>
+                    <th>Constraint</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td>id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสของผู้ใช้งานระบบ</td>
+                    <td>1</td>
+                    <td>PK, AUTO_INCREMENT</td>
+                </tr>
+                <tr>
+                    <td>email</td>
+                    <td>VARCHAR(255)</td>
+                    <td>อีเมลผู้ใช้งานระบบ</td>
+                    <td>ying@email.com</td>
+                    <td>UNIQUE, Not Null</td>
+                </tr>
+                <tr>
+                    <td>password</td>
+                    <td>VARCHAR(255)</td>
+                    <td>รหัสผ่านผู้ใช้งานระบบ</td>
+                    <td>$2b$12$...</td>
+                    <td>Not Null</td>
+                </tr>
+                <tr>
+                    <td>name</td>
+                    <td>VARCHAR(255)</td>
+                    <td>ชื่อผู้ใช้งานระบบ</td>
+                    <td>ปลาวาฬใจดี</td>
+                    <td>Not Null</td>
+                </tr>
+                <tr>
+                    <td>role</td>
+                    <td>VARCHAR(50)</td>
+                    <td>บทบาทผู้ใช้ (เช่น student, teacher)</td>
+                    <td>student</td>
+                    <td>Not Null</td>
+                </tr>
+                <tr>
+                    <td>student_id</td>
+                    <td>VARCHAR(100)</td>
+                    <td>รหัสประจำตัวนักศึกษา (กรณีเป็นผู้เรียน)</td>
+                    <td>64010123</td>
+                    <td>Null</td>
+                </tr>
+                <tr>
+                    <td>avatar_url</td>
+                    <td>TEXT</td>
+                    <td>รูปโปรไฟล์ผู้ใช้งานระบบ</td>
+                    <td>http://Profileimg.jpg</td>
+                    <td>Null</td>
+                </tr>
+                <tr>
+                    <td>is_verified</td>
+                    <td>TINYINT</td>
+                    <td>สถานะการยืนยันตัวตนผ่านอีเมล</td>
+                    <td>1</td>
+                    <td>DEFAULT 0</td>
+                </tr>
+                <tr>
+                    <td>token_version</td>
+                    <td>INTEGER</td>
+                    <td>เวอร์ชันของโทเคน</td>
+                    <td>0</td>
+                    <td>DEFAULT 0</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="table-section">
+        <div class="table-caption"><b>ตารางที่ 3.5</b> ตารางห้องเรียน (rooms)</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Example</th>
+                    <th>Constraint</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td>id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสห้องเรียน</td>
+                    <td>101</td>
+                    <td>PK, AUTO_INCREMENT</td>
+                </tr>
+                <tr>
+                    <td>name</td>
+                    <td>VARCHAR(255)</td>
+                    <td>ชื่อห้องเรียน</td>
+                    <td>วิชาวิทยาการคอมพิวเตอร์</td>
+                    <td>Not Null</td>
+                </tr>
+                <tr>
+                    <td>section</td>
+                    <td>VARCHAR(100)</td>
+                    <td>กลุ่มเรียน (Section)</td>
+                    <td>Sec 1</td>
+                    <td>Null</td>
+                </tr>
+                <tr>
+                    <td>class_code</td>
+                    <td>VARCHAR(50)</td>
+                    <td>รหัสสำหรับเข้าร่วมห้องเรียน</td>
+                    <td>A1B2C3</td>
+                    <td>UNIQUE, Not Null</td>
+                </tr>
+                <tr>
+                    <td>owner_id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสผู้สร้างห้องเรียน (ผู้สอน)</td>
+                    <td>2</td>
+                    <td>FOREIGN KEY (users.id) ON DELETE SET NULL</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="table-section">
+        <div class="table-caption"><b>ตารางที่ 3.6</b> ตารางการเข้าร่วมห้องเรียน (enrollments)</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Example</th>
+                    <th>Constraint</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td>id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสรายการเข้าร่วมห้องเรียน</td>
+                    <td>500</td>
+                    <td>PK, AUTO_INCREMENT</td>
+                </tr>
+                <tr>
+                    <td>user_id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสผู้เรียน</td>
+                    <td>1</td>
+                    <td>FOREIGN KEY (users.id) ON DELETE CASCADE</td>
+                </tr>
+                <tr>
+                    <td>room_id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสห้องเรียน</td>
+                    <td>101</td>
+                    <td>FOREIGN KEY (rooms.id) ON DELETE CASCADE</td>
+                </tr>
+                <tr>
+                    <td>joined_at</td>
+                    <td>DATETIME</td>
+                    <td>วันเวลาที่เข้าร่วมห้องเรียน</td>
+                    <td>2024-05-01 10:00:00</td>
+                    <td>DEFAULT CURRENT_TIMESTAMP</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="table-section">
+        <div class="table-caption"><b>ตารางที่ 3.7</b> ตารางข้อสอบ (exams)</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Example</th>
+                    <th>Constraint</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td>id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสข้อสอบ</td>
+                    <td>50</td>
+                    <td>PK, AUTO_INCREMENT</td>
+                </tr>
+                <tr>
+                    <td>room_id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสห้องเรียน</td>
+                    <td>101</td>
+                    <td>FOREIGN KEY (rooms.id) ON DELETE CASCADE</td>
+                </tr>
+                <tr>
+                    <td>title</td>
+                    <td>VARCHAR(255)</td>
+                    <td>ชื่อหัวข้อการสอบ</td>
+                    <td>สอบกลางภาค</td>
+                    <td>Not Null</td>
+                </tr>
+                <tr>
+                    <td>description</td>
+                    <td>TEXT</td>
+                    <td>คำอธิบายการสอบ</td>
+                    <td>สอบเก็บคะแนนบทที่ 1-3</td>
+                    <td>Null</td>
+                </tr>
+                <tr>
+                    <td>total_score</td>
+                    <td>FLOAT</td>
+                    <td>คะแนนรวมของข้อสอบ</td>
+                    <td>30.0</td>
+                    <td>DEFAULT 0</td>
+                </tr>
+                <tr>
+                    <td>start_date</td>
+                    <td>VARCHAR(100)</td>
+                    <td>วันเวลาที่เริ่มสอบ</td>
+                    <td>2024-05-15 09:00:00</td>
+                    <td>Null</td>
+                </tr>
+                <tr>
+                    <td>end_date</td>
+                    <td>VARCHAR(100)</td>
+                    <td>วันเวลาที่สิ้นสุดการสอบ</td>
+                    <td>2024-05-15 12:00:00</td>
+                    <td>Null</td>
+                </tr>
+                <tr>
+                    <td>is_randomized</td>
+                    <td>TINYINT</td>
+                    <td>สถานะการสลับข้อสอบ</td>
+                    <td>1</td>
+                    <td>DEFAULT 0</td>
+                </tr>
+                <tr>
+                    <td>created_at</td>
+                    <td>DATETIME</td>
+                    <td>วันเวลาที่สร้างข้อสอบ</td>
+                    <td>2024-05-10 14:30:00</td>
+                    <td>DEFAULT CURRENT_TIMESTAMP</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="table-section">
+        <div class="table-caption"><b>ตารางที่ 3.8</b> ตารางโจทย์คำถาม (questions)</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Example</th>
+                    <th>Constraint</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td>id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสข้อคำถาม</td>
+                    <td>200</td>
+                    <td>PK, AUTO_INCREMENT</td>
+                </tr>
+                <tr>
+                    <td>exam_id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสข้อสอบ</td>
+                    <td>50</td>
+                    <td>FOREIGN KEY (exams.id) ON DELETE CASCADE</td>
+                </tr>
+                <tr>
+                    <td>text</td>
+                    <td>TEXT</td>
+                    <td>ข้อความโจทย์คำถาม</td>
+                    <td>จงอธิบายหลักการทำงานของ AI</td>
+                    <td>Not Null</td>
+                </tr>
+                <tr>
+                    <td>score</td>
+                    <td>FLOAT</td>
+                    <td>คะแนนของข้อนี้</td>
+                    <td>5.0</td>
+                    <td>DEFAULT 0</td>
+                </tr>
+                <tr>
+                    <td>answer_key</td>
+                    <td>TEXT</td>
+                    <td>แนวคำตอบ (เฉลย)</td>
+                    <td>AI คือปัญญาประดิษฐ์...</td>
+                    <td>Null</td>
+                </tr>
+                <tr>
+                    <td>rubrics</td>
+                    <td>TEXT</td>
+                    <td>เกณฑ์การให้คะแนน (JSON)</td>
+                    <td>[{'criteria':'ความถูกต้อง','score':3}]</td>
+                    <td>Null</td>
+                </tr>
+                <tr>
+                    <td>order_index</td>
+                    <td>INTEGER</td>
+                    <td>ลำดับข้อคำถาม</td>
+                    <td>1</td>
+                    <td>DEFAULT 0</td>
+                </tr>
+                
+                <tr>
+                    <td>image_paths</td>
+                    <td>TEXT</td>
+                    <td>ลิงก์รูปภาพประกอบ (หลายภาพ JSON)</td>
+                    <td>['http://img1.jpg']</td>
+                    <td>Null</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="table-section">
+        <div class="table-caption"><b>ตารางที่ 3.9</b> ตารางการส่งข้อสอบ (submissions)</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Example</th>
+                    <th>Constraint</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td>id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสการส่งข้อสอบ</td>
+                    <td>1000</td>
+                    <td>PK, AUTO_INCREMENT</td>
+                </tr>
+                <tr>
+                    <td>exam_id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสข้อสอบ</td>
+                    <td>50</td>
+                    <td>FOREIGN KEY (exams.id) ON DELETE CASCADE</td>
+                </tr>
+                <tr>
+                    <td>student_id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสผู้เรียนที่ส่ง</td>
+                    <td>1</td>
+                    <td>FOREIGN KEY (users.id) ON DELETE CASCADE</td>
+                </tr>
+                <tr>
+                    <td>status</td>
+                    <td>VARCHAR(50)</td>
+                    <td>สถานะการส่ง</td>
+                    <td>submitted</td>
+                    <td>DEFAULT 'missing'</td>
+                </tr>
+                <tr>
+                    <td>total_score</td>
+                    <td>FLOAT</td>
+                    <td>คะแนนรวมที่ได้</td>
+                    <td>28.5</td>
+                    <td>DEFAULT 0</td>
+                </tr>
+                <tr>
+                    <td>submitted_at</td>
+                    <td>DATETIME</td>
+                    <td>วันเวลาที่ส่งข้อสอบ</td>
+                    <td>2024-05-15 11:45:00</td>
+                    <td>Null</td>
+                </tr>
+                <tr>
+                    <td>graded_by_ai</td>
+                    <td>TINYINT</td>
+                    <td>สถานะการตรวจโดย AI</td>
+                    <td>1</td>
+                    <td>DEFAULT 0</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="table-section">
+        <div class="table-caption"><b>ตารางที่ 3.10</b> ตารางคำตอบข้อสอบ (submission_answers)</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Example</th>
+                    <th>Constraint</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td>id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสคำตอบ</td>
+                    <td>5000</td>
+                    <td>PK, AUTO_INCREMENT</td>
+                </tr>
+                <tr>
+                    <td>submission_id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสการส่งข้อสอบ</td>
+                    <td>1000</td>
+                    <td>FOREIGN KEY (submissions.id) ON DELETE CASCADE</td>
+                </tr>
+                <tr>
+                    <td>question_id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสข้อคำถาม</td>
+                    <td>200</td>
+                    <td>FOREIGN KEY (questions.id) ON DELETE CASCADE</td>
+                </tr>
+                <tr>
+                    <td>answer_text</td>
+                    <td>TEXT</td>
+                    <td>ข้อความคำตอบของผู้เรียน</td>
+                    <td>ผมคิดว่า AI คือ...</td>
+                    <td>Null</td>
+                </tr>
+                <tr>
+                    <td>ai_score</td>
+                    <td>FLOAT</td>
+                    <td>คะแนนที่ AI ประเมินให้</td>
+                    <td>4.5</td>
+                    <td>DEFAULT 0</td>
+                </tr>
+                <tr>
+                    <td>ai_feedback</td>
+                    <td>TEXT</td>
+                    <td>ข้อเสนอแนะจาก AI</td>
+                    <td>อธิบายได้ดีแต่ขาดประเด็น X</td>
+                    <td>Null</td>
+                </tr>
+                <tr>
+                    <td>ai_confidence</td>
+                    <td>VARCHAR(50)</td>
+                    <td>ระดับความมั่นใจของ AI</td>
+                    <td>high</td>
+                    <td>DEFAULT 'medium'</td>
+                </tr>
+                <tr>
+                    <td>teacher_score</td>
+                    <td>FLOAT</td>
+                    <td>คะแนนที่ผู้สอนปรับปรุง</td>
+                    <td>5.0</td>
+                    <td>Null</td>
+                </tr>
+                <tr>
+                    <td>teacher_comment</td>
+                    <td>TEXT</td>
+                    <td>ความคิดเห็นจากผู้สอน</td>
+                    <td>ตอบได้ครอบคลุมมาก</td>
+                    <td>Null</td>
+                </tr>
+                
+                <tr>
+                    <td>image_paths</td>
+                    <td>TEXT</td>
+                    <td>รูปภาพแนบคำตอบ (หลายภาพ)</td>
+                    <td>['http://ans1.jpg']</td>
+                    <td>Null</td>
+                </tr>
+                
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="table-section">
+        <div class="table-caption"><b>ตารางที่ 3.11</b> ตารางรีเซ็ตรหัสผ่าน (password_resets)</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Example</th>
+                    <th>Constraint</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td>id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสรายการรีเซ็ต</td>
+                    <td>10</td>
+                    <td>PK, AUTO_INCREMENT</td>
+                </tr>
+                <tr>
+                    <td>user_id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสผู้ใช้</td>
+                    <td>1</td>
+                    <td>FOREIGN KEY (users.id) ON DELETE CASCADE</td>
+                </tr>
+                <tr>
+                    <td>token</td>
+                    <td>VARCHAR(255)</td>
+                    <td>โทเคนสำหรับรีเซ็ต</td>
+                    <td>abc123xyz</td>
+                    <td>UNIQUE, Not Null</td>
+                </tr>
+                <tr>
+                    <td>expires_at</td>
+                    <td>DATETIME</td>
+                    <td>วันเวลาที่โทเคนหมดอายุ</td>
+                    <td>2024-06-01 12:00:00</td>
+                    <td>Not Null</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="table-section">
+        <div class="table-caption"><b>ตารางที่ 3.12</b> ตารางยืนยันอีเมล (email_verifications)</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Example</th>
+                    <th>Constraint</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td>id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสรายการยืนยัน</td>
+                    <td>15</td>
+                    <td>PK, AUTO_INCREMENT</td>
+                </tr>
+                <tr>
+                    <td>user_id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสผู้ใช้</td>
+                    <td>1</td>
+                    <td>FOREIGN KEY (users.id) ON DELETE CASCADE</td>
+                </tr>
+                <tr>
+                    <td>token</td>
+                    <td>VARCHAR(255)</td>
+                    <td>โทเคนสำหรับยืนยัน</td>
+                    <td>def456uvw</td>
+                    <td>UNIQUE, Not Null</td>
+                </tr>
+                <tr>
+                    <td>expires_at</td>
+                    <td>DATETIME</td>
+                    <td>วันเวลาที่โทเคนหมดอายุ</td>
+                    <td>2024-06-01 12:00:00</td>
+                    <td>Not Null</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="table-section">
+        <div class="table-caption"><b>ตารางที่ 3.13</b> ตารางประกาศข่าวสาร (announcements)</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Example</th>
+                    <th>Constraint</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td>id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสประกาศ</td>
+                    <td>30</td>
+                    <td>PK, AUTO_INCREMENT</td>
+                </tr>
+                <tr>
+                    <td>room_id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสห้องเรียน</td>
+                    <td>101</td>
+                    <td>FOREIGN KEY (rooms.id) ON DELETE CASCADE</td>
+                </tr>
+                <tr>
+                    <td>teacher_id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสผู้สอนผู้ประกาศ</td>
+                    <td>2</td>
+                    <td>FOREIGN KEY (users.id) ON DELETE CASCADE</td>
+                </tr>
+                <tr>
+                    <td>title</td>
+                    <td>VARCHAR(255)</td>
+                    <td>หัวข้อประกาศ</td>
+                    <td>เลื่อนวันสอบ</td>
+                    <td>Not Null</td>
+                </tr>
+                <tr>
+                    <td>content</td>
+                    <td>TEXT</td>
+                    <td>เนื้อหาประกาศ</td>
+                    <td>ขอเลื่อนสอบไปวันที่...</td>
+                    <td>Not Null</td>
+                </tr>
+                <tr>
+                    <td>created_at</td>
+                    <td>DATETIME</td>
+                    <td>วันเวลาที่ประกาศ</td>
+                    <td>2024-05-12 09:00:00</td>
+                    <td>DEFAULT CURRENT_TIMESTAMP</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="table-section">
+        <div class="table-caption"><b>ตารางที่ 3.14</b> ตารางการอ่านประกาศ (announcement_reads)</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Example</th>
+                    <th>Constraint</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td>id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสการอ่าน</td>
+                    <td>400</td>
+                    <td>PK, AUTO_INCREMENT</td>
+                </tr>
+                <tr>
+                    <td>announcement_id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสประกาศ</td>
+                    <td>30</td>
+                    <td>FOREIGN KEY (announcements.id) ON DELETE CASCADE</td>
+                </tr>
+                <tr>
+                    <td>student_id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสผู้เรียนที่อ่าน</td>
+                    <td>1</td>
+                    <td>FOREIGN KEY (users.id) ON DELETE CASCADE</td>
+                </tr>
+                <tr>
+                    <td>read_at</td>
+                    <td>DATETIME</td>
+                    <td>วันเวลาที่อ่านประกาศ</td>
+                    <td>2024-05-12 09:15:00</td>
+                    <td>DEFAULT CURRENT_TIMESTAMP</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="table-section">
+        <div class="table-caption"><b>ตารางที่ 3.15</b> ตารางการแจ้งเตือน (notifications)</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Example</th>
+                    <th>Constraint</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td>id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสการแจ้งเตือน</td>
+                    <td>1500</td>
+                    <td>PK, AUTO_INCREMENT</td>
+                </tr>
+                <tr>
+                    <td>user_id</td>
+                    <td>INTEGER</td>
+                    <td>รหัสผู้ใช้ที่รับแจ้งเตือน</td>
+                    <td>1</td>
+                    <td>FOREIGN KEY (users.id) ON DELETE CASCADE</td>
+                </tr>
+                <tr>
+                    <td>type</td>
+                    <td>VARCHAR(50)</td>
+                    <td>ประเภทการแจ้งเตือน</td>
+                    <td>exam_graded</td>
+                    <td>Not Null</td>
+                </tr>
+                <tr>
+                    <td>message</td>
+                    <td>VARCHAR(500)</td>
+                    <td>ข้อความแจ้งเตือน</td>
+                    <td>ข้อสอบของคุณถูกตรวจแล้ว</td>
+                    <td>Not Null</td>
+                </tr>
+                <tr>
+                    <td>link</td>
+                    <td>VARCHAR(255)</td>
+                    <td>ลิงก์แนบสำหรับการแจ้งเตือน</td>
+                    <td>/exam/result/50</td>
+                    <td>Null</td>
+                </tr>
+                <tr>
+                    <td>data</td>
+                    <td>JSON</td>
+                    <td>ข้อมูลแนบเพิ่มเติม</td>
+                    <td>{'exam_id': 50}</td>
+                    <td>Null</td>
+                </tr>
+                <tr>
+                    <td>is_read</td>
+                    <td>TINYINT(1)</td>
+                    <td>สถานะการอ่าน (0 หรือ 1)</td>
+                    <td>0</td>
+                    <td>DEFAULT 0</td>
+                </tr>
+                <tr>
+                    <td>created_at</td>
+                    <td>DATETIME</td>
+                    <td>วันเวลาที่แจ้งเตือน</td>
+                    <td>2024-05-16 10:00:00</td>
+                    <td>DEFAULT CURRENT_TIMESTAMP</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+
+</body>
+</html>

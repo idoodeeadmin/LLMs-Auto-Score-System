@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>External Entity Description</title>
+    <style>
+        body { font-family: 'Sarabun', Tahoma, sans-serif; padding: 20px; background-color: #f8f9fa; }
+        h2 { text-align: center; color: #333; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        th, td { border: 1px solid #ccc; padding: 12px; vertical-align: middle; }
+        th { background-color: #9e9e9e; color: white; text-align: center; font-weight: bold; font-size: 16px; }
+        td:nth-child(1) { font-weight: bold; text-align: center; vertical-align: middle; width: 15%; background-color: #f1f1f1; }
+        td:nth-child(2) { width: 25%; line-height: 1.5; text-align: left; }
+        td:nth-child(3), td:nth-child(4) { width: 30%; line-height: 1.5; text-align: left; }
+        ul { margin: 0; padding-left: 20px; list-style-type: none; text-align: left; }
+        li { margin-bottom: 8px; position: relative; }
+        li::before { content: "- "; position: absolute; left: -15px; }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <h2>ตารางที่ 3.1 External Entity Description</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Input Data Flow</th>
+                <th>Output Data Flow</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>ผู้ใช้ทั่วไป</td>
+                <td>บุคคลทั่วไปที่เข้าใช้งานเพื่อสมัครสมาชิกหรือเข้าสู่ระบบ</td>
+                <td><ul><li>ข้อมูลบัญชีผู้ใช้</li></ul></td>
+                <td><ul><li>ข้อมูลการยืนยันตัวตนทางอีเมล</li><li>ข้อมูลการสมัครสมาชิก</li><li>ข้อมูลการเข้าสู่ระบบ</li><li>ข้อมูลอีเมลสำหรับรีเซ็ตรหัสผ่าน</li></ul></td>
+            </tr>
+            <tr>
+                <td>ผู้เรียน</td>
+                <td>ผู้ใช้งานระบบที่สามารถทำข้อสอบ ดูคะแนน และรับข้อเสนอแนะ</td>
+                <td><ul><li>ข้อมูลการแจ้งเตือน</li><li>ข้อมูลข้อสอบ</li><li>ข้อมูลบัญชีผู้ใช้</li><li>ข้อมูลประกาศข่าวสารห้องเรียน</li><li>ข้อมูลผลคะแนน</li><li>ข้อมูลสถานะการส่งข้อสอบ</li><li>ข้อมูลห้องเรียน</li><li>ข้อมูลเวลาคงเหลือในการสอบ</li><li>ข้อมูลผลการประเมินและข้อเสนอแนะ</li></ul></td>
+                <td><ul><li>ข้อมูลคำตอบข้อสอบ</li><li>ข้อมูลรหัสเข้าร่วมห้องเรียน</li><li>ข้อมูลสถานะการอ่านแจ้งเตือน</li><li>ข้อมูลโปรไฟล์ที่เพิ่มและแก้ไข</li><li>รหัสผู้เรียนและรหัสข้อสอบ</li></ul></td>
+            </tr>
+            <tr>
+                <td>ผู้สอน</td>
+                <td>ผู้ใช้งานระบบที่สามารถจัดการห้องเรียน ข้อสอบ และผลคะแนน</td>
+                <td><ul><li>ข้อมูลการแจ้งเตือน</li><li>ข้อมูลข้อสอบ</li><li>ข้อมูลคำตอบของนักเรียน</li><li>ข้อมูลบัญชีผู้ใช้</li><li>ข้อมูลประกาศข่าวสารห้องเรียน</li><li>ข้อมูลผลการประเมินและข้อเสนอแนะจาก AI</li><li>ข้อมูลผลคะแนนของนักเรียน</li><li>ข้อมูลรายงานสรุปคะแนน</li><li>ข้อมูลสถานะการส่งข้อสอบ</li><li>ข้อมูลสมาชิกในห้องเรียนและสถานะการส่งงาน</li><li>ข้อมูลห้องเรียน</li><li>ข้อมูลเกณฑ์การประเมินจาก AI</li></ul></td>
+                <td><ul><li>ข้อมูลข้อสอบที่ลบ</li><li>ข้อมูลข้อสอบที่เพิ่มและแก้ไข</li><li>ข้อมูลคะแนนและคอมเมนต์ที่เพิ่มและแก้ไข</li><li>ข้อมูลประกาศข่าวสารห้องเรียนที่ลบ</li><li>ข้อมูลประกาศข่าวสารห้องเรียนที่เพิ่มและแก้ไข</li><li>ข้อมูลสถานะการอนุมัติผลคะแนน</li><li>ข้อมูลสถานะการอ่านแจ้งเตือน</li><li>ข้อมูลห้องเรียนที่ลบ</li><li>ข้อมูลห้องเรียนที่เพิ่มและแก้ไข</li><li>ข้อมูลเกณฑ์การประเมินที่ลบ</li><li>ข้อมูลเกณฑ์การประเมินที่เพิ่มและแก้ไข</li><li>ข้อมูลโปรไฟล์ที่เพิ่มและแก้ไข</li><li>รหัสห้องเรียนและรหัสข้อสอบ</li></ul></td>
+            </tr>
+            <tr>
+                <td>Firebase Auth</td>
+                <td>ระบบจัดการและยืนยันตัวตนผู้ใช้งานผ่าน Google</td>
+                <td><ul><li>ข้อมูลการยืนยันตัวตน</li></ul></td>
+                <td><ul><li>ข้อมูลโปรไฟล์ผู้ใช้</li></ul></td>
+            </tr>
+            <tr>
+                <td>SMTP</td>
+                <td>เซิร์ฟเวอร์สำหรับส่งอีเมลแจ้งเตือนอัตโนมัติ</td>
+                <td><ul><li>ข้อมูลอีเมลและลิงก์ยืนยันตัวตน</li><li>ข้อมูลอีเมลและลิงก์รีเซ็ตรหัสผ่าน</li></ul></td>
+                <td><ul><li>ข้อมูลสถานะการส่งอีเมล</li></ul></td>
+            </tr>
+            <tr>
+                <td>Cloudinary API</td>
+                <td>ระบบจัดเก็บและบริหารจัดการไฟล์รูปภาพ</td>
+                <td><ul><li>ข้อมูลรูปภาพคำตอบ</li><li>ข้อมูลรูปภาพโจทย์ข้อสอบ</li><li>ข้อมูลรูปภาพโปรไฟล์</li></ul></td>
+                <td><ul><li>ข้อมูลผลการจัดเก็บรูปภาพ</li></ul></td>
+            </tr>
+            <tr>
+                <td>Gemini API</td>
+                <td>AI สำหรับตรวจข้อสอบและช่วยสร้างเกณฑ์การประเมิน</td>
+                <td><ul><li>ข้อมูลคำตอบของนักเรียน</li><li>ข้อมูลบริบทสำหรับการสร้างเกณฑ์</li><li>ข้อมูลเงื่อนไขและข้อกำหนดการตรวจ</li><li>ข้อมูลโจทย์ข้อสอบและเกณฑ์การให้คะแนน</li></ul></td>
+                <td><ul><li>ข้อมูลข้อเสนอแนะการประเมิน</li><li>ข้อมูลผลการประเมิน</li><li>ข้อมูลเกณฑ์รูบริคอัตโนมัติ</li><li>ข้อมูลระดับความมั่นใจของคำตอบ</li></ul></td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>
