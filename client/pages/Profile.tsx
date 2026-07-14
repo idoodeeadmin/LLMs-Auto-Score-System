@@ -11,7 +11,7 @@ import { auth } from "@/lib/firebase";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
 export default function Profile() {
-  const { user, token, updateUser, logout } = useAuth();
+  const { user, token, updateUser, logout, isLoading: isAuthLoading } = useAuth();
   const navigate = useNavigate();
 
   const [name, setName] = useState("");
@@ -22,15 +22,17 @@ export default function Profile() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (!token || !user) {
+    if (!isAuthLoading && (!token || !user)) {
       navigate("/");
       return;
     }
-    setName(user.name);
-    if (user.avatarUrl) {
-      setAvatarPreview(`/uploads/avatars/${user.avatarUrl}`);
+    if (user) {
+      setName(user.name);
+      if (user.avatarUrl) {
+        setAvatarPreview(`/uploads/avatars/${user.avatarUrl}`);
+      }
     }
-  }, [user, token, navigate]);
+  }, [user, token, isAuthLoading, navigate]);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -170,7 +172,7 @@ export default function Profile() {
     visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
   };
 
-  if (!user) return null;
+  if (isAuthLoading || !user) return null;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
