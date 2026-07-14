@@ -47,6 +47,30 @@
   </tr>
   <tr>
     <td align="center">
+      <img src="public/screenshots/room-detail.png" alt="Room Detail Page" width="400"/>
+      <br />
+      <b>หน้ารายละเอียดห้องเรียน (Room Detail)</b>
+    </td>
+    <td align="center">
+      <img src="public/screenshots/create-exam.png" alt="Create Exam Page" width="400"/>
+      <br />
+      <b>หน้าสร้างข้อสอบ (Create Exam)</b>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="public/screenshots/exam-view.png" alt="Exam View Page" width="400"/>
+      <br />
+      <b>หน้ารายละเอียดข้อสอบ (Exam View)</b>
+    </td>
+    <td align="center">
+      <img src="public/screenshots/exam-analytics.png" alt="Exam Analytics Page" width="400"/>
+      <br />
+      <b>หน้าวิเคราะห์คะแนนสอบ (Analytics)</b>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
       <img src="public/screenshots/profile.png" alt="Profile Page" width="400"/>
       <br />
       <b>หน้าโปรไฟล์ส่วนตัว (Profile)</b>
