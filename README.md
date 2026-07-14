@@ -30,6 +30,37 @@
 
 <br/>
 
+## 📸 Screenshots (ตัวอย่างหน้าเว็บ)
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="public/screenshots/home.png" alt="Home/Login Page" width="400"/>
+      <br />
+      <b>หน้าแรก (Home / Login)</b>
+    </td>
+    <td align="center">
+      <img src="public/screenshots/dashboard.png" alt="Dashboard Page" width="400"/>
+      <br />
+      <b>หน้าแดชบอร์ดหลัก (Dashboard)</b>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="public/screenshots/profile.png" alt="Profile Page" width="400"/>
+      <br />
+      <b>หน้าโปรไฟล์ส่วนตัว (Profile)</b>
+    </td>
+    <td align="center">
+      <img src="public/screenshots/register.png" alt="Register Page" width="400"/>
+      <br />
+      <b>หน้าสมัครสมาชิก (Register)</b>
+    </td>
+  </tr>
+</table>
+
+<br/>
+
 ## ✨ Features (ฟีเจอร์เด่น)
 
 - 🤖 **AI Auto-Grading**: ตรวจข้อสอบอัตโนมัติด้วย AI พร้อมให้ Feedback และวิเคราะห์ความมั่นใจ (Confidence Score)
