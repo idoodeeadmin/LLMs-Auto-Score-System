@@ -1,1 +1,0 @@
-\n=== Comparison for Level 1 ===\nAll good! Level 1 matches Context Diagram perfectly (for the processes modeled).\n\n=== Comparison for Level 2 ===\nAll good! Level 2 matches Context Diagram perfectly (for the processes modeled).
