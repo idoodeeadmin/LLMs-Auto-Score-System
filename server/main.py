@@ -41,8 +41,27 @@ app.include_router(notification_routes.router)
 
 app.include_router(ai_routes.router)
 app.include_router(system_routes.router)
-_cors_origins = [o.strip() for o in os.getenv('CORS_ORIGINS', 'http://localhost:5173,http://localhost:8080').split(',')]
-app.add_middleware(CORSMiddleware, allow_origins=_cors_origins, allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
+default_origins = [
+    'http://localhost:5173',
+    'http://localhost:8080',
+    'http://localhost:3000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:8080',
+    'https://llms-auto-score-systems.netlify.app',
+    'https://llms-auto-score-system.netlify.app',
+    'https://llms-auto-score-system.onrender.com',
+]
+custom_origins = [o.strip() for o in os.getenv('CORS_ORIGINS', '').split(',') if o.strip()]
+_cors_origins = list(set(default_origins + custom_origins))
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_origin_regex=r'https://.*\.netlify\.app|https://.*\.vercel\.app|https://.*\.onrender\.com',
+    allow_credentials=True,
+    allow_methods=['*'],
+    allow_headers=['*']
+)
 
 @app.on_event('startup')
 async def startup_event():
