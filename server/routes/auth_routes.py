@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Header, UploadFile, File, Form, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Header, UploadFile, File, Form, Request, Response
 import pymysql
 import uuid
 import smtplib
@@ -10,8 +10,10 @@ from email.mime.multipart import MIMEMultipart
 from server.database import get_db_connection
 from server.auth import get_password_hash, verify_password, create_access_token, decode_token
 from server.models import *
-from server.utils import check_rate_limit, _firebase_app, auth, upload_to_cloudinary, get_current_user
+from server.utils import check_rate_limit, _firebase_app, auth, upload_to_cloudinary, get_current_user, validate_upload_file
 import firebase_admin
+
+_IS_DEV_MODE = os.getenv('APP_ENV', 'development').lower() == 'development'
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -38,7 +40,7 @@ async def register(user: UserRegister, request: Request):
     except pymysql.err.IntegrityError:
         conn.close()
         raise HTTPException(status_code=400, detail='Email already registered')
-    verify_link = f'http://localhost:8080/verify-email?token={token}'
+    verify_link = f'http://localhost:3000/verify-email?token={token}'
     smtp_host = os.getenv('SMTP_HOST')
     smtp_port_str = os.getenv('SMTP_PORT', '587')
     smtp_port = int(smtp_port_str) if smtp_port_str else 587
@@ -68,10 +70,13 @@ async def register(user: UserRegister, request: Request):
         print(f'\n========== VERIFY EMAIL ==========')
         print(f'Verify Link: {dev_verify_link}')
         print(f'==================================\n')
-    return {'message': 'สมัครสมาชิกสำเร็จ กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชีของคุณ', 'dev_verify_link': dev_verify_link}
+    response = {'message': 'สมัครสมาชิกสำเร็จ กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชีของคุณ'}
+    if _IS_DEV_MODE and dev_verify_link:
+        response['dev_verify_link'] = dev_verify_link
+    return response
 
 @router.post('/login', response_model=TokenResponse)
-async def login(user_data: UserLogin, request: Request):
+async def login(user_data: UserLogin, request: Request, response: Response):
     client_ip = request.client.host if request.client else 'unknown'
     if not check_rate_limit(client_ip, limit=10, window=60):
         raise HTTPException(status_code=429, detail='Too many login attempts. Please wait a minute.')
@@ -81,16 +86,29 @@ async def login(user_data: UserLogin, request: Request):
     user = cursor.fetchone()
     conn.close()
     if not user or not verify_password(user_data.password, user['password']):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Incorrect email or password', headers={'WWW-Authenticate': 'Bearer'})
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Incorrect email or password',
+         headers={'WWW-Authenticate': 'Bearer'})
+    if not user.get('is_verified'):
+        raise HTTPException(status_code=403, detail='กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ (Please verify your email before logging in)')
     access_token = create_access_token(data={'sub': user['email'], 'token_version': user.get('token_version', 0)})
+    response.set_cookie(key="access_token", value=access_token, httponly=True, max_age=60*60*24*7, samesite="lax", path="/")
     client_ip = request.client.host if request.client else 'unknown'
     user_dict = dict(user)
-    user_info = {'id': user_dict['id'], 'email': user_dict['email'], 'name': user_dict['name'], 'role': user_dict['role'], 'studentId': user_dict.get('student_id'), 'avatarUrl': user_dict.get('avatar_url'), 'is_verified': user_dict.get('is_verified', 0)}
+    user_info = {'id': user_dict['id'], 'email': user_dict['email'], 'name': user_dict['name'], 'role': user_dict['role'],
+     'studentId': user_dict.get('student_id'),
+     'avatarUrl': user_dict.get('avatar_url'), 'is_verified': user_dict.get('is_verified', 0)}
     return {'access_token': access_token, 'token_type': 'bearer', 'user': user_info}
+
+@router.post('/logout')
+async def logout(response: Response):
+    response.delete_cookie(key="access_token", path="/")
+    return {'message': 'Logged out successfully'}
 
 @router.get('/me')
 async def get_me(user: dict=Depends(get_current_user)):
-    return {'id': user['id'], 'email': user['email'], 'name': user['name'], 'role': user['role'], 'studentId': user['student_id'], 'avatarUrl': user.get('avatar_url', None), 'is_verified': user.get('is_verified', 0)}
+    return {'id': user['id'], 'email': user['email'], 'name': user['name'], 'role': user['role'],
+     'studentId': user['student_id'],
+     'avatarUrl': user.get('avatar_url', None), 'is_verified': user.get('is_verified', 0)}
 
 @router.put('/profile')
 async def update_profile(name: str=Form(None), password: str=Form(None), avatar: UploadFile=File(None), user: dict=Depends(get_current_user)):
@@ -102,6 +120,7 @@ async def update_profile(name: str=Form(None), password: str=Form(None), avatar:
     
     if avatar:
         file_content = await avatar.read()
+        validate_upload_file(file_content, content_type=avatar.content_type)
         avatar_url = upload_to_cloudinary(file_content, folder='avatars')
         if avatar_url:
             avatar_filename = avatar_url
@@ -172,7 +191,14 @@ async def forgot_password(req: ForgotPasswordRequest):
         cursor.execute('INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)', (user['id'], token, expires_at))
         conn.commit()
         conn.close()
-        return {'message': 'ยืนยันตัวตนสำเร็จ!', 'reset_token': token}
+        reset_link = f"{os.getenv('FRONTEND_URL', 'http://localhost:8080')}/reset-password?token={token}"
+        print(f'\n========== IDENTITY VERIFIED RESET ==========')
+        print(f'Reset Link: {reset_link}')
+        print(f'=============================================\n')
+        response = {'message': 'ยืนยันตัวตนสำเร็จ! กรุณาตรวจสอบอีเมลเพื่อรีเซ็ตรหัสผ่าน'}
+        if _IS_DEV_MODE:
+            response['reset_token'] = token
+        return response
     import uuid
     from datetime import datetime, timezone, timedelta
     token = uuid.uuid4().hex
@@ -219,7 +245,10 @@ async def forgot_password(req: ForgotPasswordRequest):
     elif not smtp_host:
         print('Note: SMTP variables not configured in .env')
     print(f'======================================\n')
-    return {'message': 'รหัสสำหรับการทดสอบ (Dev Mode): ระบบยังไม่ได้ตั้งค่า Email SMTP', 'dev_reset_link': reset_link}
+    response = {'message': 'หากมีบัญชีนี้ในระบบ ลิงก์รีเซ็ตรหัสผ่านจะถูกส่งไปที่อีเมลของคุณ'}
+    if _IS_DEV_MODE:
+        response['dev_reset_link'] = reset_link
+    return response
 
 @router.post('/reset-password')
 async def reset_password(req: ResetPasswordRequest):
@@ -349,11 +378,14 @@ async def resend_verification(req: ResendVerificationRequest):
         print(f'\n========== VERIFY EMAIL ==========')
         print(f'Verify Link: {dev_verify_link}')
         print(f'==================================\n')
-        return {'message': 'Dev Mode', 'dev_verify_link': dev_verify_link}
+        response = {'message': 'ส่งลิงก์ยืนยันอีเมลแล้ว กรุณาตรวจสอบกล่องข้อความ'}
+        if _IS_DEV_MODE:
+            response['dev_verify_link'] = dev_verify_link
+        return response
     return {'message': 'หากมีบัญชีนี้ในระบบ ลิงก์ยืนยันจะถูกส่งไปที่อีเมลของคุณ'}
 
 @router.post('/firebase-login', response_model=TokenResponse)
-async def firebase_login(request: FirebaseLoginRequest, req: Request):
+async def firebase_login(request: FirebaseLoginRequest, req: Request, res: Response):
     """
     Verify Firebase ID token and either:
     - Find existing user by email and log them in
@@ -388,6 +420,7 @@ async def firebase_login(request: FirebaseLoginRequest, req: Request):
             conn.commit()
         conn.close()
         access_token = create_access_token(data={'sub': email, 'token_version': user.get('token_version', 0)})
+        res.set_cookie(key="access_token", value=access_token, httponly=True, max_age=60*60*24*7, samesite="lax", path="/")
         client_ip = getattr(req, 'client', None)
         client_ip = client_ip.host if client_ip else 'unknown'
         user_info = {'id': user_dict['id'], 'email': user_dict['email'], 'name': user_dict['name'], 'role': user_dict['role'], 'studentId': user_dict.get('student_id'), 'avatarUrl': google_picture or existing_avatar}
@@ -401,6 +434,7 @@ async def firebase_login(request: FirebaseLoginRequest, req: Request):
         raise HTTPException(status_code=400, detail='Email already registered')
     user_info = {'id': new_user_id, 'email': email, 'name': display_name, 'role': 'unassigned', 'studentId': None, 'avatarUrl': google_picture}
     access_token = create_access_token(data={'sub': email, 'token_version': 0})
+    res.set_cookie(key="access_token", value=access_token, httponly=True, max_age=60*60*24*7, samesite="lax", path="/")
     client_ip = req.client.host if getattr(req, 'client', None) else 'unknown'
     conn.close()
     return {'access_token': access_token, 'token_type': 'bearer', 'user': user_info}

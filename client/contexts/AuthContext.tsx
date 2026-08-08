@@ -44,7 +44,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const newSocket = io(SOCKET_SERVER_URL, {
           transports: ['websocket'], // Prefer websocket to avoid some CORS issues with polling
-          reconnectionAttempts: 3
+          reconnectionAttempts: 3,
+          auth: {
+            token: token, // Send JWT for server-side verification
+          }
         });
         setSocket(newSocket);
 
@@ -120,7 +123,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     toast.success("เข้าสู่ระบบสำเร็จ");
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch (e) {
+      console.error("Logout cookie clear error:", e);
+    }
     localStorage.removeItem("token");
     setToken(null);
     setUser(null);

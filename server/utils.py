@@ -8,7 +8,7 @@ import cloudinary.uploader
 import random
 import string
 import aiofiles
-from fastapi import Header, HTTPException, Depends
+from fastapi import Header, HTTPException, Depends, Request
 from typing import Optional
 
 from server.database import get_db_connection
@@ -48,6 +48,29 @@ async def get_image_bytes(path_or_url: str):
 
 grading_queue = asyncio.Queue()
 
+# --- CSV Formula Injection Prevention ---
+_CSV_DANGEROUS_CHARS = ('=', '+', '-', '@', '\t', '\r')
+
+def sanitize_csv_value(value):
+    """Prevent CSV formula injection by prefixing dangerous starting characters with a single quote."""
+    if value and isinstance(value, str) and value[0] in _CSV_DANGEROUS_CHARS:
+        return "'" + value
+    return value
+
+# --- File Upload Validation ---
+MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5MB
+ALLOWED_IMAGE_TYPES = {'image/jpeg', 'image/png', 'image/gif', 'image/webp'}
+
+def validate_upload_file(file_bytes: bytes, content_type: str = None, max_size: int = None, allowed_types: set = None):
+    """Validate uploaded file size and MIME type. Raises HTTPException on failure."""
+    effective_max = max_size or MAX_UPLOAD_SIZE
+    effective_types = allowed_types or ALLOWED_IMAGE_TYPES
+    if len(file_bytes) > effective_max:
+        max_mb = effective_max / (1024 * 1024)
+        raise HTTPException(status_code=413, detail=f'File too large. Maximum size is {max_mb:.0f}MB')
+    if content_type and content_type not in effective_types:
+        raise HTTPException(status_code=400, detail=f'Unsupported file type: {content_type}. Allowed: {", ".join(effective_types)}')
+
 REQUEST_LOGS = {}
 
 def check_rate_limit(ip: str, limit: int=10, window: int=60):
@@ -79,16 +102,28 @@ async def trigger_socket_notify(user_id: int, notify_type: str, message: str, da
         print(f'[Notification DB Error] {e}')
 
     socket_url = f"http://localhost:{os.getenv('SOCKET_PORT', '3001')}/emit-notification"
+    socket_secret = os.getenv('SOCKET_INTERNAL_SECRET', '')
     try:
         async with httpx.AsyncClient() as client:
-            await client.post(socket_url, json={'userId': user_id, 'type': notify_type, 'message': message, 'data': data or {}}, timeout=2.0)
+            await client.post(
+                socket_url,
+                json={'userId': user_id, 'type': notify_type, 'message': message, 'data': data or {}},
+                headers={'X-Internal-Secret': socket_secret},
+                timeout=2.0
+            )
     except Exception as e:
         print(f'[Socket Bridge Error] {e}')
 
-def get_current_user(authorization: Optional[str]=Header(None)):
-    if not authorization or not authorization.startswith('Bearer '):
-        raise HTTPException(status_code=401, detail='Invalid token')
-    token = authorization.split(' ')[1]
+def get_current_user(request: Request, authorization: Optional[str]=Header(None)):
+    token = None
+    # Priority 1: httpOnly cookie
+    if request and hasattr(request, 'cookies'):
+        token = request.cookies.get('access_token')
+    # Priority 2: Authorization header (fallback for socket/external API)
+    if not token:
+        if not authorization or not authorization.startswith('Bearer '):
+            raise HTTPException(status_code=401, detail='Invalid token')
+        token = authorization.split(' ')[1]
     payload = decode_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail='Invalid or expired token')

@@ -7,7 +7,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configuration
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-evaly-123456")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError(
+        "FATAL: JWT_SECRET_KEY environment variable is not set. "
+        "Server cannot start without a secret key. "
+        "Please set JWT_SECRET_KEY in your .env file."
+    )
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 

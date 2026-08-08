@@ -71,3 +71,13 @@ scratch/
 !/tsconfig.json
 !/components.json
 !/package-lock.json
+course/
+docs_and_tests/
+system_workflow_summary.md
+project_struc.md
+capture.mjs
+capture_missing.mjs
+
+AGENTS.md
+IMPLEMENTATION_PLAN.md
+USER_GUIDE.md

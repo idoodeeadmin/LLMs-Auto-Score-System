@@ -12,7 +12,7 @@ from typing import Optional, List
 from server.database import get_db_connection
 from server.auth import get_password_hash, verify_password, create_access_token, decode_token
 from server.models import *
-from server.utils import check_rate_limit, upload_to_cloudinary, get_current_user, grading_queue, trigger_socket_notify, _distribution_buckets
+from server.utils import check_rate_limit, upload_to_cloudinary, get_current_user, grading_queue, trigger_socket_notify, _distribution_buckets, sanitize_csv_value, validate_upload_file
 from server.services.ai_service import _USE_GEMINI, _genai_client, _GEMINI_MODEL
 
 router = APIRouter(prefix="/api/rooms/{room_id}/exams", tags=["Exams"])
@@ -249,6 +249,7 @@ async def submit_exam_multipart(request: Request, room_id: int, exam_id: int, us
             if not raw_bytes:
                 continue
             mime = file_field.content_type or 'image/jpeg'
+            validate_upload_file(raw_bytes, content_type=mime)
             ext = mime.split('/')[-1].replace('jpeg', 'jpg')
             c_url = upload_to_cloudinary(raw_bytes, folder=f"submissions/{exam_id}/{user['id']}")
             if c_url:
@@ -283,7 +284,7 @@ async def export_exam_csv(room_id: int, exam_id: int, user: dict=Depends(get_cur
     writer = csv.writer(output)
     writer.writerow(['Student ID', 'Name', 'Status', 'Score', 'Submitted At'])
     for r in results:
-        writer.writerow([r['student_code'] or '-', r['name'], r['status'], r['total_score'] if r['total_score'] is not None else '0', r['submitted_at'] or '-'])
+        writer.writerow([sanitize_csv_value(r['student_code'] or '-'), sanitize_csv_value(r['name']), r['status'], r['total_score'] if r['total_score'] is not None else '0', r['submitted_at'] or '-'])
     content = output.getvalue()
     return StreamingResponse(iter([content]), media_type='text/csv', headers={'Content-Disposition': f"attachment; filename=scores_{exam_title.replace(' ', '_')}.csv"})
 
@@ -370,7 +371,7 @@ async def export_exam_scores(room_id: int, exam_id: int, user: dict=Depends(get_
         writer = csv.writer(output)
         writer.writerow(export_headers)
         for r in rows:
-            writer.writerow([r['student_code'], r['name'], r['status'], r['total_score'], exam['total_score'], r['submitted_at']])
+            writer.writerow([sanitize_csv_value(r['student_code']), sanitize_csv_value(r['name']), r['status'], r['total_score'], exam['total_score'], r['submitted_at']])
         csv_content = output.getvalue()
         output.close()
         filename = f'exam_{exam_id}_{safe_title}_scores.csv'
@@ -391,7 +392,7 @@ async def export_exam_scores(room_id: int, exam_id: int, user: dict=Depends(get_
         cell.fill = header_fill
         cell.alignment = Alignment(horizontal='center')
     for r in rows:
-        ws.append([r['student_code'], r['name'], r['status'], r['total_score'], exam['total_score'], r['submitted_at']])
+        ws.append([sanitize_csv_value(r['student_code']), sanitize_csv_value(r['name']), r['status'], r['total_score'], exam['total_score'], r['submitted_at']])
     ws.freeze_panes = 'A2'
     ws.auto_filter.ref = ws.dimensions
     bin_output = io.BytesIO()

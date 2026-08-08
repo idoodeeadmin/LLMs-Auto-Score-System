@@ -10,7 +10,7 @@ from typing import Optional, List
 from server.database import get_db_connection
 from server.auth import get_password_hash, verify_password, create_access_token, decode_token
 from server.models import *
-from server.utils import check_rate_limit, upload_to_cloudinary, get_current_user, grading_queue, trigger_socket_notify, generate_class_code, _distribution_buckets
+from server.utils import check_rate_limit, upload_to_cloudinary, get_current_user, grading_queue, trigger_socket_notify, generate_class_code, _distribution_buckets, sanitize_csv_value
 import statistics
 router = APIRouter(prefix='/api/rooms', tags=['Room Routes'])
 
@@ -211,7 +211,7 @@ async def export_room_summary_csv(room_id: int, user: dict=Depends(get_current_u
     writer = csv.writer(output)
     writer.writerow(['Student ID', 'Name'] + exam_titles + ['Total Cumulative Score'])
     for s in students:
-        row = [s['user_id'], s['name']]
+        row = [s['user_id'], sanitize_csv_value(s['name'])]
         cumulative_total = 0
         for eid in exam_ids:
             score = scores_map.get(s['id'], {}).get(eid, 0)
