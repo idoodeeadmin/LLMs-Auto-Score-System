@@ -27,6 +27,20 @@ def test_docs_page():
     response = client.get("/docs")
     assert response.status_code == 200
 
+def test_cors_preflight_for_production_origin():
+    """Verify that OPTIONS preflight requests from Netlify production origin succeed with CORS headers."""
+    response = client.options(
+        "/api/auth/register",
+        headers={
+            "Origin": "https://llms-auto-score-systems.netlify.app",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        }
+    )
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == "https://llms-auto-score-systems.netlify.app"
+    assert response.headers.get("access-control-allow-credentials") == "true"
+
 # --- Authentication Tests ---
 @patch("server.routes.auth_routes.get_db_connection")
 def test_auth_register_success(mock_db):
