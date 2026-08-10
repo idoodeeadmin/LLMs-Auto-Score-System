@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import Navbar from "@/components/Navbar";
 import {
   ChevronLeft, ChevronRight, CheckCircle2, AlertTriangle,
-  MessageSquare, BookOpen, AlertCircle, X, Loader2, Save, ArrowLeft, Image as ImageIcon
+  MessageSquare, BookOpen, AlertCircle, X, Loader2, Save, ArrowLeft, Image as ImageIcon, RotateCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -63,6 +63,7 @@ export default function StudentGrading() {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
   const [isApproving, setIsApproving] = useState(false);
+  const [isRegrading, setIsRegrading] = useState(false);
   const [studentInfo, setStudentInfo] = useState<StudentInfo | null>(null);
   const [answers, setAnswers] = useState<AnswerData[]>([]);
   const [submissionStatus, setSubmissionStatus] = useState<string>("ready");
@@ -186,6 +187,35 @@ export default function StudentGrading() {
     }
   };
 
+  const handleRegrade = async (qId?: number) => {
+    if (!token || !roomId || !examId || !studentId) return;
+    setIsRegrading(true);
+    toast.info("กำลังส่งคำสั่งให้ AI ตรวจประเมินใหม่...");
+    try {
+      const res = await fetch(`/api/rooms/${roomId}/exams/${examId}/submissions/${studentId}/regrade`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(qId ? { question_id: qId } : {})
+      });
+      if (res.ok) {
+        toast.success("ส่งให้ AI ตรวจประเมินใหม่เรียบร้อยแล้ว");
+        setTimeout(() => {
+          if (studentId) fetchSubmission(studentId);
+        }, 2000);
+      } else {
+        const err = await res.json();
+        toast.error(err.detail || "ไม่สามารถส่งตรวจใหม่ได้");
+      }
+    } catch {
+      toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    } finally {
+      setIsRegrading(false);
+    }
+  };
+
   if (isLoading || isFetching) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#F9FBFD] dark:bg-[#111111]">
@@ -223,6 +253,16 @@ export default function StudentGrading() {
                   <button onClick={() => navigateToStudent(currentStudentIndex + 1)} disabled={currentStudentIndex >= studentsList.length - 1} className="p-1.5 disabled:opacity-30 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors text-gray-700 dark:text-gray-300"><ChevronRight size={18} /></button>
                </div>
                
+               <Button
+                 variant="outline"
+                 onClick={() => handleRegrade()}
+                 disabled={isRegrading}
+                 className="h-10 px-4 rounded-lg font-medium text-sm border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 text-gray-700 dark:text-gray-200"
+               >
+                 <RotateCw size={15} className={isRegrading ? "animate-spin text-blue-600" : "text-gray-500"} />
+                 <span>ส่งตรวจใหม่ด้วย AI</span>
+               </Button>
+
                <Button onClick={() => setIsConfirmOpen(true)} disabled={isApproving} className={`h-10 px-5 rounded-lg font-medium text-sm shadow-sm transition-all ${isApproved ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}>
                  {isApproving && <Loader2 size={16} className="animate-spin mr-2" />}
                  {isApproved ? 'บันทึกการแก้ไข' : 'อนุมัติคะแนน'}
@@ -297,16 +337,28 @@ export default function StudentGrading() {
                    <div className="p-6 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-900/20">
                       <div className="flex flex-col md:flex-row justify-between items-start gap-6">
                          <div className="flex-1 space-y-4">
-                            <div className="flex items-center gap-3">
-                               <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 text-xs font-semibold rounded-md border border-blue-200/60 dark:border-blue-800/40">
-                                 AI Assessment
+                            <div className="flex items-center justify-between w-full">
+                               <div className="flex items-center gap-3">
+                                  <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 text-xs font-semibold rounded-md border border-blue-200/60 dark:border-blue-800/40">
+                                    AI Assessment
+                                  </div>
+                                  <span className={`text-xs font-medium px-2 py-1 rounded-md border ${
+                                    a.ai_confidence === 'low' ? 'bg-orange-50 text-orange-700 border-orange-200 dark:border-orange-800/40 dark:bg-orange-900/30 dark:text-orange-400' 
+                                    : 'bg-green-50 text-green-700 border-green-200 dark:border-green-800/40 dark:bg-green-900/30 dark:text-green-400'
+                                  }`}>
+                                    Confidence: {a.ai_confidence}
+                                  </span>
                                </div>
-                               <span className={`text-xs font-medium px-2 py-1 rounded-md border ${
-                                 a.ai_confidence === 'low' ? 'bg-orange-50 text-orange-700 border-orange-200 dark:border-orange-800/40 dark:bg-orange-900/30 dark:text-orange-400' 
-                                 : 'bg-green-50 text-green-700 border-green-200 dark:border-green-800/40 dark:bg-green-900/30 dark:text-green-400'
-                               }`}>
-                                 Confidence: {a.ai_confidence}
-                               </span>
+                               <Button
+                                 variant="ghost"
+                                 size="sm"
+                                 onClick={() => handleRegrade(a.question_id)}
+                                 disabled={isRegrading}
+                                 className="h-8 px-2.5 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-100/50 dark:hover:bg-blue-900/30 flex items-center gap-1.5 rounded-md"
+                               >
+                                 <RotateCw size={13} className={isRegrading ? "animate-spin" : ""} />
+                                 <span>ส่งตรวจข้อนี้ใหม่</span>
+                               </Button>
                             </div>
                             <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed bg-white dark:bg-gray-900/50 p-4 rounded-lg border border-blue-50 dark:border-blue-900/20 shadow-sm">
                               {a.ai_feedback || <span className="text-gray-400 italic">ไม่มี Feedback จาก AI</span>}

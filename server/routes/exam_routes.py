@@ -440,7 +440,7 @@ async def get_my_submission(room_id: int, exam_id: int, user: dict=Depends(get_c
     return submission
 
 @router.get('/{exam_id}/submissions/{student_id}')
-async def get_student_submission(room_id: int, exam_id: int, user_id: int, user: dict=Depends(get_current_user)):
+async def get_student_submission(room_id: int, exam_id: int, student_id: int, user: dict=Depends(get_current_user)):
     """Teacher views detailed submission of a specific student."""
     if user['role'] != 'teacher':
         raise HTTPException(status_code=403, detail='Only teachers can view student submissions')
@@ -486,7 +486,7 @@ async def get_student_submission(room_id: int, exam_id: int, user_id: int, user:
     return {'submission': submission, 'student': student_info, 'answers': answers}
 
 @router.put('/{exam_id}/submissions/{student_id}/approve')
-async def approve_submission(request: Request, room_id: int, exam_id: int, user_id: int, body: ApproveSubmissionRequest, user: dict=Depends(get_current_user)):
+async def approve_submission(request: Request, room_id: int, exam_id: int, student_id: int, body: ApproveSubmissionRequest, user: dict=Depends(get_current_user)):
     """Teacher approves a submission, optionally overriding AI scores."""
     if user['role'] != 'teacher':
         raise HTTPException(status_code=403, detail='Only teachers can approve submissions')
@@ -538,6 +538,47 @@ async def rescore_question(room_id: int, exam_id: int, question_id: int, user: d
         await grading_queue.put({'submission_id': row['submission_id'], 'room_id': room_id, 'exam_id': exam_id, 'question_id': question_id})
     conn.close()
     return {'message': f'เพิ่มการประมวลผลข้อนี้ใหม่จำนวน {len(subs)} รายการลงในคิวแล้ว'}
+
+@router.post('/{exam_id}/submissions/{student_id}/regrade')
+async def regrade_student_submission(
+    room_id: int,
+    exam_id: int,
+    student_id: int,
+    request: Request,
+    user: dict = Depends(get_current_user)
+):
+    """Teacher triggers AI re-evaluation for a student's submission or specific question."""
+    if user['role'] != 'teacher':
+        raise HTTPException(status_code=403, detail='Only teachers can trigger AI re-evaluation')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT id FROM rooms WHERE id = ? AND teacher_id = ?', (room_id, user['id']))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=403, detail='Unauthorized')
+    cursor.execute('SELECT * FROM submissions WHERE exam_id = ? AND user_id = ?', (exam_id, student_id))
+    submission = cursor.fetchone()
+    if not submission:
+        conn.close()
+        raise HTTPException(status_code=404, detail='Submission not found')
+    submission_id = submission['id']
+    body_data = {}
+    try:
+        body_data = await request.json()
+    except Exception:
+        body_data = {}
+    specific_q_id = body_data.get('question_id')
+    cursor.execute("UPDATE submissions SET status = 'grading' WHERE id = ?", (submission_id,))
+    conn.commit()
+    conn.close()
+    await grading_queue.put({
+        'submission_id': submission_id,
+        'room_id': room_id,
+        'exam_id': exam_id,
+        'user_id': student_id,
+        'question_id': specific_q_id
+    })
+    return {'message': 'ส่งคำสั่งให้ AI ตรวจประเมินใหม่เรียบร้อยแล้ว', 'submission_id': submission_id}
 
 @router.post('/{exam_id}/bulk-approve')
 async def bulk_approve(room_id: int, exam_id: int, body: BulkApproveRequest, user: dict=Depends(get_current_user)):

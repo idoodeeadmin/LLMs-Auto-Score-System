@@ -25,14 +25,11 @@ async def register(user: UserRegister, request: Request):
     conn = get_db_connection()
     cursor = conn.cursor()
     hashed_password = get_password_hash(user.password)
+    smtp_host = os.getenv('SMTP_HOST')
+    initial_is_verified = 1 if (_IS_DEV_MODE or not smtp_host) else 0
     try:
-        cursor.execute('INSERT INTO users (email, password, name, role, student_id, is_verified) VALUES (?, ?, ?, ?, ?, 0)', (user.email, hashed_password, user.name, 'unassigned', None))
+        cursor.execute('INSERT INTO users (email, password, name, role, student_id, is_verified) VALUES (?, ?, ?, ?, ?, ?)', (user.email, hashed_password, user.name, 'unassigned', None, initial_is_verified))
         user_id = cursor.lastrowid
-        import uuid
-        from datetime import datetime, timezone, timedelta
-        import os, smtplib
-        from email.mime.text import MIMEText
-        from email.mime.multipart import MIMEMultipart
         token = uuid.uuid4().hex
         expires_at = (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat()
         cursor.execute('INSERT INTO email_verifications (user_id, token, expires_at) VALUES (?, ?, ?)', (user_id, token, expires_at))
@@ -41,7 +38,6 @@ async def register(user: UserRegister, request: Request):
         conn.close()
         raise HTTPException(status_code=400, detail='Email already registered')
     verify_link = f'http://localhost:3000/verify-email?token={token}'
-    smtp_host = os.getenv('SMTP_HOST')
     smtp_port_str = os.getenv('SMTP_PORT', '587')
     smtp_port = int(smtp_port_str) if smtp_port_str else 587
     smtp_user = os.getenv('SMTP_USER')
@@ -70,7 +66,8 @@ async def register(user: UserRegister, request: Request):
         print(f'\n========== VERIFY EMAIL ==========')
         print(f'Verify Link: {dev_verify_link}')
         print(f'==================================\n')
-    response = {'message': 'สมัครสมาชิกสำเร็จ กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชีของคุณ'}
+    msg_str = 'สมัครสมาชิกสำเร็จ กรุณาเข้าสู่ระบบ' if initial_is_verified else 'สมัครสมาชิกสำเร็จ กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชีของคุณ'
+    response = {'message': msg_str}
     if _IS_DEV_MODE and dev_verify_link:
         response['dev_verify_link'] = dev_verify_link
     return response
@@ -88,8 +85,10 @@ async def login(user_data: UserLogin, request: Request, response: Response):
     if not user or not verify_password(user_data.password, user['password']):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Incorrect email or password',
          headers={'WWW-Authenticate': 'Bearer'})
-    if not user.get('is_verified'):
+    smtp_host = os.getenv('SMTP_HOST')
+    if not user.get('is_verified') and not _IS_DEV_MODE and smtp_host:
         raise HTTPException(status_code=403, detail='กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ (Please verify your email before logging in)')
+
     access_token = create_access_token(data={'sub': user['email'], 'token_version': user.get('token_version', 0)})
     response.set_cookie(key="access_token", value=access_token, httponly=True, max_age=60*60*24*7, samesite="lax", path="/")
     client_ip = request.client.host if request.client else 'unknown'

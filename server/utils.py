@@ -111,8 +111,9 @@ async def trigger_socket_notify(user_id: int, notify_type: str, message: str, da
                 headers={'X-Internal-Secret': socket_secret},
                 timeout=2.0
             )
-    except Exception as e:
-        print(f'[Socket Bridge Error] {e}')
+    except Exception:
+        # Node.js WebSocket server is offline or unreachable - notification is safely saved in DB
+        pass
 
 def get_current_user(request: Request, authorization: Optional[str]=Header(None)):
     token = None

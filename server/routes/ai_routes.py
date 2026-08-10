@@ -65,3 +65,29 @@ async def generate_rubric(req: GenerateRubricRequest, user: dict=Depends(get_cur
         print(f'[Gemini Error in Generate Rubric]: {e}')
         raise HTTPException(status_code=500, detail='Failed to generate rubric via AI')
 
+from server.services.ai_service import score_with_gemini
+
+class LiveTestEvalRequest(BaseModel):
+    question_text: str
+    answer_text: str
+    max_score: float = 10.0
+    answer_key: Optional[str] = None
+    rubrics: Optional[List[dict]] = None
+
+@router.post('/live-test-eval')
+async def live_test_eval(req: LiveTestEvalRequest):
+    """Run live evaluation using exact original prompt from ai_service.py."""
+    result = await score_with_gemini(
+        question_text=req.question_text,
+        answer_text=req.answer_text,
+        max_score=req.max_score,
+        answer_key=req.answer_key,
+        rubrics=req.rubrics
+    )
+    return {
+        "success": True,
+        "use_gemini": _USE_GEMINI,
+        "result": result
+    }
+
+
