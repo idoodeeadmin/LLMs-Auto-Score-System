@@ -129,25 +129,16 @@ def test_get_exams(mock_db):
     assert response.json()[0]["title"] == "Midterm Exam"
     clear_overrides()
 
-# --- AI & Rubric Generation Mock Test ---
-@patch("server.routes.ai_routes._USE_GEMINI", True)
-@patch("server.routes.ai_routes._genai_client")
-def test_generate_rubric_mock(mock_genai):
+# --- OpenAI rubric route (provider call mocked, transport tested separately) ---
+@patch("server.routes.ai_routes._get_openai_api_key", return_value="test-only")
+@patch("server.routes.ai_routes.generate_rubric_with_openai")
+def test_generate_rubric_mock(mock_generate, mock_key):
     override_get_current_user({"id": 1, "role": "teacher"})
-    # Mock AI response
-    mock_response = MagicMock()
-    mock_response.text = json.dumps({
-        "answer_key": "Correct Answer",
-        "rubrics": [{"name": "Accuracy", "description": "Good", "score": 10}]
-    })
-    mock_genai.models.generate_content.return_value = mock_response
-    
-    response = client.post("/api/gemini/generate-rubric", 
-        json={"question_text": "What is AI?", "total_score": 10},
-        headers={"Authorization": "Bearer fake-token"}
-    )
+    mock_generate.return_value = {
+        "answer_key": "LIFO",
+        "rubrics": [{"name": "Accuracy", "description": "Good", "score": 10}],
+    }
+    response = client.post("/api/ai/generate-rubric", json={"question_text": "Explain Stack", "total_score": 10})
     assert response.status_code == 200
-    assert "answer_key" in response.json()
-    clear_overrides()
-
-
+    assert response.json()["answer_key"] == "LIFO"
+    mock_generate.assert_awaited_once()

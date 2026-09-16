@@ -115,11 +115,6 @@ export default function ExamView() {
                   </div>
                   {exam?.description && <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{exam.description}</p>}
                 </div>
-                {isTeacher && (
-                  <Button variant="outline" onClick={() => navigate(`/room/${roomId}/exam/${examId}/analytics`)} className="shrink-0 h-10 text-sm font-medium border-gray-200 dark:border-gray-700 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-400 hover:border-blue-200 dark:hover:border-blue-800 transition-all text-gray-700 dark:text-gray-300 w-full sm:w-auto">
-                    ดูสถิติการสอบ
-                  </Button>
-                )}
               </div>
               <div className="flex flex-wrap gap-8 text-sm border-t border-gray-100 dark:border-gray-800 pt-5 mt-2">
                 <div><span className="text-xs text-gray-500 dark:text-gray-400 block mb-1">เริ่มสอบ</span><span className="font-medium text-gray-800 dark:text-gray-200">{fmt(exam?.start_date)}</span></div>

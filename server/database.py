@@ -45,6 +45,9 @@ class MySQLConnectionWrapper:
     def commit(self):
         self.conn.commit()
 
+    def rollback(self):
+        self.conn.rollback()
+
     def close(self):
         self.conn.close()
 
@@ -220,6 +223,7 @@ def init_db():
         title VARCHAR(255) NOT NULL,
         content TEXT NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME,
         FOREIGN KEY (room_id) REFERENCES rooms (id) ON DELETE CASCADE,
         FOREIGN KEY (teacher_id) REFERENCES users (id) ON DELETE CASCADE
     )
@@ -279,6 +283,7 @@ def init_db():
     add_column_if_not_exists("users", "token_version INTEGER DEFAULT 0")
     add_column_if_not_exists("exams", "is_randomized TINYINT DEFAULT 0")
     add_column_if_not_exists("submission_answers", "quality_metrics TEXT")
+    add_column_if_not_exists("announcements", "updated_at DATETIME")
     
     try:
         cursor.execute("ALTER TABLE users ADD COLUMN is_verified TINYINT DEFAULT 0")

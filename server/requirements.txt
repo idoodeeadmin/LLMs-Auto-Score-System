@@ -5,7 +5,6 @@ python-jose[cryptography]
 python-multipart
 python-dotenv
 email-validator
-google-genai
 aiofiles
 openpyxl
 httpx
@@ -14,3 +13,6 @@ pymysql
 certifi
 pytest
 pytest-mock
+cloudinary
+pythainlp==5.3.7
+Pillow

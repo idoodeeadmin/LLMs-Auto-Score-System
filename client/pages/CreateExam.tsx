@@ -1,36 +1,21 @@
-import { useState, useEffect, useRef } from "react";
+import { WorkspaceBreadcrumb } from "@/components/WorkspaceHeader";
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Plus, Trash2, X, Image as ImageIcon, ArrowLeft, Loader2, BookOpen, Search, Sparkles, Copy, Settings, Calendar, Save, Check, BookmarkPlus, Bookmark } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import Navbar from "@/components/Navbar";
-import { Input } from "@/components/ui/input";
+import {
+  ArrowLeft,
+  Plus,
+  X,
+  Loader2,
+  Save,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { toast } from "sonner";
-
-// A simple auto-resizing textarea component
-function AutoResizingTextarea({ value, onChange, placeholder, className, minRows = 1 }: any) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
-    }
-  }, [value]);
-
-  return (
-    <textarea
-      ref={textareaRef}
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      className={`overflow-hidden resize-none ${className}`}
-      rows={minRows}
-    />
-  );
-}
 
 interface RubricItem {
   id: number;
@@ -43,30 +28,9 @@ interface Question {
   id: number;
   text: string;
   score: string;
-  questionImages: string[];
   answerKey: string;
   rubrics: RubricItem[];
-  gradingTone: "simple" | "moderate" | "academic";
-  isGenerating?: boolean;
-  isExpanded?: boolean;
 }
-
-interface RubricPreset {
-  id: string;
-  name: string;
-  rubrics: RubricItem[];
-}
-
-const newQuestion = (): Question => ({
-  id: Date.now() + Math.random(),
-  text: "",
-  score: "1",
-  questionImages: [],
-  answerKey: "",
-  rubrics: [{ id: Date.now() + Math.random(), name: "", description: "", score: "1" }],
-  gradingTone: "moderate",
-  isExpanded: false,
-});
 
 export default function CreateExam() {
   const { roomId } = useParams();
@@ -76,198 +40,133 @@ export default function CreateExam() {
 
   const [examTitle, setExamTitle] = useState("");
   const [examDescription, setExamDescription] = useState("");
-  const [startDateTime, setStartDateTime] = useState("");
-  const [endDateTime, setEndDateTime] = useState("");
-  const [isRandomized, setIsRandomized] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [questions, setQuestions] = useState<Question[]>([newQuestion()]);
 
-  const [rubricPresets, setRubricPresets] = useState<RubricPreset[]>(() => {
-    try {
-      const saved = localStorage.getItem("evaly_rubric_presets");
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
+  const [questions, setQuestions] = useState<Question[]>([
+    {
+      id: 1,
+      text: "",
+      score: "5",
+      answerKey: "",
+      rubrics: [{ id: 101, name: "", description: "", score: "5" }],
+    },
+  ]);
+
+  // Single collapsible state per question (controls both answer key and rubrics together)
+  const [showDetails, setShowDetails] = useState<{ [qId: number]: boolean }>({
+    1: true,
   });
 
-  const [showPresetModal, setShowPresetModal] = useState<number | null>(null);
-  const [presetNameInput, setPresetNameInput] = useState("");
-  const [presetToDelete, setPresetToDelete] = useState<string | null>(null);
+  const totalScore = questions.reduce(
+    (sum, q) => sum + (parseFloat(q.score) || 0),
+    0,
+  );
 
-  const [showExitModal, setShowExitModal] = useState(false);
-
-  // Helper to format date for datetime-local input (YYYY-MM-DDTHH:mm)
-  const formatDateTime = (date: Date) => {
-    const tzOffset = date.getTimezoneOffset() * 60000;
-    const localISOTime = new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
-    return localISOTime;
+  const updateQuestion = (id: number, patch: Partial<Question>) => {
+    setQuestions((prev) =>
+      prev.map((q) => (q.id === id ? { ...q, ...patch } : q)),
+    );
   };
 
-  const setQuickStart = (type: "now" | "15m" | "tomorrow") => {
-    const d = new Date();
-    if (type === "15m") d.setMinutes(d.getMinutes() + 15);
-    if (type === "tomorrow") {
-      d.setDate(d.getDate() + 1);
-      d.setHours(8, 30, 0, 0);
-    }
-    setStartDateTime(formatDateTime(d));
+  const toggleDetails = (qId: number) => {
+    setShowDetails((prev) => ({ ...prev, [qId]: !(prev[qId] ?? true) }));
   };
 
-  const setQuickEnd = (minutes: number) => {
-    const base = startDateTime ? new Date(startDateTime) : new Date();
-    const d = new Date(base.getTime() + minutes * 60000);
-    setEndDateTime(formatDateTime(d));
+  const addRubric = (qId: number) => {
+    setQuestions((prev) =>
+      prev.map((q) =>
+        q.id === qId
+          ? {
+              ...q,
+              rubrics: [
+                ...q.rubrics,
+                {
+                  id: Date.now() + Math.random(),
+                  name: "",
+                  description: "",
+                  score: "1",
+                },
+              ],
+            }
+          : q,
+      ),
+    );
   };
 
-  useEffect(() => {
-    localStorage.setItem("evaly_rubric_presets", JSON.stringify(rubricPresets));
-  }, [rubricPresets]);
-
-
-
-  const updateQuestion = (id: number, patch: Partial<Question>) =>
-    setQuestions(prev => prev.map(q => q.id === id ? { ...q, ...patch } : q));
-
-  const addRubric = (qId: number) =>
-    setQuestions(prev => prev.map(q => q.id === qId
-      ? { ...q, rubrics: [...q.rubrics, { id: Date.now() + Math.random(), name: "", description: "", score: "" }] }
-      : q));
-
-  const removeRubric = (qId: number, rId: number) =>
-    setQuestions(prev => prev.map(q => q.id === qId
-      ? { ...q, rubrics: q.rubrics.filter(r => r.id !== rId) }
-      : q));
-
-  const updateRubric = (qId: number, rId: number, patch: Partial<RubricItem>) =>
-    setQuestions(prev => prev.map(q => q.id === qId
-      ? { ...q, rubrics: q.rubrics.map(r => r.id === rId ? { ...r, ...patch } : r) }
-      : q));
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, qId: number) => {
-    const files = e.target.files;
-    if (!files) return;
-    Array.from(files).forEach(file => {
-      const reader = new FileReader();
-      reader.onloadend = () =>
-        setQuestions(prev => prev.map(q => q.id === qId
-          ? { ...q, questionImages: [...q.questionImages, reader.result as string] }
-          : q));
-      reader.readAsDataURL(file);
-    });
+  const removeRubric = (qId: number, rId: number) => {
+    setQuestions((prev) =>
+      prev.map((q) =>
+        q.id === qId
+          ? { ...q, rubrics: q.rubrics.filter((r) => r.id !== rId) }
+          : q,
+      ),
+    );
   };
 
-  const removeImage = (qId: number, idx: number) =>
-    setQuestions(prev => prev.map(q => q.id === qId
-      ? { ...q, questionImages: q.questionImages.filter((_, i) => i !== idx) }
-      : q));
-
-  const duplicateQuestion = (qId: number) => {
-    const src = questions.find(q => q.id === qId);
-    if (!src) return;
-    setQuestions(prev => {
-      const idx = prev.findIndex(q => q.id === qId);
-      const newQs = [...prev];
-      newQs.splice(idx + 1, 0, {
-        ...src,
-        id: Date.now() + Math.random(),
-        rubrics: src.rubrics.map(r => ({ ...r, id: Date.now() + Math.random() })),
-      });
-      return newQs;
-    });
-  };
-
-  const generateRubric = async (qId: number) => {
-    const q = questions.find(x => x.id === qId);
-    if (!q) return;
-    if (!q.text.trim() && q.questionImages.length === 0) {
-      toast.error("กรอกโจทย์หรือแนบรูปก่อน"); return;
-    }
-    if (!parseFloat(q.score) || parseFloat(q.score) <= 0) {
-      toast.error("ระบุคะแนนเต็มก่อน"); return;
-    }
-    updateQuestion(qId, { isGenerating: true });
-    try {
-      const res = await fetch("/api/gemini/generate-rubric", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ question_text: q.text, total_score: parseFloat(q.score), question_images_base64: q.questionImages, tone: q.gradingTone }),
-      });
-      if (!res.ok) throw new Error((await res.json()).detail || "AI Error");
-      const data = await res.json();
-      updateQuestion(qId, {
-        answerKey: data.answer_key || "",
-        rubrics: data.rubrics?.map((r: any, i: number) => ({ id: Date.now() + i, name: r.name || "", description: r.description || "", score: String(r.score || 0) })) || q.rubrics,
-        isGenerating: false,
-        isExpanded: true,
-      });
-      toast.success("AI สร้างเกณฑ์สำเร็จ!");
-    } catch (e: any) {
-      toast.error(e.message);
-      updateQuestion(qId, { isGenerating: false });
-    }
-  };
-
-  const saveRubricPreset = () => {
-    if (showPresetModal === null || !presetNameInput.trim()) return;
-    const q = questions.find(x => x.id === showPresetModal);
-    if (!q || q.rubrics.length === 0) return;
-    
-    const newPreset = {
-      id: Date.now().toString(),
-      name: presetNameInput.trim(),
-      rubrics: q.rubrics.map(r => ({ ...r, id: Date.now() + Math.random() }))
-    };
-    setRubricPresets(prev => [...prev, newPreset]);
-    toast.success("บันทึกเทมเพลตเกณฑ์สำเร็จ");
-    setShowPresetModal(null);
-    setPresetNameInput("");
-  };
-
-  const applyRubricPreset = (qId: number, presetId: string) => {
-    const preset = rubricPresets.find(p => p.id === presetId);
-    if (!preset) return;
-    updateQuestion(qId, { 
-      rubrics: preset.rubrics.map(r => ({ ...r, id: Date.now() + Math.random() })) 
-    });
-    toast.success("นำเทมเพลตเกณฑ์มาใช้แล้ว");
-  };
-
-  const deleteRubricPreset = () => {
-    if (!presetToDelete) return;
-    setRubricPresets(prev => prev.filter(p => p.id !== presetToDelete));
-    setPresetToDelete(null);
-    toast.success("ลบเทมเพลตสำเร็จ");
+  const updateRubric = (
+    qId: number,
+    rId: number,
+    patch: Partial<RubricItem>,
+  ) => {
+    setQuestions((prev) =>
+      prev.map((q) =>
+        q.id === qId
+          ? {
+              ...q,
+              rubrics: q.rubrics.map((r) =>
+                r.id === rId ? { ...r, ...patch } : r,
+              ),
+            }
+          : q,
+      ),
+    );
   };
 
   const handleSave = async () => {
-    const validQs = questions.filter(q => q.text.trim() || q.questionImages.length > 0);
-    if (!validQs.length) { toast.error("เพิ่มคำถามอย่างน้อยหนึ่งข้อ"); return; }
+    const validQs = questions.filter((q) => q.text.trim());
+    if (!validQs.length) {
+      toast.error("เพิ่มคำถามอย่างน้อยหนึ่งข้อ");
+      return;
+    }
     setIsSaving(true);
     const total = validQs.reduce((s, q) => s + (parseFloat(q.score) || 0), 0);
     try {
       const res = await fetch(`/api/rooms/${roomId}/exams`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
-          title: examTitle.trim() || (validQs[0].text.slice(0, 50) || "ข้อสอบใหม่"),
+          title:
+            examTitle.trim() || validQs[0].text.slice(0, 50) || "ข้อสอบใหม่",
           description: examDescription || null,
           total_score: total,
-          start_date: startDateTime || null,
-          end_date: endDateTime || null,
-          is_randomized: isRandomized ? 1 : 0,
+          start_date: null,
+          end_date: null,
+          is_randomized: 0,
           questions: validQs.map((q, i) => ({
-            text: q.text, score: parseFloat(q.score) || 0,
+            text: q.text,
+            score: parseFloat(q.score) || 0,
             answer_key: q.answerKey || null,
-            rubrics: q.rubrics.filter(r => r.name).map(r => ({ name: r.name, description: r.description, score: parseFloat(r.score) || 0 })),
+            rubrics: q.rubrics
+              .filter((r) => r.name)
+              .map((r) => ({
+                name: r.name,
+                description: r.description,
+                score: parseFloat(r.score) || 0,
+              })),
             order_index: i,
-            question_images_base64: q.questionImages.length > 0 ? q.questionImages : null,
+            question_images_base64: null,
           })),
         }),
-      });
-      if (res.ok) {
+      }).catch(() => null);
+
+      if (res && res.ok) {
         toast.success("สร้างข้อสอบสำเร็จ!");
         navigate(`/room/${roomId}`);
       } else {
-        toast.error((await res.json()).detail || "บันทึกไม่สำเร็จ");
+        const err = await res?.json().catch(() => null);
+        toast.error(err?.detail || "ไม่สามารถสร้างข้อสอบได้");
       }
     } catch {
       toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
@@ -276,465 +175,304 @@ export default function CreateExam() {
     }
   };
 
-  const onBack = () => {
-    const hasData = examTitle !== "" || examDescription || questions.some(q => q.text);
-    if (hasData) {
-      setShowExitModal(true);
-    } else {
-      navigate(`/room/${roomId}`);
-    }
-  };
-
-  const confirmExitDiscard = () => {
-    navigate(`/room/${roomId}`);
-  };
-
-  const confirmExitKeep = () => {
-    navigate(`/room/${roomId}`);
-  };
-
-  const totalScore = questions.reduce((s, q) => s + (parseFloat(q.score) || 0), 0);
-
   return (
-    <div className="min-h-screen bg-[#F9FBFD] dark:bg-[#111111] transition-colors duration-200 font-sans">
-      {/* Docs-style Toolbar */}
-      <div className="sticky top-0 z-40 bg-[#EDF2FA] dark:bg-[#1E1E1E] border-b border-gray-300 dark:border-gray-800 px-2 sm:px-4 py-2 flex items-center justify-between gap-2 sm:gap-4">
-        <div className="flex items-center gap-1 sm:gap-2 min-w-0">
-          <button onClick={onBack} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full text-gray-600 dark:text-gray-300 transition-colors shrink-0" title="กลับ">
-            <ArrowLeft size={20} />
+    <div className="workspace">
+      {/* Clean Top Navbar */}
+      <div className="task-header sticky top-0 z-40 bg-white dark:bg-[#1E1E1E] border-b border-slate-200 dark:border-slate-800 px-8 py-3 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-3 min-w-0">
+          <button
+            onClick={() => navigate(`/room/${roomId}`)}
+            className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition"
+          >
+            <ArrowLeft size={18} />
           </button>
-          <div className="flex flex-col min-w-0">
+          <div className="task-header-title flex flex-col min-w-0">
             <input
               type="text"
+              aria-label="ชื่อข้อสอบ"
               value={examTitle}
-              onChange={e => setExamTitle(e.target.value)}
-              className="bg-transparent border-none focus:bg-white dark:focus:bg-gray-800 focus:ring-1 focus:ring-blue-500 rounded px-2 py-0.5 text-base sm:text-lg text-gray-800 dark:text-gray-100 font-medium placeholder-gray-400 w-full"
-              placeholder="ชื่อข้อสอบ..."
+              onChange={(e) => setExamTitle(e.target.value)}
+              className="bg-transparent border-none focus:outline-none text-base font-bold text-slate-900 dark:text-white p-0"
+              placeholder="ชื่อข้อสอบ (เช่น แบบทดสอบกลางภาค)..."
             />
-            <div className="flex items-center gap-2 sm:gap-4 px-2 mt-0.5 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">
-              <span className="flex items-center gap-1 shrink-0"></span>
-              <span className="font-medium text-blue-600 dark:text-blue-400 shrink-0">คะแนน: {totalScore}</span>
-            </div>
+            <span className="text-xs text-[#245b50] dark:text-[#91c7b8] font-medium">
+              คะแนนเต็มรวม: {totalScore} คะแนน
+            </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-1 sm:gap-2">
-          <div className="hidden sm:block">
-            <ThemeToggle />
-          </div>
-          <div className="hidden sm:block w-px h-6 bg-gray-300 dark:bg-gray-700 mx-1"></div>
-          
-          <button
-            onClick={() => setShowSettings(true)}
-            className="flex items-center gap-1.5 p-1.5 sm:px-3 sm:py-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded transition-colors"
-            title="การตั้งค่า"
-          >
-            <Settings size={18} className="shrink-0" />
-            <span className="text-[11px] sm:text-sm font-medium whitespace-nowrap">การตั้งค่า</span>
-          </button>
-          
+        <div className="task-header-actions flex items-center gap-3">
+          <ThemeToggle />
 
-          
-          <Button onClick={handleSave} disabled={isSaving} className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-4 sm:px-5 h-8 sm:h-9 text-xs sm:text-sm font-medium shadow-sm ml-1 sm:ml-2 shrink-0">
-            {isSaving ? <Loader2 size={16} className="animate-spin" /> : "ส่ง"}
+          <Button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="primary-action"
+          >
+            {isSaving ? (
+              <Loader2 size={15} className="animate-spin mr-1" />
+            ) : (
+              <Save size={15} className="mr-1" />
+            )}
+            บันทึกสร้างข้อสอบ
           </Button>
         </div>
       </div>
 
-      {/* Settings Modal */}
-      {showSettings && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-md flex flex-col border border-gray-200 dark:border-gray-800">
-            <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
-              <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                <Settings size={16} /> การตั้งค่าหน้ากระดาษ
-              </h3>
-              <button onClick={() => setShowSettings(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="p-5 space-y-5">
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">วันและเวลาที่เริ่มสอบ (ไม่บังคับ)</label>
-                  <div className="flex gap-1.5">
-                    <button onClick={() => setQuickStart("now")} className="text-[10px] bg-gray-100 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-600 dark:text-gray-400 hover:text-blue-600 px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700 transition-colors">ตอนนี้</button>
-                    <button onClick={() => setQuickStart("tomorrow")} className="text-[10px] bg-gray-100 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-600 dark:text-gray-400 hover:text-blue-600 px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700 transition-colors">พรุ่งนี้เช้า</button>
-                  </div>
-                </div>
-                <Input type="datetime-local" value={startDateTime} onChange={e => setStartDateTime(e.target.value)} className="h-10 text-sm bg-gray-50 dark:bg-gray-950 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white [color-scheme:dark]" />
-              </div>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">วันและเวลาที่สิ้นสุด (ไม่บังคับ)</label>
-                  <div className="flex gap-1.5">
-                    <button onClick={() => setQuickEnd(30)} className="text-[10px] bg-gray-100 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-600 dark:text-gray-400 hover:text-blue-600 px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700 transition-colors">+30น.</button>
-                    <button onClick={() => setQuickEnd(60)} className="text-[10px] bg-gray-100 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-600 dark:text-gray-400 hover:text-blue-600 px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700 transition-colors">+1ชม.</button>
-                    <button onClick={() => setQuickEnd(120)} className="text-[10px] bg-gray-100 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-600 dark:text-gray-400 hover:text-blue-600 px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700 transition-colors">+2ชม.</button>
-                    <button onClick={() => setQuickEnd(1440)} className="text-[10px] bg-gray-100 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-600 dark:text-gray-400 hover:text-blue-600 px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700 transition-colors">+1วัน</button>
-                  </div>
-                </div>
-                <Input type="datetime-local" value={endDateTime} onChange={e => setEndDateTime(e.target.value)} className="h-10 text-sm bg-gray-50 dark:bg-gray-950 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white [color-scheme:dark]" />
-              </div>
-              <div className="flex items-center justify-between pt-2">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">สุ่มลำดับข้อสอบ</label>
-                <button
-                  onClick={() => setIsRandomized(!isRandomized)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isRandomized ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-700"}`}
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${isRandomized ? "translate-x-6" : "translate-x-1"}`} />
-                </button>
-              </div>
-            </div>
-            <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex justify-end">
-              <Button onClick={() => setShowSettings(false)} className="bg-blue-600 hover:bg-blue-700 text-white px-6">ตกลง</Button>
-            </div>
-          </div>
+      {/* Google Docs Paper Canvas */}
+      <div className="document-page">
+        <WorkspaceBreadcrumb roomId={roomId} current="สร้างข้อสอบ" />
+        <h1 className="page-heading mb-2">สร้างข้อสอบ</h1>
+        <p className="page-description mb-6">
+          กำหนดคำถาม คะแนนเต็ม และเกณฑ์การให้คะแนนให้ครบก่อนบันทึก
+        </p>
+        <div className="work-summary">
+          <span>{questions.length} ข้อ</span>
+          <span>คะแนนเต็ม {totalScore} คะแนน</span>
+          <span>ยังไม่บันทึก · กดบันทึกข้อสอบเมื่อพร้อม</span>
         </div>
-      )}
-
-
-
-      {/* Preset Name Modal */}
-      {showPresetModal !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-sm flex flex-col border border-gray-200 dark:border-gray-800">
-            <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
-              <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                <BookmarkPlus size={16} className="text-blue-500" /> บันทึกเทมเพลตเกณฑ์
-              </h3>
-              <button onClick={() => setShowPresetModal(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="p-5 space-y-4">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">ตั้งชื่อเทมเพลตเกณฑ์การให้คะแนนนี้</label>
-              <Input
-                value={presetNameInput}
-                onChange={e => setPresetNameInput(e.target.value)}
-                placeholder="เช่น เกณฑ์การเขียนเรียงความ..."
-                autoFocus
-                onKeyDown={e => { if (e.key === 'Enter') saveRubricPreset(); }}
-              />
-            </div>
-            <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-2">
-              <Button onClick={() => setShowPresetModal(null)} variant="outline" className="text-gray-600 dark:text-gray-300">ยกเลิก</Button>
-              <Button onClick={saveRubricPreset} className="bg-blue-600 hover:bg-blue-700 text-white">บันทึก</Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Preset Confirm Modal */}
-      {presetToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-sm flex flex-col border border-gray-200 dark:border-gray-800">
-            <div className="p-6 text-center space-y-4">
-              <div className="mx-auto w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                <Trash2 size={24} className="text-red-600 dark:text-red-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">ยืนยันการลบเทมเพลต</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                คุณแน่ใจหรือไม่ว่าต้องการลบเทมเพลตนี้? การกระทำนี้ไม่สามารถย้อนกลับได้
-              </p>
-            </div>
-            <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex justify-center gap-3">
-              <Button onClick={() => setPresetToDelete(null)} variant="outline" className="flex-1 text-gray-600 dark:text-gray-300">ยกเลิก</Button>
-              <Button onClick={deleteRubricPreset} className="flex-1 bg-red-600 hover:bg-red-700 text-white">ลบเทมเพลต</Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Exit Modal for CreateExam */}
-      {showExitModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-sm flex flex-col border border-gray-200 dark:border-gray-800">
-            <div className="p-6 text-center space-y-4">
-              <div className="mx-auto w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-                <ArrowLeft size={24} className="text-orange-600 dark:text-orange-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">ออกจากหน้านี้?</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                คุณมีข้อมูลข้อสอบที่กำลังสร้างค้างไว้ ต้องการบันทึกไว้ทำต่อทีหลัง หรือทิ้งแบบร่างนี้ไปเลย?
-              </p>
-            </div>
-            <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row justify-center gap-3">
-              <Button onClick={() => setShowExitModal(false)} variant="ghost" className="text-gray-500">ยกเลิก</Button>
-              <div className="flex gap-2 w-full">
-                <Button onClick={confirmExitDiscard} variant="outline" className="flex-1 text-red-600 border-red-200 hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-900/30">ทิ้งแบบร่าง</Button>
-                <Button onClick={confirmExitKeep} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white">เก็บไว้ทำต่อ</Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Docs Canvas (The Paper) */}
-      <div className="py-4 sm:py-8 px-2 sm:px-8">
-        <div className="max-w-[816px] mx-auto bg-white dark:bg-[#1E1E1E] shadow-sm border border-gray-300 dark:border-gray-800 min-h-screen sm:min-h-[1056px] p-4 sm:p-16 flex flex-col gap-6 sm:gap-8 rounded-sm">
-          
-          {/* Document Header */}
-          <div className="border-b-2 border-gray-900 dark:border-white pb-6 mb-2">
-            <AutoResizingTextarea
+        <div className="exam-paper space-y-8">
+          {/* Header Description */}
+          <div className="border-b border-slate-200 dark:border-slate-800 pb-4">
+            <input
+              type="text"
+              aria-label="คำชี้แจงข้อสอบ"
               value={examDescription}
-              onChange={(e: any) => setExamDescription(e.target.value)}
-              placeholder="เพิ่มคำอธิบายข้อสอบ หรือคำชี้แจง (Optional)..."
-              className="w-full text-center text-base text-gray-600 dark:text-gray-400 bg-transparent border-none focus:ring-0 resize-none px-0 py-1 italic"
+              onChange={(e) => setExamDescription(e.target.value)}
+              placeholder="คำชี้แจงข้อสอบ (เช่น ให้นิสิตตอบคำถามและยกตัวอย่างประกอบให้ครบถ้วน)..."
+              className="w-full text-sm text-slate-600 dark:text-slate-300 bg-transparent border-b border-slate-200 focus:outline-none py-3"
             />
           </div>
 
-          {/* Questions Stream */}
+          {/* Flat Question Flow */}
           <div className="space-y-8">
-            {questions.map((q, index) => (
-              <div key={q.id} className="group relative flex flex-col sm:flex-row gap-2 sm:gap-4 pl-0 sm:pl-4 border-l-4 border-transparent sm:hover:border-blue-200 dark:sm:hover:border-blue-900/50 transition-colors sm:-ml-5 pr-0 sm:pr-4 py-2">
+            {questions.map((q, index) => {
+              const isOpen = showDetails[q.id] ?? true;
 
-
-                {/* Floating Actions (Left Margin - Desktop) */}
-                <div className="hidden sm:flex absolute -left-12 top-1 flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                  <button onClick={() => duplicateQuestion(q.id)} className="p-2.5 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 bg-white dark:bg-[#252525] shadow-md hover:shadow-lg border border-gray-200 dark:border-gray-700 rounded-full transition-all hover:scale-110" title="คัดลอกข้อนี้">
-                    <Copy size={16} />
-                  </button>
-                  {questions.length > 1 && (
-                    <button onClick={() => setQuestions(prev => prev.filter(x => x.id !== q.id))} className="p-2.5 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 bg-white dark:bg-[#252525] shadow-md hover:shadow-lg border border-gray-200 dark:border-gray-700 rounded-full transition-all hover:scale-110" title="ลบข้อนี้">
-                      <Trash2 size={16} />
-                    </button>
-                  )}
-                </div>
-
-                {/* Mobile Header (Number + Actions) */}
-                <div className="flex flex-row items-center gap-2 sm:hidden mb-1">
-                  <div className="font-medium text-lg text-gray-900 dark:text-gray-100 shrink-0">
-                    {index + 1}.
-                  </div>
-                  <div className="flex flex-row gap-1.5 ml-auto">
-                    <button onClick={() => duplicateQuestion(q.id)} className="p-1.5 text-gray-400 hover:text-blue-600 dark:text-gray-500 dark:hover:text-blue-400 bg-gray-50 dark:bg-gray-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors" title="คัดลอกข้อนี้">
-                      <Copy size={16} />
-                    </button>
-                    {questions.length > 1 && (
-                      <button onClick={() => setQuestions(prev => prev.filter(x => x.id !== q.id))} className="p-1.5 text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-400 bg-gray-50 dark:bg-gray-800/50 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors" title="ลบข้อนี้">
-                        <Trash2 size={16} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Desktop Number */}
-                <div className="hidden sm:block font-medium text-lg text-gray-900 dark:text-gray-100 pt-0.5 min-w-[24px]">
-                  {index + 1}.
-                </div>
-
-                <div className="flex-1 space-y-4">
-                  {/* Question Text & Score inline */}
-                  <div className="flex gap-4 items-start">
-                    <AutoResizingTextarea
+              return (
+                <div
+                  key={q.id}
+                  className="space-y-4 pb-8 border-b border-slate-100 dark:border-slate-800"
+                >
+                  {/* Question Header & Score */}
+                  <div className="question-editor flex gap-3 items-start">
+                    <span className="font-bold text-sm text-slate-900 dark:text-white pt-1">
+                      {index + 1}.
+                    </span>
+                    <textarea
+                      aria-label={`คำถามข้อที่ ${index + 1}`}
                       value={q.text}
-                      onChange={(e: any) => updateQuestion(q.id, { text: e.target.value })}
+                      onChange={(e) =>
+                        updateQuestion(q.id, { text: e.target.value })
+                      }
                       placeholder="พิมพ์โจทย์คำถาม..."
-                      className="flex-1 text-lg text-gray-900 dark:text-gray-100 bg-transparent border-none focus:ring-0 px-0 py-0 font-medium leading-relaxed"
+                      className="flex-1 text-sm text-slate-900 dark:text-white bg-transparent border-b border-slate-200 dark:border-slate-700 focus:border-[#1a73e8] focus:outline-none p-1 font-medium leading-relaxed resize-none"
+                      rows={2}
                     />
-                    <div className="shrink-0 flex items-center gap-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 px-2 py-1 rounded-md opacity-50 group-hover:opacity-100 transition-opacity">
-                      <Input
+                    <div className="question-score flex items-center gap-1 shrink-0 pt-1">
+                      <input
                         type="number"
+                        aria-label={`คะแนนเต็มข้อที่ ${index + 1}`}
+                        min="0"
                         value={q.score}
-                        onChange={e => updateQuestion(q.id, { score: e.target.value })}
-                        className="w-12 h-6 text-center text-sm font-semibold bg-transparent border-none focus:ring-0 px-0"
+                        onChange={(e) =>
+                          updateQuestion(q.id, { score: e.target.value })
+                        }
+                        className="w-10 text-center text-xs font-bold bg-transparent border-b border-slate-200 dark:border-slate-700 focus:outline-none"
                       />
-                      <span className="text-xs text-gray-500">คะแนน</span>
+                      <span className="text-xs text-slate-400">คะแนน</span>
                     </div>
                   </div>
 
-                  {/* Images */}
-                  {q.questionImages.length > 0 && (
-                    <div className="flex flex-wrap gap-3">
-                      {q.questionImages.map((img, i) => (
-                        <div key={i} className="relative group/img max-w-[200px] rounded-sm overflow-hidden border border-gray-300 dark:border-gray-700">
-                          <img src={img} alt="" className="w-full h-auto object-contain" />
-                          <button
-                            onClick={() => removeImage(q.id, i)}
-                            className="absolute top-1 right-1 bg-black/50 hover:bg-black/80 text-white rounded-full p-1 opacity-0 group-hover/img:opacity-100 transition-opacity"
-                          >
-                            <X size={12} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Tools below question */}
-                  <div className={`flex flex-wrap items-center gap-2 sm:gap-3 pt-2 transition-opacity ${q.isExpanded ? 'opacity-100' : 'opacity-100 sm:opacity-0 group-hover:opacity-100'}`}>
-                    <input type="file" id={`img-${q.id}`} className="hidden" accept="image/*" multiple onChange={e => handleImageUpload(e, q.id)} />
-                    <button onClick={() => document.getElementById(`img-${q.id}`)?.click()} className="flex items-center gap-1.5 text-[11px] sm:text-xs text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-1.5 rounded-full transition-colors font-medium">
-                      <ImageIcon size={13} /> แนบรูปภาพ
-                    </button>
-                    <button onClick={() => updateQuestion(q.id, { isExpanded: !q.isExpanded })} className="flex items-center gap-1.5 text-[11px] sm:text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-full transition-colors font-medium">
-                      {q.isExpanded ? "ซ่อนเฉลย/เกณฑ์" : "ตั้งค่าเฉลยและเกณฑ์"}
+                  {/* Single Toggle Button for Answer Key & Rubrics */}
+                  <div className="pl-6">
+                    <button
+                      type="button"
+                      onClick={() => toggleDetails(q.id)}
+                      className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-[#245b50] dark:hover:text-[#8ab4f8] font-medium py-1 transition"
+                    >
+                      {isOpen ? (
+                        <ChevronDown size={14} />
+                      ) : (
+                        <ChevronRight size={14} />
+                      )}
+                      <span>
+                        {isOpen
+                          ? "ซ่อนแนวคำตอบและเกณฑ์คะแนน"
+                          : "แสดงแนวคำตอบและเกณฑ์คะแนน (ธง & Rubrics)"}
+                      </span>
                     </button>
                   </div>
 
-                  {/* Answer Key & Rubrics Area */}
-                  {q.isExpanded && (
-                    <div className="mt-4 ml-0 sm:ml-2 pl-3 sm:pl-4 border-l-2 border-blue-200 dark:border-blue-800 space-y-6 animate-in fade-in slide-in-from-top-2 duration-300 py-1">
-                      
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-                          แนวคำตอบ <span className="font-normal text-gray-400 text-[10px]">(Optional)</span>
+                  {/* Collapsible Details Area (Answer Key + Rubrics) */}
+                  {isOpen && (
+                    <div className="pl-6 space-y-4 pt-1">
+                      {/* Model Answer Key */}
+                      <div className="space-y-1 bg-slate-50/50 dark:bg-slate-900/30 p-3 rounded-lg border border-slate-100 dark:border-slate-800/60">
+                        <label className="text-[11px] font-medium text-slate-400 block">
+                          แนวคำตอบ / ธงคำตอบ (Model Answer):
                         </label>
-                        <AutoResizingTextarea
+                        <Textarea
+                          aria-label={`แนวคำตอบข้อที่ ${index + 1}`}
+                          rows={3}
                           value={q.answerKey}
-                          onChange={(e: any) => updateQuestion(q.id, { answerKey: e.target.value })}
-                          placeholder="พิมพ์ธงคำตอบสำหรับข้อนี้..."
-                          className="w-full text-sm bg-gray-50/50 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-800 focus:bg-white dark:focus:bg-gray-900 focus:ring-1 focus:ring-blue-400 rounded-lg p-3 transition-colors text-gray-800 dark:text-gray-200"
-                          minRows={2}
+                          onChange={(e) =>
+                            updateQuestion(q.id, { answerKey: e.target.value })
+                          }
+                          placeholder="พิมพ์แนวทางคำตอบหรือธงคำตอบสำหรับข้อนี้ เพื่อใช้เป็นเกณฑ์ประกอบการตรวจของ AI..."
+                          className="w-full text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-[#1a73e8] focus:outline-none p-2 rounded-md text-slate-700 dark:text-slate-300 resize-y"
                         />
                       </div>
 
+                      {/* Flat Rubrics Section */}
                       <div className="space-y-3">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                          <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">เกณฑ์ให้คะแนน (Rubrics)</label>
-                          <div className="flex items-center gap-2 w-full sm:w-auto">
-                            <div className="flex items-center bg-gray-50 dark:bg-gray-800/80 rounded-lg p-1 border border-gray-200 dark:border-gray-700 w-full sm:w-auto">
-                              <span className="text-[10px] text-gray-500 pl-2 pr-1 uppercase font-semibold hidden sm:inline">AI TONE:</span>
-                              <select
-                                value={q.gradingTone}
-                                onChange={e => updateQuestion(q.id, { gradingTone: e.target.value as any })}
-                                className="text-xs border-none bg-transparent text-gray-700 dark:text-gray-300 py-1 pl-1 pr-6 focus:ring-0 cursor-pointer font-medium flex-1 sm:flex-none"
-                              >
-                                <option value="simple">เรียบง่าย</option>
-                                <option value="moderate">ปานกลาง</option>
-                                <option value="academic">วิชาการ</option>
-                              </select>
-                              <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1"></div>
-                              <button
-                                onClick={() => generateRubric(q.id)}
-                                disabled={q.isGenerating}
-                                className="flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-1 bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 rounded-md shadow-sm hover:bg-purple-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 border border-gray-100 dark:border-gray-600 flex-1 sm:flex-none"
-                              >
-                                {q.isGenerating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                                <span className="truncate">ให้ AI ช่วยเขียน</span>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden shadow-sm">
-                          {/* Header row - Hidden on mobile */}
-                          <div className="hidden sm:flex bg-gray-50/80 dark:bg-gray-900/80 border-b border-gray-200 dark:border-gray-800 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                            <div className="w-10 text-center py-2 border-r border-gray-200 dark:border-gray-800">#</div>
-                            <div className="flex-[1.5] px-3 py-2 border-r border-gray-200 dark:border-gray-800">หัวข้อเกณฑ์</div>
-                            <div className="flex-[3] px-3 py-2 border-r border-gray-200 dark:border-gray-800">คำอธิบายรายละเอียด</div>
-                            <div className="w-20 px-3 py-2 text-center">คะแนน</div>
-                            <div className="w-10"></div>
-                          </div>
-                          
-                          <div className="divide-y divide-gray-100 dark:divide-gray-800/60">
-                            {q.rubrics.map((r, rIdx) => (
-                              <div key={r.id} className="flex flex-col sm:flex-row gap-0 items-stretch group/row bg-white dark:bg-transparent hover:bg-gray-50/50 dark:hover:bg-gray-900/20 transition-colors p-3 sm:p-0 relative">
-                                <div className="hidden sm:flex w-10 shrink-0 items-center justify-center text-xs font-medium text-gray-400 border-r border-gray-100 dark:border-gray-800">
-                                  {rIdx + 1}
-                                </div>
-                                <div className="flex flex-col sm:flex-row flex-1">
-                                  <div className="flex-[1.5] border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-gray-800">
-                                    <label className="sm:hidden text-[10px] font-bold text-gray-400 uppercase mb-1 block">หัวข้อเกณฑ์</label>
-                                    <Input
-                                      value={r.name}
-                                      onChange={e => updateRubric(q.id, r.id, { name: e.target.value })}
-                                      placeholder="เช่น ความถูกต้อง"
-                                      className="h-8 sm:h-10 text-xs border-none rounded-none focus:ring-0 bg-transparent w-full text-gray-800 dark:text-gray-200 px-0 sm:px-3"
-                                    />
-                                  </div>
-                                  <div className="flex-[3] border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-gray-800 pt-2 sm:pt-0">
-                                    <label className="sm:hidden text-[10px] font-bold text-gray-400 uppercase mb-1 block">คำอธิบายรายละเอียด</label>
-                                    <Input
-                                      value={r.description}
-                                      onChange={e => updateRubric(q.id, r.id, { description: e.target.value })}
-                                      placeholder="คำอธิบาย (ถ้ามี)"
-                                      className="h-8 sm:h-10 text-xs border-none rounded-none focus:ring-0 bg-transparent w-full text-gray-600 dark:text-gray-400 px-0 sm:px-3"
-                                    />
-                                  </div>
-                                  <div className="w-full sm:w-20 pt-2 sm:pt-0">
-                                    <label className="sm:hidden text-[10px] font-bold text-gray-400 uppercase mb-1 block">คะแนน</label>
-                                    <Input
-                                      type="number"
-                                      value={r.score}
-                                      onChange={e => updateRubric(q.id, r.id, { score: e.target.value })}
-                                      placeholder="0"
-                                      className="h-8 sm:h-10 text-xs w-full sm:w-20 text-left sm:text-center font-medium border-none rounded-none focus:ring-0 bg-transparent text-gray-800 dark:text-gray-200 px-0 sm:px-3"
-                                    />
-                                  </div>
-                                </div>
-                                <button
-                                  onClick={() => removeRubric(q.id, r.id)}
-                                  disabled={q.rubrics.length === 1}
-                                  className="absolute top-2 right-2 sm:static sm:w-10 shrink-0 flex items-center justify-center text-gray-300 hover:text-red-500 opacity-100 sm:opacity-0 sm:group-hover/row:opacity-100 transition-all disabled:opacity-0"
+                        <div className="flex flex-wrap justify-between items-center gap-2">
+                          <div className="flex items-center gap-2">
+                            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                              เกณฑ์การให้คะแนน (Rubrics)
+                            </label>
+                            {q.rubrics.length > 0 && (() => {
+                              const rSum = q.rubrics.reduce((acc, r) => acc + (parseFloat(r.score) || 0), 0);
+                              const targetScore = parseFloat(q.score) || 0;
+                              const isMatch = Math.abs(rSum - targetScore) < 0.01;
+                              return (
+                                <span
+                                  className={cn(
+                                    "text-[10px] px-2 py-0.5 rounded-full font-medium flex items-center gap-1 border",
+                                    isMatch
+                                      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50"
+                                      : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border-amber-200 dark:border-amber-800/50"
+                                  )}
+                                  title={isMatch ? "คะแนนเกณฑ์ตรงกับคะแนนเต็มของข้อ" : "คะแนนเกณฑ์รวมกันไม่เท่ากับคะแนนข้อ"}
                                 >
-                                  <X size={14} />
-                                </button>
-                              </div>
-                            ))}
+                                  <span>ผลรวมเกณฑ์: {rSum} / {targetScore} คะแนน</span>
+                                  {!isMatch && <span className="font-bold underline">(ไม่ตรงกัน)</span>}
+                                </span>
+                              );
+                            })()}
                           </div>
                         </div>
 
-                        <div className="flex items-center flex-wrap gap-2 pt-2">
-                          <button
-                            onClick={() => addRubric(q.id)}
-                            className="flex items-center gap-1.5 text-[11px] sm:text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-full transition-colors"
-                          >
-                            <Plus size={12} /> เพิ่มเกณฑ์
-                          </button>
-                          
-                          <div className="hidden sm:block w-px h-4 bg-gray-300 dark:bg-gray-700 mx-1"></div>
-
-                          <button onClick={() => { setShowPresetModal(q.id); setPresetNameInput(""); }} className="flex items-center gap-1.5 text-[11px] sm:text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-1.5 rounded-full transition-colors">
-                            <BookmarkPlus size={12} /> บันทึกเทมเพลต
-                          </button>
-
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <button className="flex items-center gap-1.5 text-[11px] sm:text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-1.5 rounded-full transition-colors">
-                                <Bookmark size={12} /> เลือกเทมเพลต <span className="hidden sm:inline">▼</span>
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56">
-                              <DropdownMenuLabel>เทมเพลตเกณฑ์ของคุณ</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-                              {rubricPresets.length === 0 ? (
-                                <div className="p-3 text-xs text-gray-400 text-center">ยังไม่มีเทมเพลต</div>
-                              ) : (
-                                rubricPresets.map(preset => (
-                                  <DropdownMenuItem key={preset.id} onClick={() => applyRubricPreset(q.id, preset.id)} className="flex justify-between items-center cursor-pointer group">
-                                    <span className="truncate pr-2">{preset.name}</span>
-                                    <button onClick={(e) => { e.stopPropagation(); setPresetToDelete(preset.id); }} className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                                      <X size={14} />
+                        {/* Clean Flat Table */}
+                        <p className="text-xs text-slate-500 sm:hidden">
+                          กรอกหัวข้อ คำอธิบาย และคะแนนของแต่ละเกณฑ์
+                        </p>
+                        <div className="rubric-scroll">
+                          <table className="w-full text-left text-xs border-collapse">
+                            <thead>
+                              <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-medium text-[11px]">
+                                <th className="py-2 w-8 text-center">#</th>
+                                <th className="py-2 px-2 w-1/3">หัวข้อเกณฑ์</th>
+                                <th className="py-2 px-2">
+                                  คำอธิบายรายละเอียด
+                                </th>
+                                <th className="py-2 text-center w-16">คะแนน</th>
+                                <th className="py-2 w-8"></th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                              {q.rubrics.map((r, rIdx) => (
+                                <tr key={r.id} className="rubric-row group">
+                                  <td className="py-2 text-center text-slate-400">
+                                    {rIdx + 1}
+                                  </td>
+                                  <td className="py-1 px-2">
+                                    <input
+                                      value={r.name}
+                                      onChange={(e) =>
+                                        updateRubric(q.id, r.id, {
+                                          name: e.target.value,
+                                        })
+                                      }
+                                      aria-label={`ชื่อเกณฑ์ที่ ${rIdx + 1} ของข้อ ${index + 1}`}
+                                      placeholder="ชื่อเกณฑ์..."
+                                      className="w-full bg-transparent border-none focus:outline-none text-xs"
+                                    />
+                                  </td>
+                                  <td className="py-1 px-2">
+                                    <input
+                                      value={r.description}
+                                      onChange={(e) =>
+                                        updateRubric(q.id, r.id, {
+                                          description: e.target.value,
+                                        })
+                                      }
+                                      aria-label={`คำอธิบายเกณฑ์ที่ ${rIdx + 1} ของข้อ ${index + 1}`}
+                                      placeholder="คำอธิบายเกณฑ์..."
+                                      className="w-full bg-transparent border-none focus:outline-none text-xs text-slate-600 dark:text-slate-400"
+                                    />
+                                  </td>
+                                  <td className="py-1 text-center">
+                                    <input
+                                      type="number"
+                                      aria-label={`คะแนนเกณฑ์ที่ ${rIdx + 1}`}
+                                      min="0"
+                                      value={r.score}
+                                      onChange={(e) =>
+                                        updateRubric(q.id, r.id, {
+                                          score: e.target.value,
+                                        })
+                                      }
+                                      className="w-10 text-center bg-transparent border-none focus:outline-none font-bold text-xs"
+                                    />
+                                  </td>
+                                  <td className="py-1 text-center">
+                                    <button
+                                      aria-label={`ลบเกณฑ์ที่ ${rIdx + 1}`}
+                                      onClick={() => removeRubric(q.id, r.id)}
+                                      disabled={q.rubrics.length === 1}
+                                      className="text-slate-300 hover:text-red-500 disabled:opacity-0"
+                                    >
+                                      <X size={13} />
                                     </button>
-                                  </DropdownMenuItem>
-                                ))
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
                         </div>
-                      </div>
 
+                        <button
+                          type="button"
+                          onClick={() => addRubric(q.id)}
+                          className="text-xs text-[#245b50] dark:text-[#91c7b8] hover:underline font-medium"
+                        >
+                          + เพิ่มเกณฑ์ Rubric
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
-          {/* Add Page Break / Question Button */}
-          <div className="pt-8 pb-4 mt-8 border-t border-dashed border-gray-300 dark:border-gray-700 text-center">
-            <button
-              onClick={() => setQuestions(prev => [...prev, newQuestion()])}
-              className="inline-flex items-center justify-center gap-2 px-6 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm font-medium rounded-full transition-colors"
+          <div className="text-center pt-2">
+            <Button
+              onClick={() => {
+                const newId = Date.now();
+                setQuestions([
+                  ...questions,
+                  {
+                    id: newId,
+                    text: "",
+                    score: "5",
+                    answerKey: "",
+                    rubrics: [
+                      { id: newId + 1, name: "", description: "", score: "5" },
+                    ],
+                  },
+                ]);
+                setShowDetails((prev) => ({ ...prev, [newId]: true }));
+              }}
+              variant="ghost"
+              className="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
             >
-              <Plus size={16} /> แทรกข้อต่อไป
-            </button>
+              + แทรกข้อสอบถัดไป
+            </Button>
           </div>
-
         </div>
       </div>
-
     </div>
   );
 }

@@ -61,6 +61,10 @@ isrgrootx1.pem.txt
 
 # Documentation and Junk Files
 ??????/
+# The six-character directory pattern above also matches client.
+!/client/
+!/server/
+/artifacts/ui-review/
 scratch/
 *.pdf
 /*.html
@@ -81,3 +85,7 @@ capture_missing.mjs
 AGENTS.md
 IMPLEMENTATION_PLAN.md
 USER_GUIDE.md
+
+# Isolated local verification environment
+.venv-review/
+tmp/coverage-before/

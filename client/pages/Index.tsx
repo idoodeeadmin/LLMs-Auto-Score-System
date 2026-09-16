@@ -1,12 +1,21 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { Eye, EyeOff, Mail, Loader2, ArrowRight } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  ArrowRight,
+  BookOpen,
+  ClipboardCheck,
+  Eye,
+  EyeOff,
+  Loader2,
+  Mail,
+} from "lucide-react";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import economicsHero from "@/assets/economics-classroom-hero-v4.png";
 
 export default function Index() {
   const [showPassword, setShowPassword] = useState(false);
@@ -15,12 +24,12 @@ export default function Index() {
   const [isLoading, setIsLoading] = useState(false);
   const [unverifiedEmail, setUnverifiedEmail] = useState("");
   const [isResending, setIsResending] = useState(false);
-  
+
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async (event: React.FormEvent) => {
+    event.preventDefault();
     if (!email || !password) {
       toast.error("กรุณากรอกอีเมลและรหัสผ่าน");
       return;
@@ -33,20 +42,20 @@ export default function Index() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-
       const data = await response.json();
 
       if (response.ok) {
         login(data.access_token, data.user);
-        navigate("/home");
+        navigate(data.user?.role && data.user.role !== "unassigned" ? "/home" : "/select-role");
+        return;
+      }
+
+      if (data.detail === "not_verified") {
+        setUnverifiedEmail(email);
+        toast.error("บัญชีนี้ยังไม่ได้ยืนยันอีเมล");
       } else {
-        if (data.detail === "not_verified") {
-            setUnverifiedEmail(email);
-            toast.error("คุณยังไม่ได้ยืนยันอีเมล กรุณาตรวจสอบกล่องข้อความ", { duration: 5000 });
-        } else {
-            setUnverifiedEmail("");
-            toast.error(data.detail || "อีเมลหรือรหัสผ่านไม่ถูกต้อง");
-        }
+        setUnverifiedEmail("");
+        toast.error(data.detail || "อีเมลหรือรหัสผ่านไม่ถูกต้อง");
       }
     } catch (error) {
       console.error("Login error:", error);
@@ -58,219 +67,203 @@ export default function Index() {
 
   const handleResend = async () => {
     if (!unverifiedEmail) return;
+
     setIsResending(true);
     try {
-        const res = await fetch("/api/auth/resend-verification", {
-            method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({email: unverifiedEmail})
-        });
-        const d = await res.json();
-        if (res.ok) {
-            toast.success("ส่งอีเมลยืนยันอีกครั้งสำเร็จ! กรุณาตรวจสอบกล่องข้อความ");
-            if (d.dev_verify_link) { toast.info("Dev Mode: ดูลิงก์ยืนยันใน Console Server หรือลองเปิดลิงก์: " + d.dev_verify_link, {duration: 8000}) }
-        } else {
-            toast.error(d.detail || "เกิดข้อผิดพลาด");
-        }
-    } catch (e) {
-        toast.error("Failed to connect");
-    } finally {
-        setIsResending(false);
-    }
-  };
+      const response = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: unverifiedEmail }),
+      });
+      const data = await response.json();
 
-  // Animation variants
-  const fadeIn = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
-  };
-  
-  const staggerContainer = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
+      if (response.ok) {
+        toast.success("ส่งอีเมลยืนยันอีกครั้งแล้ว กรุณาตรวจสอบกล่องข้อความ");
+        if (data.dev_verify_link) {
+          toast.info("Dev Mode: ดูลิงก์ยืนยันใน Console Server", {
+            duration: 8000,
+          });
+        }
+      } else {
+        toast.error(data.detail || "ไม่สามารถส่งอีเมลยืนยันได้");
       }
+    } catch {
+      toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+    } finally {
+      setIsResending(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900">
-      {/* Left Side - Hero / Branding (Hidden on mobile) */}
-      <div className="relative hidden w-1/2 flex-col items-center justify-center overflow-hidden bg-slate-900 lg:flex">
-        {/* Subtle animated background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/30 via-slate-900 to-slate-900 opacity-80" />
-        
-        {/* Glassmorphism content wrapper */}
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="relative z-10 flex flex-col items-center justify-center p-12 text-center"
-        >
-          <div className="mb-8 rounded-full bg-white/10 p-6 backdrop-blur-md ring-1 ring-white/20">
-            <img
-              src="https://api.builder.io/api/v1/image/assets/TEMP/eb4441680ef793285669451cd4b222e32d202205?width=568"
-              alt="Evaly Logo"
-              className="h-32 w-32 drop-shadow-2xl brightness-110"
-            />
-          </div>
-          <h1 className="mb-4 text-5xl font-extrabold tracking-tight text-white">
-            Evaly <span className="text-indigo-400">Score</span>
-          </h1>
-          <p className="max-w-md text-lg text-slate-300">
-            ระบบตรวจข้อสอบอัตโนมัติด้วยพลังของ AI ที่จะช่วยลดภาระงานและเพิ่มความแม่นยำให้กับคุณ
-          </p>
-        </motion.div>
-      </div>
+    <div className="workspace auth-workspace login-page flex min-h-screen bg-[#f3f7f5] dark:bg-[#0c1412]">
+      <section className="relative hidden min-h-screen w-[46%] max-w-[760px] overflow-hidden bg-[#123d34] lg:flex">
+        <img
+          src={economicsHero}
+          alt="ชั้นเรียนเศรษฐศาสตร์และการเรียนการสอน"
+          className="absolute inset-0 h-full w-full object-cover object-[58%_center] brightness-[0.92] saturate-[0.82]"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#062c25]/65 via-[#0c4a3e]/25 to-[#062c25]/95" />
 
-      {/* Right Side - Login Form */}
-      <div className="flex w-full flex-1 items-center justify-center p-8 lg:w-1/2">
-        <motion.div 
-          variants={staggerContainer}
-          initial="hidden"
-          animate="visible"
-          className="w-full max-w-md space-y-8"
-        >
-          {/* Mobile Logo */}
-          <div className="flex flex-col items-center pb-4 lg:hidden">
-            <div className="rounded-full bg-slate-100 p-4 shadow-inner">
-               <img
-                src="https://api.builder.io/api/v1/image/assets/TEMP/eb4441680ef793285669451cd4b222e32d202205?width=568"
-                alt="Evaly Logo"
-                className="h-16 w-16"
-              />
+        <div className="relative z-10 flex w-full flex-col justify-between p-10 xl:p-14">
+          <div className="flex items-center gap-3 text-white">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/25 backdrop-blur-sm">
+              <BookOpen className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="text-lg font-semibold leading-none">Evaly</p>
+              <p className="mt-1 text-xs text-white/65">พื้นที่การสอบ</p>
             </div>
-            <h2 className="mt-4 text-2xl font-bold text-slate-800 dark:text-slate-200">Evaly</h2>
           </div>
 
-          <motion.div variants={fadeIn} className="text-center lg:text-left">
-            <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-              Welcome back
-            </h2>
-            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
-              เข้าสู่ระบบเพื่อจัดการห้องเรียนและข้อสอบของคุณ
+          <div className="max-w-[430px] text-white">
+            <span className="mb-5 inline-flex rounded-full border border-white/20 bg-black/10 px-3 py-1.5 text-xs font-medium text-white/85 backdrop-blur-sm">
+              ห้องเรียนและการสอบของคุณ
+            </span>
+            <h1 className="text-[clamp(2.25rem,4vw,3.5rem)] font-semibold leading-[1.12] tracking-[-0.035em]">
+              ประเมินงานเขียน
+              <br />อย่างเป็นระบบ
+            </h1>
+            <p className="mt-5 max-w-[390px] text-base leading-7 text-white/78">
+              สร้างข้อสอบ ตรวจคำตอบด้วยเกณฑ์เดียวกัน และติดตามผลการเรียนของทั้งชั้นในพื้นที่เดียว
             </p>
-          </motion.div>
+          </div>
 
-          <form onSubmit={handleLogin} className="mt-8 space-y-6">
-            <motion.div variants={fadeIn} className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium leading-none text-slate-700 dark:text-slate-300">
-                  อีเมล หรือ รหัสนิสิต (Email or ID)
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-                  <Input
-                    type="text"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@example.com หรือ student001"
-                    required
-                    className="pl-10 h-12 text-base transition-shadow focus-visible:ring-indigo-500"
-                  />
-                </div>
-              </div>
+          <div className="flex items-center gap-3 text-xs text-white/60">
+            <span className="h-px w-10 bg-white/35" />
+            Evaly Score · Exam workspace
+          </div>
+        </div>
+      </section>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium leading-none text-slate-700 dark:text-slate-300">
-                    รหัสผ่าน (Password)
-                  </label>
-                  <Link to="/forgot-password" className="text-sm font-medium text-indigo-600 hover:text-indigo-500">
-                    ลืมรหัสผ่าน?
-                  </Link>
-                </div>
-                <div className="relative">
-                  <Input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                    className="pr-10 h-12 text-base transition-shadow focus-visible:ring-indigo-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:text-slate-400 dark:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  >
-                    {showPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
-                  </button>
-                </div>
+      <main className="relative flex min-h-screen w-full flex-1 items-center justify-center overflow-y-auto px-5 py-20 sm:px-8 lg:px-12">
+        <div className="absolute right-5 top-5 sm:right-8 sm:top-7">
+          <ThemeToggle />
+        </div>
+
+        <div className="w-full max-w-[500px] rounded-2xl border border-[#dfe8e3] bg-white p-6 shadow-[0_30px_80px_-48px_rgba(17,54,45,0.45)] dark:border-[#2a3b35] dark:bg-[#15201d] sm:p-9 lg:p-10">
+          <div className="mb-8 flex items-center justify-between lg:hidden">
+            <div className="flex items-center gap-2.5 text-[#0f695b] dark:text-[#91c7b8]">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#e8f3ef] dark:bg-[#243a33]"><BookOpen className="h-4 w-4" /></span>
+              <span className="font-semibold">Evaly</span>
+            </div>
+            <Link
+              to="/register"
+              className="text-sm font-medium text-[var(--work-accent)] hover:underline"
+            >
+              สร้างบัญชี
+            </Link>
+          </div>
+
+          <div className="mb-8">
+            <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-[#e7f3ef] text-[#0f695b] dark:bg-[#243a33] dark:text-[#91c7b8]">
+              <ClipboardCheck className="h-[22px] w-[22px]" />
+            </div>
+            <h2 className="text-[2rem] font-semibold leading-tight tracking-tight text-[var(--work-ink)]">ยินดีต้อนรับกลับ</h2>
+            <p className="mt-2 text-[15px] text-[var(--work-muted)]">
+              เข้าสู่ระบบเพื่อดูชั้นเรียน ข้อสอบ และผลคะแนน
+            </p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div className="field">
+              <label htmlFor="login-email">อีเมล หรือรหัสผู้ใช้</label>
+              <div className="relative">
+                <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--work-muted)]" />
+                <Input
+                  id="login-email"
+                  type="text"
+                  autoComplete="username"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="name@example.com หรือ student001"
+                  required
+                  className="h-12 !rounded-xl !pl-10"
+                />
               </div>
-              
-              {unverifiedEmail && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 rounded-lg flex flex-col gap-2"
-                  >
-                    <p className="text-sm text-red-600 font-medium">คุณยังไม่ได้ยืนยันอีเมลใช่หรือไม่?</p>
-                    <Button 
-                      onClick={handleResend} 
-                      type="button" 
-                      variant="outline" 
-                      size="sm" 
-                      disabled={isResending}
-                      className="border-red-200 text-red-700 hover:bg-red-100"
-                    >
-                      {isResending ? <Loader2 className="w-4 h-4 animate-spin mr-2"/> : null}
-                      ส่งลิงก์ยืนยันใหม่อีกครั้ง
-                    </Button>
-                  </motion.div>
+            </div>
+
+            <div className="field">
+              <div className="flex items-center justify-between gap-4">
+                <label htmlFor="login-password">รหัสผ่าน</label>
+                <Link
+                  to="/forgot-password"
+                  className="text-xs font-medium text-[var(--work-accent)] hover:underline"
+                >
+                  ลืมรหัสผ่าน?
+                </Link>
+              </div>
+              <div className="relative">
+                <Input
+                  id="login-password"
+                  autoComplete="current-password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="กรอกรหัสผ่าน"
+                  required
+                  className="h-12 rounded-xl pr-10"
+                />
+                <button
+                  type="button"
+                  aria-label={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-2 text-[var(--work-muted)] hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            {unverifiedEmail && (
+              <div
+                role="alert"
+                className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100"
+              >
+                <p className="font-medium">บัญชีนี้ยังไม่ได้ยืนยันอีเมล</p>
+                <p className="mt-1 text-xs opacity-80">ตรวจสอบกล่องข้อความ หรือลองส่งลิงก์ใหม่อีกครั้ง</p>
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={isResending}
+                  className="mt-3 inline-flex items-center font-medium underline underline-offset-4 disabled:opacity-50"
+                >
+                  {isResending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  ส่งลิงก์ยืนยันใหม่
+                </button>
+              </div>
+            )}
+
+            <Button type="submit" disabled={isLoading} className="primary-action h-12 w-full text-[15px] shadow-sm">
+              {isLoading ? (
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              ) : (
+                <>
+                  เข้าสู่ระบบ <ArrowRight className="ml-2 h-4 w-4" />
+                </>
               )}
-            </motion.div>
-
-            <motion.div variants={fadeIn} className="space-y-4 pt-2">
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white text-base shadow-lg shadow-indigo-200 transition-all active:scale-[0.98]"
-              >
-                {isLoading ? (
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                ) : (
-                  <>
-                    เข้าสู่ระบบ <ArrowRight className="ml-2 h-4 w-4" />
-                  </>
-                )}
-              </Button>
-              
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-200 dark:border-slate-700" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="bg-slate-50 dark:bg-slate-900 px-2 text-slate-500 dark:text-slate-400 dark:text-slate-500">หรือ</span>
-                </div>
-              </div>
-
-              <GoogleSignInButton
-                text="เข้าสู่ระบบด้วย Google"
-                onSuccess={() => navigate("/home")}
-              />
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-200 dark:border-slate-700" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="bg-slate-50 dark:bg-slate-900 px-2 text-slate-500 dark:text-slate-400 dark:text-slate-500">หรือ</span>
-                </div>
-              </div>
-
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate('/register')}
-                className="w-full h-12 border-slate-300 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:text-white transition-all active:scale-[0.98]"
-              >
-                สมัครสมาชิกใหม่
-              </Button>
-            </motion.div>
+            </Button>
           </form>
-        </motion.div>
-      </div>
+
+          <div className="my-6 flex items-center gap-3 text-xs text-[var(--work-muted)]">
+            <div className="h-px flex-1 bg-[var(--work-line)]" />
+            <span>หรือ</span>
+            <div className="h-px flex-1 bg-[var(--work-line)]" />
+          </div>
+
+          <GoogleSignInButton
+            text="เข้าสู่ระบบด้วย Google"
+            onSuccess={() => navigate("/home")}
+            className="h-12 w-full rounded-xl"
+          />
+
+          <p className="mt-6 text-center text-sm text-[var(--work-muted)]">
+            ยังไม่มีบัญชี?{" "}
+            <Link to="/register" className="font-medium text-[var(--work-accent)] hover:underline">
+              สร้างบัญชี
+            </Link>
+          </p>
+        </div>
+      </main>
     </div>
   );
 }

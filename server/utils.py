@@ -1,5 +1,5 @@
 import os
-import json as json_module_top
+import json
 import asyncio
 import httpx
 import time
@@ -15,36 +15,62 @@ from server.database import get_db_connection
 from server.auth import decode_token
 
 def upload_to_cloudinary(file_bytes, folder='evaly', public_id=None):
+    cloud_name = os.getenv('CLOUDINARY_CLOUD_NAME')
+    if cloud_name:
+        try:
+            upload_result = cloudinary.uploader.upload(file_bytes, folder=folder, public_id=public_id, resource_type='auto')
+            return upload_result.get('secure_url')
+        except Exception as e:
+            print(f'[Cloudinary] Upload error: {e}')
+    
+    # Local fallback for development / offline without Cloudinary
     try:
-        upload_result = cloudinary.uploader.upload(file_bytes, folder=folder, public_id=public_id, resource_type='auto')
-        return upload_result.get('secure_url')
+        import time, uuid
+        from PIL import Image
+        import io
+        with Image.open(io.BytesIO(file_bytes)) as image:
+            suffix = {"JPEG": "jpg", "PNG": "png", "WEBP": "webp", "GIF": "gif"}.get(image.format, "jpg")
+        filename = f"{public_id or uuid.uuid4().hex[:12]}_{int(time.time())}.{suffix}"
+        rel_dir = os.path.join("uploads", folder.replace('/', os.sep))
+        os.makedirs(rel_dir, exist_ok=True)
+        file_path = os.path.join(rel_dir, filename)
+        with open(file_path, "wb") as f:
+            f.write(file_bytes)
+        return f"/uploads/{folder}/{filename}".replace('\\', '/')
     except Exception as e:
-        print(f'[Cloudinary] Upload error: {e}')
+        print(f'[Upload Local] Error saving file: {e}')
         return None
 
+
 async def get_image_bytes(path_or_url: str):
+    """Read only this application's uploaded images or Cloudinary images."""
+    from pathlib import Path
+    from urllib.parse import urlparse
     if not path_or_url:
         return None
-    if path_or_url.startswith('http'):
-        try:
+    try:
+        parsed = urlparse(path_or_url)
+        if parsed.scheme or parsed.netloc:
+            if parsed.scheme != 'https' or parsed.hostname != 'res.cloudinary.com':
+                return None
             async with httpx.AsyncClient() as client:
-                resp = await client.get(path_or_url, timeout=10.0)
-                if resp.status_code == 200:
-                    return resp.content
-                return None
-        except Exception as e:
-            print(f'[Grading Worker] Failed to fetch URL {path_or_url}: {e}')
+                async with client.stream('GET', path_or_url, timeout=15.0) as response:
+                    response.raise_for_status()
+                    chunks = bytearray()
+                    async for chunk in response.aiter_bytes():
+                        chunks.extend(chunk)
+                        if len(chunks) > MAX_UPLOAD_SIZE:
+                            return None
+                    return bytes(chunks)
+        root = Path('uploads').resolve()
+        target = Path(path_or_url.lstrip('/')).resolve()
+        if not target.is_relative_to(root) or not target.is_file() or target.stat().st_size > MAX_UPLOAD_SIZE:
             return None
-    else:
-        local_path = path_or_url.lstrip('/')
-        if os.path.exists(local_path):
-            try:
-                async with aiofiles.open(local_path, 'rb') as f:
-                    return await f.read()
-            except Exception as e:
-                print(f'[Grading Worker] Failed to read local {local_path}: {e}')
-                return None
+        async with aiofiles.open(target, 'rb') as file:
+            return await file.read()
+    except Exception:
         return None
+
 
 grading_queue = asyncio.Queue()
 
@@ -70,6 +96,19 @@ def validate_upload_file(file_bytes: bytes, content_type: str = None, max_size: 
         raise HTTPException(status_code=413, detail=f'File too large. Maximum size is {max_mb:.0f}MB')
     if content_type and content_type not in effective_types:
         raise HTTPException(status_code=400, detail=f'Unsupported file type: {content_type}. Allowed: {", ".join(effective_types)}')
+    from PIL import Image, UnidentifiedImageError
+    import io
+    try:
+        with Image.open(io.BytesIO(file_bytes)) as image:
+            actual_type = Image.MIME.get(image.format)
+            if actual_type not in effective_types or (content_type and actual_type != content_type):
+                raise HTTPException(400, 'ชนิดไฟล์ไม่ตรงกับรูปภาพที่แนบ')
+            if getattr(image, 'is_animated', False):
+                raise HTTPException(400, 'กรุณาแนบภาพนิ่ง')
+            image.verify()
+    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
+        raise HTTPException(400, 'ไฟล์รูปภาพไม่ถูกต้องหรือมีขนาดภาพใหญ่เกินไป')
+
 
 REQUEST_LOGS = {}
 
@@ -152,28 +191,52 @@ if _FIREBASE_CREDENTIALS_PATH and (not os.path.isabs(_FIREBASE_CREDENTIALS_PATH)
     _FIREBASE_CREDENTIALS_PATH = os.path.join(_PROJECT_ROOT, _FIREBASE_CREDENTIALS_PATH)
 _firebase_app = None
 auth = None
-_FIREBASE_JSON = os.getenv('FIREBASE_SERVICE_ACCOUNT_JSON', '')
-if _FIREBASE_JSON:
+
+
+def get_firebase_app():
+    global _firebase_app, auth
+    if _firebase_app is not None:
+        return _firebase_app
+    
     import firebase_admin
     from firebase_admin import credentials, auth as firebase_auth
     auth = firebase_auth
-    try:
-        cred_dict = json_module_top.loads(_FIREBASE_JSON)
-        cred = credentials.Certificate(cred_dict)
-        _firebase_app = firebase_admin.initialize_app(cred)
-        print('[Firebase] Admin SDK initialized successfully from environment variable')
-    except Exception as e:
-        print(f'[Firebase] Failed to initialize Admin SDK from ENV: {e}')
-elif _FIREBASE_CREDENTIALS_PATH and os.path.exists(_FIREBASE_CREDENTIALS_PATH):
-    import firebase_admin
-    from firebase_admin import credentials, auth as firebase_auth
-    auth = firebase_auth
-    try:
-        cred = credentials.Certificate(_FIREBASE_CREDENTIALS_PATH)
-        _firebase_app = firebase_admin.initialize_app(cred)
-        print('[Firebase] Admin SDK initialized successfully from file')
-    except Exception as e:
-        print(f'[Firebase] Failed to initialize Admin SDK from file: {e}')
+    
+    # 1. Try environment variable JSON content
+    firebase_json = os.getenv('FIREBASE_SERVICE_ACCOUNT_JSON', '').strip()
+    if firebase_json:
+        try:
+            cred_dict = json.loads(firebase_json)
+            _firebase_app = firebase_admin.initialize_app(credentials.Certificate(cred_dict))
+            return _firebase_app
+        except Exception as e:
+            if 'already exists' in str(e):
+                _firebase_app = firebase_admin.get_app()
+                return _firebase_app
+            
+    # 2. Try file paths
+    candidate_paths = [
+        os.getenv('FIREBASE_CREDENTIALS_PATH', '').strip(),
+        'llms-auto-score-systems-firebase-adminsdk-fbsvc-f81fe0b67f.json',
+        os.path.join(_PROJECT_ROOT, 'llms-auto-score-systems-firebase-adminsdk-fbsvc-f81fe0b67f.json'),
+        os.path.join(os.path.dirname(_PROJECT_ROOT), 'llms-auto-score-systems-firebase-adminsdk-fbsvc-f81fe0b67f.json')
+    ]
+    
+    for path in candidate_paths:
+        if path and os.path.exists(path):
+            try:
+                _firebase_app = firebase_admin.initialize_app(credentials.Certificate(path))
+                print(f'[Firebase] Admin SDK initialized successfully from: {path}')
+                return _firebase_app
+            except Exception as e:
+                if 'already exists' in str(e):
+                    _firebase_app = firebase_admin.get_app()
+                    return _firebase_app
+                
+    print('[Firebase] Service account is not configured. Set FIREBASE_CREDENTIALS_PATH or FIREBASE_SERVICE_ACCOUNT_JSON.')
+    return None
+
+# Firebase is initialized lazily by the Google authentication routes.
 
 def _distribution_buckets(scores: list[float], total_score: float) -> dict:
     if total_score <= 0:
@@ -190,4 +253,5 @@ def _distribution_buckets(scores: list[float], total_score: float) -> dict:
         else:
             buckets['75-100'] += 1
     return buckets
+
 

@@ -28,7 +28,10 @@ async def register(user: UserRegister, request: Request):
     smtp_host = os.getenv('SMTP_HOST')
     initial_is_verified = 1 if (_IS_DEV_MODE or not smtp_host) else 0
     try:
-        cursor.execute('INSERT INTO users (email, password, name, role, student_id, is_verified) VALUES (?, ?, ?, ?, ?, ?)', (user.email, hashed_password, user.name, 'unassigned', None, initial_is_verified))
+        cursor.execute(
+            'INSERT INTO users (email, password, name, role, student_id, avatar_url, is_verified) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            (user.email, hashed_password, user.name, user.role or 'unassigned', user.student_id, user.avatar_url, initial_is_verified)
+        )
         user_id = cursor.lastrowid
         token = uuid.uuid4().hex
         expires_at = (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat()
@@ -110,7 +113,7 @@ async def get_me(user: dict=Depends(get_current_user)):
      'avatarUrl': user.get('avatar_url', None), 'is_verified': user.get('is_verified', 0)}
 
 @router.put('/profile')
-async def update_profile(name: str=Form(None), password: str=Form(None), avatar: UploadFile=File(None), user: dict=Depends(get_current_user)):
+async def update_profile(name: str=Form(None), student_id: str=Form(None), password: str=Form(None), avatar: UploadFile=File(None), user: dict=Depends(get_current_user)):
     conn = get_db_connection()
     cursor = conn.cursor()
     update_fields = []
@@ -127,6 +130,9 @@ async def update_profile(name: str=Form(None), password: str=Form(None), avatar:
     if name:
         update_fields.append('name = ?')
         params.append(name)
+    if student_id is not None:
+        update_fields.append('student_id = ?')
+        params.append(student_id.strip() or None)
     if password:
         update_fields.append('password = ?')
         params.append(get_password_hash(password))
@@ -143,7 +149,11 @@ async def update_profile(name: str=Form(None), password: str=Form(None), avatar:
             conn.close()
             raise HTTPException(status_code=500, detail=str(e))
     conn.close()
-    return {'message': 'Profile updated successfully', 'avatarUrl': avatar_filename}
+    return {
+        'message': 'Profile updated successfully',
+        'avatarUrl': avatar_filename,
+        'studentId': student_id if student_id is not None else user.get('student_id')
+    }
 
 @router.post('/set-role')
 async def set_role(req: SetRoleRequest, user: dict=Depends(get_current_user)):

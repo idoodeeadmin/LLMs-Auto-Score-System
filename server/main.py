@@ -2,6 +2,24 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
+import importlib
+
+# Firebase downloads Google's public signing certificates when verifying an ID
+# token. On Windows, use the OS trust store so local/root CAs trusted by the
+# browser are also trusted by Python's HTTPS stack.
+inject_into_ssl = None
+for _mod_name in ("truststore", "pip._vendor.truststore"):
+    try:
+        _mod = importlib.import_module(_mod_name)
+        inject_into_ssl = getattr(_mod, "inject_into_ssl", None)
+        if inject_into_ssl:
+            break
+    except Exception:
+        continue
+
+if inject_into_ssl:
+    inject_into_ssl()
+
 from server.services.ai_service import grading_worker
 from server.services.notification_service import deadline_notification_worker
 import asyncio
@@ -33,13 +51,15 @@ cloudinary.config(cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME'),
  api_key=os.getenv('CLOUDINARY_API_KEY'), api_secret=os.getenv('CLOUDINARY_API_SECRET'),
  secure=True)
 app = FastAPI(title='Evaly API')
-from server.routes import auth_routes, room_routes, exam_routes, notification_routes, ai_routes, system_routes
+from server.routes import auth_routes, room_routes, exam_routes, notification_routes, ai_routes, system_routes, benchmark_routes
 app.include_router(auth_routes.router)
 app.include_router(room_routes.router)
 app.include_router(exam_routes.router)
 app.include_router(notification_routes.router)
+app.include_router(benchmark_routes.router)
 
 app.include_router(ai_routes.router)
+app.include_router(ai_routes.legacy_router)
 app.include_router(system_routes.router)
 default_origins = [
     'http://localhost:5173',
@@ -76,13 +96,13 @@ async def startup_event():
     print("[Startup] Recovering pending submissions...")
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, exam_id, student_id FROM submissions WHERE status = 'submitted'")
+    cursor.execute("SELECT id, exam_id, user_id FROM submissions WHERE status IN ('submitted', 'grading')")
     pending = cursor.fetchall()
     for row in pending:
         cursor.execute('SELECT room_id FROM exams WHERE id = ?', (row['exam_id'],))
         exam_row = cursor.fetchone()
         if exam_row:
-            await grading_queue.put({'submission_id': row['id'], 'room_id': exam_row['room_id'], 'exam_id': row['exam_id'], 'user_id': row['student_id']})
+            await grading_queue.put({'submission_id': row['id'], 'room_id': exam_row['room_id'], 'exam_id': row['exam_id'], 'user_id': row['user_id']})
     conn.close()
     if pending:
         print(f'[Startup] Recovered {len(pending)} pending submissions into grading queue')

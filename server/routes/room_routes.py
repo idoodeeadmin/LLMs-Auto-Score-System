@@ -100,6 +100,20 @@ async def join_room(request: JoinRoomRequest, user: dict=Depends(get_current_use
     conn.close()
     return joined_room
 
+@router.delete('/{room_id}/enrollment')
+async def leave_room(room_id: int, user: dict=Depends(get_current_user)):
+    """Remove only the current student's membership; retain submitted exam records."""
+    if user['role'] != 'student':
+        raise HTTPException(403, 'Only students can leave a classroom')
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM enrollments WHERE room_id = ? AND user_id = ?', (room_id, user['id']))
+        conn.commit()
+        return {'message': 'ออกจากห้องเรียนแล้ว'}
+    finally:
+        conn.close()
+
 @router.get('/{room_id}')
 async def get_room(room_id: int, user: dict=Depends(get_current_user)):
     conn = get_db_connection()
@@ -148,15 +162,92 @@ async def create_announcement(room_id: int, ann: AnnouncementCreate, user: dict=
     if not cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=404, detail='Room not found or unauthorized')
-    cursor.execute('INSERT INTO announcements (room_id, teacher_id, title, content) VALUES (?, ?, ?, ?)', (room_id, user['id'], ann.title, ann.content))
+    title = ann.title.strip()
+    content = ann.content.strip()
+    if not title or not content:
+        conn.close()
+        raise HTTPException(status_code=422, detail='Title and content are required')
+    cursor.execute('INSERT INTO announcements (room_id, teacher_id, title, content) VALUES (?, ?, ?, ?)', (room_id, user['id'], title, content))
     ann_id = cursor.lastrowid
     conn.commit()
     cursor.execute('SELECT user_id FROM enrollments WHERE room_id = ?', (room_id,))
-    students = cursor.fetchall()
-    for s in students:
-        await trigger_socket_notify(user_id=s['user_id'], notify_type='new_announcement', message=f'มีประกาศใหม่ในห้องเรียน: {ann.title}', data={'room_id': room_id, 'announcement_id': ann_id})
+    student_ids = [row['user_id'] for row in cursor.fetchall()]
+    cursor.execute('SELECT * FROM announcements WHERE id = ?', (ann_id,))
+    result = dict(cursor.fetchone())
     conn.close()
-    return {'id': ann_id, 'message': 'Announcement created successfully'}
+    link = f'/room/{room_id}#announcement-{ann_id}'
+    for student_id in student_ids:
+        await trigger_socket_notify(
+            user_id=student_id,
+            notify_type='new_announcement',
+            message=f'มีประกาศใหม่: {title}',
+            data={'room_id': room_id, 'announcement_id': ann_id, 'link': link},
+        )
+    return result
+
+@router.put('/{room_id}/announcements/{ann_id}')
+async def update_announcement(room_id: int, ann_id: int, ann: AnnouncementCreate, user: dict=Depends(get_current_user)):
+    if user['role'] != 'teacher':
+        raise HTTPException(status_code=403, detail='Only teachers can update announcements')
+    title = ann.title.strip()
+    content = ann.content.strip()
+    if not title or not content:
+        raise HTTPException(status_code=422, detail='Title and content are required')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT a.id FROM announcements a
+        JOIN rooms r ON r.id = a.room_id
+        WHERE a.id = ? AND a.room_id = ? AND r.teacher_id = ?
+    ''', (ann_id, room_id, user['id']))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=404, detail='Announcement not found or unauthorized')
+    cursor.execute('UPDATE announcements SET title = ?, content = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', (title, content, ann_id))
+    conn.commit()
+    cursor.execute('SELECT user_id FROM enrollments WHERE room_id = ?', (room_id,))
+    student_ids = [row['user_id'] for row in cursor.fetchall()]
+    cursor.execute('SELECT * FROM announcements WHERE id = ?', (ann_id,))
+    result = dict(cursor.fetchone())
+    conn.close()
+    link = f'/room/{room_id}#announcement-{ann_id}'
+    for student_id in student_ids:
+        await trigger_socket_notify(
+            user_id=student_id,
+            notify_type='announcement_updated',
+            message=f'อัปเดตประกาศ: {title}',
+            data={'room_id': room_id, 'announcement_id': ann_id, 'link': link},
+        )
+    return result
+
+@router.delete('/{room_id}/announcements/{ann_id}')
+async def delete_announcement(room_id: int, ann_id: int, user: dict=Depends(get_current_user)):
+    if user['role'] != 'teacher':
+        raise HTTPException(status_code=403, detail='Only teachers can delete announcements')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT a.title FROM announcements a
+        JOIN rooms r ON r.id = a.room_id
+        WHERE a.id = ? AND a.room_id = ? AND r.teacher_id = ?
+    ''', (ann_id, room_id, user['id']))
+    existing = cursor.fetchone()
+    if not existing:
+        conn.close()
+        raise HTTPException(status_code=404, detail='Announcement not found or unauthorized')
+    cursor.execute('DELETE FROM announcements WHERE id = ?', (ann_id,))
+    conn.commit()
+    cursor.execute('SELECT user_id FROM enrollments WHERE room_id = ?', (room_id,))
+    student_ids = [row['user_id'] for row in cursor.fetchall()]
+    conn.close()
+    for student_id in student_ids:
+        await trigger_socket_notify(
+            user_id=student_id,
+            notify_type='announcement_deleted',
+            message=f'ยกเลิกประกาศ: {existing["title"]}',
+            data={'room_id': room_id, 'announcement_id': ann_id, 'link': f'/room/{room_id}'},
+        )
+    return {'message': 'Announcement deleted successfully'}
 
 @router.get('/{room_id}/announcements')
 async def list_announcements(room_id: int, user: dict=Depends(get_current_user)):

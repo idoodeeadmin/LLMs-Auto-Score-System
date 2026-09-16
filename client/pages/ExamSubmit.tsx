@@ -1,369 +1,420 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { WorkspaceBreadcrumb } from "@/components/WorkspaceHeader";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Camera, Image as ImageIcon, X, Send, Loader2, CheckCircle2, AlertCircle, Clock, Trash2 } from "lucide-react";
-import Navbar from "@/components/Navbar";
-import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "sonner";
+import {
+  ArrowLeft,
+  Send,
+  CheckCircle2,
+  Sparkles,
+  Loader2,
+  Image as ImageIcon,
+  X,
+  Upload,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import ImageModal from "@/components/ImageModal";
 import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/contexts/AuthContext";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { toast } from "sonner";
 
-interface Question {
+interface QuestionItem {
   id: number;
   text: string;
   score: number;
-  rubrics?: { name?: string; label?: string; score?: number; description?: string }[];
+  rubrics?: any[];
   order_index: number;
-  image_path?: string | null;
   image_paths?: string[];
 }
 
-interface Exam {
+interface ExamData {
   id: number;
   title: string;
-  description?: string;
   total_score: number;
-  start_date?: string;
-  end_date?: string;
-  questions: Question[];
-}
-
-interface AnswerState {
-  text: string;
-  images: File[];
-  imagePreviews: string[];
+  questions: QuestionItem[];
 }
 
 export default function ExamSubmit() {
   const { roomId, examId } = useParams();
   const navigate = useNavigate();
-  const { user, token, isLoading } = useAuth();
+  const { token } = useAuth();
 
-  const [exam, setExam] = useState<Exam | null>(null);
-  const [isFetching, setIsFetching] = useState(true);
+  const [exam, setExam] = useState<ExamData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Per-question state for text answers and attached image files
+  const [answers, setAnswers] = useState<{ [qId: number]: string }>({});
+  const [questionImages, setQuestionImages] = useState<{
+    [qId: number]: File[];
+  }>({});
+  const [imagePreviews, setImagePreviews] = useState<{
+    [qId: number]: string[];
+  }>({});
+
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitConfirm, setIsSubmitConfirm] = useState(false);
-  const [answers, setAnswers] = useState<Record<number, AnswerState>>({});
-  const answersRef = useRef<Record<number, AnswerState>>({});
-  const [timeLeft, setTimeLeft] = useState<string | null>(null);
-  const [isTimeUp, setIsTimeUp] = useState(false);
-  const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
-  const [showExitModal, setShowExitModal] = useState(false);
-  const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
-
-  useEffect(() => { answersRef.current = answers; }, [answers]);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   useEffect(() => {
-    if (!exam?.end_date || isSubmitting || isTimeUp) return;
-    const interval = setInterval(() => {
-      const diff = new Date(exam.end_date!).getTime() - Date.now();
-      if (diff <= 0) { clearInterval(interval); setTimeLeft("00:00:00"); setIsTimeUp(true); }
-      else {
-        const h = Math.floor(diff / 3600000);
-        const m = Math.floor((diff % 3600000) / 60000);
-        const s = Math.floor((diff % 60000) / 1000);
-        setTimeLeft(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`);
-      }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [exam, isSubmitting, isTimeUp]);
-
-  useEffect(() => {
-    if (!isLoading && !user) navigate("/");
-    if (!isLoading && user?.role !== "student") navigate("/home");
-  }, [user, isLoading, navigate]);
-
-  useEffect(() => {
-    if (!token || !roomId || !examId) return;
-
     const fetchExam = async () => {
       try {
-        const res = await fetch(`/api/rooms/${roomId}/exams/${examId}`, { headers: { Authorization: `Bearer ${token}` } });
+        setLoading(true);
+        const res = await fetch(`/api/rooms/${roomId}/exams/${examId}`, {
+          headers: { Authorization: token ? `Bearer ${token}` : "" },
+        });
         if (res.ok) {
-          const data: Exam = await res.json();
+          const data = await res.json();
           setExam(data);
-          const initial: Record<number, AnswerState> = {};
-          data.questions.forEach(q => { initial[q.id] = { text: "", images: [], imagePreviews: [] }; });
-          setAnswers(initial);
-        } else { toast.error("ไม่พบข้อสอบ"); navigate(`/room/${roomId}`); }
-      } catch { toast.error("เกิดข้อผิดพลาด"); } finally { setIsFetching(false); }
+        } else {
+          toast.error("ไม่พบข้อมูลแบบทดสอบ");
+        }
+      } catch (err) {
+        console.error("Error fetching exam:", err);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    const checkSubmission = async () => {
-      const res = await fetch(`/api/rooms/${roomId}/exams/${examId}/submissions/me`, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) { const d = await res.json(); if (d.status && d.status !== "missing") { toast.info("คุณส่งคำตอบไปแล้ว"); navigate(`/room/${roomId}/exam/${examId}`); } }
-    };
-    Promise.all([fetchExam(), checkSubmission()]);
-  }, [token, roomId, examId, navigate]);
+    if (roomId && examId) {
+      fetchExam();
+    }
+  }, [roomId, examId, token]);
 
-  const handleTextChange = (qId: number, value: string) => {
-    setAnswers(prev => ({ ...prev, [qId]: { ...prev[qId], text: value } }));
+  const handleImageChange = (qId: number, files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    const newFiles = Array.from(files);
+    setQuestionImages((prev) => {
+      const existing = prev[qId] || [];
+      return { ...prev, [qId]: [...existing, ...newFiles] };
+    });
+
+    const newPreviewUrls = newFiles.map((file) => URL.createObjectURL(file));
+    setImagePreviews((prev) => {
+      const existing = prev[qId] || [];
+      return { ...prev, [qId]: [...existing, ...newPreviewUrls] };
+    });
   };
 
+  const removeImage = (qId: number, imgIndex: number) => {
+    setQuestionImages((prev) => {
+      const updated = [...(prev[qId] || [])];
+      updated.splice(imgIndex, 1);
+      return { ...prev, [qId]: updated };
+    });
 
-
-  const handleImageSelect = useCallback((qId: number, files: FileList) => {
-    Array.from(files).filter(f => { if (f.size > 5 * 1024 * 1024) { toast.error(`${f.name}: ไฟล์ต้องไม่เกิน 5MB`); return false; } return true; })
-      .forEach(file => {
-        const url = URL.createObjectURL(file);
-        setAnswers(prev => ({ ...prev, [qId]: { ...prev[qId], images: [...(prev[qId]?.images || []), file], imagePreviews: [...(prev[qId]?.imagePreviews || []), url] } }));
-      });
-  }, []);
-
-  const handleRemoveImage = (qId: number, idx: number) => {
-    const prev = answers[qId];
-    if (prev?.imagePreviews[idx]) URL.revokeObjectURL(prev.imagePreviews[idx]);
-    setAnswers(p => ({ ...p, [qId]: { ...p[qId], images: p[qId].images.filter((_, i) => i !== idx), imagePreviews: p[qId].imagePreviews.filter((_, i) => i !== idx) } }));
+    setImagePreviews((prev) => {
+      const updated = [...(prev[qId] || [])];
+      URL.revokeObjectURL(updated[imgIndex]);
+      updated.splice(imgIndex, 1);
+      return { ...prev, [qId]: updated };
+    });
   };
 
-  const handleSubmit = useCallback(async () => {
-    if (!token || !exam) return;
-    setIsSubmitting(true);
-    setIsSubmitConfirm(false);
-    try {
-      const formData = new FormData();
-      const current = answersRef.current;
-      formData.append("answers", JSON.stringify(exam.questions.map(q => ({ question_id: q.id, answer_text: current[q.id]?.text || "" }))));
-      exam.questions.forEach(q => (current[q.id]?.images || []).forEach((img, i) => formData.append(`image_${q.id}_${i}`, img, img.name)));
-      const res = await fetch(`/api/rooms/${roomId}/exams/${examId}/submit-multipart`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: formData });
-      const data = await res.json();
-      if (res.ok) {
-        toast.success("ส่งคำตอบสำเร็จ!");
-        navigate(`/room/${roomId}/exam/${examId}`);
-      } else if (res.status === 409) { toast.error(data.detail || "ส่งไปแล้ว"); navigate(`/room/${roomId}/exam/${examId}`); }
-      else toast.error(data.detail || "เกิดข้อผิดพลาด");
-    } catch { toast.error("ไม่สามารถส่งได้ กรุณาตรวจสอบการเชื่อมต่อ"); }
-    finally { setIsSubmitting(false); }
-  }, [token, exam, roomId, examId, navigate]);
+  const handleSubmit = useCallback(
+    async (e?: React.FormEvent) => {
+      if (e) e.preventDefault();
+      if (!exam || !exam.questions || exam.questions.length === 0) {
+        toast.error("ไม่มีคำถามในแบบทดสอบนี้");
+        return;
+      }
 
-  useEffect(() => { if (isTimeUp && !isSubmitting) { toast.error("หมดเวลา! ระบบส่งคำตอบอัตโนมัติ", { duration: 5000 }); handleSubmit(); } }, [isTimeUp]);
+      setIsSubmitting(true);
+      try {
+        const answersPayload = exam.questions.map((q) => ({
+          question_id: q.id,
+          answer_text: answers[q.id] || "",
+        }));
 
+        const formData = new FormData();
+        formData.append("answers", JSON.stringify(answersPayload));
 
-  const answeredCount = Object.values(answers).filter(a => a.text.trim() || a.images.length > 0).length;
-  const totalQ = exam?.questions.length ?? 0;
-  const progress = totalQ > 0 ? (answeredCount / totalQ) * 100 : 0;
-  const isLow = timeLeft && (timeLeft.startsWith("00:0") || timeLeft.startsWith("00:1"));
+        // Append images per question: image_{q_id}_{index}
+        exam.questions.forEach((q) => {
+          const files = questionImages[q.id] || [];
+          files.forEach((file, idx) => {
+            formData.append(`image_${q.id}_${idx}`, file, file.name);
+          });
+        });
 
-   if (isLoading || isFetching) return <div className="flex h-screen items-center justify-center bg-[#F9FBFD] dark:bg-[#111111]"><Loader2 className="animate-spin text-blue-500 h-8 w-8" /></div>;
+        const res = await fetch(
+          `/api/rooms/${roomId}/exams/${examId}/submit-multipart`,
+          {
+            method: "POST",
+            headers: { Authorization: token ? `Bearer ${token}` : "" },
+            body: formData,
+          },
+        );
+
+        if (res.ok) {
+          toast.success("ส่งคำตอบสำเร็จ!");
+          setIsSubmitted(true);
+        } else {
+          const err = await res.json().catch(() => null);
+          toast.error(err?.detail || "เกิดข้อผิดพลาดในการส่งคำตอบ");
+        }
+      } catch {
+        toast.error("ไม่สามารถส่งได้ กรุณาตรวจสอบการเชื่อมต่อ");
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [token, roomId, examId, exam, answers, questionImages],
+  );
 
   return (
-    <div className="min-h-screen bg-[#F9FBFD] dark:bg-[#111111] transition-colors duration-200 font-sans">
-
-      {/* Docs-style Toolbar */}
-      <div className="sticky top-0 z-40 bg-[#EDF2FA] dark:bg-[#1E1E1E] border-b border-gray-300 dark:border-gray-800 px-2 sm:px-4 py-2 flex items-center justify-between gap-2 sm:gap-4 shadow-sm">
-        <div className="flex items-center gap-1 sm:gap-2 min-w-0">
-          <button 
-            onClick={() => {
-              if (answeredCount > 0) setShowExitModal(true);
-              else navigate(`/room/${roomId}/exam/${examId}`);
-            }} 
-            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full text-gray-600 dark:text-gray-300 transition-colors shrink-0" 
-            title="กลับ"
+    <div className="workspace">
+      {/* Top Navbar */}
+      <header className="task-header sticky top-0 z-40 bg-white dark:bg-[#1E1E1E] border-b border-slate-200 dark:border-slate-800 px-8 py-3 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate(`/room/${roomId}`)}
+            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-[#245b50] transition"
           >
-            <ArrowLeft size={20} />
+            <ArrowLeft size={16} />
+            <span className="task-header-back-label">กลับห้องเรียน</span>
           </button>
-          <div className="flex flex-col min-w-0">
-            <h1 className="text-base sm:text-lg text-gray-800 dark:text-gray-100 font-medium truncate">{exam?.title}</h1>
-            <div className="flex items-center gap-2 sm:gap-4 px-0 mt-0.5 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-
-              <span className="font-medium text-blue-600 dark:text-blue-400 shrink-0">ตอบแล้ว {answeredCount}/{totalQ}</span>
-            </div>
+          <div className="task-header-title">
+            <h1 className="font-semibold text-base text-slate-900 dark:text-white">
+              {exam?.title || "ทำข้อสอบ (Student Exam Submission)"}
+            </h1>
+            {exam && (
+              <span className="text-xs text-[#245b50] dark:text-[#91c7b8] font-medium">
+                คะแนนเต็มรวม: {exam.total_score} คะแนน
+              </span>
+            )}
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-4">
-          {/* Timer */}
-          {timeLeft && (
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-mono font-bold border transition-colors ${isLow ? "bg-red-50 text-red-600 border-red-200 animate-pulse" : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 shadow-sm"}`}>
-              <Clock size={16} className={isLow ? "text-red-500" : "text-gray-400"} />
-              {timeLeft}
-            </div>
-          )}
+        <ThemeToggle />
+      </header>
 
-          <Button 
-            onClick={() => setIsSubmitConfirm(true)} 
-            disabled={isSubmitting} 
-            className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-4 sm:px-6 h-8 sm:h-10 text-xs sm:text-sm font-medium shadow-md transition-all active:scale-95 shrink-0"
-          >
-            {isSubmitting ? <Loader2 size={16} className="animate-spin mr-2" /> : <Send size={16} className="mr-2" />}
-            ส่งคำตอบ
-          </Button>
-        </div>
-      </div>
-
-      {/* Progress Bar (Subtle) */}
-      <div className="sticky top-[48px] sm:top-[56px] z-30 w-full bg-gray-200 dark:bg-gray-800 h-1 overflow-hidden">
-        <div className="h-full bg-blue-500 transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
-      </div>
-
-      {/* Confirm Modal */}
-      {isSubmitConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 max-w-sm w-full border border-gray-200 dark:border-gray-800 animate-in zoom-in-95 duration-200">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Send size={24} className="text-blue-500" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">ยืนยันการส่งข้อสอบ?</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                คุณตอบคำถามแล้ว <span className="font-bold text-blue-600 dark:text-blue-400">{answeredCount}</span> จากทั้งหมด <span className="font-bold text-blue-600 dark:text-blue-400">{totalQ}</span> ข้อ
-              </p>
-              {answeredCount < totalQ && (
-                <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 p-3 rounded-lg text-xs flex items-start gap-2 text-left mb-4">
-                  <AlertCircle size={14} className="shrink-0 mt-0.5" />
-                  <span>ยังมีข้อสอบที่ยังไม่ได้ตอบอีก {totalQ - answeredCount} ข้อ โปรดตรวจสอบให้แน่ใจก่อนส่ง</span>
+      <main className="document-page">
+        <WorkspaceBreadcrumb roomId={roomId} current="ทำข้อสอบ" />
+        {loading ? (
+          <div className="py-16 flex justify-center text-slate-400">
+            <Loader2 className="w-8 h-8 animate-spin" />
+          </div>
+        ) : !exam ? (
+          <div className="py-16 text-center text-slate-400 bg-white dark:bg-[#1E1E1E] rounded-xl border border-slate-200 dark:border-slate-800 p-8">
+            <p>ไม่พบข้อมูลแบบทดสอบ</p>
+          </div>
+        ) : (
+          <>
+            {/* Success Banner */}
+            {isSubmitted && (
+              <div className="bg-[#E6F4EA] dark:bg-emerald-950/40 border border-[#CEEAD6] dark:border-emerald-800 rounded-xl p-5 text-[#137333] dark:text-emerald-300 flex items-start gap-4 shadow-sm">
+                <CheckCircle2 className="w-6 h-6 text-[#188038] shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <h3 className="font-bold text-sm text-[#137333] dark:text-emerald-200">
+                    ส่งคำตอบสำเร็จ! ระบบได้รับคำตอบของคุณเรียบร้อยแล้ว
+                  </h3>
+                  <p className="text-xs text-[#137333] dark:text-emerald-400 leading-relaxed">
+                    ระบบได้ส่งคำตอบทุกข้อพร้อมภาพลายมือเข้าคิวประเมินผลคะแนนด้วย
+                    AI เรียบร้อยแล้ว
+                    อาจารย์ผู้สอนสามารถตรวจทานและอนุมัติคะแนนได้
+                  </p>
                 </div>
-              )}
-              <p className="text-xs text-gray-400 dark:text-gray-500 font-medium italic">เมื่อส่งแล้วจะไม่สามารถกลับมาแก้ไขได้อีก</p>
-            </div>
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={() => setIsSubmitConfirm(false)} className="flex-1 h-11 rounded-xl border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">กลับไปทวน</Button>
-              <Button onClick={handleSubmit} disabled={isSubmitting} className="flex-1 h-11 rounded-xl bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 dark:shadow-none">
-                {isSubmitting ? <Loader2 size={18} className="animate-spin mr-2" /> : "ยืนยันส่ง"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Exit Modal */}
-      {showExitModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 max-w-sm w-full border border-gray-200 dark:border-gray-800 animate-in zoom-in-95 duration-200">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-amber-50 dark:bg-amber-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <AlertCircle size={24} className="text-amber-500" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">คุณต้องการออกจากหน้าทำข้อสอบ?</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                คุณตอบคำถามค้างไว้ <span className="font-bold text-blue-600 dark:text-blue-400">{answeredCount} ข้อ</span> 
-              </p>
-            </div>
-            <div className="flex flex-col gap-2.5">
-              <Button onClick={() => setShowExitModal(false)} className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium">
-                ทำข้อสอบต่อ
-              </Button>
-              <Button variant="outline" onClick={() => navigate(`/room/${roomId}/exam/${examId}`)} className="w-full h-11 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-medium">
-                ออกจากข้อสอบโดยไม่ส่ง
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+            )}
 
-      {/* Docs Canvas (The Paper) */}
-      <div className="py-4 sm:py-10 px-2 sm:px-8">
-        <div className="max-w-[816px] mx-auto bg-white dark:bg-[#1E1E1E] shadow-xl border border-gray-300 dark:border-gray-800 min-h-screen sm:min-h-[1056px] p-6 sm:p-16 flex flex-col gap-8 rounded-sm transition-colors duration-200">
-          
-          {/* Document Header */}
-          <div className="border-b-2 border-gray-900 dark:border-white pb-6 mb-2">
-             <div className="flex justify-between items-start gap-4">
-               <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex-1">{exam?.title}</h2>
-               <div className="text-right shrink-0">
-                 <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">คะแนนเต็ม</p>
-                 <p className="text-xl font-bold text-blue-600 dark:text-blue-400">{exam?.total_score}</p>
-               </div>
-             </div>
-             {exam?.description && <p className="text-base text-gray-600 dark:text-gray-400 mt-2 italic">{exam.description}</p>}
-          </div>
+            {!isSubmitted ? (
+              <form onSubmit={handleSubmit} className="exam-paper">
+                <h1 className="page-heading">{exam.title}</h1>
+                <div className="work-summary">
+                  <span>{exam.questions.length} ข้อ</span>
+                  <span>คะแนนเต็ม {exam.total_score} คะแนน</span>
+                  <span>
+                    ตอบแล้ว{" "}
+                    {
+                      exam.questions.filter(
+                        (q) =>
+                          answers[q.id]?.trim() || questionImages[q.id]?.length,
+                      ).length
+                    }{" "}
+                    / {exam.questions.length} ข้อ
+                  </span>
+                </div>
+                <nav className="question-navigation" aria-label="ไปยังคำถาม">
+                  {exam.questions.map((q, i) => (
+                    <a
+                      key={q.id}
+                      href={`#question-${q.id}`}
+                      data-answered={Boolean(
+                        answers[q.id]?.trim() || questionImages[q.id]?.length,
+                      )}
+                    >
+                      ข้อ {i + 1}
+                    </a>
+                  ))}
+                </nav>
+                {exam.questions.map((q, index) => {
+                  const previews = imagePreviews[q.id] || [];
 
-          {/* Questions Stream */}
-          <div className="space-y-12">
-            {exam?.questions.map((q, index) => {
-              const ans = answers[q.id] || { text: "", images: [], imagePreviews: [] };
-              const hasAnswer = ans.text.trim() || ans.images.length > 0;
-              
-              return (
-                <div key={q.id} className="group relative flex gap-4 pl-4 border-l-4 border-transparent hover:border-blue-200 dark:hover:border-blue-900/50 transition-colors -ml-5 pr-4 py-2">
-                  
-                  <div className={`font-medium text-lg pt-0.5 min-w-[28px] transition-colors ${hasAnswer ? "text-blue-600 dark:text-blue-400" : "text-gray-400"}`}>
-                    {index + 1}.
-                  </div>
+                  return (
+                    <div
+                      key={q.id}
+                      id={`question-${q.id}`}
+                      className="question-section space-y-4"
+                    >
+                      {/* Question Title & Score */}
+                      <div className="question-heading flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-3">
+                        <div>
+                          <span className="text-xs font-bold text-[#245b50] dark:text-[#91c7b8] uppercase tracking-wider block mb-1">
+                            ข้อที่ {index + 1}
+                          </span>
+                          <h2 className="text-sm font-bold text-slate-900 dark:text-white leading-relaxed">
+                            {q.text}
+                          </h2>
+                        </div>
+                        <span className="bg-[#e8eee8] text-[#245b50] dark:bg-[#1A2744] dark:text-[#91c7b8] text-xs font-bold px-3 py-1 rounded-full shrink-0">
+                          {q.score} คะแนน
+                        </span>
+                      </div>
 
-                  <div className="flex-1 space-y-4">
-                    {/* Question Header */}
-                    <div className="flex justify-between items-start gap-4">
-                      <p className="text-lg text-gray-900 dark:text-gray-100 font-medium leading-relaxed flex-1">
-                        {q.text}
-                      </p>
-                      <div className="shrink-0 flex items-center gap-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 px-2 py-0.5 rounded-md text-xs font-semibold text-gray-500">
-                        {q.score} คะแนน
+                      {/* Text Answer Input */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                          คำตอบของคุณ (พิมพ์ข้อความ):
+                        </label>
+                        <Textarea
+                          rows={3}
+                          aria-label={`คำตอบข้อที่ ${index + 1}`}
+                          value={answers[q.id] || ""}
+                          onChange={(e) =>
+                            setAnswers((prev) => ({
+                              ...prev,
+                              [q.id]: e.target.value,
+                            }))
+                          }
+                          placeholder="พิมพ์คำตอบของคุณสำหรับข้อนี้..."
+                          className="bg-[#F8FAFC] dark:bg-[#181818] border-slate-200 dark:border-slate-700 text-xs leading-relaxed rounded-xl font-mono"
+                        />
+                      </div>
+
+                      {/* Per-Question Image Attachment Section */}
+                      <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                        <label className="attachment-label text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center justify-between">
+                          <span className="flex items-center gap-1.5">
+                            <ImageIcon className="w-3.5 h-3.5 text-[#245b50] dark:text-[#91c7b8]" />
+                            แนบรูปภาพลายมือคำตอบสำหรับข้อที่ {index + 1}:
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-normal">
+                            แนบได้ตามต้องการ
+                          </span>
+                        </label>
+
+                        {/* Image Previews Grid */}
+                        {previews.length > 0 && (
+                          <div className="flex flex-wrap gap-3 pt-1 pb-2">
+                            {previews.map((src, imgIdx) => (
+                              <div
+                                key={imgIdx}
+                                className="relative group w-24 h-24 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800"
+                              >
+                                <img
+                                  src={src}
+                                  alt={`ข้อ ${index + 1} รูปที่ ${imgIdx + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
+                                <button
+                                  type="button"
+                                  aria-label={`ลบรูปที่ ${imgIdx + 1}`}
+                                  onClick={() => removeImage(q.id, imgIdx)}
+                                  className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 shadow-md hover:bg-red-700 transition"
+                                  title="ลบรูปนี้"
+                                >
+                                  <X size={12} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Upload Input Button */}
+                        <label className="attachment-button inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 hover:border-[#1a73e8] dark:hover:border-[#8ab4f8] bg-slate-50 dark:bg-slate-900/50 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 text-slate-600 dark:text-slate-400 text-xs cursor-pointer transition">
+                          <Upload
+                            size={14}
+                            className="text-[#245b50] dark:text-[#91c7b8]"
+                          />
+                          <span>แนบรูปภาพ (ภาพถ่ายกระดาษคำตอบ/ลายมือ)</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={(e) =>
+                              handleImageChange(q.id, e.target.files)
+                            }
+                            className="hidden"
+                          />
+                        </label>
                       </div>
                     </div>
+                  );
+                })}
 
-                    {/* Question Images */}
-                    {q.image_paths && q.image_paths.length > 0 ? (
-                      <div className="flex flex-wrap gap-3">
-                        {q.image_paths.map((src, i) => (
-                          <img key={i} src={src} alt="" className="max-h-48 w-auto rounded-lg border border-gray-300 dark:border-gray-700 cursor-zoom-in hover:shadow-md transition-shadow" onClick={() => setModalImage({ src, alt: `รูปโจทย์ ${i+1}` })} />
-                        ))}
+                <div className="action-footer">
+                  <p>
+                    ตรวจสอบคำตอบและไฟล์แนบให้ครบก่อนส่ง
+                    คำตอบจะถูกส่งเมื่อกดปุ่มด้านล่าง
+                  </p>
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="primary-action w-full"
+                  >
+                    {isSubmitting ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <Send className="w-4 h-4 mr-2" />
+                    )}
+                    {isSubmitting ? "กำลังส่งคำตอบ…" : "ส่งคำตอบ"}
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              /* Post-submission Summary */
+              <div className="space-y-4">
+                <div className="bg-white dark:bg-[#1E1E1E] rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4 shadow-sm">
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-3">
+                    สรุปคำตอบที่คุณส่ง
+                  </h3>
+                  {exam.questions.map((q, idx) => (
+                    <div
+                      key={q.id}
+                      className="space-y-2 text-xs border-b border-slate-100 dark:border-slate-800 pb-3 last:border-0 last:pb-0"
+                    >
+                      <span className="font-semibold text-slate-700 dark:text-slate-300">
+                        ข้อที่ {idx + 1}: {q.text}
+                      </span>
+                      <div className="p-3 bg-[#F8FAFC] dark:bg-[#181818] rounded-lg font-mono text-slate-800 dark:text-slate-200 border border-slate-100 dark:border-slate-800">
+                        {answers[q.id] || "(ไม่มีข้อความคำตอบ)"}
                       </div>
-                    ) : q.image_path ? (
-                      <img src={q.image_path} alt="" className="max-h-64 w-auto rounded-lg border border-gray-300 dark:border-gray-700 cursor-zoom-in hover:shadow-md transition-shadow" onClick={() => setModalImage({ src: q.image_path!, alt: "รูปโจทย์" })} />
-                    ) : null}
-
-                    {/* Answer Input */}
-                    <div className="space-y-3 pt-2">
-                      <label htmlFor={`answer-${q.id}`} className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest block">คำตอบของคุณ</label>
-                      <textarea
-                        id={`answer-${q.id}`}
-                        placeholder="พิมพ์คำตอบที่นี่..."
-                        className="w-full min-h-[160px] p-4 text-base bg-gray-50/50 dark:bg-gray-900/30 border-2 border-gray-100 dark:border-gray-800 rounded-xl focus:bg-white dark:focus:bg-gray-900 focus:border-blue-400 dark:focus:border-blue-600 focus:ring-0 transition-all outline-none text-gray-800 dark:text-gray-100 resize-y"
-                        value={ans.text}
-                        onChange={e => handleTextChange(q.id, e.target.value)}
-                      />
-                      
-                      {/* Answer images preview */}
-                      {ans.imagePreviews.length > 0 && (
-                        <div className="flex flex-wrap gap-3 pt-2">
-                          {ans.imagePreviews.map((src, i) => (
-                            <div key={i} className="relative group/img w-24 h-24 rounded-xl overflow-hidden border-2 border-gray-200 dark:border-gray-700 shadow-sm">
-                              <img src={src} alt="" className="w-full h-full object-cover cursor-zoom-in" onClick={() => setModalImage({ src, alt: `คำตอบ ${i+1}` })} />
-                              <button 
-                                onClick={e => { e.stopPropagation(); handleRemoveImage(q.id, i); }} 
-                                className="absolute top-1 right-1 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-all shadow-md active:scale-90"
-                              >
-                                <X size={12} />
-                              </button>
-                            </div>
+                      {(imagePreviews[q.id]?.length ?? 0) > 0 && (
+                        <div className="flex gap-2 pt-1">
+                          {imagePreviews[q.id].map((src, i) => (
+                            <img
+                              key={i}
+                              src={src}
+                              alt=""
+                              className="w-16 h-16 rounded-md object-cover border border-slate-200 dark:border-slate-700"
+                            />
                           ))}
                         </div>
                       )}
-
-                      {/* Image actions */}
-                      <div className="flex gap-2 pt-1">
-                        <input ref={el => { fileInputRefs.current[q.id] = el; }} type="file" accept="image/*" multiple className="hidden" onChange={e => { if (e.target.files) handleImageSelect(q.id, e.target.files); e.target.value = ""; }} />
-                        <input id={`cam-${q.id}`} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => { if (e.target.files) handleImageSelect(q.id, e.target.files); e.target.value = ""; }} />
-                        
-                        <button 
-                          onClick={() => document.getElementById(`cam-${q.id}`)?.click()} 
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                        >
-                          <Camera size={14} /> ถ่ายรูปแนบ
-                        </button>
-                        
-                        <button 
-                          onClick={() => fileInputRefs.current[q.id]?.click()} 
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                        >
-                          <ImageIcon size={14} /> เลือกรูปภาพ
-                        </button>
-                      </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              );
-            })}
-          </div>
 
-          {/* Paper Footer */}
-          <div className="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800 text-center">
-            <p className="text-xs text-gray-400 dark:text-gray-600 font-medium">-- สิ้นสุดข้อสอบ --</p>
-          </div>
-        </div>
-      </div>
-
-      <ImageModal isOpen={!!modalImage} onClose={() => setModalImage(null)} src={modalImage?.src || ""} alt={modalImage?.alt} />
+                <Button
+                  onClick={() => navigate(`/room/${roomId}`)}
+                  className="w-full bg-[#1a73e8] hover:bg-[#1557b0] text-white font-semibold text-xs h-10 rounded-full"
+                >
+                  กลับสู่หน้าห้องเรียน
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </main>
     </div>
   );
 }

@@ -1,9 +1,12 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import { fileURLToPath } from "node:url";
+
+const projectRoot = fileURLToPath(new URL(".", import.meta.url));
 
 export default defineConfig(({ mode }) => ({
-  root: path.resolve(__dirname, "client"),
+  root: path.resolve(projectRoot, "client"),
   envDir: "../",
 
   server: {
@@ -22,19 +25,19 @@ export default defineConfig(({ mode }) => ({
       },
     },
     fs: {
-      allow: [path.resolve(__dirname)],
+      allow: [projectRoot],
       deny: [".env", ".env.*", "*.{crt,pem}", "**/.git/**", "server/**"],
     },
   },
   build: {
-    outDir: path.resolve(__dirname, "dist/spa"),
+    outDir: path.resolve(projectRoot, "dist/spa"),
     emptyOutDir: true,
   },
   plugins: [react()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./client"),
-      "@shared": path.resolve(__dirname, "./shared"),
+      "@": path.resolve(projectRoot, "./client"),
+      "@shared": path.resolve(projectRoot, "./shared"),
     },
   },
 }));

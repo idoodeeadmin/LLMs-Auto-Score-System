@@ -7,106 +7,111 @@ import io
 import time
 import asyncio
 import statistics
+import math
+from datetime import datetime, timezone, timedelta
+from server.exam_policy import (ensure_submission_window, parse_exam_time, validate_answer_text, MAX_ANSWER_IMAGES, SUBMISSION_GRACE_SECONDS)
 from typing import Optional, List
 
 from server.database import get_db_connection
 from server.auth import get_password_hash, verify_password, create_access_token, decode_token
 from server.models import *
 from server.utils import check_rate_limit, upload_to_cloudinary, get_current_user, grading_queue, trigger_socket_notify, _distribution_buckets, sanitize_csv_value, validate_upload_file
-from server.services.ai_service import _USE_GEMINI, _genai_client, _GEMINI_MODEL
 
 router = APIRouter(prefix="/api/rooms/{room_id}/exams", tags=["Exams"])
+
+def save_question_images(question, exam_id, allowed_existing=()):
+    import base64
+    paths = []
+    for image in question.question_images_base64 or []:
+        if image in allowed_existing:
+            paths.append(image)
+            continue
+        try:
+            header, encoded = image.split(',', 1)
+            if not header.startswith('data:') or not header.endswith(';base64'):
+                raise ValueError('Not an image data URL')
+            mime = header[5:].split(';')[0]
+            raw = base64.b64decode(encoded, validate=True)
+        except (ValueError, TypeError):
+            raise HTTPException(422, 'ภาพโจทย์ไม่ถูกต้อง กรุณาแนบภาพใหม่')
+        validate_upload_file(raw, content_type=mime)
+        url = upload_to_cloudinary(raw, folder=f'questions/{exam_id}')
+        if not url:
+            raise HTTPException(502, 'บันทึกภาพโจทย์ไม่สำเร็จ')
+        paths.append(url)
+    return paths
+
+
+def insert_questions(cursor, exam, exam_id, allowed_existing=()):
+    for question in exam.questions:
+        images = save_question_images(question, exam_id, allowed_existing)
+        cursor.execute('INSERT INTO questions (exam_id, text, score, answer_key, rubrics, order_index, image_paths) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            (exam_id, question.text, question.score, question.answer_key,
+             json.dumps(question.rubrics, ensure_ascii=False) if question.rubrics else None,
+             question.order_index, json.dumps(images) if images else None))
+
 
 @router.post('')
 async def create_exam(room_id: int, exam: ExamCreate, user: dict=Depends(get_current_user)):
     if user['role'] != 'teacher':
-        raise HTTPException(status_code=403, detail='Only teachers can create exams')
+        raise HTTPException(403, 'Only teachers can create exams')
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT id FROM rooms WHERE id = ? AND teacher_id = ?', (room_id, user['id']))
-    if not cursor.fetchone():
+    try:
+        cursor = conn.cursor()
+        cursor.execute('SELECT id FROM rooms WHERE id = ? AND teacher_id = ?', (room_id, user['id']))
+        if not cursor.fetchone():
+            raise HTTPException(404, 'Room not found or unauthorized')
+        total = sum(q.score for q in exam.questions)
+        cursor.execute('INSERT INTO exams (room_id, title, description, total_score, start_date, end_date, is_randomized) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            (room_id, exam.title, exam.description, total, exam.start_date, exam.end_date, exam.is_randomized))
+        exam_id = cursor.lastrowid
+        insert_questions(cursor, exam, exam_id)
+        conn.commit()
+        cursor.execute('SELECT * FROM exams WHERE id = ?', (exam_id,))
+        result = dict(cursor.fetchone())
+        cursor.execute('SELECT user_id FROM enrollments WHERE room_id = ?', (room_id,))
+        student_ids = [row['user_id'] for row in cursor.fetchall()]
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
         conn.close()
-        raise HTTPException(status_code=404, detail='Room not found or unauthorized')
-    computed_total_score = sum((float(q.score) for q in exam.questions))
-    cursor.execute('INSERT INTO exams (room_id, title, description, total_score, start_date, end_date, is_randomized) VALUES (?, ?, ?, ?, ?, ?, ?)', (room_id, exam.title, exam.description, computed_total_score, exam.start_date, exam.end_date, exam.is_randomized))
-    exam_id = cursor.lastrowid
-    import base64, re as _re
-    for q in exam.questions:
-        rubrics_json = json.dumps(q.rubrics, ensure_ascii=False) if q.rubrics else None
-        image_paths = []
-        import time as _time
-        for img_idx, img_b64 in enumerate(q.question_images_base64 or []):
-            try:
-                match = _re.match('data:(?P<mime>[^;]+);base64,(?P<data>.+)', img_b64)
-                if match:
-                    mime = match.group('mime')
-                    b64data = match.group('data')
-                    img_bytes = base64.b64decode(b64data)
-                    ext = mime.split('/')[-1].replace('jpeg', 'jpg')
-                    c_url = upload_to_cloudinary(img_bytes, folder=f'questions/{exam_id}')
-                    if c_url:
-                        image_paths.append(c_url)
-            except Exception as img_err:
-                print(f'[Question Image] Failed to save index {img_idx}: {img_err}')
-        image_paths_json = json.dumps(image_paths) if image_paths else None
-        
-        cursor.execute('INSERT INTO questions (exam_id, text, score, answer_key, rubrics, order_index, image_paths) VALUES (?, ?, ?, ?, ?, ?, ?)', (exam_id, q.text, q.score, q.answer_key, rubrics_json, q.order_index, image_paths_json))
-    conn.commit()
-    cursor.execute('SELECT * FROM exams WHERE id = ?', (exam_id,))
-    new_exam = dict(cursor.fetchone())
-    conn.close()
-    return new_exam
+    for student_id in student_ids:
+        await trigger_socket_notify(user_id=student_id, notify_type='new_exam', message=f'มีข้อสอบใหม่: {exam.title}',
+            data={'room_id': room_id, 'exam_id': exam_id, 'link': f'/room/{room_id}/exam/{exam_id}'})
+    return result
+
 
 @router.put('/{exam_id}')
 async def update_exam(room_id: int, exam_id: int, exam: ExamCreate, user: dict=Depends(get_current_user)):
     if user['role'] != 'teacher':
-        raise HTTPException(status_code=403, detail='Only teachers can update exams')
+        raise HTTPException(403, 'Only teachers can update exams')
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT id FROM exams WHERE id = ? AND room_id = ?', (exam_id, room_id))
-    if not cursor.fetchone():
+    try:
+        cursor = conn.cursor()
+        cursor.execute('SELECT e.id FROM exams e JOIN rooms r ON r.id = e.room_id WHERE e.id = ? AND e.room_id = ? AND r.teacher_id = ? FOR UPDATE', (exam_id, room_id, user['id']))
+        if not cursor.fetchone():
+            raise HTTPException(404, 'Exam not found or unauthorized')
+        cursor.execute('SELECT id FROM submissions WHERE exam_id = ?', (exam_id,))
+        if cursor.fetchone():
+            raise HTTPException(400, 'ไม่สามารถแก้ไขข้อสอบได้ เนื่องจากมีนักเรียนส่งคำตอบมาแล้ว')
+        cursor.execute('SELECT image_paths FROM questions WHERE exam_id = ?', (exam_id,))
+        allowed = set()
+        for row in cursor.fetchall():
+            allowed.update(json.loads(row['image_paths'] or '[]'))
+        cursor.execute('UPDATE exams SET title = ?, description = ?, total_score = ?, start_date = ?, end_date = ?, is_randomized = ? WHERE id = ?',
+            (exam.title, exam.description, sum(q.score for q in exam.questions), exam.start_date, exam.end_date, exam.is_randomized, exam_id))
+        cursor.execute('DELETE FROM questions WHERE exam_id = ?', (exam_id,))
+        insert_questions(cursor, exam, exam_id, allowed)
+        conn.commit()
+        cursor.execute('SELECT * FROM exams WHERE id = ?', (exam_id,))
+        result = dict(cursor.fetchone())
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
         conn.close()
-        raise HTTPException(status_code=404, detail='Exam not found')
-    cursor.execute('SELECT id FROM rooms WHERE id = ? AND teacher_id = ?', (room_id, user['id']))
-    if not cursor.fetchone():
-        conn.close()
-        raise HTTPException(status_code=404, detail='Room not found or unauthorized')
-    
-    # Check if there are any submissions before allowing edits
-    cursor.execute('SELECT id FROM submissions WHERE exam_id = ?', (exam_id,))
-    if cursor.fetchone():
-        conn.close()
-        raise HTTPException(status_code=400, detail='ไม่สามารถแก้ไขข้อสอบได้ เนื่องจากมีนักเรียนเริ่มทำหรือส่งคำตอบมาแล้ว')
-        
-    computed_total_score = sum((float(q.score) for q in exam.questions))
-    cursor.execute('UPDATE exams SET title = ?, description = ?, total_score = ?, start_date = ?, end_date = ?, is_randomized = ? WHERE id = ?', (exam.title, exam.description, computed_total_score, exam.start_date, exam.end_date, exam.is_randomized, exam_id))
-    cursor.execute('DELETE FROM questions WHERE exam_id = ?', (exam_id,))
-    import base64, re as _re
-    for q in exam.questions:
-        rubrics_json = json.dumps(q.rubrics, ensure_ascii=False) if q.rubrics else None
-        image_paths = []
-        import time as _time
-        for img_idx, img_b64 in enumerate(q.question_images_base64 or []):
-            try:
-                match = _re.match('data:(?P<mime>[^;]+);base64,(?P<data>.+)', img_b64)
-                if match:
-                    mime = match.group('mime')
-                    b64data = match.group('data')
-                    img_bytes = base64.b64decode(b64data)
-                    ext = mime.split('/')[-1].replace('jpeg', 'jpg')
-                    c_url = upload_to_cloudinary(img_bytes, folder=f'questions/{exam_id}')
-                    if c_url:
-                        image_paths.append(c_url)
-            except Exception as img_err:
-                print(f'[Question Image] Failed to save index {img_idx}: {img_err}')
-        image_paths_json = json.dumps(image_paths) if image_paths else None
-        
-        cursor.execute('INSERT INTO questions (exam_id, text, score, answer_key, rubrics, order_index, image_paths) VALUES (?, ?, ?, ?, ?, ?, ?)', (exam_id, q.text, q.score, q.answer_key, rubrics_json, q.order_index, image_paths_json))
-    conn.commit()
-    cursor.execute('SELECT * FROM exams WHERE id = ?', (exam_id,))
-    updated_exam = dict(cursor.fetchone())
-    conn.close()
-    return updated_exam
+    return result
 
 @router.delete('/{exam_id}')
 async def delete_exam(request: Request, room_id: int, exam_id: int, user: dict=Depends(get_current_user)):
@@ -114,7 +119,7 @@ async def delete_exam(request: Request, room_id: int, exam_id: int, user: dict=D
         raise HTTPException(status_code=403, detail='Only teachers can delete exams')
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT id FROM rooms WHERE id = ? AND teacher_id = ?', (room_id, user['id']))
+    cursor.execute('SELECT e.id FROM exams e JOIN rooms r ON r.id = e.room_id WHERE e.id = ? AND e.room_id = ? AND r.teacher_id = ?', (exam_id, room_id, user['id']))
     if not cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=404, detail='Room not found or unauthorized')
@@ -147,6 +152,13 @@ async def list_exams(room_id: int, user: dict=Depends(get_current_user)):
 async def get_exam(room_id: int, exam_id: int, user: dict=Depends(get_current_user)):
     conn = get_db_connection()
     cursor = conn.cursor()
+    if user['role'] == 'teacher':
+        cursor.execute('SELECT id FROM rooms WHERE id = ? AND teacher_id = ?', (room_id, user['id']))
+    else:
+        cursor.execute('SELECT room_id FROM enrollments WHERE room_id = ? AND user_id = ?', (room_id, user['id']))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=403, detail='Unauthorized')
     cursor.execute('SELECT * FROM exams WHERE id = ? AND room_id = ?', (exam_id, room_id))
     exam = cursor.fetchone()
     if not exam:
@@ -157,8 +169,19 @@ async def get_exam(room_id: int, exam_id: int, user: dict=Depends(get_current_us
     conn.close()
     result = dict(exam)
     result['questions'] = []
+    now = datetime.now(timezone.utc)
+    result['server_time'] = now.isoformat()
+    end = parse_exam_time(exam.get('end_date'))
+    result['submission_deadline'] = (end + timedelta(seconds=SUBMISSION_GRACE_SECONDS)).isoformat() if end else None
+    start = parse_exam_time(exam.get('start_date'))
+    result['start_date'] = start.isoformat() if start else None
+    result['end_date'] = end.isoformat() if end else None
+    if user['role'] != 'teacher' and start and now < start:
+        return result
     for q in questions:
         qd = dict(q)
+        if user['role'] != 'teacher':
+            qd.pop('answer_key', None)
         if qd.get('rubrics'):
             try:
                 qd['rubrics'] = json.loads(qd['rubrics'])
@@ -178,89 +201,90 @@ async def get_exam(room_id: int, exam_id: int, user: dict=Depends(get_current_us
         rng.shuffle(result['questions'])
     return result
 
-@router.post('/{exam_id}/submit')
-async def submit_exam(room_id: int, exam_id: int, answers: str=Form(...), user: dict=Depends(get_current_user), **kwargs):
-    """Student submits answers (lock-once). Supports text + image per question."""
-    raise HTTPException(status_code=500, detail='Use the multipart endpoint below')
-
 @router.post('/{exam_id}/submit-multipart')
+@router.post('/{exam_id}/submit', include_in_schema=False)
 async def submit_exam_multipart(request: Request, room_id: int, exam_id: int, user: dict=Depends(get_current_user)):
-    """Student submits answers with optional image per question (lock-once, multipart/form-data)."""
+    """Validate the complete payload before storing it, then queue only committed work."""
     if user['role'] != 'student':
-        raise HTTPException(status_code=403, detail='Only students can submit exams')
+        raise HTTPException(403, 'Only students can submit exams')
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM exams WHERE id = ? AND room_id = ?', (exam_id, room_id))
-    exam_row = cursor.fetchone()
-    if not exam_row:
-        conn.close()
-        raise HTTPException(status_code=404, detail='Exam not found')
-    end_date_str = exam_row['end_date']
-    if end_date_str:
-        try:
-            from datetime import datetime, timezone, timedelta
-            deadline = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
-            if deadline.tzinfo is None:
-                deadline = deadline.replace(tzinfo=timezone.utc)
-                
-            now = datetime.now(timezone.utc)
-            if now > deadline + timedelta(minutes=1): # Add 1 min grace period
-                conn.close()
-                raise HTTPException(status_code=403, detail='เลยกำหนดเวลาส่งคำตอบข้อสอบแล้ว (Deadline Passed)')
-        except (ValueError, TypeError):
-            pass
-            
-    cursor.execute('SELECT id, status FROM submissions WHERE exam_id = ? AND user_id = ?', (exam_id, user['id']))
-    existing = cursor.fetchone()
-    if existing and existing['status'] != 'missing':
-        conn.close()
-        raise HTTPException(status_code=409, detail='คุณได้ส่งคำตอบข้อสอบนี้ไปแล้ว ไม่สามารถส่งซ้ำได้')
-    form = await request.form()
-    answers_json = form.get('answers', '[]')
     try:
-        answers_list = json.loads(answers_json)
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM exams WHERE id = ? AND room_id = ? FOR UPDATE', (exam_id, room_id))
+        exam = cursor.fetchone()
+        if not exam:
+            raise HTTPException(404, 'Exam not found')
+        # Serialize concurrent submissions for the same enrollment, including leave.
+        cursor.execute('SELECT id FROM enrollments WHERE room_id = ? AND user_id = ? FOR UPDATE', (room_id, user['id']))
+        if not cursor.fetchone():
+            raise HTTPException(403, 'คุณไม่ได้เป็นสมาชิกห้องเรียนนี้')
+        ensure_submission_window(exam)
+        cursor.execute('SELECT id, status FROM submissions WHERE exam_id = ? AND user_id = ? FOR UPDATE', (exam_id, user['id']))
+        existing = cursor.fetchone()
+        if existing and existing['status'] != 'missing':
+            raise HTTPException(409, 'คุณได้ส่งคำตอบข้อสอบนี้ไปแล้ว ไม่สามารถส่งซ้ำได้')
+        cursor.execute('SELECT * FROM questions WHERE exam_id = ? ORDER BY order_index', (exam_id,))
+        questions = {q['id']: dict(q) for q in cursor.fetchall()}
+        if not questions:
+            raise HTTPException(409, 'ข้อสอบนี้ยังไม่มีคำถาม')
+        form = await request.form()
+        try:
+            answer_items = json.loads(form.get('answers', '[]'))
+            if not isinstance(answer_items, list):
+                raise ValueError('Expected list')
+            answers = {}
+            for item in answer_items:
+                qid = int(item['question_id'])
+                text = item.get('answer_text', '')
+                if qid not in questions or qid in answers or not isinstance(text, str):
+                    raise ValueError('Invalid answer')
+                validate_answer_text(text)
+                answers[qid] = text
+        except (ValueError, TypeError, KeyError):
+            raise HTTPException(422, 'ข้อมูลคำตอบหรือหมายเลขคำถามไม่ถูกต้อง')
+        images = {qid: [] for qid in questions}
+        seen_fields = set()
+        import re
+        for field, upload in form.multi_items():
+            if not hasattr(upload, 'read'):
+                continue
+            match = re.fullmatch(r'image_(\d+)(?:_(\d+))?', field)
+            if not match or int(match[1]) not in questions or field in seen_fields:
+                raise HTTPException(422, 'ไฟล์แนบไม่ตรงกับคำถามหรือแนบซ้ำ')
+            seen_fields.add(field)
+            qid = int(match[1])
+            if len(images[qid]) >= MAX_ANSWER_IMAGES:
+                raise HTTPException(422, f'แนบภาพได้ไม่เกิน {MAX_ANSWER_IMAGES} ภาพต่อข้อ')
+            raw = await upload.read(5 * 1024 * 1024 + 1)
+            validate_upload_file(raw, content_type=upload.content_type)
+            images[qid].append(raw)
+        stored_images = {}
+        for qid, uploads in images.items():
+            paths = []
+            for raw in uploads:
+                url = upload_to_cloudinary(raw, folder=f"submissions/{exam_id}/{user['id']}")
+                if not url:
+                    raise HTTPException(502, 'บันทึกรูปภาพไม่สำเร็จ กรุณาลองส่งอีกครั้ง')
+                paths.append(url)
+            stored_images[qid] = paths
+        ensure_submission_window(exam)
+        if existing:
+            submission_id = existing['id']
+            cursor.execute("UPDATE submissions SET status='submitted', submitted_at=CURRENT_TIMESTAMP, graded_by_ai=0 WHERE id = ?", (submission_id,))
+        else:
+            cursor.execute("INSERT INTO submissions (exam_id, user_id, status, submitted_at, graded_by_ai) VALUES (?, ?, 'submitted', CURRENT_TIMESTAMP, 0)", (exam_id, user['id']))
+            submission_id = cursor.lastrowid
+        for qid in questions:
+            cursor.execute("INSERT INTO submission_answers (submission_id, question_id, answer_text, ai_score, ai_feedback, ai_confidence, image_paths) VALUES (?, ?, ?, 0, '', 'medium', ?) ON DUPLICATE KEY UPDATE answer_text=VALUES(answer_text), image_paths=VALUES(image_paths)",
+                (submission_id, qid, answers.get(qid, ''), json.dumps(stored_images[qid]) if stored_images[qid] else None))
+        conn.commit()
     except Exception:
+        conn.rollback()
+        raise
+    finally:
         conn.close()
-        raise HTTPException(status_code=400, detail='Invalid answers JSON')
-    answers_map = {int(a['question_id']): a.get('answer_text', '') for a in answers_list}
-    cursor.execute("INSERT INTO submissions (exam_id, user_id, status, submitted_at, graded_by_ai)\n           VALUES (?, ?, 'submitted', CURRENT_TIMESTAMP, 0)\n           ON DUPLICATE KEY UPDATE\n             status='submitted', submitted_at=CURRENT_TIMESTAMP, graded_by_ai=0", (exam_id, user['id']))
-    submission_id = cursor.lastrowid
-    if not submission_id:
-        cursor.execute('SELECT id FROM submissions WHERE exam_id = ? AND user_id = ?', (exam_id, user['id']))
-        submission_id = cursor.fetchone()['id']
-    cursor.execute('SELECT * FROM questions WHERE exam_id = ? ORDER BY order_index', (exam_id,))
-    questions = {q['id']: dict(q) for q in cursor.fetchall()}
-    total_ai_score = 0.0
-    for q_id, q in questions.items():
-        base_answer_text = answers_map.get(q_id, '')
-        answer_text = base_answer_text[:300] if base_answer_text else ''
-        img_list: list[bytes] = []
-        img_mime_list: list[str] = []
-        img_paths: list[str] = []
-
-        for img_idx in range(10):
-            field_name = f'image_{q_id}_{img_idx}'
-            file_field = form.get(field_name)
-            if not file_field and img_idx == 0:
-                file_field = form.get(f'image_{q_id}')
-            if not file_field or not hasattr(file_field, 'read'):
-                continue
-            raw_bytes = await file_field.read()
-            if not raw_bytes:
-                continue
-            mime = file_field.content_type or 'image/jpeg'
-            validate_upload_file(raw_bytes, content_type=mime)
-            ext = mime.split('/')[-1].replace('jpeg', 'jpg')
-            c_url = upload_to_cloudinary(raw_bytes, folder=f"submissions/{exam_id}/{user['id']}")
-            if c_url:
-                img_paths.append(c_url)
-        image_paths_json = json.dumps(img_paths) if img_paths else None
-        
-        cursor.execute("INSERT INTO submission_answers\n                 (submission_id, question_id, answer_text, ai_score, ai_feedback, ai_confidence, image_paths)\n               VALUES (?, ?, ?, 0, '', 'medium', ?)\n               ON DUPLICATE KEY UPDATE\n                 answer_text=VALUES(answer_text), image_paths=VALUES(image_paths)", (submission_id, q_id, answer_text, image_paths_json))
     await grading_queue.put({'submission_id': submission_id, 'room_id': room_id, 'exam_id': exam_id, 'user_id': user['id']})
-    conn.commit()
-    conn.close()
-    return {'message': 'ส่งคำตอบสำเร็จ (ระบบกำลังตรวจคะแนน)', 'submission_id': submission_id, 'status': 'submitted', 'ai_score': 0}
+    return {'message': 'ส่งคำตอบสำเร็จ (ระบบกำลังตรวจคะแนน)', 'submission_id': submission_id, 'status': 'submitted'}
 
 @router.get('/{exam_id}/export-csv')
 async def export_exam_csv(room_id: int, exam_id: int, user: dict=Depends(get_current_user)):
@@ -269,7 +293,7 @@ async def export_exam_csv(room_id: int, exam_id: int, user: dict=Depends(get_cur
         raise HTTPException(status_code=403, detail='Only teachers can export scores')
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT id FROM rooms WHERE id = ? AND teacher_id = ?', (room_id, user['id']))
+    cursor.execute('SELECT e.id FROM exams e JOIN rooms r ON r.id = e.room_id WHERE e.id = ? AND e.room_id = ? AND r.teacher_id = ?', (exam_id, room_id, user['id']))
     if not cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=403, detail='Unauthorized')
@@ -295,7 +319,7 @@ async def list_submissions(room_id: int, exam_id: int, user: dict=Depends(get_cu
         raise HTTPException(status_code=403, detail='Only teachers can view all submissions')
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT id FROM rooms WHERE id = ? AND teacher_id = ?', (room_id, user['id']))
+    cursor.execute('SELECT e.id FROM exams e JOIN rooms r ON r.id = e.room_id WHERE e.id = ? AND e.room_id = ? AND r.teacher_id = ?', (exam_id, room_id, user['id']))
     if not cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=403, detail='Unauthorized')
@@ -314,7 +338,7 @@ async def get_exam_analytics(room_id: int, exam_id: int, user: dict=Depends(get_
         raise HTTPException(status_code=403, detail='Only teachers can view analytics')
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT id FROM rooms WHERE id = ? AND teacher_id = ?', (room_id, user['id']))
+    cursor.execute('SELECT e.id FROM exams e JOIN rooms r ON r.id = e.room_id WHERE e.id = ? AND e.room_id = ? AND r.teacher_id = ?', (exam_id, room_id, user['id']))
     if not cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=403, detail='Unauthorized')
@@ -351,7 +375,7 @@ async def export_exam_scores(room_id: int, exam_id: int, user: dict=Depends(get_
         raise HTTPException(status_code=400, detail='Supported export formats are csv and xlsx')
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT id FROM rooms WHERE id = ? AND teacher_id = ?', (room_id, user['id']))
+    cursor.execute('SELECT e.id FROM exams e JOIN rooms r ON r.id = e.room_id WHERE e.id = ? AND e.room_id = ? AND r.teacher_id = ?', (exam_id, room_id, user['id']))
     if not cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=403, detail='Unauthorized')
@@ -407,6 +431,13 @@ async def get_my_submission(room_id: int, exam_id: int, user: dict=Depends(get_c
     """Student views their own submission result."""
     conn = get_db_connection()
     cursor = conn.cursor()
+    if user['role'] != 'student':
+        conn.close()
+        raise HTTPException(403, 'Only students can view their own result')
+    cursor.execute('SELECT e.id FROM exams e JOIN enrollments en ON en.room_id = e.room_id WHERE e.id = ? AND e.room_id = ? AND en.user_id = ?', (exam_id, room_id, user['id']))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(403, 'Unauthorized')
     cursor.execute('SELECT * FROM submissions WHERE exam_id = ? AND user_id = ?', (exam_id, user['id']))
     submission = cursor.fetchone()
     if not submission:
@@ -416,10 +447,14 @@ async def get_my_submission(room_id: int, exam_id: int, user: dict=Depends(get_c
         conn.close()
         return {'status': submission['status'], 'submission_id': submission['id'], 'submitted_at': submission['submitted_at']}
     submission = dict(submission)
-    cursor.execute('\n        SELECT sa.answer_text, sa.image_paths, sa.ai_score, sa.ai_feedback, sa.teacher_score, sa.teacher_comment,\n               q.text AS question_text, q.score AS max_score, q.order_index, q.image_paths AS q_image_paths\n        FROM submission_answers sa\n        JOIN questions q ON sa.question_id = q.id\n        WHERE sa.submission_id = ?\n        ORDER BY q.order_index\n    ', (submission['id'],))
+    cursor.execute('\n        SELECT sa.answer_text, sa.image_paths, sa.ai_score, sa.ai_feedback, sa.teacher_score, sa.teacher_comment, sa.quality_metrics,\n               q.text AS question_text, q.score AS max_score, q.order_index, q.image_paths AS q_image_paths\n        FROM submission_answers sa\n        JOIN questions q ON sa.question_id = q.id\n        WHERE sa.submission_id = ?\n        ORDER BY q.order_index\n    ', (submission['id'],))
     answers = []
     for a in cursor.fetchall():
         ad = dict(a)
+        try:
+            ad['quality_metrics'] = json.loads(ad.get('quality_metrics') or '{}')
+        except (TypeError, ValueError):
+            ad['quality_metrics'] = {}
         if ad.get('image_paths'):
             try:
                 ad['image_paths'] = json.loads(ad['image_paths'])
@@ -446,7 +481,7 @@ async def get_student_submission(room_id: int, exam_id: int, student_id: int, us
         raise HTTPException(status_code=403, detail='Only teachers can view student submissions')
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT id FROM rooms WHERE id = ? AND teacher_id = ?', (room_id, user['id']))
+    cursor.execute('SELECT e.id FROM exams e JOIN rooms r ON r.id = e.room_id WHERE e.id = ? AND e.room_id = ? AND r.teacher_id = ?', (exam_id, room_id, user['id']))
     if not cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=403, detail='Unauthorized')
@@ -462,6 +497,10 @@ async def get_student_submission(room_id: int, exam_id: int, student_id: int, us
     answers = []
     for a in cursor.fetchall():
         ad = dict(a)
+        try:
+            ad['quality_metrics'] = json.loads(ad.get('quality_metrics') or '{}')
+        except (TypeError, ValueError):
+            ad['quality_metrics'] = {}
         if ad.get('rubrics'):
             try:
                 ad['rubrics'] = json.loads(ad['rubrics'])
@@ -492,7 +531,7 @@ async def approve_submission(request: Request, room_id: int, exam_id: int, stude
         raise HTTPException(status_code=403, detail='Only teachers can approve submissions')
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT id FROM rooms WHERE id = ? AND teacher_id = ?', (room_id, user['id']))
+    cursor.execute('SELECT e.id FROM exams e JOIN rooms r ON r.id = e.room_id WHERE e.id = ? AND e.room_id = ? AND r.teacher_id = ?', (exam_id, room_id, user['id']))
     if not cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=403, detail='Unauthorized')
@@ -503,8 +542,25 @@ async def approve_submission(request: Request, room_id: int, exam_id: int, stude
         raise HTTPException(status_code=404, detail='Submission not found')
     submission_id = submission['id']
     total_teacher_score = 0.0
-    cursor.execute('SELECT * FROM submission_answers WHERE submission_id = ?', (submission_id,))
+    if submission['status'] not in ('ready', 'needs_review', 'approved'):
+        conn.close()
+        raise HTTPException(409, 'กรุณารอให้ AI ตรวจเสร็จก่อนอนุมัติ')
+    cursor.execute('SELECT sa.*, q.score AS max_score FROM submission_answers sa JOIN questions q ON q.id = sa.question_id WHERE sa.submission_id = ?', (submission_id,))
     all_answers = cursor.fetchall()
+    valid_ids = {str(a['question_id']) for a in all_answers}
+    if (set(body.teacher_scores or {}) | set(body.teacher_comments or {})) - valid_ids:
+        conn.close()
+        raise HTTPException(422, 'หมายเลขคำถามไม่ตรงกับการส่งคำตอบนี้')
+    for answer in all_answers:
+        score = (body.teacher_scores or {}).get(str(answer['question_id']))
+        if score is not None:
+            try:
+                numeric = float(score)
+                if not math.isfinite(numeric) or not 0 <= numeric <= float(answer['max_score']):
+                    raise ValueError('Score outside range')
+            except (ValueError, TypeError):
+                conn.close()
+                raise HTTPException(422, 'คะแนนต้องอยู่ระหว่าง 0 ถึงคะแนนเต็มของข้อนั้น')
     for ans in all_answers:
         q_id_str = str(ans['question_id'])
         t_score = body.teacher_scores.get(q_id_str) if body.teacher_scores else None
@@ -513,12 +569,24 @@ async def approve_submission(request: Request, room_id: int, exam_id: int, stude
             cursor.execute('UPDATE submission_answers SET teacher_score = ?, teacher_comment = ? WHERE id = ?', (t_score, t_comment, ans['id']))
             total_teacher_score += float(t_score)
         else:
-            total_teacher_score += float(ans['ai_score'] or 0)
+            total_teacher_score += float(ans['teacher_score'] if ans.get('teacher_score') is not None else (ans['ai_score'] or 0))
             if t_comment:
                 cursor.execute('UPDATE submission_answers SET teacher_comment = ? WHERE id = ?', (t_comment, ans['id']))
     cursor.execute("UPDATE submissions SET status = 'approved', total_score = ? WHERE id = ?", (round(total_teacher_score, 1), submission_id))
     conn.commit()
+    cursor.execute('SELECT title FROM exams WHERE id = ?', (exam_id,))
+    exam_row = cursor.fetchone()
     conn.close()
+    await trigger_socket_notify(
+        user_id=student_id,
+        notify_type='result_published',
+        message=f'ประกาศผลแล้ว: {exam_row["title"] if exam_row else "ข้อสอบ"}',
+        data={
+            'room_id': room_id,
+            'exam_id': exam_id,
+            'link': f'/room/{room_id}/exam/{exam_id}#feedback',
+        },
+    )
     return {'message': 'Submission approved', 'total_score': round(total_teacher_score, 1)}
 
 @router.post('/{exam_id}/questions/{question_id}/rescore')
@@ -528,12 +596,19 @@ async def rescore_question(room_id: int, exam_id: int, question_id: int, user: d
         raise HTTPException(status_code=403, detail='Only teachers can rescore')
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT id FROM rooms WHERE id = ? AND teacher_id = ?', (room_id, user['id']))
+    cursor.execute('SELECT e.id FROM exams e JOIN rooms r ON r.id = e.room_id WHERE e.id = ? AND e.room_id = ? AND r.teacher_id = ?', (exam_id, room_id, user['id']))
     if not cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=403, detail='Unauthorized')
-    cursor.execute('SELECT submission_id FROM submission_answers WHERE question_id = ?', (question_id,))
+    cursor.execute('SELECT id FROM questions WHERE id = ? AND exam_id = ?', (question_id, exam_id))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(404, 'Question not found')
+    cursor.execute("SELECT sa.submission_id FROM submission_answers sa JOIN submissions s ON s.id = sa.submission_id WHERE sa.question_id = ? AND s.exam_id = ? AND s.status NOT IN ('submitted', 'grading')", (question_id, exam_id))
     subs = cursor.fetchall()
+    for row in subs:
+        cursor.execute("UPDATE submissions SET status = 'grading' WHERE id = ?", (row['submission_id'],))
+    conn.commit()
     for row in subs:
         await grading_queue.put({'submission_id': row['submission_id'], 'room_id': room_id, 'exam_id': exam_id, 'question_id': question_id})
     conn.close()
@@ -552,7 +627,7 @@ async def regrade_student_submission(
         raise HTTPException(status_code=403, detail='Only teachers can trigger AI re-evaluation')
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT id FROM rooms WHERE id = ? AND teacher_id = ?', (room_id, user['id']))
+    cursor.execute('SELECT e.id FROM exams e JOIN rooms r ON r.id = e.room_id WHERE e.id = ? AND e.room_id = ? AND r.teacher_id = ?', (exam_id, room_id, user['id']))
     if not cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=403, detail='Unauthorized')
@@ -567,7 +642,16 @@ async def regrade_student_submission(
         body_data = await request.json()
     except Exception:
         body_data = {}
+    if submission['status'] in ('submitted', 'grading'):
+        conn.close()
+        raise HTTPException(409, 'รายการนี้กำลังรอตรวจอยู่แล้ว')
     specific_q_id = body_data.get('question_id')
+    if specific_q_id is not None:
+        cursor.execute('SELECT id FROM questions WHERE id = ? AND exam_id = ?', (specific_q_id, exam_id))
+        if not cursor.fetchone():
+            conn.close()
+            raise HTTPException(404, 'Question not found')
+        specific_q_id = int(specific_q_id)
     cursor.execute("UPDATE submissions SET status = 'grading' WHERE id = ?", (submission_id,))
     conn.commit()
     conn.close()
@@ -587,7 +671,7 @@ async def bulk_approve(room_id: int, exam_id: int, body: BulkApproveRequest, use
         raise HTTPException(status_code=403, detail='Only teachers can approve submissions')
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT id FROM rooms WHERE id = ? AND teacher_id = ?', (room_id, user['id']))
+    cursor.execute('SELECT e.id FROM exams e JOIN rooms r ON r.id = e.room_id WHERE e.id = ? AND e.room_id = ? AND r.teacher_id = ?', (exam_id, room_id, user['id']))
     if not cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=403, detail='Unauthorized')
@@ -599,13 +683,26 @@ async def bulk_approve(room_id: int, exam_id: int, body: BulkApproveRequest, use
         if not sub:
             skipped.append({'student_id': sid, 'reason': 'not_submitted'})
             continue
-        if sub['status'] in ('ready', 'needs_review'):
+        if sub['status'] == 'ready':
             cursor.execute("UPDATE submissions SET status = 'approved' WHERE id = ?", (sub['id'],))
             approved.append(sid)
         else:
             skipped.append({'student_id': sid, 'reason': f"status_{sub['status']}"})
     conn.commit()
+    cursor.execute('SELECT title FROM exams WHERE id = ?', (exam_id,))
+    exam_row = cursor.fetchone()
     conn.close()
+    for student_id in approved:
+        await trigger_socket_notify(
+            user_id=student_id,
+            notify_type='result_published',
+            message=f'ประกาศผลแล้ว: {exam_row["title"] if exam_row else "ข้อสอบ"}',
+            data={
+                'room_id': room_id,
+                'exam_id': exam_id,
+                'link': f'/room/{room_id}/exam/{exam_id}#feedback',
+            },
+        )
     return {'message': f'Approved {len(approved)} submissions', 'approved_student_ids': approved, 'skipped': skipped}
 
 

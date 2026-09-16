@@ -20,7 +20,7 @@
 - Backend: FastAPI (Python)
 - Socket: Node.js
 - Database: TiDB (MySQL)
-- AI: Google Gemini Pro
+- AI grading: OpenAI GPT-5.6 Luna (Responses API)
 - Storage: Cloudinary (เก็บรูปภาพบน Cloud)
 
 [ การทดสอบระบบ ]

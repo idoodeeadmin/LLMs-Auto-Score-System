@@ -46,7 +46,10 @@ io.use((socket, next) => {
     }
     try {
         const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
-        socket.userId = payload.sub; // email from JWT
+        if (!payload.user_id) {
+            return next(new Error('Please sign in again to enable real-time notifications'));
+        }
+        socket.userId = String(payload.user_id);
         socket.tokenData = payload;
         next();
     } catch (err) {
@@ -57,18 +60,18 @@ io.use((socket, next) => {
 io.on('connection', (socket) => {
     console.log('Authenticated user connected:', socket.userId, socket.id);
 
-    // Join room based on verified JWT identity (not client-provided userId)
+    // The numeric user id is signed by the Python API, so clients cannot subscribe
+    // to another user's notification channel.
+    socket.join(`user_${socket.userId}`);
+    activeUsers.set(socket.userId, socket.id);
+
+    // Backwards-compatible client event. It can only re-join the verified identity.
     socket.on('join_room', (userId) => {
-        // Verify that the userId matches the authenticated user
-        // userId from client must match what we know from JWT
-        if (String(userId) !== String(socket.userId) && socket.userId !== undefined) {
-            // Allow join by userId if it's the same user
-            // The Python backend uses user ID (number), JWT has email in 'sub'
-            // So we trust the userId from the client only after JWT auth passed
+        if (String(userId) !== socket.userId) {
+            console.warn(`Rejected room join for ${userId} from user ${socket.userId}`);
+            return;
         }
-        socket.join(`user_${userId}`);
-        activeUsers.set(userId, socket.id);
-        console.log(`User ${userId} joined room: user_${userId}`);
+        socket.join(`user_${socket.userId}`);
     });
 
     socket.on('disconnect', () => {

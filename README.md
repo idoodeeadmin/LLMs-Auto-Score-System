@@ -26,7 +26,7 @@
 
 ## About The Project
 
-**Evaly** เป็นระบบจัดการการศึกษาที่นำเอาความสามารถของ **Google Gemini Pro** มาช่วยในการตรวจข้อสอบแบบเขียนตอบ (Essay) จุดประสงค์หลักคือเพื่อลดภาระของผู้สอนในการตรวจข้อสอบ ระบบสามารถให้คะแนน, วิเคราะห์ลายมือจากรูปภาพ, สร้างเกณฑ์การให้คะแนน (Rubrics) อัตโนมัติ และให้คำแนะนำแก่นักเรียนเป็นรายบุคคลได้
+**Evaly** เป็นระบบจัดการการศึกษาที่ใช้ **OpenAI GPT-5.6 Luna** ช่วยตรวจข้อสอบแบบเขียนตอบ (Essay) จุดประสงค์หลักคือเพื่อลดภาระของผู้สอนในการตรวจข้อสอบ ระบบสามารถให้คะแนน วิเคราะห์คำตอบจากรูปภาพ และให้คำแนะนำแก่นักเรียนเป็นรายบุคคลได้
 
 สามารถเข้าชมได้บน https://llms-auto-score-systems.netlify.app/  
 อาจช้าไปบ้างเพราะเป๋นบริการฟรีทั้ง backend เเละ frontend
@@ -105,7 +105,7 @@
 ![React](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB) ![Vite](https://img.shields.io/badge/vite-%23646CFF.svg?style=for-the-badge&logo=vite&logoColor=white) ![TailwindCSS](https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white) 
 
 ### Backend & AI
-![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi) ![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54) ![Google Gemini](https://img.shields.io/badge/Google%20Gemini-8E75B2?style=for-the-badge&logo=google&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi) ![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54) ![OpenAI](https://img.shields.io/badge/OpenAI%20GPT--5.6%20Luna-412991?style=for-the-badge&logo=openai&logoColor=white)
 
 ### Database & Real-time
 ![TiDB](https://img.shields.io/badge/TiDB-MySQL_Compatible-000000?style=for-the-badge&logo=mysql&logoColor=white) ![NodeJS](https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white) ![Socket.io](https://img.shields.io/badge/Socket.io-black?style=for-the-badge&logo=socket.io&badgeColor=010101)
@@ -123,7 +123,7 @@ git clone https://github.com/idoodeeadmin/LLMs-Auto-Score-System.git
 cd LLMs-Auto-Score-System
 cp .env.example .env
 ```
-*(อย่าลืมแก้ไขไฟล์ `.env` เพื่อใส่ API Keys ที่จำเป็น เช่น Gemini API และ Database URL)*
+*(อย่าลืมแก้ไขไฟล์ `.env` เพื่อใส่ `OPENAI_API_KEY` และ Database URL)*
 
 ### 2. รันด้วย Docker (แนะนำ)
 สามารถเปิดทุกส่วนของระบบขึ้นมาได้พร้อมกันด้วยคำสั่งเดียว:
@@ -158,7 +158,7 @@ pnpm dev:all
 - **Real-time Server (Node.js & Socket.io):** แยกออกมาดูแลเรื่อง WebSocket โดยเฉพาะ เพื่อลดภาระของ API หลักเวลาที่มีคนใช้งานเยอะๆ
 
 ### 3. AI & External Services
-- **Google Gemini Pro:** รับหน้าที่ประมวลผลข้อความและอ่านลายมือจากรูปภาพเพื่อนำมาตรวจให้คะแนน
+- **OpenAI GPT-5.6 Luna:** รับหน้าที่ประมวลผลข้อความและรูปภาพคำตอบเพื่อนำมาตรวจให้คะแนน
 - **Cloudinary:** จัดการฝากไฟล์รูปภาพทั้งหมด
 - **Firebase Auth:** จัดการการล็อกอินและยืนยันตัวตนผ่าน Google
 
@@ -168,8 +168,8 @@ pnpm dev:all
 ### การทำงานของการตรวจข้อสอบ
 1. **Submission:** นักเรียนส่งคำตอบเข้ามาในระบบ (เป็นตัวอักษรหรือไฟล์ภาพ)
 2. **Preprocessing:** ระบบอัปโหลดรูปภาพขึ้น Cloudinary และเตรียมคำสั่ง (prompt) 
-3. **AI Inference:** ส่งโจทย์, เกณฑ์การให้คะแนน และคำตอบของนักเรียน ไปให้ Google Gemini
-4. **Evaluation:** Gemini วิเคราะห์และประเมินผลคำตอบ พร้อมให้คำแนะนำเพิ่มเติม
+3. **AI Inference:** ส่งโจทย์ เกณฑ์การให้คะแนน และคำตอบของนักเรียนไปยัง OpenAI Responses API
+4. **Evaluation:** GPT-5.6 Luna วิเคราะห์และประเมินผลคำตอบ พร้อมให้คำแนะนำเพิ่มเติม
 5. **Storage & Notify:** ระบบเซฟข้อมูลลง TiDB และสั่งให้ Socket.io แจ้งเตือนผู้สอนว่าตรวจข้อสอบเสร็จแล้ว
 
 ---
