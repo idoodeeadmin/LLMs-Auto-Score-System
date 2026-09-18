@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evaly Complete Architecture Flow - Copyable Code & One-Click Copy</title>
+    <!-- Google Fonts & FontAwesome -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-canvas: #f8fafc;
+            --bg-card: #ffffff;
+            --header-bg: #e2e8f0;
+            --border-color: #cbd5e1;
+            --border-dark: #475569;
+            
+            --text-main: #0f172a;
+            --text-code: #1e293b;
+            --text-sub: #64748b;
+            
+            --accent-blue: #0284c7;
+            --accent-green: #16a34a;
+            --accent-purple: #9333ea;
+            --accent-orange: #ea580c;
+            --highlight-yellow: #fef08a;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Prompt', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-canvas);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Top Navigation Header */
+        header {
+            background: #ffffff;
+            border-bottom: 2px solid var(--border-color);
+            padding: 0.8rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+            z-index: 10;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .diagram-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tab-menu {
+            display: flex;
+            gap: 8px;
+        }
+
+        .tab-btn {
+            background: #f1f5f9;
+            border: 1.5px solid var(--border-color);
+            color: var(--text-sub);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tab-btn.active, .tab-btn:hover {
+            background: var(--accent-blue);
+            color: #ffffff;
+            border-color: var(--accent-blue);
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn-action {
+            background: #ffffff;
+            border: 1.5px solid var(--border-dark);
+            color: #0f172a;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-action:hover {
+            background: #e2e8f0;
+        }
+
+        /* Interactive Draggable Canvas */
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            background-color: #f8fafc;
+            background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px);
+            background-size: 24px 24px;
+            overflow: hidden;
+        }
+
+        /* SVG Line Layer */
+        .svg-connections {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .connection-line {
+            fill: none;
+            stroke: var(--accent-blue);
+            stroke-width: 3.5;
+            stroke-dasharray: 6 3;
+            animation: dash 30s linear infinite;
+        }
+
+        @keyframes dash {
+            to { stroke-dashoffset: -1000; }
+        }
+
+        .connection-text {
+            fill: #0369a1;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-anchor: middle;
+        }
+
+        /* Draggable Code Node Window */
+        .code-node {
+            position: absolute;
+            width: 580px;
+            background: var(--bg-card);
+            border: 2.5px solid var(--border-dark);
+            border-radius: 10px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
+            z-index: 2;
+            transition: width 0.2s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .code-node.show-explain {
+            width: 1080px;
+        }
+
+        .code-node.collapsed {
+            width: 420px;
+        }
+
+        .code-node.collapsed .code-viewport,
+        .code-node.collapsed .explain-panel {
+            display: none;
+        }
+
+        .code-node.dragging {
+            box-shadow: 0 20px 35px -5px rgba(0, 0, 0, 0.25);
+            border-color: var(--accent-blue);
+        }
+
+        .node-header {
+            background: var(--header-bg);
+            padding: 10px 14px;
+            border-bottom: 2px solid var(--border-dark);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: grab;
+            user-select: none;
+        }
+
+        .code-node.collapsed .node-header {
+            border-bottom: none;
+        }
+
+        .node-header:active {
+            cursor: grabbing;
+        }
+
+        .node-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .step-tag {
+            background: #0f172a;
+            color: #ffffff;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            pointer-events: none;
+        }
+
+        .btn-explain {
+            background: #0284c7;
+            color: #ffffff;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 5px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-explain:hover {
+            background: #0369a1;
+        }
+
+        .btn-copy {
+            background: #ffffff;
+            border: 1.5px solid var(--border-dark);
+            color: #0f172a;
+            padding: 4px 10px;
+            border-radius: 5px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-copy:hover {
+            background: #16a34a;
+            color: #ffffff;
+            border-color: #16a34a;
+        }
+
+        .btn-toggle-collapse {
+            background: #ffffff;
+            border: 1.5px solid var(--border-dark);
+            color: #0f172a;
+            width: 26px;
+            height: 26px;
+            border-radius: 5px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .btn-toggle-collapse:hover {
+            background: var(--accent-blue);
+            color: #ffffff;
+            border-color: var(--accent-blue);
+        }
+
+        /* Node Body Layout: Code Viewport + Side Explanation Drawer */
+        .node-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            user-select: text;
+        }
+
+        .code-viewport {
+            flex: 1;
+            background: #ffffff;
+            padding: 10px 0;
+            overflow: auto;
+            max-height: 520px;
+            user-select: text;
+        }
+
+        .code-line {
+            display: flex;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.88rem;
+            line-height: 1.6;
+            padding: 2px 14px;
+            user-select: text;
+        }
+
+        .num {
+            width: 34px;
+            color: #94a3b8;
+            user-select: none;
+            flex-shrink: 0;
+        }
+
+        .text {
+            flex: 1;
+            white-space: pre;
+            color: var(--text-code);
+            user-select: text;
+        }
+
+        .code-line.hl {
+            background: var(--highlight-yellow);
+            border-left: 4px solid var(--accent-orange);
+            font-weight: 700;
+        }
+
+        .tag-desc {
+            background: var(--accent-orange);
+            color: #ffffff;
+            font-family: 'Prompt', sans-serif;
+            font-size: 0.78rem;
+            font-weight: 600;
+            padding: 1px 8px;
+            border-radius: 4px;
+            margin-left: 10px;
+            white-space: nowrap;
+        }
+
+        /* Side Explanation Panel (Chunk Summaries) */
+        .explain-panel {
+            display: none;
+            width: 500px;
+            background: #f8fafc;
+            border-left: 2px solid var(--border-color);
+            padding: 14px;
+            overflow-y: auto;
+            max-height: 520px;
+            user-select: text;
+        }
+
+        .code-node.show-explain .explain-panel {
+            display: block;
+        }
+
+        .explain-title {
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: #0284c7;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border-bottom: 1.5px dashed #cbd5e1;
+            padding-bottom: 6px;
+        }
+
+        .chunk-card {
+            background: #ffffff;
+            border: 1.5px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            user-select: text;
+        }
+
+        .chunk-card.hl-card {
+            border-color: var(--accent-orange);
+            background: #fff7ed;
+        }
+
+        .badge-range {
+            display: inline-block;
+            background: #0f172a;
+            color: #ffffff;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-bottom: 6px;
+        }
+
+        .chunk-title {
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: #0284c7;
+            margin-bottom: 6px;
+            user-select: text;
+        }
+
+        .chunk-desc {
+            font-size: 0.85rem;
+            color: #334155;
+            line-height: 1.5;
+            margin-bottom: 6px;
+            user-select: text;
+        }
+
+        .chunk-summary-box {
+            font-size: 0.82rem;
+            color: #1e3a8a;
+            background: #dbeafe;
+            padding: 6px 10px;
+            border-radius: 6px;
+            border-left: 3.5px solid #2563eb;
+            margin-top: 6px;
+            line-height: 1.5;
+            user-select: text;
+        }
+
+        /* Syntax Highlight */
+        .kw { color: #d97706; font-weight: 700; }
+        .fn { color: #0284c7; font-weight: 700; }
+        .str { color: #16a34a; }
+        .cm { color: #94a3b8; font-style: italic; }
+        .cls { color: #7c3aed; font-weight: 700; }
+
+        footer {
+            background: #ffffff;
+            border-top: 1px solid var(--border-color);
+            padding: 6px 1.5rem;
+            font-size: 0.85rem;
+            color: var(--text-sub);
+            display: flex;
+            justify-content: space-between;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header>
+        <div class="diagram-title">
+            <i class="fa-solid fa-diagram-project"></i> Evaly Architecture Flow - Copyable Code & One-Click Copy
+        </div>
+
+        <div class="tab-menu">
+            <button class="tab-btn active" onclick="loadFlow('register')">
+                <i class="fa-solid fa-user-plus"></i> 1. สมัครสมาชิก (Register Overview)
+            </button>
+            <button class="tab-btn" onclick="loadFlow('login')">
+                <i class="fa-solid fa-right-to-bracket"></i> 2. เข้าสู่ระบบ (Login Overview)
+            </button>
+            <button class="tab-btn" onclick="loadFlow('protected')">
+                <i class="fa-solid fa-shield-halved"></i> 3. เช็คสิทธิ์ API (Protected Route Overview)
+            </button>
+        </div>
+
+        <div class="action-btns">
+            <button class="btn-action" onclick="collapseAllNodes()">
+                <i class="fa-solid fa-compress"></i> ซ่อนโค้ดทั้งหมด
+            </button>
+            <button class="btn-action" onclick="expandAllNodes()">
+                <i class="fa-solid fa-expand"></i> ขยายโค้ดทั้งหมด
+            </button>
+        </div>
+    </header>
+
+    <!-- Canvas Area -->
+    <div id="canvasArea" class="canvas-container">
+        
+        <!-- SVG Connections Layer -->
+        <svg id="svgLayer" class="svg-connections">
+            <defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#0284c7" />
+                </marker>
+            </defs>
+        </svg>
+
+        <!-- Dynamic Node Containers -->
+        <div id="nodeContainer"></div>
+
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <span>Evaly Real Code Architecture Canvas &copy; 2026</span>
+        <span><i class="fa-regular fa-copy"></i> Select & Copy Enabled: คลุมดำลากก๊อปปี้ได้ และมีปุ่ม [📋 คัดลอกโค้ด] คลิกเดียวเซฟเลย</span>
+    </footer>
+
+    <!-- Script -->
+    <script>
+        const flows = {
+            register: [
+                {
+                    id: "node_app",
+                    title: "client/App.tsx",
+                    type: "react",
+                    step: "ENTRY 1 (Frontend Route)",
+                    x: 20, y: 30,
+                    lines: [
+                        { n: 7, text: `<span class="kw">import</span> { BrowserRouter, Routes, Route } <span class="kw">from</span> <span class="str">"react-router-dom"</span>;` },
+                        { n: 9, hl: true, text: `<span class="kw">import</span> Register <span class="kw">from</span> <span class="str">"./pages/Register"</span>; <span class="tag-desc">ดึงมาจาก Register.tsx</span>` },
+                        { n: 41, text: `        <span class="kw">&lt;BrowserRouter&gt;</span>` },
+                        { n: 42, text: `          <span class="kw">&lt;Routes&gt;</span>` },
+                        { n: 48, hl: true, text: `            <span class="kw">&lt;Route</span> path=<span class="str">"/register"</span> element={<span class="kw">&lt;Register /&gt;</span>} <span class="kw">/&gt;</span> <span class="tag-desc">ผูก URL /register</span>` },
+                        { n: 58, text: `          <span class="kw">&lt;/Routes&gt;</span>` },
+                        { n: 59, text: `        <span class="kw">&lt;/BrowserRouter&gt;</span>` }
+                    ],
+                    chunk_overview: [
+                        {
+                            range: "L7 - L9",
+                            title: "📦 อิมพอร์ตระบบสลับหน้าเว็บ (Routing Imports)",
+                            desc: "นำเข้า `BrowserRouter`, `Routes`, `Route` จาก `react-router-dom` และดึงหน้าสมัครสมาชิก `Register.tsx` เข้ามาเตรียมไว้",
+                            summary: "💡 ภาพรวม: เตรียมเครื่องมือสลับหน้าและลงทะเบียนหน้าสมัครสมาชิกให้โปรแกรมรู้จัก"
+                        },
+                        {
+                            range: "L41 - L59",
+                            title: "📦 กำหนดตารางเส้นทาง URL (Routing Table)",
+                            desc: "ผูกพาธ `http://localhost:5173/register` เข้ากับหน้า Component `<Register />`",
+                            summary: "💡 ภาพรวม: เมื่อผู้ใช้พิมพ์ URL /register โปรแกรมจะเปิดหน้าสมัครสมาชิกขึ้นมาบนเบราว์เซอร์ทันที"
+                        }
+                    ]
+                },
+                {
+                    id: "node1",
+                    title: "client/pages/Register.tsx",
+                    type: "react",
+                    step: "STEP 1 (Full Form Code)",
+                    x: 630, y: 30,
+                    lines: [
+                        { n: 1, text: `<span class="kw">import</span> { useState } <span class="kw">from</span> <span class="str">"react"</span>;` },
+                        { n: 2, text: `<span class="kw">import</span> { useNavigate, Link } <span class="kw">from</span> <span class="str">"react-router-dom"</span>;` },
+                        { n: 4, text: `<span class="kw">import</span> { toast } <span class="kw">from</span> <span class="str">"sonner"</span>;` },
+                        { n: 10, hl: true, text: `<span class="kw">export default function</span> <span class="fn">Register</span>() { <span class="tag-desc">ถูกเรียกที่ App.tsx</span>` },
+                        { n: 11, hl: true, text: `  <span class="kw">const</span> [name, setName] = useState(<span class="str">""</span>);` },
+                        { n: 12, text: `  <span class="kw">const</span> [email, setEmail] = useState(<span class="str">""</span>);` },
+                        { n: 13, text: `  <span class="kw">const</span> [password, setPassword] = useState(<span class="str">""</span>);` },
+                        { n: 14, text: `  <span class="kw">const</span> [confirmPassword, setConfirmPassword] = useState(<span class="str">""</span>);` },
+                        { n: 16, text: `  <span class="kw">const</span> [isLoading, setIsLoading] = useState(<span class="kw">false</span>);` },
+                        { n: 18, text: `  <span class="kw">const</span> navigate = useNavigate();` },
+                        { n: 31, hl: true, text: `  <span class="kw">const</span> <span class="fn">handleRegister</span> = <span class="kw">async</span> (e: React.FormEvent) => {` },
+                        { n: 32, hl: true, text: `    e.preventDefault();` },
+                        { n: 33, text: `    <span class="kw">if</span> (!name || !email || !password || !confirmPassword) {` },
+                        { n: 34, text: `      toast.error(<span class="str">"กรุณากรอกข้อมูลให้ครบถ้วน"</span>); <span class="kw">return</span>;` },
+                        { n: 36, text: `    }` },
+                        { n: 38, text: `    <span class="kw">if</span> (password !== confirmPassword) {` },
+                        { n: 39, text: `      toast.error(<span class="str">"รหัสผ่านไม่ตรงกัน"</span>); <span class="kw">return</span>;` },
+                        { n: 41, text: `    }` },
+                        { n: 43, text: `    setIsLoading(<span class="kw">true</span>);` },
+                        { n: 44, text: `    <span class="kw">try</span> {` },
+                        { n: 45, hl: true, text: `      <span class="kw">const</span> response = <span class="kw">await</span> fetch(<span class="str">"/api/auth/register"</span>, { <span class="tag-desc">ยิง HTTP POST</span>` },
+                        { n: 46, hl: true, text: `        method: <span class="str">"POST"</span>,` },
+                        { n: 47, hl: true, text: `        headers: { <span class="str">"Content-Type"</span>: <span class="str">"application/json"</span> },` },
+                        { n: 48, hl: true, text: `        body: JSON.stringify({ email, password, name, role: <span class="str">"unassigned"</span> }),` },
+                        { n: 54, hl: true, text: `      });` },
+                        { n: 56, text: `      <span class="kw">const</span> data = <span class="kw">await</span> response.json();` },
+                        { n: 58, text: `      <span class="kw">if</span> (response.ok) { navigate(<span class="str">"/"</span>); }` },
+                        { n: 64, text: `    } <span class="kw">catch</span> (error) { console.error(error); }` },
+                        { n: 67, text: `    <span class="kw">finally</span> { setIsLoading(<span class="kw">false</span>); }` },
+                        { n: 70, text: `  };` }
+                    ],
+                    chunk_overview: [
+                        {
+                            range: "L1 - L4",
+                            title: "📦 นำเข้าไลบรารีหน้าเว็บ (Imports)",
+                            desc: "นำเข้า `useState` สำหรับจำค่าข้อมูล, `useNavigate` สำหรับวาร์ปเปลี่ยนหน้า, และ `toast` สำหรับโชว์ป้ายเตือน",
+                            summary: "💡 ภาพรวม: เตรียมอุปกรณ์หน้าเว็บให้พร้อมใช้งาน"
+                        },
+                        {
+                            range: "L10 - L18",
+                            title: "📦 ประกาศสร้างกล่องเก็บข้อมูลฟอร์ม (State Initialization)",
+                            desc: "สร้างกล่องเก็บข้อมูล `name`, `email`, `password`, `confirmPassword` และสถานะโหลด `isLoading` ด้วย `useState`",
+                            summary: "💡 ภาพรวม: กำหนดพื้นที่ความจำสำหรับเก็บสิ่งที่ผู้ใช้พิมพ์ลงฟอร์ม"
+                        },
+                        {
+                            range: "L31 - L41",
+                            title: "📦 ตรวจสอบความถูกต้องของข้อมูล (Input Validation)",
+                            desc: "หยุดการรีเฟรชหน้าด้วย `e.preventDefault()`, เช็คว่ากรอกครบทุกช่องไหม และรหัสผ่าน 2 ช่องตรงกันหรือไม่",
+                            summary: "💡 ภาพรวม: ดักตรวจความผิดพลาดก่อนยิงข้อมูลออกไปข้ามอินเทอร์เน็ต"
+                        },
+                        {
+                            range: "L43 - L58",
+                            title: "📦 ยิงข้อมูลไปหา Backend เซิร์ฟเวอร์ (API Request)",
+                            desc: "เปิดสถานะโหลด `setIsLoading(true)` แล้วใช้ `fetch()` ยิงคำขอ `POST /api/auth/register` แปลงข้อมูลเป็น JSON",
+                            summary: "💡 ภาพรวม: ส่งพัสดุข้อมูลสมัครสมาชิกข้ามอินเทอร์เน็ตไปให้เซิร์ฟเวอร์บันทึกลง DB"
+                        },
+                        {
+                            range: "L64 - L70",
+                            title: "📦 จัดการ Error & ปิดการโหลด (Error Handling)",
+                            desc: "ดักจับข้อผิดพลาดกรณีเน็ตหลุด และคืนค่าปุ่มกดกลับมาเป็นปกติเสมอใน `finally`",
+                            summary: "💡 ภาพรวม: เก็บงานความเรียบร้อย ป้องกันปุ่มหมุนค้าง"
+                        }
+                    ]
+                },
+                {
+                    id: "node_main",
+                    title: "server/main.py",
+                    type: "python",
+                    step: "ENTRY 2 (Backend Server)",
+                    x: 20, y: 440,
+                    lines: [
+                        { n: 35, text: `app = FastAPI(title=<span class="str">'Evaly API'</span>)` },
+                        { n: 36, hl: true, text: `<span class="kw">from</span> server.routes <span class="kw">import</span> auth_routes <span class="tag-desc">ดึง auth_routes.py</span>` },
+                        { n: 37, hl: true, text: `app.include_router(auth_routes.router) <span class="tag-desc">ลงทะเบียน Router</span>` }
+                    ],
+                    chunk_overview: [
+                        {
+                            range: "L35 - L37",
+                            title: "📦 เปิดให้บริการเส้นทาง API ในเซิร์ฟเวอร์หลัก (Router Registration)",
+                            desc: "สร้างอินสแตนซ์ `FastAPI()` แล้วนำเอาเส้นทาง API ทั้งหมดใน `auth_routes.py` เข้ามาเปิดให้บริการ",
+                            summary: "💡 ภาพรวม: ลงทะเบียนเส้นทาง /api/auth/register ให้เซิร์ฟเวอร์หลักพร้อมต้อนรับคำขอจากหน้าเว็บ"
+                        }
+                    ]
+                },
+                {
+                    id: "node2",
+                    title: "server/routes/auth_routes.py",
+                    type: "python",
+                    step: "STEP 2 (Full API Route)",
+                    x: 630, y: 440,
+                    lines: [
+                        { n: 1, text: `<span class="kw">from</span> fastapi <span class="kw">import</span> APIRouter, Depends, HTTPException, Request` },
+                        { n: 10, text: `<span class="kw">from</span> server.database <span class="kw">import</span> get_db_connection` },
+                        { n: 11, text: `<span class="kw">from</span> server.auth <span class="kw">import</span> get_password_hash, verify_password` },
+                        { n: 18, hl: true, text: `router = APIRouter(prefix=<span class="str">"/api/auth"</span>, tags=[<span class="str">"Authentication"</span>])` },
+                        { n: 20, hl: true, text: `@router.post(<span class="str">'/register'</span>)` },
+                        { n: 21, hl: true, text: `<span class="kw">async def</span> <span class="fn">register</span>(user: UserRegister, request: Request):` },
+                        { n: 22, text: `    client_ip = request.client.host <span class="kw">if</span> request.client <span class="kw">else</span> <span class="str">'unknown'</span>` },
+                        { n: 23, text: `    <span class="kw">if not</span> check_rate_limit(client_ip, limit=<span class="num">5</span>, window=<span class="num">3600</span>):` },
+                        { n: 25, text: `    conn = get_db_connection()` },
+                        { n: 26, text: `    cursor = conn.cursor()` },
+                        { n: 27, hl: true, text: `    hashed_password = get_password_hash(user.password) <span class="tag-desc">ส่งรหัสเข้ารหัส</span>` },
+                        { n: 29, hl: true, text: `    cursor.execute(<span class="str">'INSERT INTO users (email, password, name) VALUES (?, ?, ?)'</span>,` },
+                        { n: 30, hl: true, text: `                       (user.email, hashed_password, user.name))` },
+                        { n: 39, text: `        conn.commit()` },
+                        { n: 40, text: `    <span class="kw">except</span> pymysql.err.IntegrityError:` },
+                        { n: 42, text: `        <span class="kw">raise</span> HTTPException(status_code=<span class="num">400</span>, detail=<span class="str">'Email registered'</span>)` }
+                    ],
+                    chunk_overview: [
+                        {
+                            range: "L1 - L18",
+                            title: "📦 ตั้งค่าเส้นทาง API (Router Prefix Setup)",
+                            desc: "อิมพอร์ต FastAPI และกำหนดคำนำหน้า URL เป็น `/api/auth`",
+                            summary: "💡 ภาพรวม: จัดหมวดหมู่ URL API สำหรับระบบยืนยันตัวตน"
+                        },
+                        {
+                            range: "L20 - L24",
+                            title: "📦 ประกาศจุดรับยิง POST & กันสแปม (Endpoint & Rate Limit)",
+                            desc: "รับพารามิเตอร์ `UserRegister` มาตรวจชนิดข้อมูล และเช็คว่า IP นี้ยิงเกิน 5 ครั้ง/ชม. หรือไม่",
+                            summary: "💡 ภาพรวม: เปิดประตูต้อนรับข้อมูลสมัครสมาชิกพร้อมระบบป้องกันสแปม"
+                        },
+                        {
+                            range: "L25 - L39",
+                            title: "📦 เข้ารหัสลับ & บันทึกลงฐานข้อมูล (Password Hash & SQL Insert)",
+                            desc: "ส่งรหัสไปแฮชลับด้วย `get_password_hash` แล้วใช้ `cursor.execute()` บันทึกลง DB พร้อมสั่ง `conn.commit()`",
+                            summary: "💡 ภาพรวม: แปลงรหัสผ่านเป็นค่าปลอดภัยแล้วเซฟลงตารางผู้ใช้"
+                        },
+                        {
+                            range: "L40 - L42",
+                            title: "📦 ดักจับอีเมลซ้ำ (Duplicate Email Exception)",
+                            desc: "ดักจับ `IntegrityError` กรณีอีเมลมีอยู่ใน DB แล้ว และส่ง HTTP 400 ตีกลับหน้าเว็บ",
+                            summary: "💡 ภาพรวม: ป้องกันการสมัครอีเมลซ้ำในระบบ"
+                        }
+                    ]
+                },
+                {
+                    id: "node3",
+                    title: "server/auth.py",
+                    type: "python",
+                    step: "STEP 3 (Hasher)",
+                    x: 1240, y: 30,
+                    lines: [
+                        { n: 10, hl: true, text: `SECRET_KEY = os.getenv(<span class="str">"JWT_SECRET_KEY"</span>) <span class="kw">or</span> <span class="str">"default_secret_key"</span>` },
+                        { n: 18, hl: true, text: `<span class="kw">def</span> <span class="fn">get_password_hash</span>(password: <span class="cls">str</span>) -> <span class="cls">str</span>: <span class="tag-desc">Salt + PBKDF2</span>` },
+                        { n: 19, hl: true, text: `    salt = secrets.token_hex(<span class="num">16</span>)` },
+                        { n: 20, hl: true, text: `    hash_obj = hashlib.pbkdf2_hmac(` },
+                        { n: 21, hl: true, text: `        <span class="str">'sha256'</span>, password.encode(<span class="str">'utf-8'</span>), salt.encode(<span class="str">'utf-8'</span>), <span class="num">100000</span>` },
+                        { n: 25, hl: true, text: `    )` },
+                        { n: 26, hl: true, text: `    <span class="kw">return</span> <span class="str">f"<span class="num">{salt}</span>:<span class="num">{hash_obj.hex()}</span>"</span>` }
+                    ],
+                    chunk_overview: [
+                        {
+                            range: "L10 - L13",
+                            title: "📦 ตั้งค่ากุญแจลับ & อัลกอริทึม (Security Config)",
+                            desc: "ดึง `SECRET_KEY` จาก `.env` และกำหนดอัลกอริทึมเซ็นตั๋วเป็น `HS256`",
+                            summary: "💡 ภาพรวม: เตรียมตราประทับลับประจำเซิร์ฟเวอร์"
+                        },
+                        {
+                            range: "L18 - L26",
+                            title: "📦 บดรหัสผ่านด้วย Salt + PBKDF2 100,000 รอบ (Password Hashing)",
+                            desc: "สุ่มค่า Salt ขยะ 16 ไบต์ และใช้อัลกอริทึม PBKDF2 วนลูปบดผสมรหัสผ่าน 100,000 รอบ",
+                            summary: "💡 ภาพรวม: เปลี่ยนรหัสผ่านธรรมดาให้กลายเป็นสตริงปลอดภัยความยาว 96 ตัวอักษร"
+                        }
+                    ]
+                },
+                {
+                    id: "node4",
+                    title: "server/database.py",
+                    type: "db",
+                    step: "STEP 4 (DB Connector)",
+                    x: 1240, y: 440,
+                    lines: [
+                        { n: 10, text: `<span class="kw">class</span> <span class="cls">MySQLCursorWrapper</span>:` },
+                        { n: 14, hl: true, text: `    <span class="kw">def</span> <span class="fn">execute</span>(<span class="kw">self</span>, query, args=<span class="kw">None</span>): <span class="tag-desc">แปลง ? -> %s แล้วเซฟ</span>` },
+                        { n: 17, hl: true, text: `            query = query.replace(<span class="str">'?'</span>, <span class="str">'%s'</span>)` },
+                        { n: 18, hl: true, text: `            <span class="kw">return</span> <span class="kw">self</span>.cursor.execute(query, args)` }
+                    ],
+                    chunk_overview: [
+                        {
+                            range: "L10 - L19",
+                            title: "📦 คลาสแปลงคำสั่ง SQL อัตโนมัติ (MySQL Wrapper)",
+                            desc: "ครอบทับคำสั่ง `execute` เพื่อเปลี่ยนเครื่องหมายวางค่า `?` ของ SQLite ให้กลายเป็น `%s` ของ MySQL",
+                            summary: "💡 ภาพรวม: สะพานเชื่อมคำสั่ง SQL ให้ทำงานได้กับทุกฐานข้อมูลโดยไม่ต้องรื้อโค้ด"
+                        }
+                    ]
+                }
+            ],
+            connections_register: [
+                { from: "node_app", to: "node1", label: "<Route path='/register' element={<Register />} />" },
+                { from: "node1", to: "node2", label: "fetch('/api/auth/register') HTTP POST" },
+                { from: "node_main", to: "node2", label: "app.include_router(auth_routes.router)" },
+                { from: "node2", to: "node3", label: "get_password_hash('Pass123!')" },
+                { from: "node3", to: "node4", label: "INSERT INTO users (hashed_password)" }
+            ],
+
+            login: [
+                {
+                    id: "node_app_login",
+                    title: "client/App.tsx",
+                    type: "react",
+                    step: "ENTRY 1 (Login Route)",
+                    x: 20, y: 30,
+                    lines: [
+                        { n: 8, hl: true, text: `<span class="kw">import</span> Index <span class="kw">from</span> <span class="str">"./pages/Index"</span>; <span class="tag-desc">ดึงมาจาก Index.tsx</span>` },
+                        { n: 41, text: `        <span class="kw">&lt;BrowserRouter&gt;</span>` },
+                        { n: 45, hl: true, text: `            <span class="kw">&lt;Route</span> path=<span class="str">"/"</span> element={<span class="kw">&lt;Index /&gt;</span>} <span class="kw">/&gt;</span> <span class="tag-desc">ผูกหน้าแรก (หน้า Login)</span>` },
+                        { n: 58, text: `          <span class="kw">&lt;/Routes&gt;</span>` }
+                    ],
+                    chunk_overview: [
+                        {
+                            range: "L8 - L45",
+                            title: "📦 ผูกที่อยู่หน้าแรกเข้ากับฟอร์มล็อกอิน (Login Route Setup)",
+                            desc: "นำเข้า `Index.tsx` แล้วผูกเข้ากับ URL พาธ `/`",
+                            summary: "💡 ภาพรวม: เปิดหน้าล็อกอินทันทีเมื่อเข้าเว็บไซต์"
+                        }
+                    ]
+                },
+                {
+                    id: "node_index",
+                    title: "client/pages/Index.tsx",
+                    type: "react",
+                    step: "STEP 1 (Full Login Code)",
+                    x: 630, y: 30,
+                    lines: [
+                        { n: 1, text: `<span class="kw">import</span> { useState } <span class="kw">from</span> <span class="str">"react"</span>;` },
+                        { n: 4, text: `<span class="kw">import</span> { useAuth } <span class="kw">from</span> <span class="str">"@/contexts/AuthContext"</span>;` },
+                        { n: 11, hl: true, text: `<span class="kw">export default function</span> <span class="fn">Index</span>() {` },
+                        { n: 13, text: `  <span class="kw">const</span> [email, setEmail] = useState(<span class="str">""</span>);` },
+                        { n: 14, text: `  <span class="kw">const</span> [password, setPassword] = useState(<span class="str">""</span>);` },
+                        { n: 19, text: `  <span class="kw">const</span> navigate = useNavigate();` },
+                        { n: 20, hl: true, text: `  <span class="kw">const</span> { login } = useAuth(); <span class="tag-desc">ดึงฟังก์ชันล็อกอิน</span>` },
+                        { n: 22, hl: true, text: `  <span class="kw">const</span> <span class="fn">handleLogin</span> = <span class="kw">async</span> (e: React.FormEvent) => {` },
+                        { n: 31, hl: true, text: `      <span class="kw">const</span> response = <span class="kw">await</span> fetch(<span class="str">"/api/auth/login"</span>, { <span class="tag-desc">ยิง Login POST</span>` },
+                        { n: 34, hl: true, text: `        body: JSON.stringify({ email, password }),` },
+                        { n: 37, text: `      <span class="kw">const</span> data = <span class="kw">await</span> response.json();` },
+                        { n: 40, hl: true, text: `        login(data.access_token, data.user); <span class="tag-desc">บันทึก Token</span>` },
+                        { n: 41, hl: true, text: `        navigate(<span class="str">"/home"</span>); <span class="tag-desc">วาร์ปไปหน้าหลัก</span>` }
+                    ],
+                    chunk_overview: [
+                        {
+                            range: "L1 - L20",
+                            title: "📦 อิมพอร์ต & ประกาศกล่องเก็บอีเมลรหัสผ่าน (Setup & Hooks)",
+                            desc: "ใช้ `useState` จำค่าอีเมล/รหัสผ่าน และใช้ `useAuth()` ดึงฟังก์ชัน `login` จากระบบส่วนกลาง",
+                            summary: "💡 ภาพรวม: เตรียมกล่องความจำและรีโมทล็อกอิน"
+                        },
+                        {
+                            range: "L22 - L57",
+                            title: "📦 ยิงตรวจสอบล็อกอิน & บันทึกตั๋ว (Login Submission)",
+                            desc: "ยิง `POST /api/auth/login` ส่งอีเมลและรหัสผ่านไปตรวจ เมื่อสำเร็จจะเรียก `login(token)` เพื่อเซฟลงเครื่องแล้ววาร์ปไป `/home`",
+                            summary: "💡 ภาพรวม: ตรวจสอบความถูกต้องและสลับเข้าสู่หน้าหลัก"
+                        }
+                    ]
+                },
+                {
+                    id: "node_main_login",
+                    title: "server/main.py",
+                    type: "python",
+                    step: "ENTRY 2 (Backend Server)",
+                    x: 20, y: 440,
+                    lines: [
+                        { n: 35, text: `app = FastAPI(title=<span class="str">'Evaly API'</span>)` },
+                        { n: 37, hl: true, text: `app.include_router(auth_routes.router) <span class="tag-desc">ลงทะเบียน Router</span>` }
+                    ],
+                    chunk_overview: [
+                        {
+                            range: "L35 - L37",
+                            title: "📦 ลงทะเบียนเส้นทาง API ล็อกอิน (Router Entry)",
+                            desc: "เปิดเส้นทาง `/api/auth/login` ในเซิร์ฟเวอร์หลัก",
+                            summary: "💡 ภาพรวม: พร้อมรับการยิงล็อกอินจากเบราว์เซอร์"
+                        }
+                    ]
+                },
+                {
+                    id: "node_routes_login",
+                    title: "server/routes/auth_routes.py",
+                    type: "python",
+                    step: "STEP 2 (Login Verification)",
+                    x: 630, y: 440,
+                    lines: [
+                        { n: 65, hl: true, text: `@router.post(<span class="str">'/login'</span>)` },
+                        { n: 66, hl: true, text: `<span class="kw">async def</span> <span class="fn">login</span>(user_credentials: UserLogin):` },
+                        { n: 69, hl: true, text: `    cursor.execute(<span class="str">'SELECT * FROM users WHERE email = ?'</span>, (user_credentials.email,))` },
+                        { n: 71, hl: true, text: `    <span class="kw">if not</span> user <span class="kw">or not</span> verify_password(user_credentials.password, user[<span class="str">'password'</span>]):` },
+                        { n: 73, hl: true, text: `    access_token = create_access_token(data={<span class="str">'sub'</span>: user[<span class="str">'email'</span>]}) <span class="tag-desc">ออก Token</span>` }
+                    ],
+                    chunk_overview: [
+                        {
+                            range: "L65 - L74",
+                            title: "📦 ค้นหาผู้ใช้ & ถอดรหัสเปรียบเทียบ (User Lookup & Pass Verification)",
+                            desc: "ค้นหาอีเมลใน DB ด้วย SQL `SELECT`, เปรียบเทียบรหัสผ่านด้วย `verify_password()`, และส่งออกตั๋ว JWT ด้วย `create_access_token()`",
+                            summary: "💡 ภาพรวม: ตรวจสอบรหัสผ่านถูกต้องแล้วออกตั๋วประจำตัวให้หน้าเว็บ"
+                        }
+                    ]
+                },
+                {
+                    id: "node_auth_login",
+                    title: "server/auth.py",
+                    type: "python",
+                    step: "STEP 3 (JWT Signer)",
+                    x: 1240, y: 30,
+                    lines: [
+                        { n: 30, hl: true, text: `<span class="kw">def</span> <span class="fn">create_access_token</span>(data: <span class="cls">dict</span>, expires_delta: Optional[timedelta] = <span class="kw">None</span>) -> <span class="cls">str</span>: <span class="tag-desc">เซ็น JWT</span>` },
+                        { n: 34, hl: true, text: `    <span class="kw">return</span> jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)` }
+                    ],
+                    chunk_overview: [
+                        {
+                            range: "L30 - L34",
+                            title: "📦 สร้างสตริงตั๋ว JWT เข้ารหัสลับ (JWT Token Creation)",
+                            desc: "นำข้อมูลผู้ใช้ผสมวันหมดอายุ แล้วเซ็นประทับตราด้วย `SECRET_KEY` ประจำเซิร์ฟเวอร์",
+                            summary: "💡 ภาพรวม: สร้างตั๋วประจำตัวแบบปลอดภัยปลอมแปลงไม่ได้"
+                        }
+                    ]
+                },
+                {
+                    id: "node_context",
+                    title: "client/contexts/AuthContext.tsx",
+                    type: "react",
+                    step: "STEP 4 (Storage & State)",
+                    x: 1240, y: 440,
+                    lines: [
+                        { n: 27, hl: true, text: `  <span class="kw">const</span> <span class="fn">login</span> = (token: <span class="cls">string</span>, userData: User) => { <span class="tag-desc">เซฟ LocalStorage</span>` },
+                        { n: 28, hl: true, text: `      localStorage.setItem(<span class="str">"token"</span>, token);` },
+                        { n: 29, hl: true, text: `      setToken(token);` },
+                        { n: 30, hl: true, text: `      setUser(userData);` },
+                        { n: 31, hl: true, text: `  };` }
+                    ],
+                    chunk_overview: [
+                        {
+                            range: "L27 - L31",
+                            title: "📦 บันทึกตั๋วลงความจำถาวรเบราว์เซอร์ (LocalStorage Persistence)",
+                            desc: "สั่ง `localStorage.setItem('token', token)` และอัปเดตสถานะส่วนกลาง `setToken` / `setUser`",
+                            summary: "💡 ภาพรวม: จำสถานะล็อกอินถาวร แม้รีเฟรชหน้าเว็บก็ยังล็อกอินอยู่"
+                        }
+                    ]
+                }
+            ],
+            connections_login: [
+                { from: "node_app_login", to: "node_index", label: "<Route path='/' element={<Index />} />" },
+                { from: "node_index", to: "node_routes_login", label: "fetch('/api/auth/login') HTTP POST" },
+                { from: "node_main_login", to: "node_routes_login", label: "app.include_router(auth_routes.router)" },
+                { from: "node_routes_login", to: "node_auth_login", label: "create_access_token({'sub': email})" },
+                { from: "node_auth_login", to: "node_context", label: "Return JWT String -> login() -> localStorage" }
+            ],
+
+            protected: [
+                {
+                    id: "node1",
+                    title: "client/pages/CreateExam.tsx",
+                    type: "react",
+                    step: "STEP 1",
+                    x: 30, y: 50,
+                    lines: [
+                        { n: 15, hl: true, text: `<span class="kw">const</span> res = <span class="kw">await</span> fetch(<span class="str">"/api/rooms"</span>, { <span class="tag-desc">แนบ Bearer Token</span>` },
+                        { n: 18, hl: true, text: `    <span class="str">"Authorization"</span>: <span class="str">\`Bearer \${localStorage.getItem("token")}\`</span>` }
+                    ],
+                    chunk_overview: [
+                        {
+                            range: "L15 - L21",
+                            title: "📦 แนบตั๋วประจำตัวไปกับจดหมายคำขอ (Bearer Token Request)",
+                            desc: "ดึงตั๋ว JWT จาก `localStorage` แล้วแนบใส่ Header `Authorization: Bearer <token>` ส่งไปกับคำขอ API",
+                            summary: "💡 ภาพรวม: ยื่นบัตรประจำตัวยืนยันสิทธิ์กับเซิร์ฟเวอร์"
+                        }
+                    ]
+                },
+                {
+                    id: "node2",
+                    title: "server/utils.py",
+                    type: "python",
+                    step: "STEP 2",
+                    x: 650, y: 50,
+                    lines: [
+                        { n: 12, hl: true, text: `<span class="kw">async def</span> <span class="fn">get_current_user</span>(authorization: <span class="cls">str</span> = Header(<span class="kw">None</span>)): <span class="tag-desc">ตรวจสิทธิ์ Guard</span>` },
+                        { n: 15, hl: true, text: `    payload = decode_token(token)` }
+                    ],
+                    chunk_overview: [
+                        {
+                            range: "L12 - L17",
+                            title: "📦 ดักตรวจตั๋ว JWT ก่อนยอมให้เข้าถึง (Security Guard)",
+                            desc: "แกะอ่าน Header `Authorization`, ถอดรหัสตั๋วด้วย `decode_token()`, และค้นหาข้อมูลผู้ใช้ใน DB",
+                            summary: "💡 ภาพรวม: ยามเฝ้าประตูตรวจบัตร ป้องกันคนนอกแอบยิง API"
+                        }
+                    ]
+                },
+                {
+                    id: "node3",
+                    title: "server/routes/room_routes.py",
+                    type: "python",
+                    step: "STEP 3",
+                    x: 340, y: 370,
+                    lines: [
+                        { n: 11, hl: true, text: `<span class="kw">async def</span> <span class="fn">create_room</span>(room: RoomCreate, current_user: <span class="cls">dict</span> = Depends(get_current_user)): <span class="tag-desc">ผ่านสิทธิ์</span>` }
+                    ],
+                    chunk_overview: [
+                        {
+                            range: "L10 - L15",
+                            title: "📦 ฉีดข้อมูลผู้เข้าใช้งานที่ผ่านการตรวจสิทธิ์ (Dependency Injection)",
+                            desc: "ใช้ `Depends(get_current_user)` ตรวจสิทธิ์ก่อน พอยามเปิดประตูให้ ค่อยดึง `current_user['id']` ไปบันทึกสร้างห้องสอบ",
+                            summary: "💡 ภาพรวม: อนุญาตให้สร้างห้องสอบเฉพาะผู้ใช้ที่เข้าสู่ระบบถูกต้องเท่านั้น"
+                        }
+                    ]
+                }
+            ],
+            connections_protected: [
+                { from: "node1", to: "node2", label: "Header: Authorization: Bearer Token" },
+                { from: "node2", to: "node3", label: "Inject current_user -> Depends()" }
+            ]
+        };
+
+        let currentFlowKey = 'register';
+        let currentConnections = [];
+
+        function renderNodes(nodeList) {
+            const container = document.getElementById('nodeContainer');
+            container.innerHTML = '';
+
+            nodeList.forEach(node => {
+                const el = document.createElement('div');
+                el.id = node.id;
+                el.className = 'code-node';
+                el.style.left = `${node.x}px`;
+                el.style.top = `${node.y}px`;
+
+                let icon = node.type === 'react' ? 'fa-brands fa-react' : node.type === 'db' ? 'fa-solid fa-database' : 'fa-brands fa-python';
+                let iconColor = node.type === 'react' ? '#0284c7' : node.type === 'db' ? '#06b6d4' : '#16a34a';
+
+                let linesHtml = node.lines.map(line => `
+                    <div class="code-line ${line.hl ? 'hl' : ''}">
+                        <span class="num">${line.n}</span>
+                        <span class="text">${line.text}</span>
+                    </div>
+                `).join('');
+
+                let syntaxHtml = (node.chunk_overview || []).map(chk => {
+                    return `
+                        <div class="chunk-card">
+                            <div class="badge-range">${chk.range}</div>
+                            <div class="chunk-title">${chk.title}</div>
+                            <div class="chunk-desc">${chk.desc}</div>
+                            <div class="chunk-summary-box">
+                                ${chk.summary}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                el.innerHTML = `
+                    <div class="node-header" onmousedown="startDrag(event, '${node.id}')" ontouchstart="startDrag(event, '${node.id}')">
+                        <span class="node-title"><i class="${icon}" style="color: ${iconColor};"></i> ${node.title}</span>
+                        <div class="header-controls">
+                            <button class="btn-copy" onclick="copyNodeCode(event, '${node.id}')" title="คัดลอกโค้ด">
+                                <i class="fa-regular fa-copy"></i> คัดลอกโค้ด
+                            </button>
+                            <button class="btn-explain" onclick="toggleExplanation(event, '${node.id}')">
+                                <i class="fa-solid fa-layer-group"></i> สรุปภาพรวม
+                            </button>
+                            <span class="step-tag">${node.step}</span>
+                            <button class="btn-toggle-collapse" onclick="toggleCollapse(event, '${node.id}')" title="ซ่อน/แสดง โค้ด">
+                                <i class="fa-solid fa-chevron-up"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="node-body">
+                        <div class="code-viewport">
+                            ${linesHtml}
+                        </div>
+                        <div class="explain-panel">
+                            <div class="explain-title">
+                                <i class="fa-solid fa-lightbulb"></i> สรุปภาพรวมการทำงานเป็นช่วงบรรทัด (High-Level Chunk Overview)
+                            </div>
+                            ${syntaxHtml}
+                        </div>
+                    </div>
+                `;
+
+                container.appendChild(el);
+            });
+        }
+
+        function copyNodeCode(e, nodeId) {
+            e.stopPropagation();
+            const node = document.getElementById(nodeId);
+            if (!node) return;
+
+            const lineTexts = Array.from(node.querySelectorAll('.code-line .text'))
+                .map(el => el.textContent)
+                .join('\n');
+
+            navigator.clipboard.writeText(lineTexts).then(() => {
+                const btn = e.currentTarget;
+                const origText = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> คัดลอกแล้ว!';
+                btn.style.background = '#16a34a';
+                btn.style.color = '#ffffff';
+                btn.style.borderColor = '#16a34a';
+                setTimeout(() => {
+                    btn.innerHTML = origText;
+                    btn.style.background = '#ffffff';
+                    btn.style.color = '#0f172a';
+                    btn.style.borderColor = 'var(--border-dark)';
+                }, 2000);
+            });
+        }
+
+        function toggleExplanation(e, nodeId) {
+            e.stopPropagation();
+            const node = document.getElementById(nodeId);
+            if (!node) return;
+            node.classList.toggle('show-explain');
+            updateSvgLines();
+        }
+
+        function toggleCollapse(e, nodeId) {
+            e.stopPropagation();
+            const node = document.getElementById(nodeId);
+            if (!node) return;
+            node.classList.toggle('collapsed');
+            const icon = node.querySelector('.btn-toggle-collapse i');
+            if (node.classList.contains('collapsed')) {
+                icon.className = 'fa-solid fa-chevron-down';
+            } else {
+                icon.className = 'fa-solid fa-chevron-up';
+            }
+            updateSvgLines();
+        }
+
+        function collapseAllNodes() {
+            document.querySelectorAll('.code-node').forEach(node => {
+                node.classList.add('collapsed');
+                const icon = node.querySelector('.btn-toggle-collapse i');
+                if (icon) icon.className = 'fa-solid fa-chevron-down';
+            });
+            updateSvgLines();
+        }
+
+        function expandAllNodes() {
+            document.querySelectorAll('.code-node').forEach(node => {
+                node.classList.remove('collapsed');
+                const icon = node.querySelector('.btn-toggle-collapse i');
+                if (icon) icon.className = 'fa-solid fa-chevron-up';
+            });
+            updateSvgLines();
+        }
+
+        function updateSvgLines() {
+            const svgLayer = document.getElementById('svgLayer');
+            const oldElements = svgLayer.querySelectorAll('.dynamic-conn');
+            oldElements.forEach(el => el.remove());
+
+            const canvasRect = document.getElementById('canvasArea').getBoundingClientRect();
+
+            currentConnections.forEach(conn => {
+                const fromEl = document.getElementById(conn.from);
+                const toEl = document.getElementById(conn.to);
+                if (!fromEl || !toEl) return;
+
+                const r1 = fromEl.getBoundingClientRect();
+                const r2 = toEl.getBoundingClientRect();
+
+                let x1, y1, x2, y2;
+                if (r1.left < r2.left) {
+                    x1 = r1.right - canvasRect.left;
+                    y1 = r1.top + r1.height / 2 - canvasRect.top;
+                    x2 = r2.left - canvasRect.left;
+                    y2 = r2.top + r2.height / 2 - canvasRect.top;
+                } else {
+                    x1 = r1.left - canvasRect.left;
+                    y1 = r1.top + r1.height / 2 - canvasRect.top;
+                    x2 = r2.right - canvasRect.left;
+                    y2 = r2.top + r2.height / 2 - canvasRect.top;
+                }
+
+                const dx = Math.max(Math.abs(x2 - x1) * 0.5, 60);
+                const pathD = `M ${x1} ${y1} C ${x1 + (x1 < x2 ? dx : -dx)} ${y1}, ${x2 + (x1 < x2 ? -dx : dx)} ${y2}, ${x2} ${y2}`;
+
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', pathD);
+                path.setAttribute('class', 'connection-line dynamic-conn');
+                path.setAttribute('marker-end', 'url(#arrowhead)');
+                svgLayer.appendChild(path);
+
+                const midX = (x1 + x2) / 2;
+                const midY = (y1 + y2) / 2;
+
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.setAttribute('class', 'dynamic-conn');
+
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', midX);
+                text.setAttribute('y', midY + 4);
+                text.setAttribute('class', 'connection-text');
+                text.textContent = conn.label;
+
+                g.appendChild(text);
+                svgLayer.appendChild(g);
+            });
+        }
+
+        // DRAG ENGINE
+        let activeDragNode = null;
+        let startX = 0, startY = 0;
+        let nodeStartX = 0, nodeStartY = 0;
+
+        function startDrag(e, nodeId) {
+            if (e.target.closest('.btn-copy') || e.target.closest('.btn-explain') || e.target.closest('.btn-toggle-collapse')) return;
+            e.preventDefault();
+            activeDragNode = document.getElementById(nodeId);
+            if (!activeDragNode) return;
+
+            document.querySelectorAll('.code-node').forEach(n => n.style.zIndex = '2');
+            activeDragNode.style.zIndex = '99';
+            activeDragNode.classList.add('dragging');
+
+            const clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0].clientY);
+
+            startX = clientX;
+            startY = clientY;
+            nodeStartX = parseInt(activeDragNode.style.left) || 0;
+            nodeStartY = parseInt(activeDragNode.style.top) || 0;
+
+            document.addEventListener('mousemove', onDrag);
+            document.addEventListener('mouseup', stopDrag);
+            document.addEventListener('touchmove', onDrag, { passive: false });
+            document.addEventListener('touchend', stopDrag);
+        }
+
+        function onDrag(e) {
+            if (!activeDragNode) return;
+            if (e.cancelable) e.preventDefault();
+
+            const clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0].clientY);
+
+            const dx = clientX - startX;
+            const dy = clientY - startY;
+
+            activeDragNode.style.left = `${nodeStartX + dx}px`;
+            activeDragNode.style.top = `${nodeStartY + dy}px`;
+
+            updateSvgLines();
+        }
+
+        function stopDrag() {
+            if (activeDragNode) {
+                activeDragNode.classList.remove('dragging');
+                activeDragNode = null;
+            }
+            document.removeEventListener('mousemove', onDrag);
+            document.removeEventListener('mouseup', stopDrag);
+            document.removeEventListener('touchmove', onDrag);
+            document.removeEventListener('touchend', stopDrag);
+        }
+
+        function loadFlow(flowKey) {
+            currentFlowKey = flowKey;
+            currentConnections = flows[`connections_${flowKey}`] || [];
+            
+            const tabs = document.querySelectorAll('.tab-btn');
+            tabs.forEach(b => b.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+
+            renderNodes(flows[flowKey]);
+            setTimeout(updateSvgLines, 50);
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            currentConnections = flows.connections_register;
+            renderNodes(flows.register);
+            setTimeout(updateSvgLines, 100);
+        });
+
+        window.addEventListener('resize', updateSvgLines);
+    </script>
+</body>
+</html>

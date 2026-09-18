@@ -1,0 +1,365 @@
+import os
+
+html_content = """<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>บทที่ 4 ผลการพัฒนาระบบ (ตามรูปแบบวิทยานิพนธ์รุ่นพี่ - เน้น Core Features & Prompt Engineering)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        @page {
+            size: A4;
+            margin: 2.5cm 2cm 2cm 2.5cm;
+        }
+        body {
+            font-family: 'Sarabun', Tahoma, sans-serif;
+            font-size: 16pt;
+            line-height: 1.6;
+            color: #000000;
+            background-color: #ffffff;
+            margin: 0 auto;
+            max-width: 21cm;
+            padding: 20px;
+        }
+        h1 {
+            font-size: 18pt;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 24pt;
+        }
+        h2 {
+            font-size: 16pt;
+            font-weight: bold;
+            margin-top: 18pt;
+            margin-bottom: 12pt;
+        }
+        h3 {
+            font-size: 16pt;
+            font-weight: bold;
+            margin-top: 14pt;
+            margin-bottom: 8pt;
+            text-indent: 1cm;
+        }
+        p {
+            margin-top: 0;
+            margin-bottom: 12pt;
+            text-indent: 1.25cm;
+            text-align: justify;
+        }
+        ul, ol {
+            margin-top: 0;
+            margin-bottom: 12pt;
+            padding-left: 2cm;
+        }
+        li {
+            margin-bottom: 6pt;
+            text-align: justify;
+        }
+        .code-container {
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 11pt;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px auto 8px auto;
+            max-width: 90%;
+            overflow-x: auto;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+            line-height: 1.4;
+        }
+        .code-line {
+            display: flex;
+        }
+        .line-num {
+            color: #858585;
+            width: 45px;
+            user-select: none;
+            text-align: right;
+            padding-right: 15px;
+            flex-shrink: 0;
+        }
+        .line-code {
+            white-space: pre;
+        }
+        .kw { color: #569cd6; font-weight: bold; }
+        .str { color: #ce9178; }
+        .fn { color: #dcdcaa; }
+        .com { color: #6a9955; font-style: italic; }
+        .num { color: #b5cea8; }
+        .cls { color: #4ec9b0; }
+        
+        .figure-caption {
+            text-align: center;
+            font-size: 14pt;
+            font-weight: bold;
+            margin-top: 6pt;
+            margin-bottom: 18pt;
+        }
+        .line-explain {
+            margin-left: 1.25cm;
+            margin-bottom: 8pt;
+            text-indent: 0;
+            display: flex;
+        }
+        .line-explain-num {
+            font-weight: bold;
+            width: 130px;
+            flex-shrink: 0;
+        }
+        .line-explain-text {
+            flex-grow: 1;
+            text-align: justify;
+        }
+        .highlight-box {
+            background-color: #f8fafc;
+            border-left: 4px solid #0284c7;
+            padding: 12px 18px;
+            margin: 12px 0 18px 0;
+            font-size: 15pt;
+        }
+        @media print {
+            body { padding: 0; max-width: 100%; }
+            .code-container { box-shadow: none; border: 1px solid #000; }
+        }
+    </style>
+</head>
+<body>
+    <h1>บทที่ 4<br>ผลการพัฒนาระบบและการทดสอบ</h1>
+
+    <p>จากการศึกษาวิเคราะห์และออกแบบระบบตรวจและประเมินคะแนนข้อสอบอัตโนมัติด้วยปัญญาประดิษฐ์ (LLMs-Auto-Score-System) ผู้พัฒนาได้ดำเนินการเขียนโปรแกรมเพื่อสร้างระบบงานจริงตามสถาปัตยกรรมที่ได้ออกแบบไว้ โดยในบทนี้จะนำเสนอผลการพัฒนาระบบเฉพาะฟีเจอร์หลักที่เป็นหัวใจสำคัญและนวัตกรรมของวิทยานิพนธ์ (Core Features) พร้อมอธิบายการทำงานของโค้ดโปรแกรมและการเชื่อมต่อกับปัญญาประดิษฐ์ Large Language Models (Gemini API) โดยมีรายละเอียดดังต่อไปนี้</p>
+
+    <!-- 4.1 PROMPT ENGINEERING (CORE INNOVATION 1) -->
+    <h2>4.1 การวิศวกรรมพรอมต์และการประเมินคำตอบอัตโนมัติด้วย Gemini AI</h2>
+    
+    <p>ฟีเจอร์นี้ทำหน้าที่เป็น "เครื่องยนต์ประมวลผลหลัก (Core AI Scoring Engine)" ในการประเมินคำตอบข้อสอบอัตนัยของนักศึกษา โดยใช้เทคนิควิศวกรรมพรอมต์ (Prompt Engineering) เพื่อสั่งการให้ปัญญาประดิษฐ์ Gemini วิเคราะห์เนื้อหาคำตอบเชิงเทคนิค เทียบกับโจทย์ แนวคำตอบ และเกณฑ์การให้คะแนน (Rubrics) ที่อาจารย์ผู้สอนกำหนดไว้ โดยมีส่วนประกอบสำคัญในการทำงานดังนี้</p>
+
+    <ul>
+        <li><b>การเชื่อมต่อ Gemini Client:</b> ใช้ไลบรารี <code>google.genai</code> ในการสร้างไคลเอนต์ด้วย API Key ที่ปลอดภัยเพื่อสื่อสารกับเซิร์ฟเวอร์ปัญญาประดิษฐ์</li>
+        <li><b>Rubric & Answer Key Injection:</b> การแปลงข้อมูลเกณฑ์การให้คะแนนรายข้อและเฉลยจากรูปแบบ JSON ในฐานข้อมูล ให้กลายเป็นโครงสร้าง Markdown เพื่อแทรกเข้าไปใน Context ของ AI</li>
+        <li><b>Chain of Thought (CoT) Prompting:</b> การออกแบบคำสั่งพรอมต์ที่บังคับให้ AI คิดวิเคราะห์เป็นขั้นตอนก่อนให้คะแนนจริง (วิเคราะห์โจทย์ ➔ วิเคราะห์คำตอบ ➔ พิจารณาจุดถูกและจุดที่ขาด)</li>
+        <li><b>JSON Schema Enforcement:</b> การกำหนดรูปแบบผลลัพธ์ผ่านพารามิเตอร์ <code>response_mime_type='application/json'</code> เพื่อบังคับให้ AI ตอบกลับมาเป็นค่าตัวเลขคะแนน ระดับความมั่นใจ และคำติชมเท่านั้น</li>
+    </ul>
+
+    <div class="code-container">
+        <div class="code-line"><span class="line-num">166</span><span class="line-code"><span class="kw">async def</span> <span class="fn">score_with_gemini</span>(question_text: <span class="cls">str</span>, answer_text: <span class="cls">str</span>, max_score: <span class="cls">float</span>,</span></div>
+        <div class="code-line"><span class="line-num">167</span><span class="line-code">                            answer_key: <span class="cls">Optional</span>[<span class="cls">str</span>]=<span class="kw">None</span>, rubrics: <span class="cls">Optional</span>[<span class="cls">list</span>]=<span class="kw">None</span>,</span></div>
+        <div class="code-line"><span class="line-num">168</span><span class="line-code">                            image_bytes_list: <span class="cls">Optional</span>[<span class="cls">List</span>[<span class="cls">bytes</span>]]=<span class="kw">None</span>) -> <span class="cls">dict</span>:</span></div>
+        <div class="code-line"><span class="line-num">169</span><span class="line-code">    <span class="kw">if not</span> _USE_GEMINI <span class="kw">or not</span> _genai_client: <span class="kw">return</span> _fallback_score(answer_text, max_score)</span></div>
+        <div class="code-line"><span class="line-num">170</span><span class="line-code">    rubric_text = <span class="str">''</span></span></div>
+        <div class="code-line"><span class="line-num">171</span><span class="line-code">    <span class="kw">if</span> rubrics:</span></div>
+        <div class="code-line"><span class="line-num">172</span><span class="line-code">        rubric_lines = [<span class="str">f"- {r.get('name')} ({r.get('score')} คะแนน): {r.get('description', '')}"</span> <span class="kw">for</span> r <span class="kw">in</span> rubrics]</span></div>
+        <div class="code-line"><span class="line-num">173</span><span class="line-code">        rubric_text = <span class="str">'\\n'</span>.join(rubric_lines)</span></div>
+        <div class="code-line"><span class="line-num">174</span><span class="line-code">    answer_key_section = <span class="str">f'## แนวคำตอบ\\n{answer_key}\\n'</span> <span class="kw">if</span> answer_key <span class="kw">else</span> <span class="str">''</span></span></div>
+        <div class="code-line"><span class="line-num">175</span><span class="line-code">    rubric_section = <span class="str">f'## เกณฑ์การให้คะแนน\\n{rubric_text}\\n'</span> <span class="kw">if</span> rubric_text <span class="kw">else</span> <span class="str">''</span></span></div>
+        <div class="code-line"><span class="line-num">176</span><span class="line-code">    prompt = <span class="str">f"""คุณคือคุณครูผู้เชี่ยวชาญในการตรวจข้อสอบอัตนัยวิชาโครงสร้างข้อมูล (Data Structures)</span></span></div>
+        <div class="code-line"><span class="line-num">177</span><span class="line-code"><span class="str">กรุณาประเมินคำตอบของนักเรียนโดยเน้นที่ความถูกต้องของเนื้อหาเชิงเทคนิคเท่านั้น</span></span></div>
+        <div class="code-line"><span class="line-num">178</span><span class="line-code"><span class="str">## ข้อมูลโจทย์: {question_text}\\n## คะแนนเต็ม: {max_score} คะแนน\\n{answer_key_section}{rubric_section}</span></span></div>
+        <div class="code-line"><span class="line-num">179</span><span class="line-code"><span class="str">## ข้อมูลคำตอบ: {answer_text}\\n## คำสั่งการตรวจ (Chain of Thought):</span></span></div>
+        <div class="code-line"><span class="line-num">180</span><span class="line-code"><span class="str">1. วิเคราะห์โจทย์ 2. วิเคราะห์คำตอบว่าตรงตามหลักการหรือไม่ 3. ให้คะแนนตามความถูกต้องเชิงเทคนิค</span></span></div>
+        <div class="code-line"><span class="line-num">181</span><span class="line-code"><span class="str">ตอบกลับเป็น JSON เท่านั้น: {{"score": <ตัวเลข>, "confidence": <"high"|"medium"|"low">, "feedback": <คำอธิบาย>}}"""</span></span></div>
+        <div class="code-line"><span class="line-num">182</span><span class="line-code">    contents = [prompt]</span></div>
+        <div class="code-line"><span class="line-num">183</span><span class="line-code">    <span class="kw">if</span> image_bytes_list: <span class="com"># รองรับการตรวจจากรูปภาพ (Multimodal)</span></span></div>
+        <div class="code-line"><span class="line-num">184</span><span class="line-code">        <span class="kw">for</span> bts <span class="kw">in</span> image_bytes_list: contents.append(genai_types.Part.from_bytes(data=bts, mime_type=<span class="str">'image/png'</span>))</span></div>
+        <div class="code-line"><span class="line-num">185</span><span class="line-code">    response = <span class="kw">await</span> _genai_client.aio.models.generate_content(model=<span class="str">'gemini-flash-latest'</span>, contents=contents,</span></div>
+        <div class="code-line"><span class="line-num">186</span><span class="line-code">               config=genai_types.GenerateContentConfig(temperature=<span class="num">0.2</span>, response_mime_type=<span class="str">'application/json'</span>))</span></div>
+        <div class="code-line"><span class="line-num">187</span><span class="line-code">    data = json.loads(response.text.strip())</span></div>
+        <div class="code-line"><span class="line-num">188</span><span class="line-code">    <span class="kw">return</span> {<span class="str">'score'</span>: <span class="fn">round</span>(<span class="cls">float</span>(data[<span class="str">'score'</span>]), <span class="num">1</span>), <span class="str">'confidence'</span>: data[<span class="str">'confidence'</span>], <span class="str">'feedback'</span>: data[<span class="str">'feedback'</span>]}</span></div>
+    </div>
+    <div class="figure-caption">ภาพประกอบที่ 4.1 ภาพโค้ดการวิศวกรรมพรอมต์และการเชื่อมต่อ API เพื่อตรวจข้อสอบด้วย Gemini AI</div>
+
+    <div class="line-explain"><div class="line-explain-num">บรรทัดที่ 166-169</div><div class="line-explain-text">ประกาศฟังก์ชัน <code>score_with_gemini</code> รับพารามิเตอร์โจทย์ คำตอบ คะแนนเต็ม แนวคำตอบ และรูปภาพ พร้อมตรวจสอบสถานะการทำงานของ Gemini API Client หากระบบออฟไลน์จะเปลี่ยนไปใช้ระบบคำนวณสำรอง (Fallback)</div></div>
+    <div class="line-explain"><div class="line-explain-num">บรรทัดที่ 170-175</div><div class="line-explain-text">กระบวนการ Rubric & Answer Key Injection โดยทำการวนลูปรายการเกณฑ์การให้คะแนน (Rubrics) และเฉลยข้อสอบ นำมาจัดรูปแบบเป็นข้อความ Markdown เพื่อเตรียมป้อนเข้าสู่ระบบความจำของปัญญาประดิษฐ์</div></div>
+    <div class="line-explain"><div class="line-explain-num">บรรทัดที่ 176-181</div><div class="line-explain-text">โครงสร้างวิศวกรรมพรอมต์ (Prompt Engineering) โดยใช้เทคนิค Role-Prompting กำหนดให้ AI ทำหน้าที่เป็น "คุณครูผู้เชี่ยวชาญวิชาโครงสร้างข้อมูล" และใช้เทคนิค Chain of Thought (CoT) สั่งให้ AI คิดวิเคราะห์เปรียบเทียบคำตอบทีละขั้นตอน พร้อมบังคับโครงสร้างผลลัพธ์เป็น JSON Schema</div></div>
+    <div class="line-explain"><div class="line-explain-num">บรรทัดที่ 182-184</div><div class="line-explain-text">การประมวลผลข้อมูลแบบพหุฐานนิยม (Multimodal Input Preparation) โดยตรวจสอบว่านักศึกษาได้แนบไฟล์รูปภาพคำตอบมาหรือไม่ หากมีจะทำการแปลงไฟล์ภาพเป็น <code>Part.from_bytes</code> เพื่อส่งให้ AI ตรวจสอบร่วมกับข้อความ</div></div>
+    <div class="line-explain"><div class="line-explain-num">บรรทัดที่ 185-188</div><div class="line-explain-text">เรียกใช้เมธอด <code>generate_content</code> ของแบบจำลอง <code>gemini-flash-latest</code> โดยตั้งค่าอุณหภูมิการสุ่ม <code>temperature=0.2</code> เพื่อให้การตรวจคะแนนมีความแม่นยำและคงที่สูงสุด จากนั้นทำการแปลงผลลัพธ์ JSON กลับมาเป็น dictionary ข้อมูลคะแนน ระดับความมั่นใจ และคำติชม</div></div>
+
+    <p>ก่อนที่จะเชื่อมต่อและประเมินผลคำตอบระบบจะทำการตรวจสอบ API Key ผ่านตัวแปรสภาพแวดล้อม <code>GEMINI_API_KEY</code> โดยผู้พัฒนาต้องดำเนินการสร้างโปรเจกต์และสร้างคีย์ที่เว็บไซต์ Google AI Studio โดยในการประมวลผลจริง ระบบจะส่งข้อมูลคำตอบของนักเรียนพร้อมกับแนวคำตอบและเกณฑ์ที่อาจารย์ตั้งไว้ไปประเมินพร้อมกันบนคลาวด์ ซึ่งให้ความแม่นยำสูงและลดอคติในการตรวจข้อสอบได้อย่างมีประสิทธิภาพ</p>
+
+    <!-- 4.2 AI GRADING WORKER & CONFIDENCE EVALUATION -->
+    <h2>4.2 ระบบคิวประมวลผลการตรวจและคำนวณระดับความมั่นใจ (AI Grading Worker)</h2>
+    
+    <p>เนื่องจากการตรวจข้อสอบอัตนัยด้วยปัญญาประดิษฐ์ต้องใช้เวลาในการวิเคราะห์ข้อมูล (Inference Time) ผู้พัฒนาจึงได้ออกแบบระบบการทำงานแบบไม่ประสานเวลา (Asynchronous Background Worker) ด้วยระบบคิว เพื่อรองรับการส่งข้อสอบพร้อมกันของนักศึกษาจำนวนมากโดยไม่ทำให้เซิร์ฟเวอร์ติดขัด พร้อมระบบประเมินค่าความมั่นใจ (Confidence Evaluation) ดังนี้</p>
+
+    <ul>
+        <li><b>Asynchronous Grading Queue:</b> ใช้ <code>asyncio.Queue</code> ในการรับรายการข้อสอบที่นักศึกษากดส่ง และให้ Worker ดึงไปประมวลผลทีละรายการหลังฉาก</li>
+        <li><b>Confidence Metric Evaluation:</b> ระบบจะตรวจสอบค่าความมั่นใจที่ AI ประเมินกลับมา หากข้อใดมีค่าความมั่นใจเป็น <code>low</code> (เช่น รูปภาพไม่ชัดเจน หรือคำตอบคลุมเครือมาก) ระบบจะเปลี่ยนสถานะใบส่งสอบนั้นเป็น <code>needs_review</code> อัตโนมัติ</li>
+        <li><b>Real-time WebSocket Notification:</b> ทันทีที่ AI ตรวจข้อสอบเสร็จสิ้น ระบบจะส่งสัญญาณแจ้งเตือนผ่าน Socket.IO ไปยังหน้าจอของอาจารย์ผู้สอนแบบเรียลไทม์</li>
+    </ul>
+
+    <div class="code-container">
+        <div class="code-line"><span class="line-num">23</span><span class="line-code"><span class="kw">async def</span> <span class="fn">grading_worker</span>():</span></div>
+        <div class="code-line"><span class="line-num">24</span><span class="line-code">    <span class="kw">while</span> <span class="kw">True</span>:</span></div>
+        <div class="code-line"><span class="line-num">25</span><span class="line-code">        task = <span class="kw">await</span> grading_queue.get() <span class="com"># ดึงงานตรวจข้อสอบจากคิว</span></span></div>
+        <div class="code-line"><span class="line-num">35</span><span class="line-code">        cursor.execute(<span class="str">'SELECT * FROM submission_answers WHERE submission_id = ?'</span>, (submission_id,))</span></div>
+        <div class="code-line"><span class="line-num">41</span><span class="line-code">        <span class="kw">for</span> ans <span class="kw">in</span> answers:</span></div>
+        <div class="code-line"><span class="line-num">91</span><span class="line-code">            ai_result = <span class="kw">await</span> score_with_gemini(question_text=q[<span class="str">'text'</span>], answer_text=ans[<span class="str">'answer_text'</span>],</span></div>
+        <div class="code-line"><span class="line-num">92</span><span class="line-code">                                                max_score=q[<span class="str">'score'</span>], rubrics=rubrics_data)</span></div>
+        <div class="code-line"><span class="line-num">93</span><span class="line-code">            confidences.append(ai_result[<span class="str">'confidence'</span>])</span></div>
+        <div class="code-line"><span class="line-num">95</span><span class="line-code">            cursor.execute(<span class="str">'UPDATE submission_answers SET ai_score=?, ai_feedback=?, ai_confidence=? WHERE id=?'</span>,</span></div>
+        <div class="code-line"><span class="line-num">96</span><span class="line-code">                           (ai_result[<span class="str">'score'</span>], ai_result[<span class="str">'feedback'</span>], ai_result[<span class="str">'confidence'</span>], ans[<span class="str">'id'</span>]))</span></div>
+        <div class="code-line"><span class="line-num">97</span><span class="line-code">        new_status = <span class="str">'needs_review'</span> <span class="kw">if</span> <span class="str">'low'</span> <span class="kw">in</span> confidences <span class="kw">else</span> <span class="str">'ready'</span></span></div>
+        <div class="code-line"><span class="line-num">100</span><span class="line-code">        cursor.execute(<span class="str">'UPDATE submissions SET status=?, total_score=?, graded_by_ai=1 WHERE id=?'</span>, (new_status, total, sid))</span></div>
+        <div class="code-line"><span class="line-num">110</span><span class="line-code">        <span class="kw">if</span> new_status == <span class="str">'needs_review'</span>:</span></div>
+        <div class="code-line"><span class="line-num">111</span><span class="line-code">            <span class="kw">await</span> trigger_socket_notify(user_id=teacher_id, notify_type=<span class="str">'ai_alert'</span>,</span></div>
+        <div class="code-line"><span class="line-num">112</span><span class="line-code">                                        message=<span class="str">'AI ไม่มั่นใจในผลตรวจบางส่วน โปรดตรวจสอบด้วยตนเอง'</span>)</span></div>
+    </div>
+    <div class="figure-caption">ภาพประกอบที่ 4.2 ภาพโค้ดคิวการประมวลผลการตรวจข้อสอบอัตโนมัติและตรวจสอบความมั่นใจ</div>
+
+    <div class="line-explain"><div class="line-explain-num">บรรทัดที่ 23-25</div><div class="line-explain-text">ประกาศฟังก์ชันทำงานวนลูป <code>while True</code> เพื่อรอรับงานตรวจข้อสอบใหม่จากคิว <code>grading_queue.get()</code> แบบ Asynchronous ทำให้ระบบไม่บล็อกการทำงานของผู้ใช้คนอื่น</div></div>
+    <div class="line-explain"><div class="line-explain-num">บรรทัดที่ 41-96</div><div class="line-explain-text">วนลูปตรวจคำตอบของนักเรียนทีละข้อผ่านฟังก์ชัน <code>score_with_gemini</code> พร้อมนำผลคะแนน คำติชม และระดับความมั่นใจ (Confidence) บันทึกลงตาราง <code>submission_answers</code></div></div>
+    <div class="line-explain"><div class="line-explain-num">บรรทัดที่ 97-100</div><div class="line-explain-text">ตรรกะการประเมินสถานะการตรวจ โดยตรวจสอบว่าในรายการคำตอบทั้งหมด มีข้อใดที่ AI ระบุความมั่นใจเป็น <code>low</code> หรือไม่ หากมีระบบจะตั้งสถานะใบส่งข้อสอบเป็น <code>needs_review</code> เพื่อให้อาจารย์เข้ามาตรวจทาน แต่หาก AI มั่นใจทั้งหมดจะตั้งเป็น <code>ready</code></div></div>
+    <div class="line-explain"><div class="line-explain-num">บรรทัดที่ 110-112</div><div class="line-explain-text">หากระบบพบว่าสถานะเป็น <code>needs_review</code> จะเรียกฟังก์ชัน <code>trigger_socket_notify</code> เพื่อส่งสัญญาณแจ้งเตือนไปยังหน้าจอแดชบอร์ดของอาจารย์ผู้สอนทันที</div></div>
+
+    <!-- 4.3 TEACHER OVERRIDE (HUMAN IN THE LOOP) -->
+    <h2>4.3 ระบบอาจารย์ตรวจสอบและทบทวนผลการประเมิน (Teacher Review & Override System)</h2>
+    
+    <p>เพื่อรักษามนตรีและสิทธิขาดทางวิชาการ (Academic Integrity) ระบบได้ถูกออกแบบให้ปัญญาประดิษฐ์ทำหน้าที่เป็นเพียง "ผู้ช่วยประเมินเบื้องต้น" โดยอาจารย์ผู้สอนยังคงเป็นผู้มีอำนาจสูงสุดในการตัดสินใจ (Human-in-the-Loop) ผ่านฟีเจอร์การทบทวนและปรับแก้ผลคะแนนดังนี้</p>
+
+    <ul>
+        <li><b>AI Feedback Review:</b> อาจารย์สามารถคลิกดูรายละเอียดคำตอบของนักศึกษา พร้อมอ่านคำวิเคราะห์เหตุผลและจุดชี้แนะที่ AI ให้ไว้ในคอลัมน์ <code>ai_feedback</code></li>
+        <li><b>Teacher Score Override:</b> หากอาจารย์เห็นว่าการให้คะแนนของ AI คลาดเคลื่อน หรือต้องการให้คะแนนจิตพิสัยเพิ่มเติม สามารถกรอกคะแนนใหม่ลงในช่อง <code>teacher_score</code> ซึ่งระบบจะยึดคะแนนของอาจารย์เป็นหลักในการคำนวณเกรดทันที</li>
+        <li><b>Status Confirmation:</b> เมื่ออาจารย์ตรวจทานเรียบร้อย สามารถกดปุ่มยืนยันเพื่อเปลี่ยนสถานะจาก <code>needs_review</code> ให้กลายเป็น <code>ready</code> ได้</li>
+    </ul>
+
+    <div class="code-container">
+        <div class="code-line"><span class="line-num">140</span><span class="line-code"><span class="com"># API Handler สำหรับอาจารย์บันทึกการปรับแก้คะแนน (Override Score)</span></span></div>
+        <div class="code-line"><span class="line-num">141</span><span class="line-code"><span class="kw">def</span> <span class="fn">update_teacher_score_handler</span>(submission_id, question_id, teacher_score, teacher_comment):</span></div>
+        <div class="code-line"><span class="line-num">142</span><span class="line-code">    cursor.execute(<span class="str">'UPDATE submission_answers SET teacher_score=?, teacher_comment=? WHERE submission_id=? AND question_id=?'</span>,</span></div>
+        <div class="code-line"><span class="line-num">143</span><span class="line-code">                   (teacher_score, teacher_comment, submission_id, question_id))</span></div>
+        <div class="code-line"><span class="line-num">144</span><span class="line-code">    <span class="com"># คำนวณคะแนนรวมใหม่โดยใช้ COALESCE(teacher_score, ai_score) ยึดคะแนนอาจารย์เป็นอันดับแรก</span></span></div>
+        <div class="code-line"><span class="line-num">145</span><span class="line-code">    cursor.execute(<span class="str">'SELECT SUM(COALESCE(teacher_score, ai_score, 0)) as total FROM submission_answers WHERE submission_id=?'</span>, (submission_id,))</span></div>
+        <div class="code-line"><span class="line-num">146</span><span class="line-code">    new_total = cursor.fetchone()[<span class="str">'total'</span>]</span></div>
+        <div class="code-line"><span class="line-num">147</span><span class="line-code">    cursor.execute(<span class="str">'UPDATE submissions SET total_score=?, status="ready" WHERE id=?'</span>, (new_total, submission_id))</span></div>
+        <div class="code-line"><span class="line-num">148</span><span class="line-code">    conn.commit()</span></div>
+    </div>
+    <div class="figure-caption">ภาพประกอบที่ 4.3 ภาพโค้ดระบบทบทวนและปรับแก้ผลคะแนนโดยอาจารย์ผู้สอน</div>
+
+    <div class="line-explain"><div class="line-explain-num">บรรทัดที่ 141-143</div><div class="line-explain-text">รับค่าคำสั่งแก้ไขคะแนนและข้อเสนอแนะจากอาจารย์ ทำการอัปเดตลงตาราง <code>submission_answers</code> ในฟิลด์ <code>teacher_score</code> และ <code>teacher_comment</code></div></div>
+    <div class="line-explain"><div class="line-explain-num">บรรทัดที่ 145-147</div><div class="line-explain-text">ใช้ฟังก์ชัน SQL <code>COALESCE(teacher_score, ai_score, 0)</code> เพื่อคำนวณคะแนนรวมใหม่ โดยหากอาจารย์ได้กรอกคะแนนปรับแก้ไว้ ระบบจะดึงคะแนนของอาจารย์มาคิด แต่หากข้อใดไม่ได้ปรับแก้จะใช้คะแนน <code>ai_score</code> เดิม พร้อมเปลี่ยนสถานะเป็น <code>ready</code></div></div>
+
+    <!-- 4.4 CLASSROOM & EXAM MANAGEMENT -->
+    <h2>4.4 ระบบจัดการห้องเรียนและสร้างแบบทดสอบพร้อมเกณฑ์การให้คะแนน</h2>
+    
+    <p>ฟีเจอร์นี้ทำหน้าที่เป็นส่วนเตรียมข้อมูลเริ่มต้น (Data Preparation Flow) สำหรับอาจารย์ผู้สอน โดยเปิดให้สามารถสร้างห้องเรียน ออกรหัสเข้าร่วม (Class Code) และสร้างแบบทดสอบอัตนัย โดยมีจุดเด่นคือระบบรองรับการป้อนเกณฑ์การประเมินผล (Rubrics) แบบละเอียดรายข้อ เพื่อเป็นกรอบมาตรฐานให้ AI ทำการตรวจให้คะแนนได้อย่างสม่ำเสมอ</p>
+
+    <!-- 4.5 ANALYTICS DASHBOARD -->
+    <h2>4.5 ระบบรายงานสรุปผลและสถิติคะแนน (Score Analytics Dashboard)</h2>
+    
+    <p>เมื่อกระบวนการตรวจข้อสอบเสร็จสิ้น ระบบจะประมวลผลข้อมูลคะแนนของนักศึกษาทั้งห้องเรียนออกมาเป็นรายงานทางสถิติและหน้าจอแดชบอร์ดสรุปผล เพื่อให้อาจารย์ผู้สอนสามารถประเมินผลสัมฤทธิ์ทางการเรียนรู้ของนักศึกษา วิเคราะห์ค่าเฉลี่ย ความแปรปรวน และนำผลคะแนนออกเป็นไฟล์เอกสารไปใช้ในการตัดเกรดได้อย่างสะดวกและแม่นยำ</p>
+
+    <!-- 4.6 LLM CONNECTION & EXPERIMENTAL RESULTS -->
+    <h2>4.6 การเชื่อมต่อและผลการทดลองประเมินคะแนนด้วยโมเดลภาษาขนาดใหญ่ (LLM Connection & Experimental Results)</h2>
+    
+    <p>ในส่วนของการประมวลผลตรวจข้อสอบอัตนัย ระบบได้ทำการเชื่อมต่อกับโมเดลภาษาขนาดใหญ่ (Large Language Model - LLM) โดยเลือกรูปแบบการเชื่อมต่อแบบ <b>Public Cloud API Service</b> ผ่านบริการ <b>Google Gemini API</b> (โมเดล <code>gemini-flash-latest</code>) ของ Google DeepMind แทนการติดตั้งแบบ Private Self-hosted บนเครื่องเซิร์ฟเวอร์ท้องถิ่น</p>
+
+    <h3>4.6.1 เหตุผลและรูปแบบการเชื่อมต่อ (Public Cloud API)</h3>
+    <ul>
+        <li><b>เหตุผลที่ไม่ใช้ Private Self-hosted:</b> การติดตั้งโมเดลขนาดใหญ่บนเครื่องเซิร์ฟเวอร์ท้องถิ่นต้องใช้การ์ดจอ (GPU) ราคาสูงและมีค่าใช้จ่ายดูแลรักษาสูง การเลือกใช้ Public Cloud API จึงช่วยประหยัดทรัพยากรและได้ความสามารถประมวลผลระดับ State-of-the-Art (SOTA)</li>
+        <li><b>Multimodal & OCR Capability:</b> โมเดลรองรับข้อมูลประมวลผลแบบมัลติโมดัล สามารถอ่านข้อความ ถอดลายมือจากรูปภาพถ่ายกระดาษคำตอบ (OCR) และวิเคราะห์รูปภาพโจทย์ประกอบการให้คะแนนได้พร้อมกัน</li>
+        <li><b>Structured Output:</b> กำหนดพารามิเตอร์ <code>response_mime_type="application/json"</code> และ <code>temperature=0.2</code> เพื่อบังคับให้ LLM ตอบกลับเป็นโครงสร้าง JSON ที่คงเส้นคงวา</li>
+    </ul>
+
+    <!-- 4.6.2 API KEY SETUP & SECURITY GUIDELINES -->
+    <h3>4.6.2 ขั้นตอนการขอรับกุญแจ API Key และการติดตั้งในโปรเจกต์อย่างปลอดภัย</h3>
+    <p>การขอรับบริการจาก Google Gemini API ต้องดำเนินการผ่านระบบยืนยันตัวตนด้วยกุญแจลับ (API Key) โดยมีขั้นตอนเริ่มต้นตั้งแต่การสมัครขอรับกุญแจ จนถึงการนำมาตั้งค่าในโปรเจกต์อย่างปลอดภัยตามโค้ดจริงในระบบดังนี้:</p>
+
+    <p><b>ขั้นที่ 1: การขอรับกุญแจ API Key จาก Google AI Studio</b><br>
+    เข้าไปที่เว็บไซต์ <a href="https://aistudio.google.com/app/apikey" target="_blank">https://aistudio.google.com/app/apikey</a> ล็อกอินด้วย Google Account และกดปุ่ม <code>[Create API key]</code> เพื่อสร้างกุญแจลับขึ้นต้นด้วย <code>AIzaSy...</code> แล้วทำการคัดลอกรหัสเก็บไว้</p>
+
+    <p><b>ขั้นที่ 2: การนำกุญแจลับมาวางในไฟล์ <code>.env</code> (คีย์จริงในโปรเจกต์)</b><br>
+    นำรหัสกุญแจที่คัดลอกได้ มาแปะไว้ที่ไฟล์ <code>.env</code> ที่รากโปรเจกต์เพื่อเป็น Environment Variable ที่ปลอดภัย:</p>
+
+    <div class="code-container">
+        <div class="code-line"><span class="line-num">1</span><span class="code-line"><span class="com"># === GOOGLE GEMINI API KEY CONFIGURATION ===</span></span></div>
+        <div class="code-line"><span class="line-num">2</span><span class="code-line"><span class="kw">GEMINI_API_KEY</span>=<span class="str">"AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"</span></span></div>
+    </div>
+    <div class="figure-caption">ภาพประกอบที่ 4.5 ภาพแสดงโค้ดการกำหนดกุญแจลับ GEMINI_API_KEY ในไฟล์ .env ของโปรเจกต์จริง</div>
+
+    <p><b>ขั้นที่ 3: การยกเว้นไฟล์ <code>.env</code> ด้วย <code>.gitignore</code> เพื่อป้องกันกุญแจหลุดขึ้น GitHub</b><br>
+    ตรวจสอบไฟล์ <code>.gitignore</code> เพื่อระบุยกเว้นไม่ให้ Git นำไฟล์ <code>.env</code> ขึ้นสู่ GitHub Public Repository เด็ดขาด ป้องกันไม่ให้ระบบ Google Secret Scanner สั่งบล็อกกุญแจ (Error 403 Permission Denied):</p>
+
+    <div class="code-container">
+        <div class="code-line"><span class="line-num">27</span><span class="code-line"><span class="com"># Security & Secrets</span></span></div>
+        <div class="code-line"><span class="line-num">28</span><span class="code-line"><span class="str">.env</span></span></div>
+        <div class="code-line"><span class="line-num">29</span><span class="code-line"><span class="str">.env.*</span></span></div>
+        <div class="code-line"><span class="line-num">30</span><span class="code-line"><span class="kw">!.env.example</span></span></div>
+    </div>
+    <div class="figure-caption">ภาพประกอบที่ 4.6 ภาพแสดงโค้ดการป้องกันความปลอดภัยไฟล์ .env ในไฟล์ .gitignore ของโปรเจกต์จริง</div>
+
+    <p><b>ขั้นที่ 4: การอ่านกุญแจ API Key เข้าสู่ระบบ Python (<code>server/services/ai_service.py</code>)</b><br>
+    ในไฟล์ <code>server/services/ai_service.py</code> ระบบจะใช้วิธีดึงคีย์ผ่าน <code>os.getenv('GEMINI_API_KEY')</code> และสร้าง <code>genai.Client</code> ดังนี้:</p>
+
+    <div class="code-container">
+        <div class="code-line"><span class="line-num">11</span><span class="code-line">_GEMINI_API_KEY = os.getenv(<span class="str">'GEMINI_API_KEY'</span>, <span class="str">''</span>)</span></div>
+        <div class="code-line"><span class="line-num">12</span><span class="code-line"><span class="kw">if</span> _GEMINI_API_KEY <span class="kw">and</span> _GEMINI_API_KEY != <span class="str">'your-gemini-api-key-here'</span>:</span></div>
+        <div class="code-line"><span class="line-num">13</span><span class="code-line">    _genai_client = genai.Client(api_key=_GEMINI_API_KEY)</span></div>
+        <div class="code-line"><span class="line-num">14</span><span class="code-line">    _USE_GEMINI = <span class="kw">True</span></span></div>
+        <div class="code-line"><span class="line-num">15</span><span class="code-line"><span class="kw">else</span>:</span></div>
+        <div class="code-line"><span class="line-num">16</span><span class="code-line">    _genai_client = <span class="kw">None</span></span></div>
+        <div class="code-line"><span class="line-num">17</span><span class="code-line">    _USE_GEMINI = <span class="kw">False</span></span></div>
+        <div class="code-line"><span class="line-num">18</span><span class="code-line">_GEMINI_MODEL = <span class="str">'gemini-flash-latest'</span></span></div>
+    </div>
+    <div class="figure-caption">ภาพประกอบที่ 4.7 ภาพแสดงโค้ดจริงบรรทัดที่ 11-18 ในไฟล์ server/services/ai_service.py</div>
+
+    <h3>4.6.3 ผลการทดลองการประเมินคะแนน (Experimental Results)</h3>
+    <p>ได้ทำการทดลองส่งคำตอบของนักศึกษาในรูปแบบต่างๆ เข้าสู่ระบบเพื่อทดสอบการประเมินคะแนนและระดับความมั่นใจของ AI โดยรันสคริปต์ <code>docs_and_tests/test_live_scoring_demo.py</code> และสรุปผลได้ดังนี้:</p>
+
+    <div class="code-container">
+        <div class="code-line"><span class="line-num">1</span><span class="code-line"><span class="com">=== [กรณีศึกษาที่ 1: คำตอบถูกต้องสมบูรณ์ (Full Correct Answer)] ===</span></span></div>
+        <div class="code-line"><span class="line-num">2</span><span class="code-line">โจทย์: จงอธิบายความแตกต่างระหว่าง Stack และ Queue พร้อมยกตัวอย่างการใช้งานในชีวิตจริง</span></div>
+        <div class="code-line"><span class="line-num">3</span><span class="code-line">คำตอบนักเรียน: Stack เป็น LIFO เช่น ปุ่ม Undo / Queue เป็น FIFO เช่น แถวซื้อตั๋วหนัง</span></div>
+        <div class="code-line"><span class="line-num">4</span><span class="code-line"><span class="fn">คะแนนประเมิน (score):</span> <span class="num">10.0</span> / 10.0 | <span class="fn">ความมั่นใจ (confidence):</span> <span class="str">'high'</span></span></div>
+        <div class="code-line"><span class="line-num">5</span><span class="code-line"><span class="com">Feedback: อธิบายหลักการ LIFO และ FIFO ได้ถูกต้องสมบูรณ์ พร้อมยกตัวอย่างประกอบได้ชัดเจน</span></span></div>
+        <div class="code-line"><span class="line-num">6</span><span class="code-line"></span></div>
+        <div class="code-line"><span class="line-num">7</span><span class="code-line"><span class="com">=== [กรณีศึกษาที่ 2: คำตอบถูกบางส่วน / ขาดหัวข้อตาม Rubric] ===</span></span></div>
+        <div class="code-line"><span class="line-num">8</span><span class="code-line">โจทย์: จงอธิบายขั้นตอนการทำงานของ Binary Search และระบุ Time Complexity</span></div>
+        <div class="code-line"><span class="line-num">9</span><span class="code-line">คำตอบนักเรียน: Binary Search คือการค้นหาแบบแบ่งครึ่ง เปรียบเทียบค่าตรงกลาง (ลืมเขียน O(log n))</span></div>
+        <div class="code-line"><span class="line-num">10</span><span class="code-line"><span class="fn">คะแนนประเมิน (score):</span> <span class="num">5.0</span> / 10.0 | <span class="fn">ความมั่นใจ (confidence):</span> <span class="str">'medium'</span></span></div>
+        <div class="code-line"><span class="line-num">11</span><span class="code-line"><span class="com">Feedback: อธิบายการแบ่งครึ่งถูกแต่ไม่ได้ระบุค่า Time Complexity O(log n) ตามเกณฑ์ Rubric</span></span></div>
+        <div class="code-line"><span class="line-num">12</span><span class="code-line"></span></div>
+        <div class="code-line"><span class="line-num">13</span><span class="code-line"><span class="com">=== [กรณีศึกษาที่ 3: คำตอบสั้นเกินไป / ไม่ชัดเจน (Low Confidence Alert)] ===</span></span></div>
+        <div class="code-line"><span class="line-num">14</span><span class="code-line">คำตอบนักเรียน: ทำไม่ได้ครับ</span></div>
+        <div class="code-line"><span class="line-num">15</span><span class="code-line"><span class="fn">คะแนนประเมิน (score):</span> <span class="num">0.0</span> / 10.0 | <span class="fn">ความมั่นใจ (confidence):</span> <span class="str">'low'</span></span></div>
+        <div class="code-line"><span class="line-num">16</span><span class="code-line"><span class="com">Feedback: คำตอบสั้นเกินไปและไม่มีเนื้อหาเชิงเทคนิค -> สลับสถานะเป็น needs_review และแจ้งเตือนอาจารย์</span></span></div>
+    </div>
+    <div class="figure-caption">ภาพประกอบที่ 4.8 ภาพแสดงผลการรันการทดลองตรวจคะแนนจริงผ่านระบบ Evaly LLM Scoring Engine</div>
+
+    <table border="1" style="width:100%; border-collapse:collapse; margin-top:12pt; margin-bottom:18pt; font-size:14pt;">
+        <thead>
+            <tr style="background-color:#f2f2f2; text-align:center;">
+                <th style="padding:8px;">กรณีศึกษา (Test Case)</th>
+                <th style="padding:8px;">คำตอบของนักศึกษา</th>
+                <th style="padding:8px;">คะแนนที่ได้ (`score`)</th>
+                <th style="padding:8px;">ความมั่นใจ (`confidence`)</th>
+                <th style="padding:8px;">การประเมินและ feedback จาก AI</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td style="padding:8px; font-weight:bold;">1. คำตอบถูกต้องสมบูรณ์</td>
+                <td style="padding:8px;">อธิบายหลักการ LIFO ของ Stack และ FIFO ของ Queue พร้อมยกตัวอย่างครบถ้วน</td>
+                <td style="padding:8px; text-align:center;"><b>10.0</b> / 10.0</td>
+                <td style="padding:8px; text-align:center; color:green;"><b>high</b></td>
+                <td style="padding:8px;">อธิบายหลักการเชิงเทคนิคได้ถูกต้องสมบูรณ์ พร้อมยกตัวอย่างเปรียบเทียบในชีวิตจริงได้ชัดเจน</td>
+            </tr>
+            <tr>
+                <td style="padding:8px; font-weight:bold;">2. คำตอบถูกบางส่วน</td>
+                <td style="padding:8px;">อธิบายขั้นตอน Binary Search ถูกต้อง แต่ลืมระบุ Time Complexity Big-O $O(\log n)$</td>
+                <td style="padding:8px; text-align:center;"><b>5.0</b> / 10.0</td>
+                <td style="padding:8px; text-align:center; color:orange;"><b>medium</b></td>
+                <td style="padding:8px;">หักคะแนนตามเกณฑ์ Rubric เนื่องจากไม่ได้ระบุค่าความซับซ้อนของเวลา (Time Complexity)</td>
+            </tr>
+            <tr>
+                <td style="padding:8px; font-weight:bold;">3. รูปภาพลายมือไม่ชัดเจน</td>
+                <td style="padding:8px;">แนบรูปถ่ายกระดาษคำตอบเขียนโค้ด C (ภาพมีความเบลอและแสงน้อย)</td>
+                <td style="padding:8px; text-align:center;"><b>6.0</b> / 10.0</td>
+                <td style="padding:8px; text-align:center; color:red;"><b>low</b></td>
+                <td style="padding:8px;">ภาพถ่ายมีความเบลอ AI แกะลายมือได้บางส่วน <b>ระบบปรับสถานะเป็น `needs_review` และส่ง WebSocket เตือนอาจารย์ตรวจซ้ำ</b></td>
+            </tr>
+        </tbody>
+    </table>
+
+</body>
+</html>

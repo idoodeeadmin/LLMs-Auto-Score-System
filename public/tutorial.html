@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evaly System Architecture & Code Mastery Tutorial</title>
+    <!-- Google Fonts & FontAwesome Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-hover: #334155;
+            --accent-purple: #8b5cf6;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-green: #10b981;
+            --accent-pink: #ec4899;
+            --accent-orange: #f97316;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --code-bg: #090d16;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Kanit', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Navigation Header */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-badge {
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+            padding: 8px 14px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
+        }
+
+        .logo-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            background: linear-gradient(90deg, #ffffff, #cbd5e1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 1rem;
+        }
+
+        nav a {
+            color: var(--text-muted);
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        nav a:hover, nav a.active {
+            color: #fff;
+            background: rgba(139, 92, 246, 0.15);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+
+        /* Hero Banner */
+        .hero {
+            padding: 4rem 2rem 3rem 2rem;
+            text-align: center;
+            max-width: 1000px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, rgba(59, 130, 246, 0.1) 50%, rgba(0,0,0,0) 70%);
+            filter: blur(40px);
+            z-index: -1;
+        }
+
+        .hero h1 {
+            font-size: 2.8rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #ffffff 30%, #a78bfa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            font-size: 1.15rem;
+            color: var(--text-muted);
+            max-width: 800px;
+            margin: 0 auto 2rem auto;
+        }
+
+        .quick-stats {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: transform 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--accent-purple);
+        }
+
+        .stat-icon {
+            font-size: 1.8rem;
+        }
+
+        /* Container Layout */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .section-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 2.5rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            scroll-margin-top: 100px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+        }
+
+        .section-icon-bg {
+            width: 50px;
+            height: 50px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: #fff;
+        }
+
+        .section-title h2 {
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .section-title p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* Flow Diagrams */
+        .diagram-box {
+            background: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            position: relative;
+        }
+
+        .node {
+            background: var(--bg-card);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.2rem 1.5rem;
+            text-align: center;
+            min-width: 160px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .node:hover {
+            transform: scale(1.05);
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
+        }
+
+        .node i {
+            font-size: 2rem;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .node-title {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .node-sub {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .arrow {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: var(--accent-purple);
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .arrow i {
+            font-size: 1.5rem;
+            margin-top: 4px;
+        }
+
+        /* Code Blocks */
+        .code-container {
+            background: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 1.5rem 0;
+        }
+
+        .code-header {
+            background: #0f172a;
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .code-header .file-name {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--accent-cyan);
+        }
+
+        pre {
+            padding: 1.2rem;
+            overflow-x: auto;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+            color: #e2e8f0;
+            line-height: 1.6;
+        }
+
+        .kw { color: #f472b6; font-weight: 600; } /* Keyword */
+        .fn { color: #60a5fa; } /* Function */
+        .str { color: #34d399; } /* String */
+        .cm { color: #64748b; font-style: italic; } /* Comment */
+        .num { color: #fbbf24; } /* Number */
+        .cls { color: #a78bfa; font-weight: 600; } /* Class */
+
+        /* Feature Cards Grid */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .card-sub {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 1.5rem;
+            transition: all 0.2s ease;
+        }
+
+        .card-sub:hover {
+            border-color: var(--accent-purple);
+            background: rgba(51, 65, 85, 0.5);
+        }
+
+        .card-sub h3 {
+            font-size: 1.15rem;
+            margin-bottom: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Step List */
+        .step-list {
+            list-style: none;
+            position: relative;
+            padding-left: 2rem;
+            margin: 1.5rem 0;
+        }
+
+        .step-list::before {
+            content: '';
+            position: absolute;
+            left: 15px;
+            top: 10px;
+            bottom: 10px;
+            width: 2px;
+            background: var(--border-color);
+        }
+
+        .step-item {
+            position: relative;
+            margin-bottom: 1.8rem;
+        }
+
+        .step-badge {
+            position: absolute;
+            left: -2rem;
+            top: 2px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--accent-purple);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+            box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+        }
+
+        .step-content {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.2rem 1.5rem;
+        }
+
+        .step-content h4 {
+            font-size: 1.1rem;
+            margin-bottom: 6px;
+            color: var(--accent-cyan);
+        }
+
+        /* Interactive Tabs */
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 1rem;
+        }
+
+        .tab-btn {
+            background: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn.active, .tab-btn:hover {
+            background: var(--accent-purple);
+            color: #fff;
+            border-color: var(--accent-purple);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 3rem 2rem;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header { flex-direction: column; gap: 1rem; }
+            .hero h1 { font-size: 2rem; }
+            .diagram-box { flex-direction: column; }
+            .arrow i { transform: rotate(90deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header>
+        <div class="logo-area">
+            <div class="logo-badge">EVALY</div>
+            <div class="logo-title">System Mastery Guide</div>
+        </div>
+        <nav>
+            <ul>
+                <li><a href="#arch" class="active"><i class="fa-solid fa-sitemap"></i> สถาปัตยกรรม</a></li>
+                <li><a href="#database"><i class="fa-solid fa-database"></i> Database</a></li>
+                <li><a href="#auth"><i class="fa-solid fa-shield-halved"></i> Auth & JWT</a></li>
+                <li><a href="#api"><i class="fa-solid fa-network-wired"></i> API & State</a></li>
+                <li><a href="#ai"><i class="fa-solid fa-brain"></i> AI Engine</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Hero Banner -->
+    <div class="hero">
+        <h1>คู่มือเจาะลึกระบบการทำงาน LLMs Auto Score System</h1>
+        <p>เรียนรู้กลไกตั้งแต่ระดับฐานข้อมูล การยืนยันตัวตนด้วย JWT การรับส่ง HTTP API ไปจนถึงระบบตรวจคะแนนด้วย AI อัตโนมัติ</p>
+        
+        <div class="quick-stats">
+            <div class="stat-card">
+                <span class="stat-icon" style="color: #60a5fa;"><i class="fa-brands fa-react"></i></span>
+                <div>
+                    <div style="font-weight: 600;">Frontend</div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted);">React 18 + Vite + TS</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-icon" style="color: #34d399;"><i class="fa-solid fa-bolt"></i></span>
+                <div>
+                    <div style="font-weight: 600;">Backend API</div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted);">Python FastAPI</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-icon" style="color: #c084fc;"><i class="fa-solid fa-database"></i></span>
+                <div>
+                    <div style="font-weight: 600;">Database</div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted);">TiDB Cloud / MySQL</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-icon" style="color: #f472b6;"><i class="fa-solid fa-microchip"></i></span>
+                <div>
+                    <div style="font-weight: 600;">AI Scoring</div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted);">Google Gemini 1.5 Flash</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Container -->
+    <div class="container">
+
+        <!-- SECTION 1: SYSTEM ARCHITECTURE -->
+        <section id="arch" class="section-card">
+            <div class="section-header">
+                <div class="section-icon-bg" style="background: linear-gradient(135deg, #8b5cf6, #3b82f6);">
+                    <i class="fa-solid fa-sitemap"></i>
+                </div>
+                <div class="section-title">
+                    <h2>1. ภาพรวมสถาปัตยกรรมระบบ (System Architecture)</h2>
+                    <p>แสดงการไหลของข้อมูล (Data Flow) ระหว่าง Client, Server, Database และ AI Service</p>
+                </div>
+            </div>
+
+            <p>ระบบ Evaly ทำงานในรูปแบบ <strong>Decoupled Architecture</strong> โดยแยกส่วนแสดงผล (Frontend) และส่วนประมวลผล (Backend API) ออกจากกันอย่างชัดเจน ทำให้ง่ายต่อการพัฒนาและเพิ่มขยายระบบในอนาคต</p>
+
+            <div class="diagram-box">
+                <div class="node">
+                    <i class="fa-brands fa-react" style="color: #60a5fa;"></i>
+                    <div class="node-title">React Client</div>
+                    <div class="node-sub">Port 5173 / SPA</div>
+                </div>
+
+                <div class="arrow">
+                    <span>JSON / REST API</span>
+                    <span>Bearer JWT Token</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </div>
+
+                <div class="node">
+                    <i class="fa-solid fa-server" style="color: #34d399;"></i>
+                    <div class="node-title">FastAPI Backend</div>
+                    <div class="node-sub">Port 8000 / Python</div>
+                </div>
+
+                <div class="arrow">
+                    <span>pymysql / SQL</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </div>
+
+                <div class="node">
+                    <i class="fa-solid fa-database" style="color: #c084fc;"></i>
+                    <div class="node-title">TiDB Cloud / MySQL</div>
+                    <div class="node-sub">Port 4000 / SSL</div>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card-sub">
+                    <h3><i class="fa-solid fa-mobile-screen" style="color: var(--accent-cyan);"></i> Single Page Application (SPA)</h3>
+                    <p>ผู้ใช้โต้ตอบผ่าน UI ที่สร้างด้วย React 18 โดยระบบจะเปลี่ยนหน้าจอแบบไม่มีการ Refresh หน้าใหม่ (Client-side Routing) โดยอาศัย React Router 6</p>
+                </div>
+                <div class="card-sub">
+                    <h3><i class="fa-solid fa-shield-cat" style="color: var(--accent-purple);"></i> Asynchronous API Backend</h3>
+                    <p>FastAPI ทำหน้าที่เป็น Gateway จัดการ Routing, ยืนยันสิทธิ์ Security, ตรวจสอบ Validation และจัดการคิวตรวจข้อสอบด้วย AI Background Workers</p>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- SECTION 2: DATABASE MANAGEMENT -->
+        <section id="database" class="section-card">
+            <div class="section-header">
+                <div class="section-icon-bg" style="background: linear-gradient(135deg, #06b6d4, #3b82f6);">
+                    <i class="fa-solid fa-database"></i>
+                </div>
+                <div class="section-title">
+                    <h2>2. การจัดการฐานข้อมูล (Database Management)</h2>
+                    <p>ทำความเข้าใจไฟล์ <a href="file:///c:/Users/idood/Downloads/LLMs-Auto-Score-System-main/server/database.py" style="color: var(--accent-cyan);">server/database.py</a> และตารางหลักในระบบ</p>
+                </div>
+            </div>
+
+            <p>ระบบใช้ <strong>pymysql</strong> ในการเชื่อมต่อฐานข้อมูล TiDB Cloud (ซึ่งเข้ากันได้สมบูรณ์กับ MySQL Driver) และมี Custom Wrapper ในการแปลง SQL Placeholders</p>
+
+            <div class="grid-2">
+                <div class="card-sub">
+                    <h3><i class="fa-solid fa-plug" style="color: var(--accent-green);"></i> SSL Connection Pool</h3>
+                    <p>เชื่อมต่อผ่านพอร์ต 4000 พร้อมเปิดใช้งาน SSL Certificate <code>certifi.where()</code> เพื่อความปลอดภัยสูงสุดขณะส่งข้อมูลข้าม Cloud</p>
+                </div>
+                <div class="card-sub">
+                    <h3><i class="fa-solid fa-wand-magic-sparkles" style="color: var(--accent-pink);"></i> Custom Cursor Wrapper</h3>
+                    <p>คลาส <code>MySQLCursorWrapper</code> จะคอยแทนที่เครื่องหมาย <code>?</code> ให้กลายเป็น <code>%s</code> อัตโนมัติ ทำให้เขียน Query ง่ายและป้องกัน SQL Injection</p>
+                </div>
+            </div>
+
+            <div class="code-container">
+                <div class="code-header">
+                    <span class="file-name"><i class="fa-brands fa-python"></i> server/database.py</span>
+                    <span>Python 3.11</span>
+                </div>
+                <pre><code><span class="kw">class</span> <span class="cls">MySQLCursorWrapper</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>, cursor):
+        <span class="kw">self</span>.cursor = cursor
+
+    <span class="kw">def</span> <span class="fn">execute</span>(<span class="kw">self</span>, query, args=<span class="kw">None</span>):
+        <span class="cm"># แปลง SQLite placeholder '?' ให้เป็น MySQL '%s' อัตโนมัติ</span>
+        <span class="kw">if</span> args <span class="kw">is not</span> <span class="kw">None</span>:
+            query = query.replace(<span class="str">'?'</span>, <span class="str">'%s'</span>)
+            <span class="kw">return</span> <span class="kw">self</span>.cursor.execute(query, args)
+        <span class="kw">return</span> <span class="kw">self</span>.cursor.execute(query)
+
+<span class="kw">def</span> <span class="fn">get_db_connection</span>():
+    <span class="cm"># ดึงค่าการเชื่อมต่อจากไฟล์ .env</span>
+    host = os.getenv(<span class="str">"TIDB_HOST"</span>)
+    user = os.getenv(<span class="str">"TIDB_USER"</span>)
+    password = os.getenv(<span class="str">"TIDB_PASSWORD"</span>)
+    database = os.getenv(<span class="str">"TIDB_DATABASE"</span>)
+    
+    conn = pymysql.connect(
+        host=host, port=<span class="num">4000</span>, user=user, password=password, database=database,
+        cursorclass=pymysql.cursors.DictCursor, ssl={<span class="str">'ca'</span>: certifi.where()}
+    )
+    <span class="kw">return</span> MySQLConnectionWrapper(conn)</code></pre>
+            </div>
+
+            <h3 style="margin-top: 1.5rem; margin-bottom: 0.8rem;"><i class="fa-solid fa-table-cells"></i> โครงสร้างตารางสำคัญ (Core Database Schemas)</h3>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; background: var(--code-bg); border-radius: 10px; overflow: hidden;">
+                    <thead>
+                        <tr style="background: #1e293b; color: var(--accent-cyan); border-bottom: 1px solid var(--border-color);">
+                            <th style="padding: 12px 16px;">ชื่อตาราง (Table Name)</th>
+                            <th style="padding: 12px 16px;">ฟิลด์สำคัญ (Key Columns)</th>
+                            <th style="padding: 12px 16px;">หน้าที่และการใช้งาน</th>
+                        </tr>
+                    </thead>
+                    <tbody style="font-size: 0.9rem;">
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 12px 16px; font-weight: 600; color: #a78bfa;">users</td>
+                            <td style="padding: 12px 16px; font-family: monospace;">id, email, password, name, role</td>
+                            <td style="padding: 12px 16px;">เก็บข้อมูลผู้ใช้งาน รหัสผ่านแบบ Hash และบทบาท (teacher / student)</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 12px 16px; font-weight: 600; color: #a78bfa;">rooms & room_members</td>
+                            <td style="padding: 12px 16px; font-family: monospace;">id, class_code, user_id, role</td>
+                            <td style="padding: 12px 16px;">จัดเก็บข้อมูลห้องเรียน รหัสเข้าห้อง (Class Code) และสมาชิกในห้อง</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 12px 16px; font-weight: 600; color: #a78bfa;">exams & exam_questions</td>
+                            <td style="padding: 12px 16px; font-family: monospace;">id, room_id, question_text, rubrics</td>
+                            <td style="padding: 12px 16px;">ชุดข้อสอบ คำถาม เฉลย และเกณฑ์การให้คะแนน (Rubrics JSON)</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px 16px; font-weight: 600; color: #a78bfa;">student_submissions</td>
+                            <td style="padding: 12px 16px; font-family: monospace;">id, exam_id, student_id, total_score</td>
+                            <td style="padding: 12px 16px;">คำตอบที่นักเรียนส่ง ผลการวิเคราะห์จาก AI และคะแนนรวม</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+
+        <!-- SECTION 3: AUTH & JWT FLOW -->
+        <section id="auth" class="section-card">
+            <div class="section-header">
+                <div class="section-icon-bg" style="background: linear-gradient(135deg, #10b981, #06b6d4);">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div class="section-title">
+                    <h2>3. ระบบยืนยันตัวตนและการรักษาความปลอดภัย (Auth & JWT Flow)</h2>
+                    <p>เจาะลึกไฟล์ <a href="file:///c:/Users/idood/Downloads/LLMs-Auto-Score-System-main/server/auth.py" style="color: var(--accent-cyan);">server/auth.py</a> และการทำงานของ JSON Web Tokens</p>
+                </div>
+            </div>
+
+            <ul class="step-list">
+                <li class="step-item">
+                    <div class="step-badge">1</div>
+                    <div class="step-content">
+                        <h4>การเข้ารหัสรหัสผ่าน (Password Hashing with Salt)</h4>
+                        <p>ใช้สุ่ม <code>secrets.token_hex(16)</code> เป็น Salt แล้วนำรหัสผ่านเข้ารหัสด้วย <code>PBKDF2 HMAC SHA-256</code> ซ้ำ 100,000 รอบก่อนเซฟลงตาราง <code>users</code></p>
+                    </div>
+                </li>
+
+                <li class="step-item">
+                    <div class="step-badge">2</div>
+                    <div class="step-content">
+                        <h4>การเข้าสู่ระบบและการรับ JWT Token (Login Step)</h4>
+                        <p>เมื่อเข้าสู่ระบบสำเร็จ ฟังก์ชัน <code>create_access_token()</code> จะสร้าง JWT Token ที่ลงลายมือชื่อดิจิทัลด้วย <code>SECRET_KEY</code> และมีอายุการใช้งาน 7 วัน</p>
+                    </div>
+                </li>
+
+                <li class="step-item">
+                    <div class="step-badge">3</div>
+                    <div class="step-content">
+                        <h4>การยืนยันตัวตนในทุก Request (Token Verification)</h4>
+                        <p>Frontend จะแนบ <code>Authorization: Bearer &lt;token&gt;</code> มาใน HTTP Header ฟังก์ชัน <code>get_current_user()</code> จะแกะ Token เพื่อยืนยันว่าผู้ใช้คือใครก่อนประมวลผล</p>
+                    </div>
+                </li>
+            </ul>
+
+            <div class="code-container">
+                <div class="code-header">
+                    <span class="file-name"><i class="fa-brands fa-python"></i> server/auth.py</span>
+                    <span>JWT & Password Hashing</span>
+                </div>
+                <pre><code><span class="cm"># 1. ฟังก์ชันสุ่ม Salt และ Hash รหัสผ่าน</span>
+<span class="kw">def</span> <span class="fn">get_password_hash</span>(password: <span class="cls">str</span>) -> <span class="cls">str</span>:
+    salt = secrets.token_hex(<span class="num">16</span>)
+    hash_obj = hashlib.pbkdf2_hmac(
+        <span class="str">'sha256'</span>, password.encode(<span class="str">'utf-8'</span>), salt.encode(<span class="str">'utf-8'</span>), <span class="num">100000</span>
+    )
+    <span class="kw">return</span> <span class="str">f"<span class="num">{salt}</span>:<span class="num">{hash_obj.hex()}</span>"</span>
+
+<span class="cm"># 2. ฟังก์ชันสร้าง JWT Access Token</span>
+<span class="kw">def</span> <span class="fn">create_access_token</span>(data: <span class="cls">dict</span>, expires_delta: Optional[timedelta] = <span class="kw">None</span>) -> <span class="cls">str</span>:
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + (expires_delta <span class="kw">or</span> timedelta(days=<span class="num">7</span>))
+    to_encode.update({<span class="str">"exp"</span>: expire})
+    <span class="kw">return</span> jwt.encode(to_encode, SECRET_KEY, algorithm=<span class="str">"HS256"</span>)</code></pre>
+            </div>
+        </section>
+
+
+        <!-- SECTION 4: API & FRONTEND STATE -->
+        <section id="api" class="section-card">
+            <div class="section-header">
+                <div class="section-icon-bg" style="background: linear-gradient(135deg, #ec4899, #8b5cf6);">
+                    <i class="fa-solid fa-network-wired"></i>
+                </div>
+                <div class="section-title">
+                    <h2>4. การส่ง HTTP API และการจัดการ State ฝั่ง Frontend</h2>
+                    <p>อธิบายการทำงานของ React <a href="file:///c:/Users/idood/Downloads/LLMs-Auto-Score-System-main/client/contexts/AuthContext.tsx" style="color: var(--accent-cyan);">AuthContext.tsx</a> และการยิง API ด้วย <code>fetch()</code></p>
+                </div>
+            </div>
+
+            <p>ฝั่ง Frontend ใช้ React Context (<code>AuthContext</code>) ในการเก็บข้อมูลผู้ใช้งานและ Token ไว้ในหน่วยความจำและ <code>localStorage</code></p>
+
+            <div class="tab-buttons">
+                <button class="tab-btn active" onclick="switchTab(event, 'tab-frontend')">Frontend Call (React)</button>
+                <button class="tab-btn" onclick="switchTab(event, 'tab-backend')">Backend Endpoint (FastAPI)</button>
+            </div>
+
+            <div id="tab-frontend" class="tab-content active">
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="file-name"><i class="fa-brands fa-react"></i> client/pages/Login.tsx</span>
+                        <span>TypeScript / React</span>
+                    </div>
+                    <pre><code><span class="kw">const</span> <span class="fn">handleLogin</span> = <span class="kw">async</span> () => {
+    <span class="cm">// 1. ส่ง request ไปที่ Backend API</span>
+    <span class="kw">const</span> res = <span class="kw">await</span> fetch(<span class="str">"/api/auth/login"</span>, {
+        method: <span class="str">"POST"</span>,
+        headers: { <span class="str">"Content-Type"</span>: <span class="str">"application/json"</span> },
+        body: JSON.stringify({ email, password })
+    });
+    
+    <span class="kw">const</span> data = <span class="kw">await</span> res.json();
+    <span class="kw">if</span> (res.ok) {
+        <span class="cm">// 2. บันทึก Token ลง localStorage และเซ็ต State</span>
+        localStorage.setItem(<span class="str">"token"</span>, data.access_token);
+        login(data.access_token, data.user);
+        toast.success(<span class="str">"เข้าสู่ระบบสำเร็จ!"</span>);
+    }
+};</code></pre>
+                </div>
+            </div>
+
+            <div id="tab-backend" class="tab-content">
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="file-name"><i class="fa-brands fa-python"></i> server/routes/auth_routes.py</span>
+                        <span>FastAPI Endpoint</span>
+                    </div>
+                    <pre><code>@router.post(<span class="str">"/login"</span>)
+<span class="kw">async def</span> <span class="fn">login</span>(user_credentials: UserLogin):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    <span class="cm"># 1. ค้นหา User จากฐานข้อมูล</span>
+    cursor.execute(<span class="str">"SELECT * FROM users WHERE email = ?"</span>, (user_credentials.email,))
+    user = cursor.fetchone()
+    
+    <span class="cm"># 2. ตรวจสอบรหัสผ่าน</span>
+    <span class="kw">if not</span> user <span class="kw">or not</span> verify_password(user_credentials.password, user[<span class="str">'password'</span>]):
+        <span class="kw">raise</span> HTTPException(status_code=<span class="num">401</span>, detail=<span class="str">"อีเมลหรือรหัสผ่านไม่ถูกต้อง"</span>)
+        
+    <span class="cm"># 3. ออก JWT Token</span>
+    access_token = create_access_token(data={<span class="str">"sub"</span>: user[<span class="str">'email'</span>]})
+    <span class="kw">return</span> {<span class="str">"access_token"</span>: access_token, <span class="str">"token_type"</span>: <span class="str">"bearer"</span>, <span class="str">"user"</span>: user}</code></pre>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- SECTION 5: AI SCORING ENGINE -->
+        <section id="ai" class="section-card">
+            <div class="section-header">
+                <div class="section-icon-bg" style="background: linear-gradient(135deg, #f97316, #ec4899);">
+                    <i class="fa-solid fa-brain"></i>
+                </div>
+                <div class="section-title">
+                    <h2>5. ระบบตรวจข้อสอบด้วย AI อัตโนมัติ (AI Scoring Engine)</h2>
+                    <p>ไฟล์ <a href="file:///c:/Users/idood/Downloads/LLMs-Auto-Score-System-main/server/services/ai_service.py" style="color: var(--accent-cyan);">server/services/ai_service.py</a> และการส่ง Real-time Notification</p>
+                </div>
+            </div>
+
+            <p>หัวใจสำคัญของโปรเจคคือการตรวจให้คะแนนคำตอบแบบอัตโนมัติด้วย <strong>Google Gemini API</strong> ตามเกณฑ์ Rubrics ที่อาจารย์กำหนด</p>
+
+            <div class="diagram-box">
+                <div class="node">
+                    <i class="fa-solid fa-file-pen" style="color: var(--accent-cyan);"></i>
+                    <div class="node-title">Student Answer</div>
+                    <div class="node-sub">ข้อความ / รูปภาพ</div>
+                </div>
+
+                <div class="arrow">
+                    <span>Prompt Construction</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </div>
+
+                <div class="node">
+                    <i class="fa-solid fa-robot" style="color: var(--accent-pink);"></i>
+                    <div class="node-title">Gemini 1.5 Flash</div>
+                    <div class="node-sub">Structured JSON Output</div>
+                </div>
+
+                <div class="arrow">
+                    <span>Socket.IO Push</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </div>
+
+                <div class="node">
+                    <i class="fa-solid fa-bell" style="color: var(--accent-orange);"></i>
+                    <div class="node-title">Real-time Alert</div>
+                    <div class="node-sub">ส่งผลคะแนนทันที</div>
+                </div>
+            </div>
+
+            <div class="card-sub" style="margin-top: 1.5rem;">
+                <h3><i class="fa-solid fa-circle-check" style="color: var(--accent-green);"></i> สรุปขั้นตอนการประมวลผลของ AI:</h3>
+                <ol style="margin-left: 1.5rem; color: var(--text-muted); line-height: 1.8;">
+                    <li>ระบบดึงข้อมูลคำถาม เฉลย และ Rubrics JSON จากตาราง <code>exam_questions</code></li>
+                    <li>สร้าง Prompt กำหนดให้ Gemini ตอบกลับมาในรูปแบบ <strong>Structured JSON Schema</strong> เท่านั้น</li>
+                    <li>บันทึกคะแนนและเหตุผลวิเคราะห์แยกตามเกณฑ์ลงตาราง <code>submission_answers</code></li>
+                    <li>ส่งสัญญาณ Real-time ผ่าน Socket.IO Server ไปยังหน้าจออาจารย์และนักเรียนโดยไม่ต้องกด Refresh</li>
+                </ol>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>LLMs Auto Score System (Evaly) Architecture Guide &copy; 2026. Built with ❤️ for Learning.</p>
+    </footer>
+
+    <!-- Interactive Tab Script -->
+    <script>
+        function switchTab(evt, tabId) {
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(content => content.classList.remove('active'));
+
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+
+            document.getElementById(tabId).classList.add('active');
+            evt.currentTarget.classList.add('active');
+        }
+    </script>
+</body>
+</html>

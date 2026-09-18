@@ -9,6 +9,7 @@ lerna-debug.log*
 
 # Dependencies
 node_modules/
+**/node_modules/
 dist/
 dist-ssr/
 *.local
@@ -31,6 +32,7 @@ dist-ssr/
 
 # Python
 __pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
 .venv/
@@ -58,12 +60,15 @@ service-account.json
 *.pfx
 isrgrootx1.pem.txt
 
-
 # Documentation and Junk Files
-??????/
-# The six-character directory pattern above also matches client.
+คู่มือ/
+ตัวอย่างการเขียนเนื้อหาบทที่ 3/
 !/client/
+!/client/**
+client/node_modules/
 !/server/
+!/server/**
+server/**/__pycache__/
 !/server/routes/
 !/server/routes/exam_draft_routes.py
 /artifacts/ui-review/
