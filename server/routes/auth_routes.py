@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Header, UploadFil
 import pymysql
 import uuid
 import smtplib
+import asyncio
 from datetime import datetime, timezone, timedelta
 import os
 from email.mime.text import MIMEText
@@ -16,16 +17,58 @@ _IS_DEV_MODE = os.getenv('APP_ENV', 'development').lower() == 'development'
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
+def _get_client_ip(request: Request) -> str:
+    if not request:
+        return "unknown"
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip:
+        return real_ip.strip()
+    return request.client.host if getattr(request, "client", None) else "unknown"
+
+def _send_smtp_email_sync(to_email: str, subject: str, html_body: str) -> bool:
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+    smtp_port_str = os.getenv("SMTP_PORT", "587")
+    smtp_port = int(smtp_port_str) if smtp_port_str else 587
+
+    if not (smtp_host and smtp_user and smtp_password):
+        return False
+
+    try:
+        msg = MIMEMultipart()
+        msg["From"] = f"Evaly Score <{smtp_user}>"
+        msg["To"] = to_email
+        msg["Subject"] = subject
+        msg.attach(MIMEText(html_body, "html"))
+
+        # Strict 5.0 second socket timeout prevents cloud outbound firewall blocks from hanging
+        server = smtplib.SMTP(smtp_host, smtp_port, timeout=5.0)
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.send_message(msg)
+        server.quit()
+        print(f"[Email Sent] Successfully sent email to {to_email}")
+        return True
+    except Exception as e:
+        print(f"[Email Error] Failed to send email to {to_email} via SMTP ({smtp_host}:{smtp_port}): {e}")
+        return False
+
 @router.post('/register')
 async def register(user: UserRegister, request: Request):
-    client_ip = request.client.host if request.client else 'unknown'
-    if not check_rate_limit(client_ip, limit=5, window=3600):
+    client_ip = _get_client_ip(request)
+    if not check_rate_limit(client_ip, limit=30, window=3600):
         raise HTTPException(status_code=429, detail='Too many registration attempts. Please try again later.')
+
+    require_verification = os.getenv('REQUIRE_EMAIL_VERIFICATION', 'false').lower() in ('true', '1')
+    initial_is_verified = 0 if (require_verification and not _IS_DEV_MODE) else 1
+
     conn = get_db_connection()
     cursor = conn.cursor()
     hashed_password = get_password_hash(user.password)
-    smtp_host = os.getenv('SMTP_HOST')
-    initial_is_verified = 1 if (_IS_DEV_MODE or not smtp_host) else 0
     try:
         cursor.execute(
             'INSERT INTO users (email, password, name, role, student_id, avatar_url, is_verified) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -39,45 +82,49 @@ async def register(user: UserRegister, request: Request):
     except pymysql.err.IntegrityError:
         conn.close()
         raise HTTPException(status_code=400, detail='Email already registered')
-    verify_link = f'http://localhost:3000/verify-email?token={token}'
-    smtp_port_str = os.getenv('SMTP_PORT', '587')
-    smtp_port = int(smtp_port_str) if smtp_port_str else 587
+    except Exception as e:
+        conn.close()
+        raise HTTPException(status_code=500, detail=f'Database error: {str(e)}')
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+    frontend_url = os.getenv('FRONTEND_URL', 'https://llms-auto-score-systems.netlify.app').rstrip('/')
+    verify_link = f'{frontend_url}/verify-email?token={token}'
+
+    smtp_host = os.getenv('SMTP_HOST')
     smtp_user = os.getenv('SMTP_USER')
     smtp_password = os.getenv('SMTP_PASSWORD')
+
     dev_verify_link = None
     if smtp_host and smtp_user and smtp_password:
-        try:
-            msg = MIMEMultipart()
-            msg['From'] = f'Evaly Score <{smtp_user}>'
-            msg['To'] = user.email
-            msg['Subject'] = 'ยืนยันบัญชีอีเมล Evaly Score (Verify Email)'
-            body = f'\n            <h2>ยินดีต้อนรับสู่ Evaly Score</h2>\n            <p>กรุณาคลิกที่ลิงก์ด้านล่างเพื่อยืนยันบัญชีอีเมลของคุณ (ลิงก์มีอายุการใช้งาน 24 ชั่วโมง):</p>\n            <p><a href="{verify_link}">{verify_link}</a></p>\n            '
-            msg.attach(MIMEText(body, 'html'))
-            server = smtplib.SMTP(smtp_host, smtp_port)
-            server.starttls()
-            server.login(smtp_user, smtp_password)
-            server.send_message(msg)
-            server.quit()
-        except Exception as e:
-            print(f'\n[Verify Email Error] Failed to send email: {e}')
-            dev_verify_link = verify_link
+        body = f"""
+            <h2>ยินดีต้อนรับสู่ Evaly Score</h2>
+            <p>กรุณาคลิกที่ลิงก์ด้านล่างเพื่อยืนยันบัญชีอีเมลของคุณ (ลิงก์มีอายุการใช้งาน 24 ชั่วโมง):</p>
+            <p><a href="{verify_link}">{verify_link}</a></p>
+        """
+        # Non-blocking async background task so registration responds in milliseconds
+        asyncio.create_task(asyncio.to_thread(_send_smtp_email_sync, user.email, 'ยืนยันบัญชีอีเมล Evaly Score (Verify Email)', body))
     else:
         dev_verify_link = verify_link
-    conn.close()
-    if dev_verify_link:
+
+    if dev_verify_link or _IS_DEV_MODE:
         print(f'\n========== VERIFY EMAIL ==========')
-        print(f'Verify Link: {dev_verify_link}')
+        print(f'Verify Link: {verify_link}')
         print(f'==================================\n')
+
     msg_str = 'สมัครสมาชิกสำเร็จ กรุณาเข้าสู่ระบบ' if initial_is_verified else 'สมัครสมาชิกสำเร็จ กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชีของคุณ'
     response = {'message': msg_str}
-    if _IS_DEV_MODE and dev_verify_link:
-        response['dev_verify_link'] = dev_verify_link
+    if _IS_DEV_MODE:
+        response['dev_verify_link'] = verify_link
     return response
 
 @router.post('/login', response_model=TokenResponse)
 async def login(user_data: UserLogin, request: Request, response: Response):
-    client_ip = request.client.host if request.client else 'unknown'
-    if not check_rate_limit(client_ip, limit=10, window=60):
+    client_ip = _get_client_ip(request)
+    if not check_rate_limit(client_ip, limit=15, window=60):
         raise HTTPException(status_code=429, detail='Too many login attempts. Please wait a minute.')
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -87,13 +134,13 @@ async def login(user_data: UserLogin, request: Request, response: Response):
     if not user or not verify_password(user_data.password, user['password']):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Incorrect email or password',
          headers={'WWW-Authenticate': 'Bearer'})
-    smtp_host = os.getenv('SMTP_HOST')
-    if not user.get('is_verified') and not _IS_DEV_MODE and smtp_host:
+
+    require_verification = os.getenv('REQUIRE_EMAIL_VERIFICATION', 'false').lower() in ('true', '1')
+    if not user.get('is_verified') and not _IS_DEV_MODE and require_verification:
         raise HTTPException(status_code=403, detail='กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ (Please verify your email before logging in)')
 
     access_token = create_access_token(data={'sub': user['email'], 'token_version': user.get('token_version', 0)})
     response.set_cookie(key="access_token", value=access_token, httponly=True, max_age=60*60*24*7, samesite="lax", path="/")
-    client_ip = request.client.host if request.client else 'unknown'
     user_dict = dict(user)
     user_info = {'id': user_dict['id'], 'email': user_dict['email'], 'name': user_dict['name'], 'role': user_dict['role'],
      'studentId': user_dict.get('student_id'),
@@ -216,41 +263,26 @@ async def forgot_password(req: ForgotPasswordRequest):
     cursor.execute('INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)', (user['id'], token, expires_at))
     conn.commit()
     conn.close()
-    reset_link = f'http://localhost:8080/reset-password?token={token}'
-    import smtplib
-    from email.mime.text import MIMEText
-    from email.mime.multipart import MIMEMultipart
-    import os
+    frontend_url = os.getenv('FRONTEND_URL', 'https://llms-auto-score-systems.netlify.app').rstrip('/')
+    reset_link = f'{frontend_url}/reset-password?token={token}'
     smtp_host = os.getenv('SMTP_HOST')
-    smtp_port_str = os.getenv('SMTP_PORT', '587')
-    smtp_port = int(smtp_port_str) if smtp_port_str else 587
     smtp_user = os.getenv('SMTP_USER')
     smtp_password = os.getenv('SMTP_PASSWORD')
-    error_msg = None
     if smtp_host and smtp_user and smtp_password:
-        try:
-            msg = MIMEMultipart()
-            msg['From'] = f'Evaly Score <{smtp_user}>'
-            msg['To'] = req.email
-            msg['Subject'] = 'รีเซ็ตรหัสผ่าน Evaly Score (Password Reset)'
-            body = f'\n            <h2>รีเซ็ตรหัสผ่าน Evaly Score</h2>\n            <p>เราได้รับการร้องขอให้รีเซ็ตรหัสผ่านสำหรับบัญชีของคุณ</p>\n            <p>กรุณาคลิกที่ลิงก์ด้านล่างเพื่อตั้งรหัสผ่านใหม่ (ลิงก์นี้มีอายุการใช้งาน 1 ชั่วโมง):</p>\n            <p><a href="{reset_link}">{reset_link}</a></p>\n            <p><br>หากคุณไม่ได้ร้องขอการรีเซ็ตรหัสผ่านนี้ กรุณาเพิกเฉยต่ออีเมลฉบับนี้</p>\n            '
-            msg.attach(MIMEText(body, 'html'))
-            server = smtplib.SMTP(smtp_host, smtp_port)
-            server.starttls()
-            server.login(smtp_user, smtp_password)
-            server.send_message(msg)
-            server.quit()
-            print(f'\n[Email Sent] Password reset link sent to {req.email}')
-            return {'message': 'ส่งลิงก์สำหรับรีเซ็ตรหัสผ่านไปยังอีเมลของคุณแล้ว กรุณาตรวจสอบกล่องข้อความ'}
-        except Exception as e:
-            print(f'\n[Email Error] Failed to send email: {e}')
-            error_msg = str(e)
+        body = f"""
+            <h2>รีเซ็ตรหัสผ่าน Evaly Score</h2>
+            <p>เราได้รับการร้องขอให้รีเซ็ตรหัสผ่านสำหรับบัญชีของคุณ</p>
+            <p>กรุณาคลิกที่ลิงก์ด้านล่างเพื่อตั้งรหัสผ่านใหม่ (ลิงก์นี้มีอายุการใช้งาน 1 ชั่วโมง):</p>
+            <p><a href="{reset_link}">{reset_link}</a></p>
+            <p><br>หากคุณไม่ได้ร้องขอการรีเซ็ตรหัสผ่านนี้ กรุณาเพิกเฉยต่ออีเมลฉบับนี้</p>
+        """
+        asyncio.create_task(asyncio.to_thread(_send_smtp_email_sync, req.email, 'รีเซ็ตรหัสผ่าน Evaly Score (Password Reset)', body))
+        return {'message': 'ส่งลิงก์สำหรับรีเซ็ตรหัสผ่านไปยังอีเมลของคุณแล้ว กรุณาตรวจสอบกล่องข้อความ'}
+
     print(f'\n========== FORGOT PASSWORD ==========')
     print(f'Request for: {req.email}')
     print(f'Reset Link: {reset_link}')
-    if error_msg:
-        print(f'SMTP Error: {error_msg}')
-    elif not smtp_host:
+    if not smtp_host:
         print('Note: SMTP variables not configured in .env')
     print(f'======================================\n')
     response = {'message': 'หากมีบัญชีนี้ในระบบ ลิงก์รีเซ็ตรหัสผ่านจะถูกส่งไปที่อีเมลของคุณ'}
@@ -355,42 +387,27 @@ async def resend_verification(req: ResendVerificationRequest):
     cursor.execute('INSERT INTO email_verifications (user_id, token, expires_at) VALUES (?, ?, ?)', (user['id'], token, expires_at))
     conn.commit()
     conn.close()
-    verify_link = f'http://localhost:8080/verify-email?token={token}'
+    frontend_url = os.getenv('FRONTEND_URL', 'https://llms-auto-score-systems.netlify.app').rstrip('/')
+    verify_link = f'{frontend_url}/verify-email?token={token}'
     smtp_host = os.getenv('SMTP_HOST')
-    smtp_port_str = os.getenv('SMTP_PORT', '587')
-    smtp_port = int(smtp_port_str) if smtp_port_str else 587
     smtp_user = os.getenv('SMTP_USER')
     smtp_password = os.getenv('SMTP_PASSWORD')
-    dev_verify_link = None
     if smtp_host and smtp_user and smtp_password:
-        try:
-            msg = MIMEMultipart()
-            msg['From'] = f'Evaly Score <{smtp_user}>'
-            msg['To'] = req.email
-            msg['Subject'] = 'ส่งซ้ำ - ยืนยันบัญชีอีเมล Evaly Score (Verify Email)'
-            body = f'\n            <h2>ยินดีต้อนรับสู่ Evaly Score</h2>\n            <p>กรุณาคลิกที่ลิงก์ด้านล่างเพื่อยืนยันบัญชีอีเมลของคุณ (ลิงก์มีอายุการใช้งาน 24 ชั่วโมง):</p>\n            <p><a href="{verify_link}">{verify_link}</a></p>\n            '
-            msg.attach(MIMEText(body, 'html'))
-            server = smtplib.SMTP(smtp_host, smtp_port)
-            server.starttls()
-            server.login(smtp_user, smtp_password)
-            server.send_message(msg)
-            server.quit()
-            print(f'\n[Email Sent] Verification link resent to {req.email}')
-            return {'message': 'ส่งลิงก์ยืนยันอีเมลสำเร็จ กรุณาตรวจสอบกล่องข้อความ'}
-        except Exception as e:
-            print(f'\n[Email Error] Failed to send email: {e}')
-            dev_verify_link = verify_link
-    else:
-        dev_verify_link = verify_link
-    if dev_verify_link:
-        print(f'\n========== VERIFY EMAIL ==========')
-        print(f'Verify Link: {dev_verify_link}')
-        print(f'==================================\n')
-        response = {'message': 'ส่งลิงก์ยืนยันอีเมลแล้ว กรุณาตรวจสอบกล่องข้อความ'}
-        if _IS_DEV_MODE:
-            response['dev_verify_link'] = dev_verify_link
-        return response
-    return {'message': 'หากมีบัญชีนี้ในระบบ ลิงก์ยืนยันจะถูกส่งไปที่อีเมลของคุณ'}
+        body = f"""
+            <h2>ยินดีต้อนรับสู่ Evaly Score</h2>
+            <p>กรุณาคลิกที่ลิงก์ด้านล่างเพื่อยืนยันบัญชีอีเมลของคุณ (ลิงก์มีอายุการใช้งาน 24 ชั่วโมง):</p>
+            <p><a href="{verify_link}">{verify_link}</a></p>
+        """
+        asyncio.create_task(asyncio.to_thread(_send_smtp_email_sync, req.email, 'ส่งซ้ำ - ยืนยันบัญชีอีเมล Evaly Score (Verify Email)', body))
+        return {'message': 'ส่งลิงก์ยืนยันอีเมลสำเร็จ กรุณาตรวจสอบกล่องข้อความ'}
+
+    print(f'\n========== VERIFY EMAIL ==========')
+    print(f'Verify Link: {verify_link}')
+    print(f'==================================\n')
+    response = {'message': 'ส่งลิงก์ยืนยันอีเมลแล้ว กรุณาตรวจสอบกล่องข้อความ'}
+    if _IS_DEV_MODE:
+        response['dev_verify_link'] = verify_link
+    return response
 
 @router.post('/firebase-login', response_model=TokenResponse)
 async def firebase_login(request: FirebaseLoginRequest, req: Request, res: Response):

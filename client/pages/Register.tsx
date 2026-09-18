@@ -35,12 +35,17 @@ export default function Register() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password, name, role: "unassigned" }),
       });
-      const data = await response.json();
+      let data: any = {};
+      try {
+        data = await response.json();
+      } catch {
+        // non-JSON fallback
+      }
       if (response.ok) {
-        toast.success("ลงทะเบียนสำเร็จ กรุณาเข้าสู่ระบบ");
+        toast.success(data.message || "ลงทะเบียนสำเร็จ กรุณาเข้าสู่ระบบ");
         navigate("/");
       } else {
-        toast.error(data.detail || "เกิดข้อผิดพลาดในการลงทะเบียน");
+        toast.error(data.detail || data.message || `เกิดข้อผิดพลาดในการลงทะเบียน (${response.status})`);
       }
     } catch (error) {
       console.error("Register error:", error);
