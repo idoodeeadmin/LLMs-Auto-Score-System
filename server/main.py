@@ -87,26 +87,32 @@ app.add_middleware(
 @app.on_event('startup')
 async def startup_event():
     print("[Startup] Initializing database...")
-    init_db()
-    print("[Startup] Database initialized.")
+    try:
+        init_db()
+        print("[Startup] Database initialized.")
+    except Exception as e:
+        print(f"[Startup WARNING] Database init failed: {e}")
     os.makedirs('uploads', exist_ok=True)
     print("[Startup] Starting grading worker...")
     asyncio.create_task(grading_worker())
     print("[Startup] Starting deadline notification worker...")
     asyncio.create_task(deadline_notification_worker())
     print("[Startup] Recovering pending submissions...")
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, exam_id, user_id FROM submissions WHERE status IN ('submitted', 'grading')")
-    pending = cursor.fetchall()
-    for row in pending:
-        cursor.execute('SELECT room_id FROM exams WHERE id = ?', (row['exam_id'],))
-        exam_row = cursor.fetchone()
-        if exam_row:
-            await grading_queue.put({'submission_id': row['id'], 'room_id': exam_row['room_id'], 'exam_id': row['exam_id'], 'user_id': row['user_id']})
-    conn.close()
-    if pending:
-        print(f'[Startup] Recovered {len(pending)} pending submissions into grading queue')
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, exam_id, user_id FROM submissions WHERE status IN ('submitted', 'grading')")
+        pending = cursor.fetchall()
+        for row in pending:
+            cursor.execute('SELECT room_id FROM exams WHERE id = ?', (row['exam_id'],))
+            exam_row = cursor.fetchone()
+            if exam_row:
+                await grading_queue.put({'submission_id': row['id'], 'room_id': exam_row['room_id'], 'exam_id': row['exam_id'], 'user_id': row['user_id']})
+        conn.close()
+        if pending:
+            print(f'[Startup] Recovered {len(pending)} pending submissions into grading queue')
+    except Exception as e:
+        print(f"[Startup WARNING] Pending submissions recovery failed: {e}")
     print("[Startup] Startup complete.")
 try:
     app.mount('/uploads', StaticFiles(directory='uploads'), name='uploads')
