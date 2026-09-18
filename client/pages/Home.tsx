@@ -1,30 +1,53 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Search } from "lucide-react";
+import { Link } from "react-router-dom";
 import { WorkspaceHeader } from "@/components/WorkspaceHeader";
 import {
   ArrowRight,
+  BookOpen,
   Copy,
-  LogOut,
-  Plus,
-  FileText,
-  Loader2,
+  Search,
+  X,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { toast } from "sonner";
+import { RoomListSkeleton } from "@/components/PageSkeletons";
 
 interface ExamRoom {
   id: string | number;
   name: string;
   section: string;
   class_code: string;
+  teacher_name?: string;
+  teacher_avatar_url?: string;
 }
 
+const roomPalettes = [
+  "linear-gradient(135deg, #0f766e 0%, #115e59 100%)",
+  "linear-gradient(135deg, #365f73 0%, #294858 100%)",
+  "linear-gradient(135deg, #3f6b57 0%, #315444 100%)",
+  "linear-gradient(135deg, #59677f 0%, #414d64 100%)",
+  "linear-gradient(135deg, #7a5c48 0%, #604535 100%)",
+];
+
+const roomPalette = (id: string | number) => {
+  const value = String(id).split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  return roomPalettes[value % roomPalettes.length];
+};
+
+const sectionLabel = (section?: string) => {
+  const value = section?.trim();
+  if (!value) return "ยังไม่ระบุกลุ่ม";
+  if (/^\d+$/.test(value)) return `SEC ${value}`;
+  if (/^sec(?:tion)?\s*/i.test(value)) {
+    return `SEC ${value.replace(/^sec(?:tion)?\s*/i, "").trim()}`;
+  }
+  return value;
+};
+
+
 export default function Home() {
-  const { user, token, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user, token } = useAuth();
 
   const [rooms, setRooms] = useState<ExamRoom[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,6 +91,10 @@ export default function Home() {
     fetchRooms();
   }, [token]);
 
+  const closeRoomForm = () => {
+    setShowForm(false);
+  };
+
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!roomName.trim()) {
@@ -94,7 +121,7 @@ export default function Home() {
         setRooms((prev) => [createdRoom, ...prev]);
         setRoomName("");
         setRoomSection("");
-        setShowForm(false);
+        closeRoomForm();
         toast.success(
           `สร้างห้องเรียนสำเร็จ! Class Code: ${createdRoom.class_code}`,
         );
@@ -136,7 +163,7 @@ export default function Home() {
           ...prev.filter((room) => room.id !== joinedRoom.id),
         ]);
         setJoinCode("");
-        setShowForm(false);
+        closeRoomForm();
         toast.success(`เข้าร่วมห้องเรียน "${joinedRoom.name}" สำเร็จ!`);
       } else {
         const err = await res.json().catch(() => null);
@@ -158,41 +185,38 @@ export default function Home() {
     }
   };
 
+
   return (
     <div className="workspace">
       <WorkspaceHeader />
       <main className="room-workspace">
-        <p className="text-xs text-muted-foreground mb-3">
-          {user?.role === "teacher"
-            ? "พื้นที่สำหรับผู้สอน"
-            : "พื้นที่สำหรับผู้เรียน"}
-        </p>
-        <div className="flex flex-wrap justify-between items-start gap-5">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="page-heading">ห้องเรียนของคุณ</h1>
-            <p className="page-description">
-              {user?.role === "teacher"
-                ? "จัดการข้อสอบ ดูคำตอบ และตรวจทานคะแนนในแต่ละห้องเรียน"
-                : "เลือกห้องเรียนเพื่อทำข้อสอบ ติดตามการส่งงาน และดูคะแนน"}
-            </p>
+            <h1 className="page-heading">ชั้นเรียน</h1>
+            <p className="page-description">{rooms.length} ห้องเรียนในบัญชีนี้</p>
           </div>
           <Button
-            className="primary-action"
+            variant="outline"
+            className="h-9 rounded-lg px-4 text-sm"
             aria-expanded={showForm}
-            onClick={() => setShowForm(!showForm)}
+            onClick={() => setShowForm(current => !current)}
           >
-            <Plus size={16} />
             {user?.role === "teacher" ? "สร้างห้องเรียน" : "เข้าร่วมห้องเรียน"}
           </Button>
         </div>
 
         {showForm && (
           <section className="room-form">
-            <h2 className="section-label">
-              {user?.role === "teacher"
-                ? "ข้อมูลห้องเรียนใหม่"
-                : "เข้าร่วมด้วยรหัสห้องเรียน"}
-            </h2>
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="section-label">
+                {user?.role === "teacher"
+                  ? "ข้อมูลห้องเรียนใหม่"
+                  : "เข้าร่วมด้วยรหัสห้องเรียน"}
+              </h2>
+              <Button type="button" variant="ghost" size="icon" aria-label="ปิดแบบฟอร์มห้องเรียน" onClick={closeRoomForm}>
+                <X size={17} />
+              </Button>
+            </div>
             {user?.role === "teacher" ? (
               <form onSubmit={handleCreateRoom}>
                 <label className="field">
@@ -246,12 +270,7 @@ export default function Home() {
         )}
 
         <div className="room-toolbar">
-          <h2 className="section-label">
-            ห้องเรียนทั้งหมด{" "}
-            <span className="text-muted-foreground font-normal ml-2">
-              {rooms.length}
-            </span>
-          </h2>
+          <h2 className="section-label">ห้องเรียนทั้งหมด</h2>
           <label className="room-search">
             <Search size={16} className="text-muted-foreground" />
             <input
@@ -260,13 +279,15 @@ export default function Home() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+            {search && (
+              <button type="button" aria-label="ล้างคำค้น" onClick={() => setSearch("")}>
+                <X size={15} />
+              </button>
+            )}
           </label>
         </div>
         {loading ? (
-          <div role="status" className="empty-state">
-            <Loader2 className="animate-spin mx-auto mb-3" />
-            กำลังโหลดห้องเรียน…
-          </div>
+          <RoomListSkeleton />
         ) : loadError ? (
           <div role="alert" className="empty-state">
             <p>โหลดห้องเรียนไม่สำเร็จ กรุณาลองอีกครั้ง</p>
@@ -288,32 +309,52 @@ export default function Home() {
             </p>
           </div>
         ) : (
-          <div className="room-list">
-            {visibleRooms.map((room) => (
-              <article className="room-row" key={room.id}>
-                <div>
-                  <h3>
-                    <Link to={`/room/${room.id}`}>{room.name}</Link>
-                  </h3>
-                  <p className="mt-1">{room.section}</p>
-                </div>
-                <div>
-                  <small>รหัสห้องเรียน</small>
+          <div className="room-card-grid">
+            {visibleRooms.map((room) => {
+              const teacherName = room.teacher_name || (user?.role === "teacher" ? user.name : "ผู้สอน");
+              const teacherAvatar = room.teacher_avatar_url || (user?.role === "teacher" ? user.avatarUrl : undefined);
+              return <article className="classroom-card" key={room.id}>
+                <Link
+                  to={`/room/${room.id}`}
+                  className="classroom-card-banner"
+                  style={{ background: roomPalette(room.id) }}
+                >
+                  <span className="classroom-card-mark" aria-hidden="true">{room.name.trim().charAt(0) || "E"}</span>
+                  <div className="relative z-10 min-w-0 pr-14">
+                    <h3>{room.name}</h3>
+                    <p className="classroom-section">{sectionLabel(room.section)}</p>
+                    <small>{teacherName}</small>
+                  </div>
+                  <div className="classroom-avatar" aria-hidden="true">
+                    {teacherAvatar ? (
+                      <img src={teacherAvatar} alt="" />
+                    ) : (
+                      <span>{teacherName.trim().charAt(0).toUpperCase()}</span>
+                    )}
+                  </div>
+                </Link>
+                <div className="classroom-card-body">
+                  <span>รหัสห้องเรียน</span>
                   <button
-                    className="room-code"
+                    className="classroom-code"
                     aria-label={`คัดลอกรหัสห้องเรียน ${room.class_code}`}
                     onClick={() => copyCode(room.class_code)}
                   >
-                    {room.class_code}
-                    <Copy size={13} />
+                    {room.class_code}<Copy size={13} />
                   </button>
+                  <p>ข้อสอบ ประกาศ และสมาชิกของห้องเรียน</p>
                 </div>
-                <Link className="room-entry" to={`/room/${room.id}`}>
-                  ดูข้อสอบ
-                  <ArrowRight size={16} />
-                </Link>
-              </article>
-            ))}
+                <div className="classroom-card-footer">
+                  <Link to={`/room/${room.id}`} aria-label={`เปิดห้องเรียน ${room.name}`}>
+                    <BookOpen size={17} />
+                    <span>เปิดห้องเรียน</span>
+                  </Link>
+                  <Link to={`/room/${room.id}`} aria-label={`ไปยังห้องเรียน ${room.name}`} className="classroom-card-arrow">
+                    <ArrowRight size={17} />
+                  </Link>
+                </div>
+              </article>;
+            })}
           </div>
         )}
       </main>

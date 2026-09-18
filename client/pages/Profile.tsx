@@ -1,3 +1,4 @@
+import { PageLoading } from "@/components/RouteLoading";
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Camera, User, Loader2, Save, Trash2, AlertTriangle } from "lucide-react";
@@ -29,7 +30,7 @@ export default function Profile() {
     if (user) {
       setName(user.name);
       if (user.avatarUrl) {
-        setAvatarPreview(`/uploads/avatars/${user.avatarUrl}`);
+        setAvatarPreview(/^https?:\/\//i.test(user.avatarUrl) || user.avatarUrl.startsWith("/") ? user.avatarUrl : `/uploads/avatars/${user.avatarUrl}`);
       }
     }
   }, [user, token, isAuthLoading, navigate]);
@@ -172,7 +173,7 @@ export default function Profile() {
     visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
   };
 
-  if (isAuthLoading || !user) return null;
+  if (isAuthLoading || !user) return <PageLoading layout="form" />;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -188,6 +189,7 @@ export default function Profile() {
           <motion.div variants={fadeIn} className="flex justify-between items-start">
             <div className="flex items-center gap-4">
               <button 
+                aria-label="กลับหน้าก่อนหน้า"
                 onClick={() => navigate(-1)} 
                 className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-500 dark:text-slate-400 dark:text-slate-500"
               >
@@ -272,7 +274,7 @@ export default function Profile() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white text-base shadow-md shadow-indigo-100 transition-all active:scale-[0.98]"
+                className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white text-base shadow-sm transition-all active:scale-[0.98]"
               >
                 {isLoading ? (
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -292,7 +294,7 @@ export default function Profile() {
                 <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                   <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" /></svg>
                 </div>
-                บัญชีนี้ได้รับการยืนยันระดับความปลอดภัยแล้ว
+                ยืนยันอีเมลแล้ว
               </div>
             ) : (
               <div className="p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl">

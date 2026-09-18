@@ -1,10 +1,12 @@
+import { PageLoading } from "@/components/RouteLoading";
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Plus, Trash2, X, Image as ImageIcon, ArrowLeft, Loader2, BookOpen, Search, Sparkles, Copy, Settings, Check, BookmarkPlus, Bookmark } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import Navbar from "@/components/Navbar";
+import { WorkspaceBreadcrumb } from "@/components/WorkspaceHeader";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -97,6 +99,24 @@ export default function EditExam() {
   const [presetToDelete, setPresetToDelete] = useState<string | null>(null);
 
   const [showExitModal, setShowExitModal] = useState(false);
+  const [exitTarget, setExitTarget] = useState(`/room/${roomId}`);
+
+  const loadedDraft = useRef<string | null>(null);
+  useEffect(() => {
+    if (isLoading) return;
+    const signature = JSON.stringify({ examTitle, examDescription, startDateTime, endDateTime, isRandomized,
+      questions: questions.map(({ isExpanded, isGenerating, ...question }) => question) });
+    if (loadedDraft.current === null) loadedDraft.current = signature;
+    setIsDirty(signature !== loadedDraft.current);
+  }, [isLoading, examTitle, examDescription, startDateTime, endDateTime, isRandomized, questions]);
+
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      if (isDirty) { event.preventDefault(); event.returnValue = ""; }
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [isDirty]);
 
   // Helper to format date for datetime-local input (YYYY-MM-DDTHH:mm)
   const formatDateTime = (date: Date) => {
@@ -139,7 +159,7 @@ export default function EditExam() {
           const data = await res.json();
           setExamTitle(data.title || "");
           setExamDescription(data.description || "");
-          setIsRandomized(data.is_randomized === 1);
+          setIsRandomized(Boolean(data.is_randomized));
           
           if (data.start_date) {
             const d = new Date(data.start_date);
@@ -252,7 +272,7 @@ export default function EditExam() {
         return img;
       });
 
-      const res = await fetch("/api/gemini/generate-rubric", {
+      const res = await fetch("/api/ai/generate-rubric", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ question_text: q.text, total_score: parseFloat(q.score), question_images_base64: imagesToSend, tone: q.gradingTone }),
@@ -336,7 +356,8 @@ export default function EditExam() {
         setIsDirty(false);
         navigate(`/room/${roomId}`);
       } else {
-        toast.error((await res.json()).detail || "บันทึกไม่สำเร็จ");
+        const error = await res.json();
+        toast.error(typeof error.detail === "string" ? error.detail : "ข้อมูลข้อสอบไม่ถูกต้อง กรุณาตรวจคะแนนและช่วงเวลา");
       }
     } catch {
       toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
@@ -346,6 +367,7 @@ export default function EditExam() {
   };
 
   const onBack = () => {
+    setExitTarget(`/room/${roomId}`);
     if (isDirty) {
       setShowExitModal(true);
     } else {
@@ -354,19 +376,19 @@ export default function EditExam() {
   };
 
   const confirmExit = () => {
-    navigate(`/room/${roomId}`);
+    navigate(exitTarget);
   };
 
   const totalScore = questions.reduce((s, q) => s + (parseFloat(q.score) || 0), 0);
 
   if (isLoading) {
-    return <div className="flex h-screen items-center justify-center bg-[#F9FBFD] dark:bg-[#111111]"><Loader2 className="animate-spin text-blue-500 h-8 w-8" /></div>;
+    return <PageLoading layout="form" />;
   }
 
   return (
-    <div className="min-h-screen bg-[#F9FBFD] dark:bg-[#111111] transition-colors duration-200 font-sans">
+    <div className="workspace edit-exam-page">
       {/* Docs-style Toolbar */}
-      <div className="sticky top-0 z-40 bg-[#EDF2FA] dark:bg-[#1E1E1E] border-b border-gray-300 dark:border-gray-800 px-2 sm:px-4 py-2 flex items-center justify-between gap-2 sm:gap-4">
+      <div className="task-header sticky top-0 z-40 bg-white dark:bg-[#1E1E1E] border-b border-gray-300 dark:border-gray-800 px-2 sm:px-4 py-2 flex items-center justify-between gap-2 sm:gap-4">
         <div className="flex items-center gap-1 sm:gap-2 min-w-0">
           <button onClick={onBack} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full text-gray-600 dark:text-gray-300 transition-colors shrink-0" title="กลับ">
             <ArrowLeft size={20} />
@@ -374,6 +396,7 @@ export default function EditExam() {
           <div className="flex flex-col min-w-0">
             <input
               type="text"
+              aria-label="ชื่อข้อสอบ"
               value={examTitle}
               onChange={e => setExamTitle(e.target.value)}
               className="bg-transparent border-none focus:bg-white dark:focus:bg-gray-800 focus:ring-1 focus:ring-blue-500 rounded px-2 py-0.5 text-base sm:text-lg text-gray-800 dark:text-gray-100 font-medium placeholder-gray-400 w-full"
@@ -403,7 +426,7 @@ export default function EditExam() {
           
 
           
-          <Button onClick={handleSave} disabled={isSaving} className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-4 sm:px-5 h-8 sm:h-9 text-xs sm:text-sm font-medium shadow-sm ml-1 sm:ml-2 shrink-0">
+          <Button onClick={handleSave} disabled={isSaving || questions.some(q => q.isGenerating)} className="primary-action shrink-0">
             {isSaving ? <Loader2 size={16} className="animate-spin" /> : "บันทึก"}
           </Button>
         </div>
@@ -415,7 +438,7 @@ export default function EditExam() {
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-md flex flex-col border border-gray-200 dark:border-gray-800">
             <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
               <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                <Settings size={16} /> การตั้งค่าหน้ากระดาษ
+                <Settings size={16} /> กำหนดเวลาสอบ
               </h3>
               <button onClick={() => setShowSettings(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                 <X size={18} />
@@ -430,7 +453,7 @@ export default function EditExam() {
                     <button onClick={() => setQuickStart("tomorrow")} className="text-[10px] bg-gray-100 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-600 dark:text-gray-400 hover:text-blue-600 px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700 transition-colors">พรุ่งนี้เช้า</button>
                   </div>
                 </div>
-                <Input type="datetime-local" value={startDateTime} onChange={e => setStartDateTime(e.target.value)} className="h-10 text-sm bg-gray-50 dark:bg-gray-950 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white [color-scheme:dark]" />
+                <Input type="datetime-local" value={startDateTime} onChange={e => setStartDateTime(e.target.value)} className="h-10 text-sm bg-gray-50 dark:bg-gray-950 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white dark:[color-scheme:dark]" />
               </div>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
@@ -442,16 +465,14 @@ export default function EditExam() {
                     <button onClick={() => setQuickEnd(1440)} className="text-[10px] bg-gray-100 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-600 dark:text-gray-400 hover:text-blue-600 px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700 transition-colors">+1วัน</button>
                   </div>
                 </div>
-                <Input type="datetime-local" value={endDateTime} onChange={e => setEndDateTime(e.target.value)} className="h-10 text-sm bg-gray-50 dark:bg-gray-950 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white [color-scheme:dark]" />
+                <Input type="datetime-local" value={endDateTime} onChange={e => setEndDateTime(e.target.value)} className="h-10 text-sm bg-gray-50 dark:bg-gray-950 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white dark:[color-scheme:dark]" />
               </div>
-              <div className="flex items-center justify-between pt-2">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">สุ่มลำดับข้อสอบ</label>
-                <button
-                  onClick={() => setIsRandomized(!isRandomized)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isRandomized ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-700"}`}
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${isRandomized ? "translate-x-6" : "translate-x-1"}`} />
-                </button>
+              <div className="flex items-start justify-between gap-4 rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+                <div>
+                  <label htmlFor="edit-randomize-questions" className="text-sm font-medium text-gray-700 dark:text-gray-300">สุ่มลำดับข้อสอบ</label>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">ผู้เรียนแต่ละคนอาจเห็นคำถามเรียงลำดับต่างกัน</p>
+                </div>
+                <Switch id="edit-randomize-questions" checked={isRandomized} onCheckedChange={setIsRandomized} />
               </div>
             </div>
             <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex justify-end">
@@ -538,39 +559,33 @@ export default function EditExam() {
       )}
 
       {/* Docs Canvas (The Paper) */}
-      <div className="py-4 sm:py-8 px-2 sm:px-8">
-        <div className="max-w-[816px] mx-auto bg-white dark:bg-[#1E1E1E] shadow-sm border border-gray-300 dark:border-gray-800 min-h-screen sm:min-h-[1056px] p-4 sm:p-16 flex flex-col gap-6 sm:gap-8 rounded-sm">
+      <div className="document-page">
+        <div onClickCapture={event => {
+          const link = (event.target as HTMLElement).closest("a");
+          if (isDirty && link) { event.preventDefault(); event.stopPropagation(); setExitTarget(link.pathname); setShowExitModal(true); }
+        }}><WorkspaceBreadcrumb roomId={roomId} current="แก้ไขข้อสอบ" /></div>
+        <h1 className="page-heading mb-2">แก้ไขข้อสอบ</h1>
+        <p className="page-description mb-6">แก้ไขคำถาม คะแนน และเกณฑ์ แล้วกดบันทึกเมื่อพร้อม</p>
+        <div className="exam-paper flex flex-col gap-6 sm:gap-8">
           
           {/* Document Header */}
-          <div className="border-b-2 border-gray-900 dark:border-white pb-6 mb-2">
+          <div className="border-b border-border pb-6 mb-2">
             <AutoResizingTextarea
               value={examDescription}
               onChange={(e: any) => setExamDescription(e.target.value)}
               placeholder="เพิ่มคำอธิบายข้อสอบ หรือคำชี้แจง (Optional)..."
-              className="w-full text-center text-base text-gray-600 dark:text-gray-400 bg-transparent border-none focus:ring-0 resize-none px-0 py-1 italic"
+              className="w-full text-left text-base text-gray-600 dark:text-gray-400 bg-transparent border-none focus:ring-0 resize-none px-0 py-1"
             />
           </div>
 
           {/* Questions Stream */}
           <div className="space-y-8">
             {questions.map((q, index) => (
-              <div key={q.id} className="group relative flex flex-col sm:flex-row gap-2 sm:gap-4 pl-0 sm:pl-4 border-l-4 border-transparent sm:hover:border-blue-200 dark:sm:hover:border-blue-900/50 transition-colors sm:-ml-5 pr-0 sm:pr-4 py-2">
+              <div key={q.id} className="group relative flex flex-col gap-3 py-2">
 
-
-                {/* Floating Actions (Left Margin - Desktop) */}
-                <div className="hidden sm:flex absolute -left-12 top-1 flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                  <button onClick={() => duplicateQuestion(q.id)} className="p-2.5 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 bg-white dark:bg-[#252525] shadow-md hover:shadow-lg border border-gray-200 dark:border-gray-700 rounded-full transition-all hover:scale-110" title="คัดลอกข้อนี้">
-                    <Copy size={16} />
-                  </button>
-                  {questions.length > 1 && (
-                    <button onClick={() => setQuestions(prev => prev.filter(x => x.id !== q.id))} className="p-2.5 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 bg-white dark:bg-[#252525] shadow-md hover:shadow-lg border border-gray-200 dark:border-gray-700 rounded-full transition-all hover:scale-110" title="ลบข้อนี้">
-                      <Trash2 size={16} />
-                    </button>
-                  )}
-                </div>
 
                 {/* Mobile Header (Number + Actions) */}
-                <div className="flex flex-row items-center gap-2 sm:hidden mb-1">
+                <div className="flex flex-row items-center gap-2 mb-1">
                   <div className="font-medium text-lg text-gray-900 dark:text-gray-100 shrink-0">
                     {index + 1}.
                   </div>
@@ -586,11 +601,6 @@ export default function EditExam() {
                   </div>
                 </div>
 
-                {/* Desktop Number */}
-                <div className="hidden sm:block font-medium text-lg text-gray-900 dark:text-gray-100 pt-0.5 min-w-[24px]">
-                  {index + 1}.
-                </div>
-
                 <div className="flex-1 space-y-4">
                   {/* Question Text & Score inline */}
                   <div className="flex gap-4 items-start">
@@ -600,7 +610,7 @@ export default function EditExam() {
                       placeholder="พิมพ์โจทย์คำถาม..."
                       className="flex-1 text-lg text-gray-900 dark:text-gray-100 bg-transparent border-none focus:ring-0 px-0 py-0 font-medium leading-relaxed"
                     />
-                    <div className="shrink-0 flex items-center gap-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 px-2 py-1 rounded-md opacity-50 group-hover:opacity-100 transition-opacity">
+                    <div className="shrink-0 flex items-center gap-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 px-2 py-1 rounded-md opacity-100 transition-opacity">
                       <Input
                         type="number"
                         value={q.score}
@@ -629,7 +639,7 @@ export default function EditExam() {
                   )}
 
                   {/* Tools below question */}
-                  <div className={`flex flex-wrap items-center gap-2 sm:gap-3 pt-2 transition-opacity ${q.isExpanded ? 'opacity-100' : 'opacity-100 sm:opacity-0 group-hover:opacity-100'}`}>
+                  <div className={`flex flex-wrap items-center gap-2 sm:gap-3 pt-2 transition-opacity ${q.isExpanded ? 'opacity-100' : 'opacity-100 sm:opacity-100'}`}>
                     <input type="file" id={`img-${q.id}`} className="hidden" accept="image/*" multiple onChange={e => handleImageUpload(e, q.id)} />
                     <button onClick={() => document.getElementById(`img-${q.id}`)?.click()} className="flex items-center gap-1.5 text-[11px] sm:text-xs text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-1.5 rounded-full transition-colors font-medium">
                       <ImageIcon size={13} /> แนบรูปภาพ
@@ -733,7 +743,7 @@ export default function EditExam() {
                                 <button
                                   onClick={() => removeRubric(q.id, r.id)}
                                   disabled={q.rubrics.length === 1}
-                                  className="absolute top-2 right-2 sm:static sm:w-10 shrink-0 flex items-center justify-center text-gray-300 hover:text-red-500 opacity-100 sm:opacity-0 sm:group-hover/row:opacity-100 transition-all disabled:opacity-0"
+                                  className="absolute top-2 right-2 sm:static sm:w-10 shrink-0 flex items-center justify-center text-gray-300 hover:text-red-500 opacity-100  transition-all disabled:opacity-0"
                                 >
                                   <X size={14} />
                                 </button>
@@ -771,7 +781,7 @@ export default function EditExam() {
                                 rubricPresets.map(preset => (
                                   <DropdownMenuItem key={preset.id} onClick={() => applyRubricPreset(q.id, preset.id)} className="flex justify-between items-center cursor-pointer group">
                                     <span className="truncate pr-2">{preset.name}</span>
-                                    <button onClick={(e) => { e.stopPropagation(); setPresetToDelete(preset.id); }} className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onClick={(e) => { e.stopPropagation(); setPresetToDelete(preset.id); }} className="text-gray-400 hover:text-red-500 opacity-100 transition-opacity">
                                       <X size={14} />
                                     </button>
                                   </DropdownMenuItem>

@@ -1,3 +1,4 @@
+import { PageLoading } from "@/components/RouteLoading";
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { ArrowLeft, Loader2, ArrowRight, Lock } from "lucide-react";
@@ -72,10 +73,10 @@ export default function ResetPassword() {
     visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
   };
 
-  if (!token) return null; // Wait for effect to redirect
+  if (!token) return <PageLoading layout="auth" />; // Wait for effect to redirect
 
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="auth-workspace flex min-h-screen bg-slate-50 dark:bg-slate-900">
       {/* Left Side - Hero / Branding (Hidden on mobile) */}
       <div className="relative hidden w-1/2 flex-col items-center justify-center overflow-hidden bg-slate-900 lg:flex">
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/30 via-slate-900 to-slate-900 opacity-80" />

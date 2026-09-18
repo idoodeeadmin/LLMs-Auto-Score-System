@@ -11,14 +11,15 @@ export function ThemeToggle() {
       size="icon"
       onClick={() => setTheme(theme === "light" ? "dark" : "light")}
       className="rounded-full w-9 h-9 border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-      title="Toggle Theme"
+      title={theme === "light" ? "ใช้โหมดมืด" : "ใช้โหมดสว่าง"}
+      aria-label={theme === "light" ? "ใช้โหมดมืด" : "ใช้โหมดสว่าง"}
     >
       {theme === "light" ? (
         <Moon className="h-[1.1rem] w-[1.1rem] text-slate-700 dark:text-slate-300" />
       ) : (
         <Sun className="h-[1.1rem] w-[1.1rem] text-slate-300" />
       )}
-      <span className="sr-only">Toggle theme</span>
+      <span className="sr-only">สลับธีม</span>
     </Button>
   );
 }

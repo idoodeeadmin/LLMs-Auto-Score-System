@@ -74,6 +74,17 @@ def test_auth_login_fail(mock_db):
     })
     assert response.status_code == 401
 
+
+@patch("server.routes.auth_routes.get_firebase_auth", return_value=None)
+def test_firebase_login_initializes_admin_lazily(mock_get_firebase_auth):
+    """The route must initialize Firebase at request time, not use a stale import."""
+    response = client.post("/api/auth/firebase-login", json={
+        "firebase_token": "test-token"
+    })
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Firebase Admin SDK not configured"
+    mock_get_firebase_auth.assert_called_once_with()
+
 # --- Room Management Tests ---
 @patch("server.routes.room_routes.get_db_connection")
 def test_create_room(mock_db):

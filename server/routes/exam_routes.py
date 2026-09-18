@@ -51,6 +51,23 @@ def insert_questions(cursor, exam, exam_id, allowed_existing=()):
              question.order_index, json.dumps(images) if images else None))
 
 
+def get_draft_images(cursor, draft_id, room_id, teacher_id):
+    if draft_id is None:
+        return set()
+    cursor.execute('SELECT questions FROM exam_drafts WHERE id = ? AND room_id = ? AND teacher_id = ?',
+                   (draft_id, room_id, teacher_id))
+    row = cursor.fetchone()
+    if not row:
+        raise HTTPException(422, 'ไม่พบแบบร่างหรือไม่มีสิทธิ์ใช้งาน')
+    allowed = set()
+    try:
+        for question in json.loads(row['questions'] or '[]'):
+            allowed.update(question.get('question_images_base64') or [])
+    except (TypeError, json.JSONDecodeError):
+        raise HTTPException(422, 'ข้อมูลแบบร่างไม่ถูกต้อง')
+    return allowed
+
+
 @router.post('')
 async def create_exam(room_id: int, exam: ExamCreate, user: dict=Depends(get_current_user)):
     if user['role'] != 'teacher':
@@ -65,7 +82,10 @@ async def create_exam(room_id: int, exam: ExamCreate, user: dict=Depends(get_cur
         cursor.execute('INSERT INTO exams (room_id, title, description, total_score, start_date, end_date, is_randomized) VALUES (?, ?, ?, ?, ?, ?, ?)',
             (room_id, exam.title, exam.description, total, exam.start_date, exam.end_date, exam.is_randomized))
         exam_id = cursor.lastrowid
-        insert_questions(cursor, exam, exam_id)
+        insert_questions(cursor, exam, exam_id, get_draft_images(cursor, exam.draft_id, room_id, user['id']))
+        if exam.draft_id is not None:
+            cursor.execute('DELETE FROM exam_drafts WHERE id = ? AND room_id = ? AND teacher_id = ?',
+                           (exam.draft_id, room_id, user['id']))
         conn.commit()
         cursor.execute('SELECT * FROM exams WHERE id = ?', (exam_id,))
         result = dict(cursor.fetchone())

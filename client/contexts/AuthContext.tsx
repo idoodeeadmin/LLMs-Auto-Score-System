@@ -1,8 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { toast } from "sonner";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "@/lib/firebase";
-import { io, Socket } from "socket.io-client";
+import { io } from "socket.io-client";
 
 const SOCKET_SERVER_URL = import.meta.env.PROD 
   ? window.location.origin 
@@ -36,32 +34,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(localStorage.getItem("token"));
   const [isLoading, setIsLoading] = useState(true);
-  const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
-    // Initialize socket connection only when user is authenticated
-    if (user && !socket) {
+    let disposed = false;
+    let currentSocket: ReturnType<typeof io> | undefined;
+
+    const connectSocket = async () => {
+      if (!user || !token) return;
       try {
-        const newSocket = io(SOCKET_SERVER_URL, {
-          transports: ['websocket'], // Prefer websocket to avoid some CORS issues with polling
+        const tokenResponse = await fetch("/api/auth/socket-token", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!tokenResponse.ok) throw new Error("Unable to create socket token");
+        const { socket_token: socketToken } = await tokenResponse.json();
+        if (disposed) return;
+
+        currentSocket = io(SOCKET_SERVER_URL, {
+          transports: ['websocket'],
           reconnectionAttempts: 3,
-          auth: {
-            token: token, // Send JWT for server-side verification
-          }
+          auth: { token: socketToken },
         });
-        setSocket(newSocket);
-
-        newSocket.on("connect", () => {
+        currentSocket.on("connect", () => {
           console.log("Connected to Real-time Notification Server");
-          newSocket.emit("join_room", user.id);
         });
 
-        newSocket.on("connect_error", (err) => {
+        currentSocket.on("connect_error", (err) => {
           console.warn("Socket connection error (Node server might be down):", err.message);
         });
 
-        newSocket.on("new_notification", (data) => {
+        currentSocket.on("new_notification", (data) => {
           console.log("Received notification:", data);
+          window.dispatchEvent(new CustomEvent("evaly:notification", { detail: data }));
           toast(data.message || "มีการแจ้งเตือนใหม่", {
             description: "กดเพื่อดูรายละเอียด",
             action: data.data?.link ? {
@@ -72,18 +76,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
         });
 
-        return () => {
-          newSocket.disconnect();
-          setSocket(null);
-        };
       } catch (e) {
         console.error("Socket initialization failed:", e);
       }
-    } else if (!user && socket) {
-      socket.disconnect();
-      setSocket(null);
-    }
-  }, [user, socket]);
+    };
+
+    connectSocket();
+    return () => {
+      disposed = true;
+      currentSocket?.disconnect();
+    };
+  }, [user?.id, token]);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -154,7 +157,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (response.ok) {
         login(data.access_token, data.user);
       } else {
-        toast.error(data.detail || "เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Google");
         throw new Error(data.detail || "Firebase login failed");
       }
     } catch (error) {

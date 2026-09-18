@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { CheckCircle2, XCircle, Loader2, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { ContentSkeleton } from "@/components/RouteLoading";
 
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams();
@@ -42,7 +43,7 @@ export default function VerifyEmail() {
   }, [token]);
 
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900 items-center justify-center p-4">
+    <div className="auth-workspace flex min-h-screen bg-slate-50 dark:bg-slate-900 items-center justify-center p-4">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -50,10 +51,7 @@ export default function VerifyEmail() {
       >
         <div className="p-8 text-center space-y-6">
           {status === "loading" && (
-            <div className="py-12 flex flex-col items-center">
-              <Loader2 className="w-16 h-16 text-indigo-500 animate-spin mb-4" />
-              <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-200">กำลังตรวจสอบข้อมูล...</h2>
-            </div>
+            <ContentSkeleton layout="auth" />
           )}
           
           {status === "success" && (

@@ -81,7 +81,7 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="auth-workspace flex min-h-screen bg-slate-50 dark:bg-slate-900">
       {/* Left Side - Hero / Branding (Hidden on mobile) */}
       <div className="relative hidden w-1/2 flex-col items-center justify-center overflow-hidden bg-slate-900 lg:flex">
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/30 via-slate-900 to-slate-900 opacity-80" />

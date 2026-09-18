@@ -1,5 +1,7 @@
+import { PageLoading } from "@/components/RouteLoading";
 import { useState, useEffect, useCallback } from "react";
 import Navbar from "@/components/Navbar";
+import { ExamNavigation } from "@/components/ExamNavigation";
 import {
   Search, CheckCircle2, AlertCircle,
   FileText, User, Check, AlertTriangle, Loader2, ArrowLeft, RefreshCw, Inbox, FileX, CheckSquare, X
@@ -8,10 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { applyApprovedIds, isPendingSubmission, type SubmissionStatus } from "@/lib/submission-review";
 
-type StudentStatus = "missing" | "ready" | "needs_review" | "approved";
+type StudentStatus = SubmissionStatus;
 
 interface StudentSubmission {
   student_id: number;
@@ -46,7 +48,11 @@ export default function RoomReview() {
   const [isApproving, setIsApproving] = useState(false);
   const [isExportingCsv, setIsExportingCsv] = useState(false);
   const [isExportingXlsx, setIsExportingXlsx] = useState(false);
-  const [showExportModal, setShowExportModal] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [page, setPage] = useState(1);
+  useEffect(() => { setPage(1); }, [activeTab, subFilter, searchQuery]);
+
+  useEffect(() => { setSelectedIds([]); }, [activeTab, subFilter, searchQuery]);
 
   useEffect(() => {
     if (!isLoading && !user) navigate("/");
@@ -58,7 +64,7 @@ export default function RoomReview() {
       setIsFetching(false);
       return;
     }
-    
+
     setIsFetching(true);
     try {
       const [subRes, examRes] = await Promise.all([
@@ -70,16 +76,23 @@ export default function RoomReview() {
         }),
       ]);
 
+      if (!subRes.ok || !examRes.ok) throw new Error("Unable to load review");
+      setLoadError(false);
       if (subRes.ok) {
-        setStudents(await subRes.json());
+        const rows: StudentSubmission[] = await subRes.json();
+        setStudents(rows);
+        setSelectedIds(previous => previous.filter(id => rows.some(row => row.student_id === id && row.status === "ready")));
       } else {
         toast.error("ไม่สามารถโหลดข้อมูลการส่งงานได้");
       }
-      
+
       if (examRes.ok) {
         setExam(await examRes.json());
       }
     } catch (error) {
+      setLoadError(true);
+      setSelectedIds([]);
+      setStudents([]);
       console.error("Fetch error:", error);
       toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
     } finally {
@@ -100,7 +113,7 @@ export default function RoomReview() {
     if (activeTab === "missing") return s.status === "missing";
     if (activeTab === "approved") return s.status === "approved";
     if (activeTab === "pending") {
-      const isPending = s.status === "ready" || s.status === "needs_review";
+      const isPending = isPendingSubmission(s.status);
       if (!isPending) return false;
       if (subFilter === "all") return true;
       if (subFilter === "ready") return s.status === "ready";
@@ -110,14 +123,19 @@ export default function RoomReview() {
   });
 
   const missingCount = students.filter((s) => s.status === "missing").length;
-  const pendingCount = students.filter((s) => s.status === "ready" || s.status === "needs_review").length;
+  const pendingCount = students.filter((s) => isPendingSubmission(s.status)).length;
   const approvedCount = students.filter((s) => s.status === "approved").length;
+  const pageCount = Math.max(1, Math.ceil(filteredStudents.length / 20));
+  const currentPage = Math.min(page, pageCount);
+  const visibleStudents = filteredStudents.slice((currentPage - 1) * 20, currentPage * 20);
+  const selectableStudents = visibleStudents.filter(s => s.status === "ready");
+  const allVisibleSelected = selectableStudents.length > 0 && selectableStudents.every(s => selectedIds.includes(s.student_id));
 
   const toggleSelectAllVisible = () => {
-    if (filteredStudents.length > 0 && selectedIds.length === filteredStudents.length) {
+    if (allVisibleSelected) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(filteredStudents.map((s) => s.student_id));
+      setSelectedIds(selectableStudents.map((s) => s.student_id));
     }
   };
 
@@ -161,7 +179,8 @@ export default function RoomReview() {
   };
 
   const handleApproveOne = async (studentId: number) => {
-    if (!token) return;
+    if (!token || isApproving) return;
+    setIsApproving(true);
     try {
       const res = await fetch(
         `/api/rooms/${roomId}/exams/${examId}/submissions/${studentId}/approve`,
@@ -184,11 +203,13 @@ export default function RoomReview() {
       }
     } catch {
       toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    } finally {
+      setIsApproving(false);
     }
   };
 
   const handleBulkApprove = async () => {
-    if (!token || selectedIds.length === 0) return;
+    if (!token || selectedIds.length === 0 || isApproving) return;
     setIsApproving(true);
     try {
       const res = await fetch(`/api/rooms/${roomId}/exams/${examId}/bulk-approve`, {
@@ -202,13 +223,7 @@ export default function RoomReview() {
         if (data.skipped?.length) {
           toast.info(`ข้าม ${data.skipped.length} คน (สถานะไม่พร้อมอนุมัติ)`);
         }
-        setStudents((prev) =>
-          prev.map((s) =>
-            selectedIds.includes(s.student_id) && (s.status === "ready" || s.status === "needs_review")
-              ? { ...s, status: "approved" }
-              : s
-          )
-        );
+        setStudents((prev) => applyApprovedIds(prev, data.approved_student_ids ?? []));
         setSelectedIds([]);
       } else {
         toast.error("ไม่สามารถอนุมัติแบบกลุ่มได้");
@@ -221,6 +236,12 @@ export default function RoomReview() {
   };
 
   const StatusBadge = ({ status, score, maxScore }: { status: StudentStatus; score?: number; maxScore?: number }) => {
+    if (status === "submitted" || status === "grading") return (
+      <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+        <Loader2 size={14} className="animate-spin shrink-0" />
+        {status === "submitted" ? "อยู่ในคิวตรวจ" : "AI กำลังตรวจ"}
+      </span>
+    );
     if (status === "ready") return (
       <div className="flex flex-col items-start gap-1">
         <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-green-50 text-green-700 border border-green-200/60 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800/40">
@@ -259,34 +280,32 @@ export default function RoomReview() {
   };
 
   if (isLoading || isFetching) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-[#F9FBFD] dark:bg-[#111111]">
-        <Loader2 className="animate-spin text-blue-500 h-8 w-8" />
-      </div>
-    );
+    return <PageLoading layout="table" />;
   }
 
   return (
-    <div className="min-h-screen bg-[#F9FBFD] dark:bg-[#111111] text-gray-900 dark:text-gray-100 font-sans">
+    <div className="review-page min-h-screen bg-background text-foreground">
       <Navbar activeTab="allReviews" />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-8 pb-32 space-y-8">
 
         {/* Unified Header Section */}
         <header>
           <button
-            onClick={() => navigate(`/room/${roomId}/exam/${examId}`)}
+            onClick={() => navigate(`/room/${roomId}`)}
             className="group flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors text-sm font-medium mb-6"
           >
             <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-            กลับหน้าข้อสอบ
+            กลับห้องเรียน
           </button>
 
+          <ExamNavigation roomId={roomId} examId={examId} />
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
             <div>
               <h1 className="text-3xl font-bold tracking-tight mb-2 text-gray-900 dark:text-white">{exam?.title}</h1>
               <p className="text-gray-500 dark:text-gray-400 text-sm">จัดการผลการประเมินและอนุมัติคะแนนนักศึกษา</p>
             </div>
+            <Button variant="outline" onClick={fetchData}><RefreshCw size={16} className="mr-2" />อัปเดตสถานะ</Button>
           </div>
         </header>
 
@@ -319,6 +338,7 @@ export default function RoomReview() {
             <div className="relative flex-1 md:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
+                aria-label="ค้นหานักศึกษา"
                 placeholder="ค้นหาชื่อ หรือ รหัส..."
                 className="w-full pl-9 pr-4 h-10 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-gray-900 dark:text-white placeholder:text-gray-400"
                 value={searchQuery}
@@ -326,56 +346,18 @@ export default function RoomReview() {
               />
             </div>
 
-            <Button 
-              variant="outline" 
-              className="h-10 px-3 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg flex items-center gap-2" 
-              onClick={() => setShowExportModal(true)} 
+            <Button
+              variant="outline"
+              className="h-10 px-3 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg flex items-center gap-2"
+              aria-label="ส่งออกคะแนนเป็น Excel"
+              onClick={() => handleExport("xlsx")}
               disabled={isExportingXlsx || students.length === 0}
             >
               <FileText size={16} />
-              <span className="hidden sm:inline">ส่งออก</span>
+              <span>ส่งออก Excel</span>
             </Button>
           </div>
         </div>
-
-        {/* Export Confirmation Modal */}
-        <AnimatePresence>
-          {showExportModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-              <motion.div 
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }} 
-                exit={{ opacity: 0 }}
-                onClick={() => setShowExportModal(false)}
-                className="absolute inset-0 bg-black/40 backdrop-blur-sm" 
-              />
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="relative bg-white dark:bg-gray-900 w-full max-w-sm rounded-2xl p-6 shadow-xl border border-gray-200 dark:border-gray-800"
-              >
-                <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-4 mx-auto">
-                  <FileText className="text-blue-600 dark:text-blue-400" size={24} />
-                </div>
-                <h3 className="text-lg font-semibold text-center mb-2 text-gray-900 dark:text-white">ส่งออกข้อมูล</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-6">คุณต้องการส่งออกข้อมูลคะแนนนักศึกษาทั้งหมดเป็นไฟล์ Excel (.xlsx) ใช่หรือไม่?</p>
-                <div className="flex gap-3">
-                  <Button variant="outline" onClick={() => setShowExportModal(false)} className="flex-1 rounded-lg h-10 font-medium border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300">ยกเลิก</Button>
-                  <Button 
-                    onClick={() => {
-                      setShowExportModal(false);
-                      handleExport("xlsx");
-                    }} 
-                    className="flex-1 rounded-lg h-10 bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm"
-                  >
-                    ยืนยัน
-                  </Button>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
 
         {/* Action Controls for Pending Tab */}
         {activeTab === "pending" && (
@@ -392,16 +374,16 @@ export default function RoomReview() {
             <Button
               variant="outline"
               onClick={toggleSelectAllVisible}
-              disabled={filteredStudents.length === 0}
-              className={`h-9 px-4 rounded-lg font-medium text-xs transition-all flex items-center gap-2 ${selectedIds.length === filteredStudents.length && filteredStudents.length > 0
+              disabled={selectableStudents.length === 0 || isApproving}
+              className={`h-9 px-4 rounded-lg font-medium text-xs transition-all flex items-center gap-2 ${allVisibleSelected
                   ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800"
                   : "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                 }`}
             >
-              {selectedIds.length === filteredStudents.length && filteredStudents.length > 0 ? (
+              {allVisibleSelected ? (
                 <><CheckSquare size={14} className="text-blue-600 dark:text-blue-400" /> ยกเลิกการเลือก</>
               ) : (
-                <><CheckSquare size={14} className="text-gray-400 dark:text-gray-500" /> เลือกคนที่แสดงอยู่</>
+                <><CheckSquare size={14} className="text-gray-400 dark:text-gray-500" /> เลือกคนที่พร้อมอนุมัติในหน้านี้</>
               )}
             </Button>
           </div>
@@ -409,7 +391,12 @@ export default function RoomReview() {
 
         {/* Student List */}
         <div className="space-y-4">
-          {filteredStudents.length === 0 ? (
+          {loadError ? (
+            <div role="alert" className="rounded-xl border border-destructive/30 bg-card p-8 text-center">
+              <p>โหลดรายการไม่สำเร็จ กรุณาลองอีกครั้ง</p>
+              <Button variant="outline" onClick={fetchData} className="mt-4">ลองใหม่</Button>
+            </div>
+          ) : filteredStudents.length === 0 ? (
             <div className="py-24 text-center bg-white dark:bg-[#1E1E1E] rounded-xl border border-dashed border-gray-300 dark:border-gray-700 shadow-sm">
               <Inbox className="mx-auto mb-4 text-gray-300 dark:text-gray-600" size={48} />
               <p className="text-sm font-medium text-gray-500 dark:text-gray-400">ไม่พบรายการนักศึกษา</p>
@@ -417,12 +404,14 @@ export default function RoomReview() {
           ) : (
             <div className="bg-white dark:bg-[#1A1A1A] rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800 shadow-sm">
               {/* Header */}
-              <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50/80 dark:bg-gray-900/80 border-b border-gray-200 dark:border-gray-800 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 bg-muted border-b text-xs font-medium text-muted-foreground">
                 <div className="col-span-1 flex items-center justify-center">
                   <input
                     type="checkbox"
+                    aria-label="เลือกทุกคนที่พร้อมอนุมัติ"
+                    disabled={selectableStudents.length === 0 || isApproving}
                     className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
-                    checked={filteredStudents.length > 0 && selectedIds.length === filteredStudents.length}
+                    checked={allVisibleSelected}
                     onChange={toggleSelectAllVisible}
                   />
                 </div>
@@ -433,36 +422,39 @@ export default function RoomReview() {
 
               {/* Rows */}
               <div className="divide-y divide-gray-100 dark:divide-gray-800/60">
-                {filteredStudents.map((student) => (
-                  <div key={student.student_id} className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-gray-50/50 dark:hover:bg-gray-900/20 transition-colors group">
+                {visibleStudents.map((student) => (
+                  <div key={student.student_id} className="review-row grid grid-cols-12 gap-4 px-4 md:px-6 py-5 items-center transition-colors">
                     <div className="col-span-1 flex items-center justify-center">
                       <input
                         type="checkbox"
+                        aria-label={`เลือก ${student.name}`}
+                        disabled={student.status !== "ready" || isApproving}
                         className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 cursor-pointer"
                         checked={selectedIds.includes(student.student_id)}
                         onChange={() => toggleSelectOne(student.student_id)}
                       />
                     </div>
 
-                    <div className="col-span-5 flex items-center gap-3">
+                    <div className="review-name col-span-11 md:col-span-5 flex items-center gap-3 min-w-0">
                       <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center font-medium text-sm text-blue-600 dark:text-blue-400 shrink-0">
                         {student.name.charAt(0)}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{student.name}</p>
+                        <p className="text-sm font-medium text-foreground">{student.name}</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">{student.student_code || student.email}</p>
                       </div>
                     </div>
 
-                    <div className="col-span-3">
+                    <div className="col-span-12 md:col-span-3">
                       <StatusBadge status={student.status} score={student.total_score ?? undefined} maxScore={exam?.total_score} />
                     </div>
 
-                    <div className="col-span-3 flex justify-end gap-2">
+                    <div className="col-span-12 md:col-span-3 flex flex-wrap justify-end gap-2">
                       {activeTab === "pending" ? (
                         <>
                           <Button
                             variant="outline"
+                            disabled={student.status === "submitted" || student.status === "grading"}
                             onClick={() => navigate(`/room/${roomId}/exam/${examId}/grading/${student.student_id}`)}
                             className="h-8 px-3 rounded-md text-xs font-medium border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
                           >
@@ -470,7 +462,7 @@ export default function RoomReview() {
                           </Button>
                           <Button
                             onClick={() => handleApproveOne(student.student_id)}
-                            disabled={student.status === "needs_review"}
+                            disabled={student.status !== "ready" || isApproving}
                             className="h-8 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-medium shadow-sm"
                           >
                             อนุมัติ
@@ -493,11 +485,21 @@ export default function RoomReview() {
             </div>
           )}
         </div>
+        {!loadError && filteredStudents.length > 0 && <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground" aria-live="polite">
+            {(currentPage - 1) * 20 + 1}–{Math.min(currentPage * 20, filteredStudents.length)} จาก {filteredStudents.length} คน
+          </p>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" disabled={currentPage === 1} onClick={() => { setPage(currentPage - 1); setSelectedIds([]); }}>ก่อนหน้า</Button>
+            <span className="text-sm">{currentPage} / {pageCount}</span>
+            <Button variant="outline" disabled={currentPage === pageCount} onClick={() => { setPage(currentPage + 1); setSelectedIds([]); }}>ถัดไป</Button>
+          </div>
+        </div>}
       </main>
 
       {/* Floating Action Bar */}
       {selectedIds.length > 0 && activeTab === "pending" && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-4 py-3 rounded-2xl shadow-xl flex items-center gap-6 animate-in slide-in-from-bottom-8 z-50">
+        <div className="fixed bottom-4 left-4 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 bg-card border px-4 py-3 rounded-xl shadow-lg flex flex-wrap justify-between items-center gap-3 z-50">
           <div className="flex items-center gap-3">
             <span className="w-6 h-6 bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400 rounded-full flex items-center justify-center text-xs font-bold">{selectedIds.length}</span>
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">เลือกแล้ว</span>

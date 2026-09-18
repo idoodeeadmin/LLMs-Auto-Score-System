@@ -1,3 +1,4 @@
+import { ContentSkeleton } from "@/components/RouteLoading";
 import { WorkspaceBreadcrumb } from "@/components/WorkspaceHeader";
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -190,9 +191,7 @@ export default function ExamSubmit() {
       <main className="document-page">
         <WorkspaceBreadcrumb roomId={roomId} current="ทำข้อสอบ" />
         {loading ? (
-          <div className="py-16 flex justify-center text-slate-400">
-            <Loader2 className="w-8 h-8 animate-spin" />
-          </div>
+          <ContentSkeleton />
         ) : !exam ? (
           <div className="py-16 text-center text-slate-400 bg-white dark:bg-[#1E1E1E] rounded-xl border border-slate-200 dark:border-slate-800 p-8">
             <p>ไม่พบข้อมูลแบบทดสอบ</p>
@@ -269,6 +268,25 @@ export default function ExamSubmit() {
                           {q.score} คะแนน
                         </span>
                       </div>
+
+                      {q.rubrics && q.rubrics.length > 0 && (
+                        <details className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs dark:border-slate-700 dark:bg-slate-900/60">
+                          <summary className="cursor-pointer font-semibold text-[#245b50] dark:text-[#91c7b8]">
+                            ดูเกณฑ์การให้คะแนน
+                          </summary>
+                          <div className="mt-3 space-y-2">
+                            {q.rubrics.map((rubric, rubricIndex) => (
+                              <div key={rubricIndex} className="flex items-start justify-between gap-4 border-t border-slate-200 pt-2 first:border-0 first:pt-0 dark:border-slate-700">
+                                <span>
+                                  <strong className="block text-slate-800 dark:text-slate-200">{rubric.name}</strong>
+                                  {rubric.description && <span className="text-slate-500">{rubric.description}</span>}
+                                </span>
+                                <span className="shrink-0 font-semibold text-[#245b50] dark:text-[#91c7b8]">{rubric.score} คะแนน</span>
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      )}
 
                       {/* Text Answer Input */}
                       <div className="space-y-2">

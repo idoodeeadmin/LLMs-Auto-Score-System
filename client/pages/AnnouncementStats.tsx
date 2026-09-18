@@ -1,3 +1,4 @@
+import { PageLoading } from "@/components/RouteLoading";
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2, CheckCircle2, Circle } from "lucide-react";
@@ -49,11 +50,7 @@ export default function AnnouncementStats() {
   }, [token, annId, roomId, navigate]);
 
   if (isLoading || isFetching) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
-        <Loader2 className="animate-spin text-indigo-600 h-12 w-12" />
-      </div>
-    );
+    return <PageLoading layout="table" />;
   }
 
   const readCount = stats.filter(s => s.read_at).length;

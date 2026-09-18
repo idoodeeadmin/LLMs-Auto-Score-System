@@ -53,6 +53,7 @@ class ResendVerificationRequest(BaseModel):
 class AnnouncementCreate(BaseModel):
     title: str = Field(min_length=1, max_length=255)
     content: str = Field(min_length=1, max_length=10000)
+    attachments: Optional[List[Dict[str, Any]]] = Field(default=None, max_length=10)
 
 class SetRoleRequest(BaseModel):
     role: str
@@ -77,6 +78,7 @@ class ExamCreate(BaseModel):
     end_date: Optional[str] = None
     is_randomized: int = 0
     questions: list[QuestionInput] = Field(min_length=1, max_length=100)
+    draft_id: Optional[int] = None
 
     @model_validator(mode='after')
     def valid_exam_dates(self):
@@ -104,6 +106,14 @@ class QuestionBankCreate(BaseModel):
     answer_key: Optional[str] = None
     rubrics: Optional[list] = None
     tags: Optional[str] = None
+
+class ExamDraftSave(BaseModel):
+    title: Optional[str] = Field(default=None, max_length=255)
+    description: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    is_randomized: int = Field(default=0, ge=0, le=1)
+    questions: list[QuestionInput] = Field(min_length=1, max_length=100)
 
 class DraftSaveRequest(BaseModel):
     answers: dict

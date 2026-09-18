@@ -1,3 +1,4 @@
+import { PageLoading } from "@/components/RouteLoading";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Loader2, Search, Download } from "lucide-react";
@@ -7,7 +8,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-type SubmissionStatus = "missing" | "ready" | "needs_review" | "approved";
+import { submissionStatusLabel, type SubmissionStatus } from "@/lib/submission-review";
 
 interface StudentSubmission {
   student_id: number;
@@ -107,11 +108,7 @@ export default function ExamScoreboard() {
   }, [search, students]);
 
   if (isLoading || isFetching) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
-        <Loader2 className="animate-spin text-indigo-600 h-12 w-12" />
-      </div>
-    );
+    return <PageLoading layout="table" />;
   }
 
   return (
@@ -178,7 +175,7 @@ export default function ExamScoreboard() {
                          s.status === 'approved' ? 'bg-green-100 text-green-700' : 
                          s.status === 'missing' ? 'bg-slate-100 text-slate-400' : 'bg-blue-100 text-blue-700'
                        }`}>
-                         {s.status}
+                         {submissionStatusLabel[s.status] ?? "ไม่ทราบสถานะ"}
                        </span>
                     </div>
                   </div>
@@ -187,7 +184,7 @@ export default function ExamScoreboard() {
                       s.status === 'approved' ? 'bg-green-100 text-green-700' : 
                       s.status === 'missing' ? 'bg-slate-100 text-slate-400' : 'bg-blue-100 text-blue-700'
                     }`}>
-                      {s.status}
+                      {submissionStatusLabel[s.status] ?? "ไม่ทราบสถานะ"}
                     </span>
                   </div>
                   <div className="w-full md:col-span-2 flex md:justify-end items-center justify-between border-t border-slate-50 md:border-0 pt-2 md:pt-0">

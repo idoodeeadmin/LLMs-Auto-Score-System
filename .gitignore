@@ -64,6 +64,8 @@ isrgrootx1.pem.txt
 # The six-character directory pattern above also matches client.
 !/client/
 !/server/
+!/server/routes/
+!/server/routes/exam_draft_routes.py
 /artifacts/ui-review/
 scratch/
 *.pdf
@@ -76,7 +78,8 @@ scratch/
 !/components.json
 !/package-lock.json
 course/
-docs_and_tests/
+docs_and_tests/*
+!docs_and_tests/*.md
 system_workflow_summary.md
 project_struc.md
 capture.mjs
@@ -89,3 +92,6 @@ USER_GUIDE.md
 # Isolated local verification environment
 .venv-review/
 tmp/coverage-before/
+
+# Local recovery archives and reconstruction evidence (not application source)
+/recovery/

@@ -10,8 +10,7 @@ from email.mime.multipart import MIMEMultipart
 from server.database import get_db_connection
 from server.auth import get_password_hash, verify_password, create_access_token, decode_token
 from server.models import *
-from server.utils import check_rate_limit, _firebase_app, auth, upload_to_cloudinary, get_current_user, validate_upload_file
-import firebase_admin
+from server.utils import check_rate_limit, get_firebase_auth, upload_to_cloudinary, get_current_user, validate_upload_file
 
 _IS_DEV_MODE = os.getenv('APP_ENV', 'development').lower() == 'development'
 
@@ -400,19 +399,20 @@ async def firebase_login(request: FirebaseLoginRequest, req: Request, res: Respo
     - Find existing user by email and log them in
     - Create new user account if email doesn't exist (default to 'student' role)
     """
-    if not _firebase_app:
-        raise HTTPException(status_code=500, detail='Firebase Admin SDK not configured')
+    firebase_auth = get_firebase_auth()
+    if firebase_auth is None:
+        raise HTTPException(status_code=503, detail='Firebase Admin SDK not configured')
     try:
-        decoded_token = auth.verify_id_token(request.firebase_token)
+        decoded_token = firebase_auth.verify_id_token(request.firebase_token)
         email = decoded_token.get('email')
         display_name = decoded_token.get('name', decoded_token.get('display_name', 'User'))
         google_picture = decoded_token.get('picture', None)
         if not email:
             raise HTTPException(status_code=400, detail='Email not available from Google account')
-    except auth.InvalidIdTokenError as e:
+    except firebase_auth.InvalidIdTokenError as e:
         print(f'[Firebase] Invalid token: {e}')
         raise HTTPException(status_code=401, detail='Invalid Firebase token')
-    except auth.ExpiredIdTokenError:
+    except firebase_auth.ExpiredIdTokenError:
         raise HTTPException(status_code=401, detail='Firebase token has expired')
     except Exception as e:
         print(f'[Firebase Verify Error] {e}')
@@ -450,10 +450,11 @@ async def firebase_login(request: FirebaseLoginRequest, req: Request, res: Respo
 
 @router.post('/link-google')
 async def link_google(request: FirebaseLoginRequest, current_user: dict=Depends(get_current_user)):
-    if not _firebase_app:
-        raise HTTPException(status_code=500, detail='Firebase SDK ไม่พร้อมใช้งาน')
+    firebase_auth = get_firebase_auth()
+    if firebase_auth is None:
+        raise HTTPException(status_code=503, detail='Firebase SDK ไม่พร้อมใช้งาน')
     try:
-        decoded_token = auth.verify_id_token(request.firebase_token)
+        decoded_token = firebase_auth.verify_id_token(request.firebase_token)
         google_picture = decoded_token.get('picture', None)
     except Exception as e:
         raise HTTPException(status_code=401, detail='ยืนยันบัญชี Google ไม่สำเร็จ')

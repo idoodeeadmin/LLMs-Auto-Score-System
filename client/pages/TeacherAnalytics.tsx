@@ -1,3 +1,4 @@
+import { PageLoading } from "@/components/RouteLoading";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Loader2, BarChart3 } from "lucide-react";
@@ -72,11 +73,7 @@ export default function TeacherAnalytics() {
   }, [token, roomId, examId]);
 
   if (isLoading || isFetching) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
-        <Loader2 className="animate-spin text-indigo-600 h-12 w-12" />
-      </div>
-    );
+    return <PageLoading layout="analytics" />;
   }
 
   const distributionData = analytics

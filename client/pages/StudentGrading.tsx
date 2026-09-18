@@ -1,3 +1,4 @@
+import { ContentSkeleton } from "@/components/RouteLoading";
 import { WorkspaceBreadcrumb } from "@/components/WorkspaceHeader";
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -57,6 +58,24 @@ export default function StudentGrading() {
   const [data, setData] = useState<SubmissionDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [isApproving, setIsApproving] = useState(false);
+  const [reviewQueue, setReviewQueue] = useState<{ student_id: number; name: string }[]>([]);
+  const [queueError, setQueueError] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setReviewQueue([]);
+    setQueueError(false);
+    if (!token) return;
+    fetch(`/api/rooms/${roomId}/exams/${examId}/submissions`, {
+      headers: { Authorization: `Bearer ${token}` }, signal: controller.signal,
+    }).then(async response => {
+      if (!response.ok) throw new Error("Unable to load students");
+      const rows: { student_id: number; name: string; status: string }[] = await response.json();
+      if (!controller.signal.aborted) setReviewQueue(rows.filter(row =>
+        ["ready", "needs_review", "approved"].includes(row.status)));
+    }).catch(() => { if (!controller.signal.aborted) setQueueError(true); });
+    return () => controller.abort();
+  }, [roomId, examId, token]);
 
   // Per-question teacher scores and comments
   const [teacherScores, setTeacherScores] = useState<{ [qId: string]: number }>(
@@ -67,17 +86,21 @@ export default function StudentGrading() {
   }>({});
 
   useEffect(() => {
+    const controller = new AbortController();
     const fetchSubmission = async () => {
       try {
         setLoading(true);
+        setData(null);
         const res = await fetch(
           `/api/rooms/${roomId}/exams/${examId}/submissions/${studentId}`,
           {
             headers: { Authorization: token ? `Bearer ${token}` : "" },
+            signal: controller.signal,
           },
         );
         if (res.ok) {
           const detail: SubmissionDetail = await res.json();
+          if (controller.signal.aborted) return;
           setData(detail);
 
           // Initialize teacher score / comment with existing or AI scores
@@ -94,16 +117,38 @@ export default function StudentGrading() {
           toast.error("ไม่พบข้อมูลการส่งข้อสอบของนิสิตคนนี้");
         }
       } catch (err) {
+        if (controller.signal.aborted) return;
         console.error("Error fetching student submission:", err);
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
 
     if (roomId && examId && studentId) {
       fetchSubmission();
     }
+    return () => controller.abort();
   }, [roomId, examId, studentId, token]);
+
+  const hasUnsavedChanges = !!data && data.answers.some(answer =>
+    teacherScores[String(answer.question_id)] !== (answer.teacher_score ?? answer.ai_score ?? 0) ||
+    teacherComments[String(answer.question_id)] !== (answer.teacher_comment ?? ""));
+  const goTo = (path: string) => {
+    if (isApproving) return;
+    if (hasUnsavedChanges && !window.confirm("คะแนนหรือความคิดเห็นที่แก้ไขยังไม่ได้บันทึก ต้องการออกจากหน้านี้และละทิ้งการแก้ไขหรือไม่?")) return;
+    navigate(path);
+  };
+  const queueIndex = reviewQueue.findIndex(student => String(student.student_id) === studentId);
+  const changeStudent = (index: number) => {
+    const student = reviewQueue[index];
+    if (student) goTo(`/room/${roomId}/exam/${examId}/grading/${student.student_id}`);
+  };
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [hasUnsavedChanges]);
 
   const handleApprove = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,7 +173,7 @@ export default function StudentGrading() {
 
       if (res.ok) {
         toast.success("อนุมัติและประกาศผลคะแนนเรียบร้อยแล้ว!");
-        navigate(`/room/${roomId}`);
+        navigate(`/room/${roomId}/exam/${examId}/review`);
       } else {
         const err = await res.json().catch(() => null);
         toast.error(err?.detail || "เกิดข้อผิดพลาดในการอนุมัติคะแนน");
@@ -185,11 +230,12 @@ export default function StudentGrading() {
       <header className="task-header sticky top-0 z-40 bg-white dark:bg-[#1E1E1E] border-b border-slate-200 dark:border-slate-800 px-8 py-3.5 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate(`/room/${roomId}`)}
+            aria-label="กลับรายการตรวจงาน"
+            onClick={() => goTo(`/room/${roomId}/exam/${examId}/review`)}
             className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-[#245b50] transition"
           >
             <ArrowLeft size={16} />
-            <span className="task-header-back-label">กลับห้องเรียน</span>
+            <span className="task-header-back-label">กลับรายการตรวจงาน</span>
           </button>
           <h1 className="font-semibold text-base text-slate-900 dark:text-white">
             ตรวจทานคำตอบ
@@ -201,10 +247,21 @@ export default function StudentGrading() {
 
       <main className="document-page">
         <WorkspaceBreadcrumb roomId={roomId} current="ตรวจทานคำตอบ" />
-        {loading ? (
-          <div className="py-20 flex justify-center text-slate-400">
-            <Loader2 className="w-8 h-8 animate-spin" />
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b pb-4">
+          <div className="min-w-0">
+            <p className="font-medium">{loading ? "กำลังโหลดคำตอบ…" : data?.student.name || "ตรวจทานคำตอบ"}</p>
+            <p className="text-xs text-muted-foreground" aria-live="polite">
+              {queueError ? "โหลดลำดับผู้เรียนไม่สำเร็จ กรุณากลับรายการตรวจงาน" :
+                queueIndex >= 0 ? `คนที่ ${queueIndex + 1} จาก ${reviewQueue.length} คนที่มีผลตรวจ` : ""}
+            </p>
           </div>
+          <div className="flex gap-2">
+            <Button variant="outline" disabled={loading || isApproving || queueIndex <= 0} onClick={() => changeStudent(queueIndex - 1)}>คนก่อนหน้า</Button>
+            <Button variant="outline" disabled={loading || isApproving || queueIndex < 0 || queueIndex >= reviewQueue.length - 1} onClick={() => changeStudent(queueIndex + 1)}>คนถัดไป</Button>
+          </div>
+        </div>
+        {loading ? (
+          <ContentSkeleton />
         ) : !data ? (
           <div className="py-16 text-center text-slate-400 bg-white dark:bg-[#1E1E1E] rounded-2xl border border-slate-200 dark:border-slate-800 p-8">
             <p>ไม่พบข้อมูลการส่งข้อสอบของนิสิต</p>

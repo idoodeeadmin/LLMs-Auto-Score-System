@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { signInWithGoogle, getFirebaseToken } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
@@ -23,21 +22,16 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
+      const { signInWithGoogle } = await import("@/lib/firebase");
       // Sign in with Firebase Google
       const firebaseUser = await signInWithGoogle();
-      console.log("Firebase user:", firebaseUser);
 
-      // Get Firebase ID token
-      const firebaseToken = await getFirebaseToken();
-      if (!firebaseToken) {
-        toast.error("ไม่สามารถรับ token จาก Firebase ได้");
-        return;
-      }
+      // Read a fresh ID token from the exact account returned by this popup.
+      // This avoids accidentally sending a cached token from a previous user.
+      const firebaseToken = await firebaseUser.getIdToken(true);
 
       // Send Firebase token to our backend to verify and create/get user
       await loginWithFirebase(firebaseToken);
-
-      toast.success("เข้าสู่ระบบสำเร็จ!");
       
       if (onSuccess) {
         onSuccess();
@@ -67,9 +61,9 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
       className={`
         relative inline-flex items-center justify-center gap-2
         w-full h-12 px-4 py-3
-        bg-white dark:bg-slate-800 hover:bg-gray-50 dark:bg-slate-900
-        border-2 border-gray-200 dark:border-slate-700 hover:border-gray-300
-        rounded-xl text-gray-700 dark:text-slate-300 font-medium text-base
+        bg-white dark:bg-[#1d2b27] hover:bg-slate-50 dark:hover:bg-[#24342f]
+        border border-slate-300 dark:border-[#40534c] hover:border-slate-400
+        rounded-xl text-slate-700 dark:text-slate-100 font-medium text-[15px]
         transition-all duration-200
         disabled:opacity-50 disabled:cursor-not-allowed
         hover:shadow-sm active:scale-[0.98]

@@ -42,7 +42,7 @@ export default function SelectRole() {
   };
 
   return (
-    <div className="relative flex min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 items-center justify-center p-6 font-sans transition-colors duration-200">
+    <div className="auth-workspace relative flex min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 items-center justify-center p-6 font-sans transition-colors duration-200">
       {/* Top Right Theme Toggle */}
       <div className="absolute top-4 right-4 z-50">
         <ThemeToggle />

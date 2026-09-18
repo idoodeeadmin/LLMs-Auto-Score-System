@@ -6,6 +6,10 @@ import csv
 import io
 import time
 import asyncio
+import os
+import re
+import uuid
+from urllib.parse import urlparse
 from typing import Optional, List
 from server.database import get_db_connection
 from server.auth import get_password_hash, verify_password, create_access_token, decode_token
@@ -13,6 +17,52 @@ from server.models import *
 from server.utils import check_rate_limit, upload_to_cloudinary, get_current_user, grading_queue, trigger_socket_notify, generate_class_code, _distribution_buckets, sanitize_csv_value
 import statistics
 router = APIRouter(prefix='/api/rooms', tags=['Room Routes'])
+
+ANNOUNCEMENT_FILE_TYPES = {
+    'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp',
+    'application/pdf': 'pdf', 'text/plain': 'txt',
+    'application/msword': 'doc',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+    'application/vnd.ms-excel': 'xls',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+    'application/vnd.ms-powerpoint': 'ppt',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+}
+MAX_ANNOUNCEMENT_FILE_SIZE = 10 * 1024 * 1024
+
+def valid_announcement_attachments(items):
+    result = []
+    for item in items or []:
+        if not isinstance(item, dict):
+            raise HTTPException(422, 'ข้อมูลไฟล์แนบไม่ถูกต้อง')
+        url, name = str(item.get('url', '')), str(item.get('name', ''))[:255]
+        parsed = urlparse(url)
+        cloud_name = os.getenv('CLOUDINARY_CLOUD_NAME', '')
+        valid_url = url.startswith('/uploads/announcements/') or (
+            parsed.scheme == 'https' and parsed.hostname == 'res.cloudinary.com' and
+            cloud_name and parsed.path.startswith(f'/{cloud_name}/')
+        )
+        if not valid_url or not name:
+            raise HTTPException(422, 'ไฟล์แนบไม่ถูกต้องหรือไม่ได้อัปโหลดจากระบบ')
+        try:
+            size = int(item.get('size', 0))
+        except (TypeError, ValueError):
+            raise HTTPException(422, 'ข้อมูลขนาดไฟล์แนบไม่ถูกต้อง')
+        if size < 0 or size > MAX_ANNOUNCEMENT_FILE_SIZE:
+            raise HTTPException(422, 'ข้อมูลขนาดไฟล์แนบไม่ถูกต้อง')
+        result.append({'url': url, 'name': name, 'type': str(item.get('type', ''))[:120], 'size': size})
+    return result
+
+def decode_announcement_attachments(value):
+    try:
+        return json.loads(value) if value else []
+    except (TypeError, json.JSONDecodeError):
+        return []
+
+def serialize_announcement(row):
+    item = dict(row)
+    item['attachments'] = decode_announcement_attachments(item.get('attachments'))
+    return item
 
 @router.post('')
 async def create_room(room: RoomCreate, user: dict=Depends(get_current_user)):
@@ -28,7 +78,11 @@ async def create_room(room: RoomCreate, user: dict=Depends(get_current_user)):
     except pymysql.err.IntegrityError:
         conn.close()
         raise HTTPException(status_code=500, detail='Failed to generate unique class code. Try again.')
-    cursor.execute('SELECT * FROM rooms WHERE id = ?', (new_room_id,))
+    cursor.execute('''
+        SELECT r.*, u.name AS teacher_name, u.avatar_url AS teacher_avatar_url
+        FROM rooms r JOIN users u ON u.id = r.teacher_id
+        WHERE r.id = ?
+    ''', (new_room_id,))
     new_room = dict(cursor.fetchone())
     conn.close()
     return new_room
@@ -38,10 +92,23 @@ async def get_rooms(user: dict=Depends(get_current_user)):
     conn = get_db_connection()
     cursor = conn.cursor()
     if user['role'] == 'teacher':
-        cursor.execute('SELECT * FROM rooms WHERE teacher_id = ?', (user['id'],))
+        cursor.execute('''
+            SELECT r.*, u.name AS teacher_name, u.avatar_url AS teacher_avatar_url
+            FROM rooms r
+            JOIN users u ON u.id = r.teacher_id
+            WHERE r.teacher_id = ?
+            ORDER BY r.id DESC
+        ''', (user['id'],))
         rooms = cursor.fetchall()
     else:
-        cursor.execute('\n            SELECT r.* FROM rooms r\n            JOIN enrollments e ON r.id = e.room_id\n            WHERE e.user_id = ?\n        ', (user['id'],))
+        cursor.execute('''
+            SELECT r.*, u.name AS teacher_name, u.avatar_url AS teacher_avatar_url
+            FROM rooms r
+            JOIN enrollments e ON r.id = e.room_id
+            JOIN users u ON u.id = r.teacher_id
+            WHERE e.user_id = ?
+            ORDER BY r.id DESC
+        ''', (user['id'],))
         rooms = cursor.fetchall()
     conn.close()
     return [dict(room) for room in rooms]
@@ -95,7 +162,11 @@ async def join_room(request: JoinRoomRequest, user: dict=Depends(get_current_use
         raise HTTPException(status_code=400, detail='คุณอยู่ในห้องนี้แล้ว (Already joined)')
     cursor.execute('INSERT INTO enrollments (user_id, room_id) VALUES (?, ?)', (user['id'], room_id))
     conn.commit()
-    cursor.execute('SELECT * FROM rooms WHERE id = ?', (room_id,))
+    cursor.execute('''
+        SELECT r.*, u.name AS teacher_name, u.avatar_url AS teacher_avatar_url
+        FROM rooms r JOIN users u ON u.id = r.teacher_id
+        WHERE r.id = ?
+    ''', (room_id,))
     joined_room = dict(cursor.fetchone())
     conn.close()
     return joined_room
@@ -139,10 +210,10 @@ async def get_room_members(room_id: int, user: dict=Depends(get_current_user)):
     if not cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=403, detail='Unauthorized')
-    cursor.execute('SELECT u.id, u.name, u.email, u.student_id FROM users u JOIN rooms r ON u.id = r.teacher_id WHERE r.id = ?', (room_id,))
+    cursor.execute('SELECT u.id, u.name, u.email, u.student_id, u.avatar_url FROM users u JOIN rooms r ON u.id = r.teacher_id WHERE r.id = ?', (room_id,))
     teacher_row = cursor.fetchone()
     teacher = {**dict(teacher_row), 'role': 'teacher', 'joined_at': None} if teacher_row else None
-    cursor.execute('\n        SELECT u.id, u.name, u.email, u.student_id, e.joined_at\n        FROM users u\n        JOIN enrollments e ON u.id = e.user_id\n        WHERE e.room_id = ?\n        ORDER BY e.joined_at DESC\n    ', (room_id,))
+    cursor.execute('\n        SELECT u.id, u.name, u.email, u.student_id, u.avatar_url, e.joined_at\n        FROM users u\n        JOIN enrollments e ON u.id = e.user_id\n        WHERE e.room_id = ?\n        ORDER BY e.joined_at DESC\n    ', (room_id,))
     members = cursor.fetchall()
     conn.close()
     result = []
@@ -151,6 +222,85 @@ async def get_room_members(room_id: int, user: dict=Depends(get_current_user)):
     for m in members:
         result.append({**dict(m), 'role': 'student'})
     return result
+
+@router.delete('/{room_id}/members/{member_id}')
+async def remove_room_member(room_id: int, member_id: int, user: dict=Depends(get_current_user)):
+    if user['role'] != 'teacher':
+        raise HTTPException(status_code=403, detail='Only the room teacher can remove members')
+    conn = get_db_connection()
+    room = None
+    try:
+        cursor = conn.cursor()
+        cursor.execute('SELECT id, name FROM rooms WHERE id = ? AND teacher_id = ?', (room_id, user['id']))
+        room = cursor.fetchone()
+        if not room:
+            raise HTTPException(status_code=404, detail='Room not found or unauthorized')
+        if member_id == user['id']:
+            raise HTTPException(status_code=400, detail='ไม่สามารถนำผู้สอนออกจากห้องได้')
+        cursor.execute('DELETE FROM enrollments WHERE room_id = ? AND user_id = ?', (room_id, member_id))
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail='ไม่พบสมาชิกในห้อง')
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+    await trigger_socket_notify(
+        user_id=member_id,
+        notify_type='removed_from_room',
+        message=f'คุณถูกนำออกจากห้อง {room["name"]}',
+        data={'room_id': room_id, 'link': '/home'},
+    )
+    return {'message': 'Member removed'}
+
+@router.post('/{room_id}/announcements/attachments')
+async def upload_announcement_attachments(room_id: int, files: List[UploadFile] = File(...), user: dict=Depends(get_current_user)):
+    if user['role'] != 'teacher':
+        raise HTTPException(status_code=403, detail='Only teachers can upload announcement files')
+    if not files or len(files) > 10:
+        raise HTTPException(status_code=422, detail='แนบไฟล์ได้ครั้งละ 1–10 ไฟล์')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT id FROM rooms WHERE id = ? AND teacher_id = ?', (room_id, user['id']))
+    allowed = cursor.fetchone()
+    conn.close()
+    if not allowed:
+        raise HTTPException(status_code=404, detail='Room not found or unauthorized')
+    uploaded = []
+    for file in files:
+        mime = (file.content_type or '').lower()
+        extension = ANNOUNCEMENT_FILE_TYPES.get(mime)
+        if not extension:
+            raise HTTPException(status_code=400, detail=f'ไม่รองรับไฟล์ชนิด {mime or "unknown"}')
+        raw = await file.read(MAX_ANNOUNCEMENT_FILE_SIZE + 1)
+        if not raw or len(raw) > MAX_ANNOUNCEMENT_FILE_SIZE:
+            raise HTTPException(status_code=413, detail='ไฟล์ต้องมีขนาดไม่เกิน 10 MB')
+        if mime.startswith('image/'):
+            from server.utils import validate_upload_file
+            validate_upload_file(raw, content_type=mime, max_size=MAX_ANNOUNCEMENT_FILE_SIZE)
+        elif mime == 'application/pdf' and not raw.startswith(b'%PDF'):
+            raise HTTPException(status_code=400, detail='ไฟล์ PDF ไม่ถูกต้อง')
+        elif extension in {'docx', 'xlsx', 'pptx'} and not raw.startswith(b'PK'):
+            raise HTTPException(status_code=400, detail='ไฟล์เอกสารไม่ถูกต้อง')
+        safe_base = re.sub(r'[^A-Za-z0-9._-]+', '-', os.path.splitext(file.filename or 'file')[0]).strip('-')[:80] or 'file'
+        public_id = f'{safe_base}-{uuid.uuid4().hex[:10]}'
+        if os.getenv('CLOUDINARY_CLOUD_NAME'):
+            import cloudinary.uploader
+            result = cloudinary.uploader.upload(raw, folder=f'announcements/{room_id}', public_id=public_id,
+                                                resource_type='auto', format=extension)
+            url = result.get('secure_url')
+        else:
+            folder = os.path.join('uploads', 'announcements', str(room_id))
+            os.makedirs(folder, exist_ok=True)
+            filename = f'{public_id}.{extension}'
+            with open(os.path.join(folder, filename), 'wb') as destination:
+                destination.write(raw)
+            url = f'/uploads/announcements/{room_id}/{filename}'
+        if not url:
+            raise HTTPException(status_code=502, detail='อัปโหลดไฟล์ไม่สำเร็จ')
+        uploaded.append({'url': url, 'name': (file.filename or f'file.{extension}')[:255], 'type': mime, 'size': len(raw)})
+    return {'attachments': uploaded}
 
 @router.post('/{room_id}/announcements')
 async def create_announcement(room_id: int, ann: AnnouncementCreate, user: dict=Depends(get_current_user)):
@@ -167,13 +317,15 @@ async def create_announcement(room_id: int, ann: AnnouncementCreate, user: dict=
     if not title or not content:
         conn.close()
         raise HTTPException(status_code=422, detail='Title and content are required')
-    cursor.execute('INSERT INTO announcements (room_id, teacher_id, title, content) VALUES (?, ?, ?, ?)', (room_id, user['id'], title, content))
+    attachments = valid_announcement_attachments(ann.attachments)
+    cursor.execute('INSERT INTO announcements (room_id, teacher_id, title, content, attachments) VALUES (?, ?, ?, ?, ?)',
+                   (room_id, user['id'], title, content, json.dumps(attachments, ensure_ascii=False) if attachments else None))
     ann_id = cursor.lastrowid
     conn.commit()
     cursor.execute('SELECT user_id FROM enrollments WHERE room_id = ?', (room_id,))
     student_ids = [row['user_id'] for row in cursor.fetchall()]
     cursor.execute('SELECT * FROM announcements WHERE id = ?', (ann_id,))
-    result = dict(cursor.fetchone())
+    result = serialize_announcement(cursor.fetchone())
     conn.close()
     link = f'/room/{room_id}#announcement-{ann_id}'
     for student_id in student_ids:
@@ -203,12 +355,14 @@ async def update_announcement(room_id: int, ann_id: int, ann: AnnouncementCreate
     if not cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=404, detail='Announcement not found or unauthorized')
-    cursor.execute('UPDATE announcements SET title = ?, content = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', (title, content, ann_id))
+    attachments = valid_announcement_attachments(ann.attachments)
+    cursor.execute('UPDATE announcements SET title = ?, content = ?, attachments = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                   (title, content, json.dumps(attachments, ensure_ascii=False) if attachments else None, ann_id))
     conn.commit()
     cursor.execute('SELECT user_id FROM enrollments WHERE room_id = ?', (room_id,))
     student_ids = [row['user_id'] for row in cursor.fetchall()]
     cursor.execute('SELECT * FROM announcements WHERE id = ?', (ann_id,))
-    result = dict(cursor.fetchone())
+    result = serialize_announcement(cursor.fetchone())
     conn.close()
     link = f'/room/{room_id}#announcement-{ann_id}'
     for student_id in student_ids:
@@ -266,7 +420,7 @@ async def list_announcements(room_id: int, user: dict=Depends(get_current_user))
         cursor.execute('\n            SELECT a.*, (SELECT COUNT(*) FROM announcement_reads ar WHERE ar.announcement_id = a.id) as read_count\n            FROM announcements a\n            WHERE a.room_id = ?\n            ORDER BY a.created_at DESC\n        ', (room_id,))
     anns = cursor.fetchall()
     conn.close()
-    return [dict(a) for a in anns]
+    return [serialize_announcement(a) for a in anns]
 
 @router.get('/{room_id}/export-summary-csv')
 async def export_room_summary_csv(room_id: int, user: dict=Depends(get_current_user)):

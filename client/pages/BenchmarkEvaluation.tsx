@@ -1,3 +1,4 @@
+import { ContentSkeleton } from "@/components/RouteLoading";
 import React, { useState, useEffect, useRef } from "react";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -973,7 +974,7 @@ export default function BenchmarkEvaluation() {
 
             {/* Items List */}
             {loadingItems ? (
-              <div className="p-12 text-center text-slate-400">กำลังโหลดรายการคำตอบ...</div>
+              <ContentSkeleton layout="table" />
             ) : items.length === 0 ? (
               <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-500">
                 ไม่พบข้อมูลที่ตรงกับเงื่อนไขการค้นหา

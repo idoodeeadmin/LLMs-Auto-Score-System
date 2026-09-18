@@ -153,6 +153,24 @@ def init_db():
     )
     ''')
 
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS exam_drafts (
+        id INTEGER PRIMARY KEY AUTO_INCREMENT,
+        room_id INTEGER NOT NULL,
+        teacher_id INTEGER NOT NULL,
+        title VARCHAR(255),
+        description TEXT,
+        start_date VARCHAR(100),
+        end_date VARCHAR(100),
+        is_randomized TINYINT DEFAULT 0,
+        questions LONGTEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (room_id) REFERENCES rooms (id) ON DELETE CASCADE,
+        FOREIGN KEY (teacher_id) REFERENCES users (id) ON DELETE CASCADE
+    )
+    ''')
+
     # Create Submissions table
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS submissions (
@@ -222,6 +240,7 @@ def init_db():
         teacher_id INTEGER NOT NULL,
         title VARCHAR(255) NOT NULL,
         content TEXT NOT NULL,
+        attachments TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME,
         FOREIGN KEY (room_id) REFERENCES rooms (id) ON DELETE CASCADE,
@@ -284,6 +303,10 @@ def init_db():
     add_column_if_not_exists("exams", "is_randomized TINYINT DEFAULT 0")
     add_column_if_not_exists("submission_answers", "quality_metrics TEXT")
     add_column_if_not_exists("announcements", "updated_at DATETIME")
+    add_column_if_not_exists("announcements", "attachments TEXT")
+    add_column_if_not_exists("exam_drafts", "start_date VARCHAR(100)")
+    add_column_if_not_exists("exam_drafts", "end_date VARCHAR(100)")
+    add_column_if_not_exists("exam_drafts", "is_randomized TINYINT DEFAULT 0")
     
     try:
         cursor.execute("ALTER TABLE users ADD COLUMN is_verified TINYINT DEFAULT 0")

@@ -1,35 +1,8 @@
 import { Link } from "react-router-dom";
-import { BookOpen, ChevronRight, LogOut } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { ThemeToggle } from "./ThemeToggle";
+import { ChevronRight } from "lucide-react";
+import Navbar from "./Navbar";
 
-export function WorkspaceHeader() {
-  const { user, logout } = useAuth();
-  return (
-    <header className="workspace-header">
-      <Link to="/home" className="workspace-brand">
-        <BookOpen size={22} /> Evaly<span>พื้นที่การสอบ</span>
-      </Link>
-      <div className="workspace-account">
-        <span>
-          {user?.name}
-          <small>{user?.role === "teacher" ? "ผู้สอน" : "ผู้เรียน"}</small>
-        </span>
-        <ThemeToggle />
-        <button
-          aria-label="ออกจากระบบ"
-          title="ออกจากระบบ"
-          onClick={() => {
-            logout();
-            window.location.assign("/");
-          }}
-        >
-          <LogOut size={18} />
-        </button>
-      </div>
-    </header>
-  );
-}
+export function WorkspaceHeader() { return <Navbar />; }
 
 export function WorkspaceBreadcrumb({
   roomId,

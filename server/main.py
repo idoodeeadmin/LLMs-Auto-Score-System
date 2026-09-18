@@ -51,12 +51,13 @@ cloudinary.config(cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME'),
  api_key=os.getenv('CLOUDINARY_API_KEY'), api_secret=os.getenv('CLOUDINARY_API_SECRET'),
  secure=True)
 app = FastAPI(title='Evaly API')
-from server.routes import auth_routes, room_routes, exam_routes, notification_routes, ai_routes, system_routes, benchmark_routes
+from server.routes import auth_routes, room_routes, exam_routes, notification_routes, ai_routes, system_routes, benchmark_routes, exam_draft_routes
 app.include_router(auth_routes.router)
 app.include_router(room_routes.router)
 app.include_router(exam_routes.router)
 app.include_router(notification_routes.router)
 app.include_router(benchmark_routes.router)
+app.include_router(exam_draft_routes.router)
 
 app.include_router(ai_routes.router)
 app.include_router(ai_routes.legacy_router)

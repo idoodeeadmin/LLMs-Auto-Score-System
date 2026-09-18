@@ -185,15 +185,17 @@ def generate_class_code(length=6):
     return ''.join((random.choice(characters) for _ in range(length)))
 
 
-_FIREBASE_CREDENTIALS_PATH = os.getenv('FIREBASE_CREDENTIALS_PATH', '')
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _FIREBASE_CREDENTIALS_PATH and (not os.path.isabs(_FIREBASE_CREDENTIALS_PATH)):
-    _FIREBASE_CREDENTIALS_PATH = os.path.join(_PROJECT_ROOT, _FIREBASE_CREDENTIALS_PATH)
 _firebase_app = None
 auth = None
 
 
 def get_firebase_app():
+    """Initialize Firebase Admin on first use and return its app.
+
+    Environment values are read on every first-use attempt so importing this
+    module before ``load_dotenv()`` cannot permanently cache an empty path.
+    """
     global _firebase_app, auth
     if _firebase_app is not None:
         return _firebase_app
@@ -214,9 +216,13 @@ def get_firebase_app():
                 _firebase_app = firebase_admin.get_app()
                 return _firebase_app
             
-    # 2. Try file paths
+    # 2. Try explicit/default file paths. Relative paths are always resolved
+    # from the project root, independent of the process working directory.
+    configured_path = os.getenv('FIREBASE_CREDENTIALS_PATH', '').strip()
+    if configured_path and not os.path.isabs(configured_path):
+        configured_path = os.path.join(_PROJECT_ROOT, configured_path)
     candidate_paths = [
-        os.getenv('FIREBASE_CREDENTIALS_PATH', '').strip(),
+        configured_path,
         'llms-auto-score-systems-firebase-adminsdk-fbsvc-f81fe0b67f.json',
         os.path.join(_PROJECT_ROOT, 'llms-auto-score-systems-firebase-adminsdk-fbsvc-f81fe0b67f.json'),
         os.path.join(os.path.dirname(_PROJECT_ROOT), 'llms-auto-score-systems-firebase-adminsdk-fbsvc-f81fe0b67f.json')
@@ -235,6 +241,13 @@ def get_firebase_app():
                 
     print('[Firebase] Service account is not configured. Set FIREBASE_CREDENTIALS_PATH or FIREBASE_SERVICE_ACCOUNT_JSON.')
     return None
+
+
+def get_firebase_auth():
+    """Return Firebase Auth only after the Admin app is initialized."""
+    if get_firebase_app() is None:
+        return None
+    return auth
 
 # Firebase is initialized lazily by the Google authentication routes.
 
