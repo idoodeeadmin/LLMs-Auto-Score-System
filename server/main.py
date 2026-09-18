@@ -26,7 +26,9 @@ import asyncio
 from fastapi import FastAPI, Depends, HTTPException, status, Header, UploadFile, File, Form, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import Response, StreamingResponse, JSONResponse
+from fastapi.exceptions import RequestValidationError
+from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from .database import get_db_connection, init_db
@@ -51,6 +53,29 @@ cloudinary.config(cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME'),
  api_key=os.getenv('CLOUDINARY_API_KEY'), api_secret=os.getenv('CLOUDINARY_API_SECRET'),
  secure=True)
 app = FastAPI(title='Evaly API')
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = exc.errors()
+    msg = "ข้อมูลที่กรอกไม่ถูกต้อง"
+    for err in errors:
+        loc = [str(x) for x in err.get("loc", [])]
+        if "password" in loc:
+            msg = "รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร"
+            break
+        elif "email" in loc:
+            msg = "รูปแบบอีเมลไม่ถูกต้อง"
+            break
+        elif "name" in loc:
+            msg = "กรุณากรอกชื่อ-นามสกุล"
+            break
+        else:
+            msg = err.get("msg", msg)
+    return JSONResponse(
+        status_code=422,
+        content={"detail": msg, "message": msg, "errors": jsonable_encoder(errors)}
+    )
+
 from server.routes import auth_routes, room_routes, exam_routes, notification_routes, ai_routes, system_routes, benchmark_routes, exam_draft_routes
 app.include_router(auth_routes.router)
 app.include_router(room_routes.router)

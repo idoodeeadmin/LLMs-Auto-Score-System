@@ -59,7 +59,8 @@ export default function ForgotPassword() {
         }
         toast.success("ส่งลิงก์รีเซ็ตรหัสผ่านเรียบร้อยแล้ว");
       } else {
-        toast.error(data.detail || "เกิดข้อผิดพลาด");
+        const errorMsg = typeof data.detail === "string" ? data.detail : (typeof data.message === "string" ? data.message : "เกิดข้อผิดพลาด");
+        toast.error(errorMsg);
       }
     } catch (error) {
       console.error("Forgot password error:", error);

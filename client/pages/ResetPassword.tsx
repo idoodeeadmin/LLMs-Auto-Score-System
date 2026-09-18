@@ -49,8 +49,9 @@ export default function ResetPassword() {
         toast.success("เปลี่ยนรหัสผ่านสำเร็จ กรุณาเข้าสู่ระบบด้วยรหัสผ่านใหม่");
         navigate("/");
       } else {
-        toast.error(data.detail || "เกิดข้อผิดพลาด ลิงก์อาจจะหมดอายุแล้ว");
-        if (data.detail?.includes("expired") || data.detail?.includes("Invalid")) {
+        const errorMsg = typeof data.detail === "string" ? data.detail : (typeof data.message === "string" ? data.message : "เกิดข้อผิดพลาด ลิงก์อาจจะหมดอายุแล้ว");
+        toast.error(errorMsg);
+        if (typeof data.detail === "string" && (data.detail.includes("expired") || data.detail.includes("Invalid"))) {
           setTimeout(() => navigate("/forgot-password"), 2000);
         }
       }

@@ -23,6 +23,10 @@ export default function Register() {
       toast.error("กรุณากรอกข้อมูลให้ครบถ้วน");
       return;
     }
+    if (password.length < 8) {
+      toast.error("รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร");
+      return;
+    }
     if (password !== confirmPassword) {
       toast.error("รหัสผ่านไม่ตรงกัน");
       return;
@@ -45,7 +49,24 @@ export default function Register() {
         toast.success(data.message || "ลงทะเบียนสำเร็จ กรุณาเข้าสู่ระบบ");
         navigate("/");
       } else {
-        toast.error(data.detail || data.message || `เกิดข้อผิดพลาดในการลงทะเบียน (${response.status})`);
+        let errorMsg = `เกิดข้อผิดพลาดในการลงทะเบียน (${response.status})`;
+        if (typeof data.detail === "string") {
+          errorMsg = data.detail;
+        } else if (Array.isArray(data.detail) && data.detail.length > 0) {
+          const first = data.detail[0];
+          if (typeof first === "string") {
+            errorMsg = first;
+          } else if (first?.loc?.includes("password")) {
+            errorMsg = "รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร";
+          } else if (first?.loc?.includes("email")) {
+            errorMsg = "รูปแบบอีเมลไม่ถูกต้อง";
+          } else {
+            errorMsg = first?.msg || "ข้อมูลที่กรอกไม่ถูกต้อง";
+          }
+        } else if (typeof data.message === "string") {
+          errorMsg = data.message;
+        }
+        toast.error(errorMsg);
       }
     } catch (error) {
       console.error("Register error:", error);
@@ -98,8 +119,8 @@ export default function Register() {
             <div className="field"><label htmlFor="register-name">ชื่อ-นามสกุล</label><Input id="register-name" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="เช่น สิทธิกร ศรีรักษ์" required className="h-11" /></div>
             <div className="field"><label htmlFor="register-email">อีเมล หรือรหัสที่ใช้เข้าสู่ระบบ</label><div className="relative"><Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--work-muted)]" /><Input id="register-email" type="text" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com หรือ student001" required className="h-11 !pl-10" /></div></div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="field"><label htmlFor="register-password">รหัสผ่าน</label><div className="relative"><Input id="register-password" autoComplete="new-password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="อย่างน้อย 8 ตัวอักษร" required className="h-11 pr-10" /><button type="button" aria-label={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"} onClick={() => setShowPassword((visible) => !visible)} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-2 text-[var(--work-muted)] hover:bg-slate-100 dark:hover:bg-slate-800">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div></div>
-              <div className="field"><label htmlFor="register-confirm-password">ยืนยันรหัสผ่าน</label><div className="relative"><Input id="register-confirm-password" autoComplete="new-password" type={showConfirmPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="กรอกอีกครั้ง" required className="h-11 pr-10" /><button type="button" aria-label={showConfirmPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"} onClick={() => setShowConfirmPassword((visible) => !visible)} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-2 text-[var(--work-muted)] hover:bg-slate-100 dark:hover:bg-slate-800">{showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div></div>
+              <div className="field"><label htmlFor="register-password">รหัสผ่าน</label><div className="relative"><Input id="register-password" autoComplete="new-password" type={showPassword ? "text" : "password"} minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="อย่างน้อย 8 ตัวอักษร" required className="h-11 pr-10" /><button type="button" aria-label={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"} onClick={() => setShowPassword((visible) => !visible)} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-2 text-[var(--work-muted)] hover:bg-slate-100 dark:hover:bg-slate-800">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div></div>
+              <div className="field"><label htmlFor="register-confirm-password">ยืนยันรหัสผ่าน</label><div className="relative"><Input id="register-confirm-password" autoComplete="new-password" type={showConfirmPassword ? "text" : "password"} minLength={8} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="กรอกอีกครั้ง" required className="h-11 pr-10" /><button type="button" aria-label={showConfirmPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"} onClick={() => setShowConfirmPassword((visible) => !visible)} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-2 text-[var(--work-muted)] hover:bg-slate-100 dark:hover:bg-slate-800">{showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div></div>
             </div>
             <Button type="submit" disabled={isLoading} className="primary-action h-11 w-full">{isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <>สร้างบัญชี <ArrowRight className="ml-2 h-4 w-4" /></>}</Button>
           </form>

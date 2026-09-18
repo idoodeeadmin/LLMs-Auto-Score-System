@@ -55,7 +55,8 @@ export default function Index() {
         toast.error("บัญชีนี้ยังไม่ได้ยืนยันอีเมล");
       } else {
         setUnverifiedEmail("");
-        toast.error(data.detail || "อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+        const errorMsg = typeof data.detail === "string" ? data.detail : (typeof data.message === "string" ? data.message : "อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+        toast.error(errorMsg);
       }
     } catch (error) {
       console.error("Login error:", error);
