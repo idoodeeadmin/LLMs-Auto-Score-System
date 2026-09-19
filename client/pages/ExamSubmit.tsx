@@ -25,6 +25,7 @@ interface QuestionItem {
   rubrics?: any[];
   order_index: number;
   image_paths?: string[];
+  hide_rubric_from_students?: boolean;
 }
 
 interface ExamData {
@@ -269,7 +270,7 @@ export default function ExamSubmit() {
                         </span>
                       </div>
 
-                      {q.rubrics && q.rubrics.length > 0 && (
+                      {!q.hide_rubric_from_students && q.rubrics && q.rubrics.length > 0 && (
                         <details className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs dark:border-slate-700 dark:bg-slate-900/60">
                           <summary className="cursor-pointer font-semibold text-[#245b50] dark:text-[#91c7b8]">
                             ดูเกณฑ์การให้คะแนน

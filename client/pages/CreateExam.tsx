@@ -17,6 +17,7 @@ import {
   Trash2,
   Settings,
   Send,
+  EyeOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,6 +42,7 @@ interface Question {
   answerKey: string;
   rubrics: RubricItem[];
   images?: { name: string; dataUrl: string }[];
+  hideRubricFromStudents?: boolean;
 }
 
 interface ExamDraft {
@@ -67,6 +69,7 @@ interface CloudExamDraft {
     answer_key?: string | null;
     rubrics?: Array<{ name?: string; description?: string; score?: number }>;
     question_images_base64?: string[];
+    hide_rubric_from_students?: boolean;
   }>;
 }
 
@@ -97,6 +100,7 @@ const fromCloudDraft = (value: CloudExamDraft): ExamDraft => ({
       score: String(rubric.score ?? 0),
     })) : [{ id: Date.now() + 1000 + questionIndex, name: "", description: "", score: String(question.score) }],
     images: (question.question_images_base64 ?? []).map((url, imageIndex) => ({ name: `รูปประกอบ ${imageIndex + 1}`, dataUrl: url })),
+    hideRubricFromStudents: Boolean(question.hide_rubric_from_students),
   })),
 });
 
@@ -246,7 +250,7 @@ export default function CreateExam() {
     setStartDateTime("");
     setEndDateTime("");
     setIsRandomized(false);
-    const blank: Question[] = [{ id: Date.now(), text: "", score: "5", answerKey: "", rubrics: [{ id: Date.now() + 1, name: "", description: "", score: "5" }] }];
+    const blank: Question[] = [{ id: Date.now(), text: "", score: "5", answerKey: "", rubrics: [{ id: Date.now() + 1, name: "", description: "", score: "5" }], hideRubricFromStudents: false }];
     setQuestions(blank);
     setSavedSnapshot(JSON.stringify({ examTitle: "", examDescription: "", questions: blank,
       startDateTime: "", endDateTime: "", isRandomized: false }));
@@ -309,6 +313,7 @@ export default function CreateExam() {
           })),
           order_index: index,
           question_images_base64: question.images?.map(image => image.dataUrl) ?? [],
+          hide_rubric_from_students: Boolean(question.hideRubricFromStudents),
         })),
       };
       let id = currentDraftId;
@@ -485,6 +490,7 @@ export default function CreateExam() {
               })),
             order_index: i,
             question_images_base64: q.images?.length ? q.images.map(image => image.dataUrl) : null,
+            hide_rubric_from_students: Boolean(q.hideRubricFromStudents),
           })),
           draft_id: currentDraftId?.startsWith("cloud-") ? Number(currentDraftId.slice(6)) : null,
         }),
@@ -766,9 +772,19 @@ export default function CreateExam() {
                               );
                             })()}
                           </div>
-                        </div>
 
-                        {/* Clean Flat Table */}
+                          <label className="inline-flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 cursor-pointer select-none bg-slate-50 dark:bg-slate-800/60 px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                            <Switch
+                              checked={Boolean(q.hideRubricFromStudents)}
+                              onCheckedChange={(checked) => updateQuestion(q.id, { hideRubricFromStudents: checked })}
+                              aria-label={`ซ่อนเกณฑ์ไม่ให้นักเรียนเห็นข้อที่ ${index + 1}`}
+                            />
+                            <span className="flex items-center gap-1 font-medium">
+                              <EyeOff size={13} className={q.hideRubricFromStudents ? "text-amber-500" : "text-slate-400"} />
+                              <span>ซ่อนเกณฑ์ไม่ให้นักเรียนเห็น</span>
+                            </span>
+                          </label>
+                        </div>
                         <p className="text-xs text-slate-500 sm:hidden">
                           กรอกหัวข้อ คำอธิบาย และคะแนนของแต่ละเกณฑ์
                         </p>
@@ -779,7 +795,11 @@ export default function CreateExam() {
                                 <th className="py-2 w-8 text-center">#</th>
                                 <th className="py-2 px-2 w-1/3">หัวข้อเกณฑ์</th>
                                 <th className="py-2 px-2">
-                                  คำอธิบายรายละเอียด <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500">(นักเรียนจะเห็นเกณฑ์นี้ ไม่ควรใส่เฉลยคำตอบ)</span>
+                                  คำอธิบายรายละเอียด <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500">
+                                    {q.hideRubricFromStudents
+                                      ? "(ซ่อนจากนักเรียนแล้ว เกณฑ์นี้ใช้เฉพาะระบบตรวจคะแนน)"
+                                      : "(นักเรียนจะเห็นเกณฑ์นี้ ไม่ควรใส่เฉลยคำตอบ)"}
+                                  </span>
                                 </th>
                                 <th className="py-2 text-center w-16">คะแนน</th>
                                 <th className="py-2 w-8"></th>
@@ -876,6 +896,7 @@ export default function CreateExam() {
                     rubrics: [
                       { id: newId + 1, name: "", description: "", score: "5" },
                     ],
+                    hideRubricFromStudents: false,
                   },
                 ]);
                 setShowDetails((prev) => ({ ...prev, [newId]: false }));

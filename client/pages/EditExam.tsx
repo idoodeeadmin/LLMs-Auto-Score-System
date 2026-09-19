@@ -1,7 +1,7 @@
 import { PageLoading } from "@/components/RouteLoading";
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Plus, Trash2, X, Image as ImageIcon, ArrowLeft, Loader2, BookOpen, Search, Sparkles, Copy, Settings, Check, BookmarkPlus, Bookmark } from "lucide-react";
+import { Plus, Trash2, X, Image as ImageIcon, ArrowLeft, Loader2, BookOpen, Search, Sparkles, Copy, Settings, Check, BookmarkPlus, Bookmark, EyeOff } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { WorkspaceBreadcrumb } from "@/components/WorkspaceHeader";
 import { Input } from "@/components/ui/input";
@@ -51,6 +51,7 @@ interface Question {
   gradingTone: "simple" | "moderate" | "academic";
   isGenerating?: boolean;
   isExpanded?: boolean;
+  hideRubricFromStudents?: boolean;
 }
 
 interface RubricPreset {
@@ -68,6 +69,7 @@ const newQuestion = (): Question => ({
   rubrics: [{ id: Date.now() + Math.random(), name: "", description: "", score: "1" }],
   gradingTone: "moderate",
   isExpanded: false,
+  hideRubricFromStudents: false,
 });
 
 export default function EditExam() {
@@ -191,6 +193,7 @@ export default function EditExam() {
               })) : [{ id: Date.now() + 100, name: "", description: "", score: "" }],
               gradingTone: "moderate",
               isExpanded: false,
+              hideRubricFromStudents: Boolean(q.hide_rubric_from_students),
             })));
           }
         }
@@ -251,6 +254,7 @@ export default function EditExam() {
         ...src,
         id: Date.now() + Math.random(),
         rubrics: src.rubrics.map(r => ({ ...r, id: Date.now() + Math.random() })),
+        hideRubricFromStudents: src.hideRubricFromStudents,
       });
       return newQs;
     });
@@ -348,6 +352,7 @@ export default function EditExam() {
             rubrics: q.rubrics.filter(r => r.name).map(r => ({ name: r.name, description: r.description, score: parseFloat(r.score) || 0 })),
             order_index: i,
             question_images_base64: q.questionImages.length > 0 ? q.questionImages : null,
+            hide_rubric_from_students: Boolean(q.hideRubricFromStudents),
           })),
         }),
       });
@@ -668,7 +673,20 @@ export default function EditExam() {
 
                       <div className="space-y-3">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                          <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">เกณฑ์ให้คะแนน (Rubrics)</label>
+                          <div className="flex flex-wrap items-center gap-3">
+                            <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">เกณฑ์ให้คะแนน (Rubrics)</label>
+                            <label className="inline-flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 cursor-pointer select-none bg-gray-50 dark:bg-gray-800/60 px-2.5 py-1 rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                              <Switch
+                                checked={Boolean(q.hideRubricFromStudents)}
+                                onCheckedChange={(checked) => updateQuestion(q.id, { hideRubricFromStudents: checked })}
+                                aria-label={`ซ่อนเกณฑ์ไม่ให้นักเรียนเห็นข้อที่ ${index + 1}`}
+                              />
+                              <span className="flex items-center gap-1 font-medium">
+                                <EyeOff size={13} className={q.hideRubricFromStudents ? "text-amber-500" : "text-gray-400"} />
+                                <span>ซ่อนเกณฑ์ไม่ให้นักเรียนเห็น</span>
+                              </span>
+                            </label>
+                          </div>
                           <div className="flex items-center gap-2 w-full sm:w-auto">
                             <div className="flex items-center bg-gray-50 dark:bg-gray-800/80 rounded-lg p-1 border border-gray-200 dark:border-gray-700 w-full sm:w-auto">
                               <span className="text-[10px] text-gray-500 pl-2 pr-1 uppercase font-semibold hidden sm:inline">AI TONE:</span>
@@ -699,7 +717,11 @@ export default function EditExam() {
                           <div className="hidden sm:flex bg-gray-50/80 dark:bg-gray-900/80 border-b border-gray-200 dark:border-gray-800 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
                             <div className="w-10 text-center py-2 border-r border-gray-200 dark:border-gray-800">#</div>
                             <div className="flex-[1.5] px-3 py-2 border-r border-gray-200 dark:border-gray-800">หัวข้อเกณฑ์</div>
-                            <div className="flex-[3] px-3 py-2 border-r border-gray-200 dark:border-gray-800">คำอธิบายรายละเอียด <span className="text-[10px] font-normal text-gray-400 dark:text-gray-500">(นักเรียนจะเห็นเกณฑ์นี้ ไม่ควรใส่เฉลยคำตอบ)</span></div>
+                            <div className="flex-[3] px-3 py-2 border-r border-gray-200 dark:border-gray-800">คำอธิบายรายละเอียด <span className="text-[10px] font-normal text-gray-400 dark:text-gray-500">
+                                {q.hideRubricFromStudents
+                                  ? "(ซ่อนจากนักเรียนแล้ว เกณฑ์นี้ใช้เฉพาะระบบตรวจคะแนน)"
+                                  : "(นักเรียนจะเห็นเกณฑ์นี้ ไม่ควรใส่เฉลยคำตอบ)"}
+                              </span></div>
                             <div className="w-20 px-3 py-2 text-center">คะแนน</div>
                             <div className="w-10"></div>
                           </div>

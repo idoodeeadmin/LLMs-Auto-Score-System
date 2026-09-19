@@ -45,10 +45,11 @@ def save_question_images(question, exam_id, allowed_existing=()):
 def insert_questions(cursor, exam, exam_id, allowed_existing=()):
     for question in exam.questions:
         images = save_question_images(question, exam_id, allowed_existing)
-        cursor.execute('INSERT INTO questions (exam_id, text, score, answer_key, rubrics, order_index, image_paths) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        cursor.execute('INSERT INTO questions (exam_id, text, score, answer_key, rubrics, order_index, image_paths, hide_rubric_from_students) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             (exam_id, question.text, question.score, question.answer_key,
              json.dumps(question.rubrics, ensure_ascii=False) if question.rubrics else None,
-             question.order_index, json.dumps(images) if images else None))
+             question.order_index, json.dumps(images) if images else None,
+             1 if getattr(question, 'hide_rubric_from_students', False) else 0))
 
 
 def get_draft_images(cursor, draft_id, room_id, teacher_id):
@@ -207,6 +208,9 @@ async def get_exam(room_id: int, exam_id: int, user: dict=Depends(get_current_us
                 qd['rubrics'] = json.loads(qd['rubrics'])
             except Exception:
                 qd['rubrics'] = []
+        if user['role'] != 'teacher' and qd.get('hide_rubric_from_students'):
+            qd['rubrics'] = []
+        qd['hide_rubric_from_students'] = bool(qd.get('hide_rubric_from_students'))
         if qd.get('image_paths'):
             try:
                 qd['image_paths'] = json.loads(qd['image_paths'])

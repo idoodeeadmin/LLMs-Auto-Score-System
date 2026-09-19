@@ -69,6 +69,7 @@ class QuestionInput(BaseModel):
     rubrics: Optional[list] = None
     order_index: int = 0
     question_images_base64: Optional[List[str]] = Field(default=None, max_length=10)
+    hide_rubric_from_students: bool = False
 
 class ExamCreate(BaseModel):
     title: str = Field(min_length=1, max_length=255)

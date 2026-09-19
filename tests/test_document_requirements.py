@@ -67,7 +67,7 @@ def db(monkeypatch):
         CREATE TABLE rooms (id INTEGER PRIMARY KEY, name TEXT, teacher_id INTEGER);
         CREATE TABLE enrollments (id INTEGER PRIMARY KEY, room_id INTEGER, user_id INTEGER);
         CREATE TABLE exams (id INTEGER PRIMARY KEY, room_id INTEGER, title TEXT, description TEXT, total_score REAL, start_date TEXT, end_date TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, is_randomized INTEGER DEFAULT 0);
-        CREATE TABLE questions (id INTEGER PRIMARY KEY, exam_id INTEGER, text TEXT, score REAL, answer_key TEXT, rubrics TEXT, order_index INTEGER, image_paths TEXT);
+        CREATE TABLE questions (id INTEGER PRIMARY KEY, exam_id INTEGER, text TEXT, score REAL, answer_key TEXT, rubrics TEXT, order_index INTEGER, image_paths TEXT, hide_rubric_from_students INTEGER DEFAULT 0);
         CREATE TABLE submissions (id INTEGER PRIMARY KEY, exam_id INTEGER, user_id INTEGER, status TEXT, total_score REAL DEFAULT 0, submitted_at TEXT, graded_by_ai INTEGER DEFAULT 0, UNIQUE(exam_id, user_id));
         CREATE TABLE submission_answers (id INTEGER PRIMARY KEY, submission_id INTEGER, question_id INTEGER, answer_text TEXT, ai_score REAL, ai_feedback TEXT, ai_confidence TEXT, teacher_score REAL, teacher_comment TEXT, image_paths TEXT, quality_metrics TEXT, UNIQUE(submission_id, question_id));
         CREATE TABLE notifications (id INTEGER PRIMARY KEY, user_id INTEGER, type TEXT, link TEXT, data TEXT);
@@ -75,7 +75,7 @@ def db(monkeypatch):
         INSERT INTO rooms VALUES (10,'Data Structures',1), (20,'Other Room',2);
         INSERT INTO enrollments VALUES (1,10,101), (2,20,102);
         INSERT INTO exams (id,room_id,title,total_score) VALUES (1,10,'Stack',5), (2,20,'Queue',5);
-        INSERT INTO questions VALUES (11,1,'Explain Stack',5,'LIFO','[]',0,NULL), (22,2,'Explain Queue',5,'FIFO','[]',0,NULL);
+        INSERT INTO questions VALUES (11,1,'Explain Stack',5,'LIFO','[]',0,NULL,0), (22,2,'Explain Queue',5,'FIFO','[]',0,NULL,0);
     """)
     for module in (exam_routes, room_routes, system_routes, notification_service):
         monkeypatch.setattr(module, 'get_db_connection', lambda: database)
@@ -357,3 +357,33 @@ def test_invalid_dates_and_negative_max_score_rejected(db):
     assert client.post('/api/rooms/10/exams',json={'title':'Test','start_date':'bad','questions':[question]}).status_code == 422
     assert client.post('/api/rooms/10/exams',json={'title':'Test','start_date':'2026-12-02','end_date':'2026-12-01','questions':[question]}).status_code == 422
     assert client.post('/api/rooms/10/exams',json={'title':'Test','questions':[{'text':'Stack','score':-1}]}).status_code == 422
+
+
+def test_hide_rubric_from_students(db):
+    # Teacher creates an exam with hide_rubric_from_students = True
+    rubrics = [{'name': 'Accuracy', 'description': 'Must mention LIFO order', 'score': 5}]
+    res = client_for('teacher', 1).post('/api/rooms/10/exams', json={
+        'title': 'Test Rubric Hidden',
+        'questions': [{
+            'text': 'What is Stack?',
+            'score': 5,
+            'answer_key': 'LIFO',
+            'rubrics': rubrics,
+            'hide_rubric_from_students': True
+        }]
+    })
+    assert res.status_code == 200, res.text
+    exam_id = res.json()['id']
+
+    # Teacher gets exam: rubrics and answer_key are visible
+    teacher_exam = client_for('teacher', 1).get(f'/api/rooms/10/exams/{exam_id}').json()
+    assert len(teacher_exam['questions'][0]['rubrics']) == 1
+    assert teacher_exam['questions'][0]['rubrics'][0]['name'] == 'Accuracy'
+    assert teacher_exam['questions'][0]['answer_key'] == 'LIFO'
+    assert teacher_exam['questions'][0]['hide_rubric_from_students'] is True
+
+    # Student gets exam: rubrics are empty, answer_key is stripped
+    student_exam = client_for('student', 101).get(f'/api/rooms/10/exams/{exam_id}').json()
+    assert student_exam['questions'][0]['rubrics'] == []
+    assert 'answer_key' not in student_exam['questions'][0]
+    assert student_exam['questions'][0]['hide_rubric_from_students'] is True

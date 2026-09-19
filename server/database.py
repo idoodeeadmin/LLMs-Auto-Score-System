@@ -149,6 +149,7 @@ def init_db():
         rubrics TEXT,
         order_index INTEGER DEFAULT 0,
         image_paths TEXT,
+        hide_rubric_from_students TINYINT DEFAULT 0,
         FOREIGN KEY (exam_id) REFERENCES exams (id) ON DELETE CASCADE
     )
     ''')
@@ -295,6 +296,7 @@ def init_db():
     add_column_if_not_exists("email_verifications", "verified_at DATETIME")
     add_column_if_not_exists("email_verifications", "created_at DATETIME DEFAULT CURRENT_TIMESTAMP")
     add_column_if_not_exists("questions", "image_paths TEXT")
+    add_column_if_not_exists("questions", "hide_rubric_from_students TINYINT DEFAULT 0")
     add_column_if_not_exists("submission_answers", "image_paths TEXT")
     add_column_if_not_exists("users", "name VARCHAR(255) NOT NULL DEFAULT 'User'")
     add_column_if_not_exists("users", "student_id VARCHAR(100)")

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Info, ChevronDown, ChevronUp, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Info, ChevronDown, ChevronUp, CheckCircle2, EyeOff } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ interface Question {
   id: number; text: string; score: number;
   answer_key?: string; rubrics?: Rubric[];
   order_index: number; image_path?: string | null; image_paths?: string[];
+  hide_rubric_from_students?: boolean;
 }
 interface Exam {
   id: number; room_id: number; title: string; description?: string;
@@ -165,13 +166,21 @@ export default function ExamView() {
                     ) : null}
 
                     {/* Students can inspect scoring criteria; answer keys remain teacher-only. */}
-                    {(isTeacher ? Boolean(q.answer_key || q.rubrics?.length) : Boolean(q.rubrics?.length)) && (
+                    {(isTeacher ? Boolean(q.answer_key || q.rubrics?.length) : Boolean(!q.hide_rubric_from_students && q.rubrics?.length)) && (
                       <div className="pl-8 pt-2 border-t border-gray-50 dark:border-gray-800 mt-4">
-                        <button onClick={() => setExpandedId(expandedId === q.id ? null : q.id)} className="text-xs text-emerald-800 dark:text-emerald-300 hover:text-emerald-950 dark:hover:text-emerald-200 font-medium transition-colors flex items-center gap-1.5">
-                          {expandedId === q.id
-                            ? (isTeacher ? "ซ่อนเฉลยและเกณฑ์ ▲" : "ซ่อนเกณฑ์การให้คะแนน ▲")
-                            : (isTeacher ? "แสดงเฉลยและเกณฑ์ ▼" : "แสดงเกณฑ์การให้คะแนน ▼")}
-                        </button>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <button onClick={() => setExpandedId(expandedId === q.id ? null : q.id)} className="text-xs text-emerald-800 dark:text-emerald-300 hover:text-emerald-950 dark:hover:text-emerald-200 font-medium transition-colors flex items-center gap-1.5">
+                            {expandedId === q.id
+                              ? (isTeacher ? "ซ่อนเฉลยและเกณฑ์ ▲" : "ซ่อนเกณฑ์การให้คะแนน ▲")
+                              : (isTeacher ? "แสดงเฉลยและเกณฑ์ ▼" : "แสดงเกณฑ์การให้คะแนน ▼")}
+                          </button>
+                          {isTeacher && q.hide_rubric_from_students && (
+                            <span className="text-[11px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 px-2 py-0.5 rounded-full inline-flex items-center gap-1 font-medium">
+                              <EyeOff size={11} />
+                              ซ่อนเกณฑ์ไม่ให้นักเรียนเห็น
+                            </span>
+                          )}
+                        </div>
                         {expandedId === q.id && (
                           <div className="mt-4 space-y-5 text-sm animate-in fade-in slide-in-from-top-2">
                             {isTeacher && q.answer_key && (
