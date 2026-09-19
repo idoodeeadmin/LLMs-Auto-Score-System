@@ -779,7 +779,7 @@ export default function CreateExam() {
                                 <th className="py-2 w-8 text-center">#</th>
                                 <th className="py-2 px-2 w-1/3">หัวข้อเกณฑ์</th>
                                 <th className="py-2 px-2">
-                                  คำอธิบายรายละเอียด
+                                  คำอธิบายรายละเอียด <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500">(นักเรียนจะเห็นเกณฑ์นี้ ไม่ควรใส่เฉลยคำตอบ)</span>
                                 </th>
                                 <th className="py-2 text-center w-16">คะแนน</th>
                                 <th className="py-2 w-8"></th>

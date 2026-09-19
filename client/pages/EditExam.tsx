@@ -699,7 +699,7 @@ export default function EditExam() {
                           <div className="hidden sm:flex bg-gray-50/80 dark:bg-gray-900/80 border-b border-gray-200 dark:border-gray-800 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
                             <div className="w-10 text-center py-2 border-r border-gray-200 dark:border-gray-800">#</div>
                             <div className="flex-[1.5] px-3 py-2 border-r border-gray-200 dark:border-gray-800">หัวข้อเกณฑ์</div>
-                            <div className="flex-[3] px-3 py-2 border-r border-gray-200 dark:border-gray-800">คำอธิบายรายละเอียด</div>
+                            <div className="flex-[3] px-3 py-2 border-r border-gray-200 dark:border-gray-800">คำอธิบายรายละเอียด <span className="text-[10px] font-normal text-gray-400 dark:text-gray-500">(นักเรียนจะเห็นเกณฑ์นี้ ไม่ควรใส่เฉลยคำตอบ)</span></div>
                             <div className="w-20 px-3 py-2 text-center">คะแนน</div>
                             <div className="w-10"></div>
                           </div>
