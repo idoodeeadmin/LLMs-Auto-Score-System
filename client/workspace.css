@@ -157,7 +157,8 @@
 .workspace .primary-action:hover {
   background: #0b5147;
 }
-.workspace.create-exam-page .create-exam-utilities button {
+.workspace.create-exam-page .create-exam-utilities button,
+.workspace.edit-exam-page .create-exam-utilities button {
   width: 32px;
   height: 32px;
   min-height: 32px;
@@ -167,10 +168,12 @@
   background: transparent;
   box-shadow: none;
 }
-.workspace.create-exam-page .create-exam-utilities button:hover {
+.workspace.create-exam-page .create-exam-utilities button:hover,
+.workspace.edit-exam-page .create-exam-utilities button:hover {
   background: hsl(var(--accent));
 }
-.workspace.create-exam-page .task-header-actions .primary-action {
+.workspace.create-exam-page .task-header-actions .primary-action,
+.workspace.edit-exam-page .task-header-actions .primary-action {
   min-height: 36px;
   padding: 0 14px;
   border-radius: 8px;
@@ -831,19 +834,23 @@
     margin-top: 2px;
     width: 100%;
   }
-  .workspace.create-exam-page .task-header {
+  .workspace.create-exam-page .task-header,
+  .workspace.edit-exam-page .task-header {
     align-items: center;
     display: flex;
     padding: 10px 12px;
   }
-  .workspace.create-exam-page .task-header-actions {
+  .workspace.create-exam-page .task-header-actions,
+  .workspace.edit-exam-page .task-header-actions {
     display: flex !important;
   }
-  .workspace.create-exam-page .task-header-actions > :first-child {
+  .workspace.create-exam-page .task-header-actions > :first-child,
+  .workspace.edit-exam-page .task-header-actions > :first-child {
     grid-column: auto;
     grid-row: auto;
   }
-  .workspace.create-exam-page .task-header-actions .primary-action {
+  .workspace.create-exam-page .task-header-actions .primary-action,
+  .workspace.edit-exam-page .task-header-actions .primary-action {
     margin-top: 0;
     min-height: 36px;
     width: auto;
