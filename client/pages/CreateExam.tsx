@@ -26,6 +26,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { UserProfileMenu } from "@/components/UserProfileMenu";
 import { toast } from "sonner";
 
 interface RubricItem {
@@ -592,6 +593,8 @@ export default function CreateExam() {
             <span className="hidden sm:inline">{isSaving ? "กำลังเผยแพร่…" : "เผยแพร่"}</span>
           </Button>
         </div>
+          <ThemeToggle />
+          <UserProfileMenu />
       </div>
 
       {/* Google Docs Paper Canvas */}

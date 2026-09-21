@@ -35,9 +35,12 @@ createServer(async (req, res) => {
       else if (p.endsWith('/submissions/me')) body = { status: 'missing' };
       else if (/\/submissions\/\d+$/.test(p)) { const s = students.find(s => s.student_id === Number(p.split('/').pop())); body = { submission: s, student: { id: s.student_id, name: s.name }, answers: [{ id: 1, question_id: 11, question_text: exam.questions[0].text, max_score: 10, answer_text: 'Stack ทำงานแบบ LIFO ส่วน Queue เป็น FIFO', ai_score: 8, ai_feedback: 'อธิบายหลักการถูกต้อง แต่ยังขาดตัวอย่างของ Queue', ai_confidence: s.status === 'needs_review' ? 'low' : 'high', quality_metrics: { transcription: 'Stack ทำงานแบบ LIFO ส่วน Queue เป็น FIFO' }, rubrics: exam.questions[0].rubrics }] }; }
       else if (p.endsWith('/submissions')) body = students;
-      else if (p.endsWith('/exams/1')) body = { ...exam, server_time: new Date().toISOString(), submission_deadline: new Date(now + 3660000).toISOString() };
-      else if (p.endsWith('/exams')) body = [exam];
-      else if (p === '/api/ai/answer-word-count') body = { counts: Object.fromEntries(Object.entries(data.answers).map(([k, v]) => [k, v.trim().split(/\s+/).filter(Boolean).length])), limit: 300 };
+      else if (p.endsWith('/exams/1')) body = { ...exam, end_date: new Date(Date.now() + 86400000).toISOString(), server_time: new Date().toISOString(), submission_deadline: new Date(Date.now() + 86460000).toISOString() };
+      else if (p.endsWith('/exams')) body = [{ ...exam, end_date: new Date(Date.now() + 86400000).toISOString() }];
+      else if (/\/submissions\/\d+\/approve$/.test(p) || (/\/submissions\/\d+$/.test(p) && (req.method === 'POST' || req.method === 'PUT'))) { body = { success: true, message: 'บันทึกคะแนนเรียบร้อย' }; }
+      else if (p.endsWith('/exams/1/analytics')) body = { mean_score: 8.5, median_score: 8.5, approved_submission_count: 2, score_distribution: { '0-2': 0, '3-5': 0, '6-8': 1, '9-10': 1 }, submission_counts: { submitted: 5, missing: 1 }, difficulty_analysis: [{ question_id: 11, order_index: 0, question_text: exam.questions[0].text, max_score: 10, avg_score: 8.5, percent_correct: 85 }] };
+      else if (p.endsWith('/analytics')) body = { total_students: 6, exam_count: 1, overall_mean_score: 8.5, overall_median_score: 8.5, overall_distribution: { '0-2': 0, '3-5': 0, '6-8': 1, '9-10': 1 }, exam_summaries: [{ exam_id: 1, title: exam.title, total_score: 10, submitted_count: 5, approved_count: 2, approved_mean: 8.5, missing_count: 1, submission_rate: 83.3, mean_percent: 85 }] };
+      else if (p.endsWith('/enrollment') && req.method === 'DELETE') body = { message: 'ออกจากห้องเรียนแล้ว' };
       else { status = 501; body = { detail: 'This operation is not provided by the isolated review fixture.' }; }
       res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); return;
     }

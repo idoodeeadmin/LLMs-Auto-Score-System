@@ -6,7 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createBrowserRouter, RouterProvider, Routes, Route, useLocation } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Routes, Route, useLocation, Navigate } from "react-router-dom";
 const Index = lazy(() => import("./pages/Index"));
 const Register = lazy(() => import("./pages/Register"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
@@ -55,6 +55,7 @@ function RouteExperience() {
       {isLoading ? <RouteLoading pathname={location.pathname} /> : <Suspense fallback={<RouteLoading pathname={location.pathname} />}>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/login" element={<Navigate to="/" replace />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />

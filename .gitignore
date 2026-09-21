@@ -85,10 +85,16 @@ scratch/
 course/
 docs_and_tests/*
 !docs_and_tests/*.md
+!docs_and_tests/chapter4_testcases.html
 system_workflow_summary.md
 project_struc.md
 capture.mjs
 capture_missing.mjs
+public/inspect/
+/artifacts/
+/*.jpg
+/comp248_full.png
+/ชุดข้อสอบใหม่/
 
 AGENTS.md
 IMPLEMENTATION_PLAN.md

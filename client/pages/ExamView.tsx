@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Info, ChevronDown, ChevronUp, CheckCircle2, EyeOff } from "lucide-react";
+import { ArrowLeft, Info, ChevronDown, ChevronUp, CheckCircle2, EyeOff, Edit3, FileCheck, BarChart3, Users } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -238,7 +238,7 @@ export default function ExamView() {
                     {ans.ai_feedback && (
                       <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-4 mt-2">
                         <p className="text-xs text-emerald-800 dark:text-emerald-300 font-medium mb-2">คำแนะนำจาก AI</p>
-                        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{ans.ai_feedback}</p>
+                        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line">{ans.ai_feedback}</p>
                       </div>
                     )}
                     {ans.teacher_comment && (
@@ -254,7 +254,64 @@ export default function ExamView() {
           </div>
 
           {/* Right Column: Actions (Sticky) */}
-          {!isTeacher && (
+          {isTeacher ? (
+            <div className="space-y-6 lg:sticky lg:top-24">
+              <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 space-y-4">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Users size={16} className="text-emerald-600 dark:text-emerald-400" />
+                  การจัดการข้อสอบ
+                </h3>
+                
+                <div className="space-y-2.5 pt-1">
+                  <Button
+                    onClick={() => navigate(`/room/${roomId}/exam/${examId}/review`)}
+                    className="w-full h-11 bg-emerald-800 hover:bg-emerald-900 dark:bg-emerald-400 dark:hover:bg-emerald-300 dark:text-emerald-950 text-white font-medium rounded-xl flex items-center justify-center gap-2 shadow-sm"
+                  >
+                    <FileCheck size={18} />
+                    <span>ตรวจทานและอนุมัติคะแนน</span>
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate(`/room/${roomId}/exam/${examId}/edit`)}
+                    className="w-full h-10 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl flex items-center justify-center gap-2"
+                  >
+                    <Edit3 size={16} />
+                    <span>แก้ไขเนื้อหาข้อสอบ</span>
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate(`/room/${roomId}/exam/${examId}/scoreboard`)}
+                    className="w-full h-10 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl flex items-center justify-center gap-2"
+                  >
+                    <BarChart3 size={16} />
+                    <span>ตารางคะแนน (Scoreboard)</span>
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate(`/room/${roomId}/exam/${examId}/analytics`)}
+                    className="w-full h-10 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl flex items-center justify-center gap-2"
+                  >
+                    <BarChart3 size={16} />
+                    <span>สถิติการสอบ (Analytics)</span>
+                  </Button>
+                </div>
+
+                <div className="pt-3 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400 space-y-1.5">
+                  <div className="flex justify-between">
+                    <span>จำนวนคำถาม:</span>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">{exam?.questions.length} ข้อ</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>คะแนนเต็ม:</span>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">{exam?.total_score} คะแนน</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
           <div className="space-y-6 lg:sticky lg:top-24">
             
             {/* Action Panel */}

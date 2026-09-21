@@ -3,7 +3,10 @@ import re
 from datetime import datetime, timezone, timedelta
 
 from fastapi import HTTPException
-from pythainlp.tokenize import word_tokenize
+try:
+    from pythainlp.tokenize import word_tokenize
+except ImportError:
+    word_tokenize = None
 
 MAX_ANSWER_WORDS = 300
 MAX_ANSWER_CHARACTERS = 30000
@@ -13,9 +16,11 @@ SUBMISSION_GRACE_SECONDS = 60
 
 def count_answer_words(text: str) -> int:
     # NewMM segments Thai without requiring spaces. Punctuation is not a word.
-    tokens = word_tokenize(text, engine="newmm", keep_whitespace=False)
-    return sum(1 if any("\u0e01" <= char <= "\u0e5b" and char.isalnum() for char in token)
-               else len(re.findall(r"[^\W_]+", token, flags=re.UNICODE)) for token in tokens)
+    if word_tokenize:
+        tokens = word_tokenize(text, engine="newmm", keep_whitespace=False)
+        return sum(1 if any("\u0e01" <= char <= "\u0e5b" and char.isalnum() for char in token)
+                   else len(re.findall(r"[^\W_]+", token, flags=re.UNICODE)) for token in tokens)
+    return len(re.findall(r"\S+", text))
 
 
 def validate_answer_text(text: str) -> int:

@@ -7,6 +7,7 @@ import {
   Eye,
   FileText,
   Loader2,
+  LogOut,
   Megaphone,
   MoreVertical,
   Paperclip,
@@ -16,6 +17,10 @@ import {
   Send,
   Trash2,
   X,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  FileCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -24,9 +29,20 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
+import { UserProfileMenu } from "@/components/UserProfileMenu";
 import { RoomStreamSkeleton } from "@/components/PageSkeletons";
 import { RoomMembers } from "@/components/RoomMembers";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Exam {
   id: number;
@@ -95,6 +111,31 @@ export default function RoomDetail() {
   const [savingAnnouncement, setSavingAnnouncement] = useState(false);
   const [announcementFiles, setAnnouncementFiles] = useState<File[]>([]);
   const [announcementAttachments, setAnnouncementAttachments] = useState<AnnouncementAttachment[]>([]);
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const [studentSubmissions, setStudentSubmissions] = useState<{ exam_id: number; status: string; submission_score?: number }[]>([]);
+
+  const handleLeaveRoom = async () => {
+    if (!roomId) return;
+    setLeaving(true);
+    try {
+      const response = await fetch(`/api/rooms/${roomId}/enrollment`, {
+        method: "DELETE",
+        headers,
+      });
+      if (response.ok) {
+        toast.success("ออกจากห้องเรียนเรียบร้อยแล้ว");
+        navigate("/home", { replace: true });
+      } else {
+        const data = await response.json().catch(() => null);
+        toast.error(data?.detail || "ไม่สามารถออกจากห้องเรียนได้");
+      }
+    } catch {
+      toast.error("เกิดข้อผิดพลาดในการออกจากห้องเรียน");
+    } finally {
+      setLeaving(false);
+    }
+  };
 
   const loadData = useCallback(async () => {
     if (!roomId || !token) {
@@ -124,6 +165,20 @@ export default function RoomDetail() {
           if (unread.length) {
             setAnnouncements((current) => current.map((item) => ({ ...item, is_read: 1 })));
           }
+        }
+      }
+
+      if (user?.role === "student") {
+        try {
+          const subRes = await fetch("/api/submissions/me", { headers });
+          if (subRes.ok) {
+            const subRows = await subRes.json();
+            if (Array.isArray(subRows)) {
+              setStudentSubmissions(subRows);
+            }
+          }
+        } catch {
+          // ignore
         }
       }
     } catch (error) {
@@ -289,14 +344,10 @@ export default function RoomDetail() {
             <p className="truncate text-xs text-slate-500">{room?.section || "ห้องเรียน"}</p>
           </div>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <ThemeToggle />
           <NotificationBell />
-          {user?.role === "teacher" && (
-            <Button onClick={() => navigate(`/room/${roomId}/create-exam`)} className="ml-2 hidden h-9 sm:flex">
-              <Plus size={16} className="mr-1" /> สร้างข้อสอบ
-            </Button>
-          )}
+          <UserProfileMenu />
         </div>
       </header>
 
@@ -349,6 +400,19 @@ export default function RoomDetail() {
                 </div>
               )}
             </div>
+
+            {user?.role === "student" && (
+              <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-[#1E1E1E]">
+                <Button
+                  variant="outline"
+                  onClick={() => setLeaveDialogOpen(true)}
+                  className="w-full justify-center text-xs font-medium text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:border-red-900/40 dark:hover:bg-red-950/30"
+                >
+                  <LogOut size={15} className="mr-1.5" />
+                  ออกจากห้องเรียน
+                </Button>
+              </div>
+            )}
           </aside>
 
           <section className="min-w-0 space-y-4">
@@ -443,6 +507,8 @@ export default function RoomDetail() {
                     onOpen={() => navigate(`/room/${roomId}/exam/${item.value.id}`)}
                     onEdit={() => navigate(`/room/${roomId}/exam/${item.value.id}/edit`)}
                     onDelete={() => deleteExam(item.value)}
+                    onReview={() => navigate(`/room/${roomId}/exam/${item.value.id}/review`)}
+                    studentSubmission={studentSubmissions.find((s) => s.exam_id === item.value.id)}
                   />
                 ),
               )
@@ -450,6 +516,34 @@ export default function RoomDetail() {
           </section>
         </div>
       </main>
+
+      <AlertDialog open={leaveDialogOpen} onOpenChange={setLeaveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ยืนยันการออกจากห้องเรียน</AlertDialogTitle>
+            <AlertDialogDescription>
+              คุณแน่ใจหรือไม่ว่าต้องการออกจากห้องเรียน <strong>&ldquo;{room?.name}&rdquo;</strong>?
+              <br />
+              <span className="text-xs text-muted-foreground mt-2 block">
+                ข้อมูลการส่งงานและคะแนนที่คุณเคยทำจะยังคงอยู่ในระบบของอาจารย์ผู้สอน แต่ห้องเรียนนี้จะถูกนำออกจากรายการของคุณ
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={leaving}>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleLeaveRoom();
+              }}
+              disabled={leaving}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {leaving ? "กำลังดำเนินการ…" : "ยืนยันออกจากห้องเรียน"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -528,12 +622,16 @@ function ExamPost({
   onOpen,
   onEdit,
   onDelete,
+  onReview,
+  studentSubmission,
 }: {
   exam: Exam;
   isTeacher: boolean;
   onOpen: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onReview?: () => void;
+  studentSubmission?: { status: string; submission_score?: number };
 }) {
   return (
     <article className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-[#1E1E1E]">
@@ -544,7 +642,27 @@ function ExamPost({
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <button onClick={onOpen} className="min-w-0 text-left">
-              <p className="text-xs font-medium text-slate-500">ผู้สอนมอบหมายข้อสอบใหม่</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-xs font-medium text-slate-500">ผู้สอนมอบหมายข้อสอบใหม่</p>
+                {studentSubmission && (
+                  studentSubmission.status === "approved" ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                      <CheckCircle2 size={11} />
+                      ตรวจแล้ว ({studentSubmission.submission_score ?? "-"} / {exam.total_score} คะแนน)
+                    </span>
+                  ) : studentSubmission.status !== "missing" ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 px-2.5 py-0.5 rounded-full border border-blue-200 dark:border-blue-800">
+                      <Clock size={11} />
+                      ส่งแล้ว (รอประกาศผล)
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 px-2.5 py-0.5 rounded-full">
+                      <AlertCircle size={11} />
+                      ยังไม่ส่งคำตอบ
+                    </span>
+                  )
+                )}
+              </div>
               <h3 className="mt-1 truncate font-semibold text-slate-900 hover:text-emerald-800 dark:text-white dark:hover:text-emerald-300">{exam.title}</h3>
               <p className="mt-1 text-xs text-slate-400">{formatDate(exam.created_at)}</p>
             </button>
@@ -567,14 +685,22 @@ function ExamPost({
             <span>{exam.total_score} คะแนน</span>
             {exam.end_date && <span>ครบกำหนด {formatDate(exam.end_date)}</span>}
           </div>
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-wrap items-center gap-2">
             <Button size="sm" onClick={onOpen}>{isTeacher ? "ดูข้อสอบ" : "ดูงานและเกณฑ์"}</Button>
-
+            {isTeacher && onReview && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onReview}
+                className="border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+              >
+                <FileCheck size={14} className="mr-1.5" />
+                ตรวจงาน
+              </Button>
+            )}
           </div>
         </div>
       </div>
-
-
     </article>
   );
 }

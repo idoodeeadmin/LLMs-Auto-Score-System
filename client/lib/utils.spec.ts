@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cn } from "./utils";
+import { cn, countWords, formatRemainingTime } from "./utils";
 
 describe("cn function", () => {
   it("should merge classes correctly", () => {
@@ -28,5 +28,39 @@ describe("cn function", () => {
     expect(cn("base", { conditional: true, "not-included": false })).toBe(
       "base conditional",
     );
+  });
+});
+
+describe("countWords function", () => {
+  it("should return 0 for empty or whitespace-only text", () => {
+    expect(countWords("")).toBe(0);
+    expect(countWords("   \n\t  ")).toBe(0);
+  });
+
+  it("should correctly count English words and ignore punctuation", () => {
+    expect(countWords("Hello world! This is a test.")).toBe(6);
+  });
+
+  it("should correctly count Thai words without spaces", () => {
+    const count = countWords("การให้คะแนนอัตโนมัติด้วยปัญญาประดิษฐ์");
+    expect(count).toBeGreaterThanOrEqual(4);
+  });
+
+  it("should handle mixed Thai and English text", () => {
+    const count = countWords("ระบบ AI สำหรับ LLMs Auto-Score");
+    expect(count).toBeGreaterThanOrEqual(5);
+  });
+});
+
+describe("formatRemainingTime function", () => {
+  it("should format seconds under 1 hour as MM:SS", () => {
+    expect(formatRemainingTime(65)).toBe("01:05");
+    expect(formatRemainingTime(0)).toBe("00:00");
+    expect(formatRemainingTime(3599)).toBe("59:59");
+  });
+
+  it("should format hours, minutes, and seconds as HH:MM:SS", () => {
+    expect(formatRemainingTime(3600)).toBe("01:00:00");
+    expect(formatRemainingTime(3665)).toBe("01:01:05");
   });
 });

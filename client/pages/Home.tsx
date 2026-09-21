@@ -5,13 +5,34 @@ import {
   ArrowRight,
   BookOpen,
   Copy,
+  LogOut,
+  MoreVertical,
+  Pencil,
   Search,
+  Trash2,
   X,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { RoomListSkeleton } from "@/components/PageSkeletons";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface ExamRoom {
   id: string | number;
@@ -58,11 +79,41 @@ export default function Home() {
   const [showForm, setShowForm] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingRoom, setEditingRoom] = useState<ExamRoom | null>(null);
+  const [roomToLeave, setRoomToLeave] = useState<ExamRoom | null>(null);
+  const [leaving, setLeaving] = useState(false);
+  const [roomToDelete, setRoomToDelete] = useState<ExamRoom | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const visibleRooms = rooms.filter((room) =>
     `${room.name} ${room.section} ${room.class_code}`
       .toLowerCase()
       .includes(search.toLowerCase()),
   );
+
+  const handleLeaveRoom = async () => {
+    if (!roomToLeave) return;
+    setLeaving(true);
+    try {
+      const res = await fetch(`/api/rooms/${roomToLeave.id}/enrollment`, {
+        method: "DELETE",
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+      });
+      if (res.ok) {
+        setRooms((prev) => prev.filter((r) => r.id !== roomToLeave.id));
+        toast.success(`ออกจากห้องเรียน "${roomToLeave.name}" เรียบร้อยแล้ว`);
+        setRoomToLeave(null);
+      } else {
+        const err = await res.json().catch(() => null);
+        toast.error(err?.detail || "ไม่สามารถออกจากห้องเรียนได้");
+      }
+    } catch {
+      toast.error("เกิดข้อผิดพลาดในการออกจากห้องเรียน");
+    } finally {
+      setLeaving(false);
+    }
+  };
 
   const fetchRooms = async () => {
     try {
@@ -93,6 +144,23 @@ export default function Home() {
 
   const closeRoomForm = () => {
     setShowForm(false);
+    setEditingRoom(null);
+    setRoomName("");
+    setRoomSection("");
+  };
+
+  const openCreateRoom = () => {
+    setEditingRoom(null);
+    setRoomName("");
+    setRoomSection("");
+    setShowForm(true);
+  };
+
+  const openEditRoom = (room: ExamRoom) => {
+    setEditingRoom(room);
+    setRoomName(room.name);
+    setRoomSection(room.section || "");
+    setShowForm(true);
   };
 
   const handleCreateRoom = async (e: React.FormEvent) => {
@@ -104,8 +172,9 @@ export default function Home() {
 
     setSaving(true);
     try {
-      const res = await fetch("/api/rooms", {
-        method: "POST",
+      const isEditing = Boolean(editingRoom);
+      const res = await fetch(isEditing ? `/api/rooms/${editingRoom?.id}` : "/api/rooms", {
+        method: isEditing ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: token ? `Bearer ${token}` : "",
@@ -117,14 +186,14 @@ export default function Home() {
       });
 
       if (res.ok) {
-        const createdRoom = await res.json();
-        setRooms((prev) => [createdRoom, ...prev]);
-        setRoomName("");
-        setRoomSection("");
+        const updatedRoom = await res.json();
+        if (isEditing) {
+          setRooms((prev) => prev.map((room) => room.id === editingRoom?.id ? { ...room, name: roomName.trim(), section: roomSection.trim() || "Sec 1" } : room));
+        } else {
+          setRooms((prev) => [updatedRoom, ...prev]);
+        }
         closeRoomForm();
-        toast.success(
-          `สร้างห้องเรียนสำเร็จ! Class Code: ${createdRoom.class_code}`,
-        );
+        toast.success(isEditing ? "แก้ไขห้องเรียนเรียบร้อยแล้ว" : `สร้างห้องเรียนสำเร็จ! Class Code: ${updatedRoom.class_code}`);
       } else {
         const err = await res.json().catch(() => null);
         toast.error(err?.detail || "ไม่สามารถสร้างห้องเรียนได้");
@@ -133,6 +202,29 @@ export default function Home() {
       toast.error("เกิดข้อผิดพลาดในการสร้างห้องเรียน");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeleteRoom = async () => {
+    if (!roomToDelete) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/rooms/${roomToDelete.id}`, {
+        method: "DELETE",
+        headers: { Authorization: token ? `Bearer ${token}` : "" },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        toast.error(err?.detail || "ไม่สามารถลบห้องเรียนได้");
+        return;
+      }
+      setRooms((prev) => prev.filter((room) => room.id !== roomToDelete.id));
+      toast.success(`ลบห้องเรียน "${roomToDelete.name}" แล้ว`);
+      setRoomToDelete(null);
+    } catch {
+      toast.error("เกิดข้อผิดพลาดในการลบห้องเรียน");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -190,16 +282,17 @@ export default function Home() {
     <div className="workspace">
       <WorkspaceHeader />
       <main className="room-workspace">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
+        <div className="room-page-intro">
+          <div className="room-page-copy">
+            <span className="room-eyebrow">EVALY SCORE</span>
             <h1 className="page-heading">ชั้นเรียน</h1>
-            <p className="page-description">{rooms.length} ห้องเรียนในบัญชีนี้</p>
+            <p className="page-description">พื้นที่รวมชั้นเรียน ข้อสอบ และการติดตามผลของคุณ</p>
           </div>
           <Button
             variant="outline"
-            className="h-9 rounded-lg px-4 text-sm"
+            className="room-create-button h-10 rounded-lg px-4 text-sm"
             aria-expanded={showForm}
-            onClick={() => setShowForm(current => !current)}
+            onClick={() => showForm ? closeRoomForm() : openCreateRoom()}
           >
             {user?.role === "teacher" ? "สร้างห้องเรียน" : "เข้าร่วมห้องเรียน"}
           </Button>
@@ -209,9 +302,7 @@ export default function Home() {
           <section className="room-form">
             <div className="flex items-center justify-between gap-4">
               <h2 className="section-label">
-                {user?.role === "teacher"
-                  ? "ข้อมูลห้องเรียนใหม่"
-                  : "เข้าร่วมด้วยรหัสห้องเรียน"}
+                {user?.role === "teacher" ? (editingRoom ? "แก้ไขข้อมูลห้องเรียน" : "ข้อมูลห้องเรียนใหม่") : "เข้าร่วมด้วยรหัสห้องเรียน"}
               </h2>
               <Button type="button" variant="ghost" size="icon" aria-label="ปิดแบบฟอร์มห้องเรียน" onClick={closeRoomForm}>
                 <X size={17} />
@@ -242,7 +333,7 @@ export default function Home() {
                   type="submit"
                   className="primary-action"
                 >
-                  {saving ? "กำลังสร้าง…" : "บันทึกห้องเรียน"}
+                  {saving ? "กำลังบันทึก…" : editingRoom ? "บันทึกการแก้ไข" : "บันทึกห้องเรียน"}
                 </Button>
               </form>
             ) : (
@@ -270,7 +361,7 @@ export default function Home() {
         )}
 
         <div className="room-toolbar">
-          <h2 className="section-label">ห้องเรียนทั้งหมด</h2>
+                <div className="flex items-baseline gap-2"><h2 className="section-label">ห้องเรียนทั้งหมด</h2><span className="room-count">{visibleRooms.length}</span></div>
           <label className="room-search">
             <Search size={16} className="text-muted-foreground" />
             <input
@@ -314,6 +405,20 @@ export default function Home() {
               const teacherName = room.teacher_name || (user?.role === "teacher" ? user.name : "ผู้สอน");
               const teacherAvatar = room.teacher_avatar_url || (user?.role === "teacher" ? user.avatarUrl : undefined);
               return <article className="classroom-card" key={room.id}>
+                {user?.role === "teacher" && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button type="button" className="classroom-card-menu" aria-label={`ตัวเลือกห้องเรียน ${room.name}`} onClick={(event) => event.stopPropagation()}>
+                        <MoreVertical size={18} />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-44">
+                      <DropdownMenuItem onSelect={() => openEditRoom(room)}><Pencil size={15} className="mr-2" />แก้ไขห้องเรียน</DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem className="text-red-600 focus:text-red-700" onSelect={() => setRoomToDelete(room)}><Trash2 size={15} className="mr-2" />ลบห้องเรียน</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
                 <Link
                   to={`/room/${room.id}`}
                   className="classroom-card-banner"
@@ -349,15 +454,72 @@ export default function Home() {
                     <BookOpen size={17} />
                     <span>เปิดห้องเรียน</span>
                   </Link>
-                  <Link to={`/room/${room.id}`} aria-label={`ไปยังห้องเรียน ${room.name}`} className="classroom-card-arrow">
-                    <ArrowRight size={17} />
-                  </Link>
+                  <div className="flex items-center gap-1">
+                    {user?.role === "student" && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setRoomToLeave(room);
+                        }}
+                        aria-label={`ออกจากห้องเรียน ${room.name}`}
+                        title="ออกจากห้องเรียน"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                      >
+                        <LogOut size={15} />
+                      </button>
+                    )}
+                    <Link to={`/room/${room.id}`} aria-label={`ไปยังห้องเรียน ${room.name}`} className="classroom-card-arrow">
+                      <ArrowRight size={17} />
+                    </Link>
+                  </div>
                 </div>
               </article>;
             })}
           </div>
         )}
       </main>
+
+      <AlertDialog open={Boolean(roomToLeave)} onOpenChange={(open) => !open && setRoomToLeave(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ออกจากห้องเรียน</AlertDialogTitle>
+            <AlertDialogDescription>
+              คุณแน่ใจหรือไม่ว่าต้องการออกจากห้องเรียน <strong>&ldquo;{roomToLeave?.name}&rdquo;</strong>?
+              <br />
+              <span className="text-xs text-muted-foreground mt-2 block">
+                ข้อมูลการส่งงานและคะแนนที่คุณเคยทำจะยังคงอยู่ในระบบของอาจารย์ผู้สอน แต่ห้องเรียนนี้จะถูกนำออกจากรายการของคุณ
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={leaving}>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleLeaveRoom();
+              }}
+              disabled={leaving}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {leaving ? "กำลังดำเนินการ…" : "ยืนยันออกจากห้องเรียน"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={Boolean(roomToDelete)} onOpenChange={(open) => !open && setRoomToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ลบห้องเรียนนี้หรือไม่?</AlertDialogTitle>
+            <AlertDialogDescription>ห้องเรียน <strong>&ldquo;{roomToDelete?.name}&rdquo;</strong> และข้อมูลที่เกี่ยวข้องจะถูกลบถาวร ไม่สามารถกู้คืนได้</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction onClick={(event) => { event.preventDefault(); void handleDeleteRoom(); }} disabled={deleting} className="bg-red-600 text-white hover:bg-red-700">{deleting ? "กำลังลบ…" : "ยืนยันลบห้องเรียน"}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

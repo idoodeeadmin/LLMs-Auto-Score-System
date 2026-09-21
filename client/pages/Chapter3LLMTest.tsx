@@ -4,6 +4,7 @@ import { ArrowLeft, Play, Copy, Check, Loader2, Sparkles, FileText, Image as Ima
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { UserProfileMenu } from "@/components/UserProfileMenu";
 
 interface TestCase {
   id: string;
@@ -211,6 +212,7 @@ ${imageSection}
 
         <div className="flex items-center gap-3">
           <ThemeToggle />
+          <UserProfileMenu />
         </div>
       </header>
 

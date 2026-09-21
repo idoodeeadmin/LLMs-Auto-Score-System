@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { UserProfileMenu } from "@/components/UserProfileMenu";
 import { toast } from "sonner";
 
 interface AnswerItem {
@@ -150,8 +151,11 @@ export default function StudentGrading() {
     return () => window.removeEventListener("beforeunload", warn);
   }, [hasUnsavedChanges]);
 
-  const handleApprove = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const hasNext = queueIndex >= 0 && queueIndex < reviewQueue.length - 1;
+  const nextStudent = hasNext ? reviewQueue[queueIndex + 1] : null;
+
+  const handleApprove = async (e?: React.FormEvent, andNext = false) => {
+    if (e) e.preventDefault();
     if (!data) return;
 
     setIsApproving(true);
@@ -173,7 +177,11 @@ export default function StudentGrading() {
 
       if (res.ok) {
         toast.success("อนุมัติและประกาศผลคะแนนเรียบร้อยแล้ว!");
-        navigate(`/room/${roomId}/exam/${examId}/review`);
+        if (andNext && nextStudent) {
+          navigate(`/room/${roomId}/exam/${examId}/grading/${nextStudent.student_id}`);
+        } else {
+          navigate(`/room/${roomId}/exam/${examId}/review`);
+        }
       } else {
         const err = await res.json().catch(() => null);
         toast.error(err?.detail || "เกิดข้อผิดพลาดในการอนุมัติคะแนน");
@@ -242,7 +250,10 @@ export default function StudentGrading() {
           </h1>
         </div>
 
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <UserProfileMenu />
+        </div>
       </header>
 
       <main className="document-page">
@@ -388,7 +399,7 @@ export default function StudentGrading() {
                     </div>
 
                     {ans.ai_feedback && (
-                      <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed pl-5 border-l-2 border-slate-300 dark:border-slate-600">
+                      <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed pl-5 border-l-2 border-slate-300 dark:border-slate-600 whitespace-pre-line">
                         {ans.ai_feedback}
                       </p>
                     )}
@@ -447,21 +458,50 @@ export default function StudentGrading() {
               );
             })}
 
-            {/* Submit Approval Button */}
-            <Button
-              type="submit"
-              disabled={isApproving}
-              className="primary-action w-full mt-6"
-            >
-              {isApproving ? (
-                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+            {/* Submit Approval Buttons */}
+            <div className="flex flex-col sm:flex-row items-center gap-3 mt-8 pt-4 border-t border-slate-200 dark:border-slate-800">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isApproving}
+                onClick={(e) => handleApprove(e, false)}
+                className="w-full sm:w-auto flex-1 h-11 text-xs font-medium border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl"
+              >
+                <Check className="w-4 h-4 mr-2 text-emerald-600 dark:text-emerald-400" />
+                อนุมัติและกลับหน้ารวมตรวจงาน
+              </Button>
+
+              {hasNext ? (
+                <Button
+                  type="button"
+                  disabled={isApproving}
+                  onClick={(e) => handleApprove(e, true)}
+                  className="w-full sm:w-auto flex-1 h-11 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm"
+                >
+                  {isApproving ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Check className="w-4 h-4 mr-2" />
+                  )}
+                  อนุมัติและตรวจคนถัดไป ({nextStudent?.name?.slice(0, 12)}…) →
+                </Button>
               ) : (
-                <Check className="w-5 h-5 mr-2" />
+                <Button
+                  type="submit"
+                  disabled={isApproving}
+                  className="primary-action w-full sm:w-auto flex-1 h-11 text-xs font-medium"
+                >
+                  {isApproving ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Check className="w-4 h-4 mr-2" />
+                  )}
+                  {isApproving
+                    ? "กำลังบันทึกคะแนน..."
+                    : `อนุมัติและประกาศผลคะแนนสุทธิ (${totalTeacherScore.toFixed(1)} / ${totalMaxScore} คะแนน)`}
+                </Button>
               )}
-              {isApproving
-                ? "กำลังบันทึกคะแนน..."
-                : `อนุมัติและประกาศผลคะแนนสุทธิ (${totalTeacherScore.toFixed(1)} / ${totalMaxScore} คะแนน)`}
-            </Button>
+            </div>
           </form>
         )}
       </main>

@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
-  BookOpen,
   ClipboardCheck,
   Eye,
   EyeOff,
@@ -14,8 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import economicsHero from "@/assets/economics-classroom-hero-v4.png";
+import { AuthLayout } from "@/components/AuthLayout";
 
 export default function Index() {
   const [showPassword, setShowPassword] = useState(false);
@@ -96,70 +94,12 @@ export default function Index() {
   };
 
   return (
-    <div className="workspace auth-workspace login-page flex min-h-screen bg-[#f3f7f5] dark:bg-[#0c1412]">
-      <section className="relative hidden min-h-screen w-[46%] max-w-[760px] overflow-hidden bg-[#123d34] lg:flex">
-        <img
-          src={economicsHero}
-          alt="ชั้นเรียนเศรษฐศาสตร์และการเรียนการสอน"
-          className="absolute inset-0 h-full w-full object-cover object-[58%_center] brightness-[0.92] saturate-[0.82]"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#062c25]/65 via-[#0c4a3e]/25 to-[#062c25]/95" />
-
-        <div className="relative z-10 flex w-full flex-col justify-between p-10 xl:p-14">
-          <div className="flex items-center gap-3 text-white">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/25 backdrop-blur-sm">
-              <BookOpen className="h-5 w-5" />
-            </span>
-            <div>
-              <p className="text-lg font-semibold leading-none">Evaly</p>
-              <p className="mt-1 text-xs text-white/65">พื้นที่การสอบ</p>
-            </div>
-          </div>
-
-          <div className="max-w-[430px] text-white">
-            <span className="mb-5 inline-flex rounded-full border border-white/20 bg-black/10 px-3 py-1.5 text-xs font-medium text-white/85 backdrop-blur-sm">
-              ห้องเรียนและการสอบของคุณ
-            </span>
-            <h1 className="text-[clamp(2.25rem,4vw,3.5rem)] font-semibold leading-[1.12] tracking-[-0.035em]">
-              ประเมินงานเขียน
-              <br />อย่างเป็นระบบ
-            </h1>
-            <p className="mt-5 max-w-[390px] text-base leading-7 text-white/78">
-              สร้างข้อสอบ ตรวจคำตอบด้วยเกณฑ์เดียวกัน และติดตามผลการเรียนของทั้งชั้นในพื้นที่เดียว
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3 text-xs text-white/60">
-            <span className="h-px w-10 bg-white/35" />
-            Evaly Score · Exam workspace
-          </div>
-        </div>
-      </section>
-
-      <main className="relative flex min-h-screen w-full flex-1 items-center justify-center overflow-y-auto px-5 py-20 sm:px-8 lg:px-12">
-        <div className="absolute right-5 top-5 sm:right-8 sm:top-7">
-          <ThemeToggle />
-        </div>
-
-        <div className="w-full max-w-[500px] rounded-2xl border border-[#dfe8e3] bg-white p-6 shadow-[0_30px_80px_-48px_rgba(17,54,45,0.45)] dark:border-[#2a3b35] dark:bg-[#15201d] sm:p-9 lg:p-10">
-          <div className="mb-8 flex items-center justify-between lg:hidden">
-            <div className="flex items-center gap-2.5 text-[#0f695b] dark:text-[#91c7b8]">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#e8f3ef] dark:bg-[#243a33]"><BookOpen className="h-4 w-4" /></span>
-              <span className="font-semibold">Evaly</span>
-            </div>
-            <Link
-              to="/register"
-              className="text-sm font-medium text-[var(--work-accent)] hover:underline"
-            >
-              สร้างบัญชี
-            </Link>
-          </div>
-
+    <AuthLayout>
           <div className="mb-8">
-            <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-[#e7f3ef] text-[#0f695b] dark:bg-[#243a33] dark:text-[#91c7b8]">
+            <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-md bg-[#e7f3ef] text-[#0f695b] dark:bg-[#243a33] dark:text-[#91c7b8]">
               <ClipboardCheck className="h-[22px] w-[22px]" />
             </div>
-            <h2 className="text-[2rem] font-semibold leading-tight tracking-tight text-[var(--work-ink)]">ยินดีต้อนรับกลับ</h2>
+            <h2 className="text-3xl font-semibold leading-tight tracking-tight text-[var(--work-ink)]">ยินดีต้อนรับกลับ</h2>
             <p className="mt-2 text-[15px] text-[var(--work-muted)]">
               เข้าสู่ระบบเพื่อดูชั้นเรียน ข้อสอบ และผลคะแนน
             </p>
@@ -178,7 +118,7 @@ export default function Index() {
                   onChange={(event) => setEmail(event.target.value)}
                   placeholder="name@example.com หรือ student001"
                   required
-                  className="h-12 !rounded-xl !pl-10"
+                  className="h-11 !rounded-md !pl-10"
                 />
               </div>
             </div>
@@ -202,7 +142,7 @@ export default function Index() {
                   onChange={(event) => setPassword(event.target.value)}
                   placeholder="กรอกรหัสผ่าน"
                   required
-                  className="h-12 rounded-xl pr-10"
+                  className="h-11 rounded-md pr-10"
                 />
                 <button
                   type="button"
@@ -234,7 +174,7 @@ export default function Index() {
               </div>
             )}
 
-            <Button type="submit" disabled={isLoading} className="primary-action h-12 w-full text-[15px] shadow-sm">
+            <Button type="submit" disabled={isLoading} className="primary-action h-11 w-full text-[15px]">
               {isLoading ? (
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
               ) : (
@@ -254,7 +194,7 @@ export default function Index() {
           <GoogleSignInButton
             text="เข้าสู่ระบบด้วย Google"
             onSuccess={() => navigate("/home")}
-            className="h-12 w-full rounded-xl"
+            className="h-11 w-full rounded-md"
           />
 
           <p className="mt-6 text-center text-sm text-[var(--work-muted)]">
@@ -263,8 +203,6 @@ export default function Index() {
               สร้างบัญชี
             </Link>
           </p>
-        </div>
-      </main>
-    </div>
+    </AuthLayout>
   );
 }

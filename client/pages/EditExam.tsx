@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { UserProfileMenu } from "@/components/UserProfileMenu";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
@@ -434,6 +435,7 @@ export default function EditExam() {
           <Button onClick={handleSave} disabled={isSaving || questions.some(q => q.isGenerating)} className="primary-action shrink-0">
             {isSaving ? <Loader2 size={16} className="animate-spin" /> : "บันทึก"}
           </Button>
+          <UserProfileMenu />
         </div>
       </div>
 
