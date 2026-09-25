@@ -285,3 +285,36 @@
     scroll-behavior: auto;
   }
 }
+
+/* Date & Time Picker Dark Mode Enhancements */
+input[type="datetime-local"],
+input[type="date"],
+input[type="time"] {
+  color-scheme: light;
+}
+
+.dark input[type="datetime-local"],
+.dark input[type="date"],
+.dark input[type="time"] {
+  color-scheme: dark !important;
+  background-color: #1e2429 !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+.dark input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+.dark input[type="date"]::-webkit-calendar-picker-indicator,
+.dark input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.2) contrast(1.1);
+  cursor: pointer;
+  opacity: 0.9;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.dark input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
+.dark input[type="date"]::-webkit-calendar-picker-indicator:hover,
+.dark input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.15);
+}

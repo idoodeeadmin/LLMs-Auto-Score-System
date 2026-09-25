@@ -18,6 +18,9 @@ import {
   Settings,
   Send,
   EyeOff,
+  Calendar,
+  Clock,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -556,10 +559,19 @@ export default function CreateExam() {
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              title="การตั้งค่าข้อสอบ"
+              title="กำหนดเวลาและตั้งค่าข้อสอบ"
               aria-label="เปิดการตั้งค่าข้อสอบ"
               disabled={!draftLoaded || savingDraft || isSaving}
-              onClick={() => setSettingsOpen(true)}
+              onClick={() => {
+                const el = document.getElementById("exam-schedule-section");
+                if (el) {
+                  el.scrollIntoView({ behavior: "smooth", block: "center" });
+                  el.classList.add("ring-2", "ring-[#245b50]", "dark:ring-[#91c7b8]");
+                  setTimeout(() => el.classList.remove("ring-2", "ring-[#245b50]", "dark:ring-[#91c7b8]"), 2000);
+                } else {
+                  setSettingsOpen(true);
+                }
+              }}
             >
               <Settings size={16} />
             </Button>
@@ -634,6 +646,93 @@ export default function CreateExam() {
               placeholder="คำชี้แจงข้อสอบ (เช่น ให้นิสิตตอบคำถามและยกตัวอย่างประกอบให้ครบถ้วน)..."
               className="w-full text-sm text-slate-600 dark:text-slate-300 bg-transparent border-b border-slate-200 focus:outline-none py-3"
             />
+          </div>
+
+          {/* Exam Schedule & Settings Section (ดึงออกมาจากปุ่มตั้งค่าให้เห็นเด่นชัด) */}
+          <div
+            id="exam-schedule-section"
+            className="rounded-xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/70 dark:bg-[#181818] p-4 sm:p-5 space-y-4 shadow-sm transition-all"
+          >
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-100">
+                <Calendar size={17} className="text-[#245b50] dark:text-[#91c7b8]" />
+                <span>กำหนดเวลาและเงื่อนไขการสอบ (Exam Schedule & Settings)</span>
+              </div>
+              {(startDateTime || endDateTime) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStartDateTime("");
+                    setEndDateTime("");
+                  }}
+                  className="text-xs text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 underline transition"
+                >
+                  ล้างเวลาสอบ (ไม่จำกัดเวลา)
+                </button>
+              )}
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                  <Clock size={14} className="text-[#245b50] dark:text-[#91c7b8]" />
+                  <span>เวลาเริ่มทำข้อสอบ (Start Date & Time):</span>
+                </label>
+                <Input
+                  type="datetime-local"
+                  value={startDateTime}
+                  onChange={(e) => setStartDateTime(e.target.value)}
+                  className="bg-white dark:bg-[#202020] text-slate-900 dark:text-slate-100 border-slate-300 dark:border-slate-700 text-xs font-mono [color-scheme:light] dark:[color-scheme:dark]"
+                />
+                <span className="text-[11px] text-slate-600 dark:text-slate-300 block">
+                  {startDateTime
+                    ? `🗓️ เริ่มสอบ: ${new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short" }).format(new Date(startDateTime))}`
+                    : "เว้นว่างไว้เพื่อเปิดให้เริ่มสอบได้ทันทีหลังเผยแพร่"}
+                </span>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                  <Clock size={14} className="text-[#245b50] dark:text-[#91c7b8]" />
+                  <span>เวลาสิ้นสุดการสอบ (Deadline):</span>
+                </label>
+                <Input
+                  type="datetime-local"
+                  value={endDateTime}
+                  min={startDateTime || undefined}
+                  onChange={(e) => setEndDateTime(e.target.value)}
+                  className="bg-white dark:bg-[#202020] text-slate-900 dark:text-slate-100 border-slate-300 dark:border-slate-700 text-xs font-mono [color-scheme:light] dark:[color-scheme:dark]"
+                />
+                <span className="text-[11px] text-slate-600 dark:text-slate-300 block">
+                  {endDateTime
+                    ? `⌛ สิ้นสุดการสอบ: ${new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short" }).format(new Date(endDateTime))}`
+                    : "เว้นว่างไว้หากไม่จำกัดเวลาส่งข้อสอบ"}
+                </span>
+              </div>
+            </div>
+
+            {startDateTime && endDateTime && new Date(endDateTime) <= new Date(startDateTime) && (
+              <p role="alert" className="text-xs font-medium text-red-600 dark:text-red-400 flex items-center gap-1">
+                <AlertCircle size={14} />
+                เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่มสอบ
+              </p>
+            )}
+
+            <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
+              <div>
+                <label htmlFor="randomize-questions-inline" className="text-xs font-semibold text-slate-800 dark:text-slate-200 cursor-pointer">
+                  สุ่มลำดับข้อสอบ (Randomize Questions)
+                </label>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  สลับลำดับคำถามสำหรับผู้เรียนแต่ละคนเพื่อลดการลอกคำตอบ
+                </p>
+              </div>
+              <Switch
+                id="randomize-questions-inline"
+                checked={isRandomized}
+                onCheckedChange={setIsRandomized}
+              />
+            </div>
           </div>
 
           {/* Flat Question Flow */}
