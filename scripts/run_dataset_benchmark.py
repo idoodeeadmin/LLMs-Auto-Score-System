@@ -3,6 +3,8 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 sys.path.insert(0, os.path.abspath("."))
 import json
+import hashlib
+from pathlib import Path
 import asyncio
 from typing import List, Dict, Any, Optional
 import openpyxl
@@ -16,7 +18,9 @@ load_dotenv()
 from server.services.openai_grading import score_with_openai
 
 DATASET_EXCEL = os.path.join("ชุดข้อสอบใหม่", "ชุดข้อสอบ_dataset.xlsx")
-CACHE_FILE = os.path.join("artifacts", "benchmark_cache_204.json")
+_rubric_file = Path(__file__).resolve().parents[1] / 'ชุดข้อสอบใหม่' / 'เกณฑ์ตรวจสำหรับAI.xlsx'
+_rubric_hash = hashlib.sha256(_rubric_file.read_bytes() + os.getenv('OPENAI_MODEL', 'gpt-5.6-luna').encode()).hexdigest()[:12]
+CACHE_FILE = os.path.join("artifacts", f"benchmark_cache_rubric_{_rubric_hash}.json")
 REPORT_EXCEL = os.path.join("artifacts", "LLM_AutoScore_Benchmark_204_Final_Report.xlsx")
 
 EXAM_QUESTIONS = {
@@ -28,8 +32,8 @@ EXAM_QUESTIONS = {
         "question_text": "อธิบายความต่างของ Row-major vs Column-major",
         "answer_key": "Row-major คือการจัดเก็บข้อมูล ลำดับการเรียง หรือคำนวณตำแหน่ง address โดยอิงตามแถว (Row หรือแนวนอน/แกน X) ส่วน Column-major คือการจัดเก็บข้อมูล ลำดับการเรียง หรือคำนวณตำแหน่ง address โดยอิงตามคอลัมน์ (Column หรือแนวตั้ง/แกน Y) ต่างกันที่ลำดับและมิติการเรียงข้อมูลในหน่วยความจำ",
         "rubrics": [
-            {"name": "Row-major", "score": 1.0, "description": "อธิบาย Row-major ว่าเป็นการจัดเก็บข้อมูล ลำดับการเรียง หรือการหาตำแหน่ง address ตามแนวแถว (Row/แนวนอน/แกน X)"},
-            {"name": "Column-major", "score": 1.0, "description": "อธิบาย Column-major ว่าเป็นการจัดเก็บข้อมูล ลำดับการเรียง หรือการหาตำแหน่ง address ตามแนวคอลัมน์ (Column/แนวตั้ง/แกน Y)"}
+            {"name": "Row-major", "score": 1.0, "description": "อธิบาย Row-major ว่าเป็นการจัดเก็บข้อมูล ลำดับการเรียง หรือการหาตำแหน่ง address ตามแนวแถว (Row/แนวนอน/แกน X หรือรูปแบบดัชนี [i][j])"},
+            {"name": "Column-major", "score": 1.0, "description": "อธิบาย Column-major ว่าเป็นการจัดเก็บข้อมูล ลำดับการเรียง หรือการหาตำแหน่ง address ตามแนวคอลัมน์ (Column/แนวตั้ง/แกน Y หรือรูปแบบดัชนี [j][i])"}
         ]
     },
     2: {
@@ -40,8 +44,19 @@ EXAM_QUESTIONS = {
         "question_text": "อธิบายว่าทำไม O(n log n) เหมาะกับข้อมูลใหญ่กว่า O(n^2) และยกตัวอย่าง Algorithm",
         "answer_key": "O(n log n) มีอัตราการเติบโตของเวลาในการทำงาน (Growth rate) ช้ากว่า O(n^2) มากเมื่อข้อมูลมีขนาดใหญ่ขึ้น ทำให้ใช้เวลาประมวลผลน้อยกว่า ตัวอย่าง O(n log n) เช่น Merge Sort, Quick Sort, Heap Sort และ O(n^2) เช่น Bubble Sort, Selection Sort, Insertion Sort",
         "rubrics": [
-            {"name": "เหตุผลเรื่อง Growth Rate", "score": 1.0, "description": "อธิบายอัตราการเติบโตเมื่อ n มีขนาดใหญ่ n^2 จะเพิ่มขึ้นอย่างรวดเร็วมาก ขณะที่ n log n เพิ่มขึ้นช้ากว่าอย่างเห็นได้ชัด"},
-            {"name": "ตัวอย่าง Algorithm", "score": 1.0, "description": "ยกตัวอย่างอัลกอริทึมที่สอดคล้อง เช่น Merge Sort/Quick Sort สำหรับ O(n log n) และ Bubble Sort สำหรับ O(n^2)"}
+            {
+                "name": "การเปรียบเทียบ O(n log n) vs O(n^2) และตัวอย่าง Algorithm",
+                "score": 2.0,
+                "description": (
+                    "ประเมินตามระดับคะแนนดังต่อไปนี้อย่างเคร่งครัด:\n"
+                    "- 2.0 คะแนน: อธิบายได้ว่าทำไม O(n log n) ดีกว่าเมื่อข้อมูลใหญ่ เช่น เร็วกว่า, จำนวนรอบ/การทำงานโตช้ากว่า, n² โตเร็วมาก และ มีตัวอย่าง Algorithm หรืออธิบายละเอียดพอ\n"
+                    "- 1.5 คะแนน: เข้าใจแก่นว่า O(n log n) มีประสิทธิภาพกว่า แต่คำอธิบายยังไม่ครบ/มีส่วนคลาดเคลื่อน/ไม่ยกตัวอย่าง หรือมีตัวอย่างแต่เหตุผลไม่แข็งมาก\n"
+                    "- 1.0 คะแนน: รู้เพียงว่า O(n log n) “เร็วกว่า/ดีกว่า/ซ้ำซ้อนน้อยกว่า” แต่ไม่ได้อธิบายว่าทำไมอย่างชัดเจน หรือคำอธิบายคลุมเครือ\n"
+                    "- 0.5 คะแนน: ระบุได้เพียงตัวอย่าง Algorithm ที่เกี่ยวข้องอย่างถูกต้อง หรือกล่าวถึงความซับซ้อนเพียงฝั่งเดียว โดยยังไม่สื่อชัดว่า O(n log n) เหมาะกับข้อมูลใหญ่กว่า O(n²) อย่างไร และไม่มีข้อความที่ขัดกับหลักการสำคัญ\n"
+                    "- 0.0 คะแนน: ไม่สามารถอธิบายความสัมพันธ์ของ O(n log n) กับ O(n²) ได้อย่างมีสาระ หรือตอบผิดหลักการ\n"
+                    "**ระดับคะแนนที่ให้ได้คือ 2.0, 1.5, 1.0, 0.5 หรือ 0.0 คะแนนเท่านั้น ห้ามให้คะแนนเป็นเศษทศนิยมอื่น**"
+                )
+            }
         ]
     },
     3: {
@@ -52,8 +67,28 @@ EXAM_QUESTIONS = {
         "question_text": "การใช้ลิ้งค์ลิสต์เป็นสแตกและคิวจะแตกต่างจากการใช้อาร์เรย์อย่างไร และมีข้อดีข้อเสียอย่างไร",
         "answer_key": "ความแตกต่าง: Array มีขนาดคงที่ (Fixed size) จองพื้นที่ต่อเนื่อง ส่วน Linked List มีขนาดปรับเปลี่ยนได้แบบพลวัต (Dynamic size) ใช้พอยน์เตอร์ชี้โหนดถัดไป\nข้อดีข้อเสีย: Array เข้าถึงข้อมูลเร็วแบบ O(1) แต่เสี่ยงต่อ Overflow/ขยายขนาดยาก; Linked List ยืดหยุ่นไม่จำกัดขนาด ไม่เกิด overflow แต่ใช้เนื้อที่เพิ่มสำหรับ Pointer และการเข้าถึงข้อมูลช้ากว่า",
         "rubrics": [
-            {"name": "ความแตกต่างเชิงโครงสร้าง", "score": 0.5, "description": "อธิบายความต่างเรื่อง Fixed vs Dynamic Memory และการจองพื้นที่ต่อเนื่อง vs Pointer"},
-            {"name": "ข้อดีข้อเสีย", "score": 0.5, "description": "ระบุข้อดีข้อเสียของแต่ละแบบ เช่น เรื่อง Overflow, ความเร็วในการเข้าถึง, การใช้หน่วยความจำ"}
+            {
+                "name": "ความแตกต่างเชิงโครงสร้าง (Comparison)",
+                "score": 0.5,
+                "description": (
+                    "อธิบายความต่างระหว่าง Array และ Linked List ในการนำมาทำเป็น Stack/Queue:\n"
+                    "- 0.50 คะแนน: อธิบายชัดเจนว่า Array มีขนาดคงที่ (Fixed size) หรือจองพื้นที่ต่อเนื่อง ส่วน Linked List มีขนาดปรับเปลี่ยนได้ (Dynamic size) หรือใช้พอยน์เตอร์เชื่อมโหนด\n"
+                    "- 0.25 คะแนน: อธิบายถูกเพียงบางส่วน เช่น ตอบแค่ว่า Array ต้องระบุขนาด หรือบอกเรื่อง index แต่ไม่อธิบาย Linked List\n"
+                    "- 0.00 คะแนน: ไม่ได้เปรียบเทียบ หรือตอบผิดหลักการ\n"
+                    "**เกณฑ์นี้ให้คะแนนเป็น 0.50, 0.25 หรือ 0.00 คะแนนเท่านั้น**"
+                )
+            },
+            {
+                "name": "ข้อดีและข้อเสีย (Pros & Cons)",
+                "score": 0.5,
+                "description": (
+                    "ระบุข้อดีและข้อเสียของการใช้ Linked List เทียบกับ Array:\n"
+                    "- 0.50 คะแนน: มีทั้งข้อดีและข้อเสีย เช่น Linked List ไม่จำกัดขนาด/ไม่เกิด overflow แต่เข้าถึงข้อมูลช้ากว่า/เปลืองเนื้อที่ pointer หรือ Array เข้าถึงเร็ว O(1) แต่เสี่ยง overflow/จำกัดขนาด\n"
+                    "- 0.25 คะแนน: ระบุเฉพาะข้อดีอย่างเดียว หรือเฉพาะข้อเสียอย่างเดียว หรือข้อดีข้อเสียยังไม่ชัดเจน\n"
+                    "- 0.00 คะแนน: ไม่ได้ระบุข้อดีข้อเสีย หรือระบุผิด\n"
+                    "**เกณฑ์นี้ให้คะแนนเป็น 0.50, 0.25 หรือ 0.00 คะแนนเท่านั้น**"
+                )
+            }
         ]
     },
     4: {
@@ -64,7 +99,7 @@ EXAM_QUESTIONS = {
         "question_text": "จากข้อมูลต่อไปนี้จงนำไปสร้างเป็น Binary search tree: 9 16 10 76 5 13 58 92 11 15 80 99",
         "answer_key": "Binary Search Tree: รากคือ 9\n- กิ่งซ้ายของ 9: 5\n- กิ่งขวาของ 9: 16\n  - กิ่งซ้ายของ 16: 10 (กิ่งขวาของ 10: 13 -> กิ่งซ้ายของ 13: 11, กิ่งขวาของ 13: 15)\n  - กิ่งขวาของ 16: 76 (กิ่งซ้ายของ 76: 58, กิ่งขวาของ 76: 92 -> กิ่งซ้ายของ 92: 80, กิ่งขวาของ 92: 99)",
         "rubrics": [
-            {"name": "ความถูกต้องของ BST", "score": 1.0, "description": "สร้าง Binary Search Tree ได้ถูกต้องตามลำดับข้อมูล และคุณสมบัติโหนดซ้าย < โหนดพ่อแม่ < โหนดขวาครบถ้วน"}
+            {"name": "โครงสร้าง Binary Search Tree", "score": 1.0, "description": "สร้าง Binary Search Tree จากข้อมูล 9, 16, 10, 76, 5, 13, 58, 92, 11, 15, 80, 99 ได้ถูกต้องครบทั้ง 12 โหนดตามหลัก BST โดยให้อนุโลมลายมือ รอยร่าง หรือความยาวกิ่ง (เกณฑ์ให้คะแนนเฉพาะ 1.0 หรือ 0.0 เท่านั้น)"}
         ]
     },
     5: {
@@ -113,18 +148,17 @@ def load_dataset() -> List[Dict[str, Any]]:
         # Determine student index (1-34)
         std_idx = ((r - 6) % 34) + 1
         
-        # Resolve image path for image answers (prioritize uncropped masked images)
+        # Only cleaned answer sheets are valid blind-test inputs; masks are not answers.
         img_path = None
         if ans_type == "img":
             if q_no == 4:
-                mask_p = os.path.join("ชุดข้อสอบใหม่", "photo_mask_ชุดที่1", f"LINE_ALBUM_Photo1_260917_{std_idx}.jpg")
-                img_path = mask_p if os.path.exists(mask_p) else os.path.join("ชุดข้อสอบใหม่", "photo_crop_ชุดที่1", f"LINE_ALBUM_Photo1_260917_{std_idx}.jpg")
+                img_path = os.path.join("ชุดข้อสอบใหม่", "photo_clean_ชุดที่1", f"LINE_ALBUM_Photo1_260917_{std_idx}.jpg")
             elif q_no == 5:
-                mask_p = os.path.join("ชุดข้อสอบใหม่", "photo_mask_ชุดที่2", f"LINE_ALBUM_Photo2.1_260918_{std_idx}.jpg")
-                img_path = mask_p if os.path.exists(mask_p) else os.path.join("ชุดข้อสอบใหม่", "photo_crop_ชุดที่2", f"LINE_ALBUM_Photo2.1_260918_{std_idx}.jpg")
+                img_path = os.path.join("ชุดข้อสอบใหม่", "photo_clean_ชุดที่2", f"LINE_ALBUM_Photo2.1_260918_{std_idx}.jpg")
             elif q_no == 6:
-                mask_p = os.path.join("ชุดข้อสอบใหม่", "photo_mask_ชุดที่3", f"LINE_ALBUM_Photo2.2_260918_{std_idx}.jpg")
-                img_path = mask_p if os.path.exists(mask_p) else os.path.join("ชุดข้อสอบใหม่", "photo_crop_ชุดที่3", f"LINE_ALBUM_Photo2.2_260918_{std_idx}.jpg")
+                img_path = os.path.join("ชุดข้อสอบใหม่", "photo_clean_ชุดที่3", f"LINE_ALBUM_Photo2.2_260918_{std_idx}.jpg")
+            if not img_path or not os.path.isfile(img_path):
+                raise FileNotFoundError(f"Cleaned answer image missing for {sid}: {img_path}")
 
         q_img_path = q6_question_img if q_no == 6 else None
 
@@ -218,7 +252,8 @@ async def grade_single_item(item: Dict[str, Any], sem: asyncio.Semaphore) -> Dic
         ans_text = item["student_answer"]
         max_score = q_meta["max_score"]
         ans_key = q_meta["answer_key"]
-        rubrics = q_meta["rubrics"]
+        from scripts.benchmark_rubrics import load_proposed_rubric
+        rubrics, score_step = load_proposed_rubric(item["question_no"], max_score, q_text)
 
         # Read images if applicable
         img_bytes_list = None
@@ -244,7 +279,9 @@ async def grade_single_item(item: Dict[str, Any], sem: asyncio.Semaphore) -> Dic
             image_bytes_list=img_bytes_list,
             image_mime_list=img_mime_list,
             q_image_bytes_list=q_img_bytes_list,
-            q_image_mime_list=q_img_mime_list
+            q_image_mime_list=q_img_mime_list,
+            score_step=score_step,
+            allowed_scores=[0, 1, 2] if item["question_no"] == 1 else ([0, 0.5, 1, 1.5, 2] if item["question_no"] == 2 else ([0.0, 0.25, 0.5, 0.75, 1.0] if item["question_no"] == 3 else ([0, 1] if item["question_no"] == 4 else None))),
         )
 
         return {
@@ -590,4 +627,3 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     asyncio.run(run_benchmark(max_items=args.limit, concurrency=args.workers))
-

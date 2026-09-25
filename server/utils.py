@@ -85,7 +85,29 @@ def sanitize_csv_value(value):
 
 # --- File Upload Validation ---
 MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5MB
-ALLOWED_IMAGE_TYPES = {'image/jpeg', 'image/png', 'image/gif', 'image/webp'}
+ALLOWED_IMAGE_TYPES = {'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif'}
+
+try:
+    import pillow_heif
+    pillow_heif.register_heif_opener()
+except ImportError:
+    pass
+
+def normalize_image_bytes(file_bytes: bytes, content_type: str = None) -> tuple[bytes, str]:
+    """Convert HEIC/HEIF images to standard JPEG for universal browser compatibility."""
+    from PIL import Image, ImageOps
+    import io
+    try:
+        with Image.open(io.BytesIO(file_bytes)) as img:
+            fmt = (img.format or "").upper()
+            if fmt in ("HEIF", "HEIC") or (content_type and content_type in ("image/heic", "image/heif")):
+                img = ImageOps.exif_transpose(img)
+                buffer = io.BytesIO()
+                img.convert("RGB").save(buffer, format="JPEG", quality=90)
+                return buffer.getvalue(), "image/jpeg"
+    except Exception:
+        pass
+    return file_bytes, content_type or "image/jpeg" 
 
 def validate_upload_file(file_bytes: bytes, content_type: str = None, max_size: int = None, allowed_types: set = None):
     """Validate uploaded file size and MIME type. Raises HTTPException on failure."""
@@ -101,8 +123,16 @@ def validate_upload_file(file_bytes: bytes, content_type: str = None, max_size: 
     try:
         with Image.open(io.BytesIO(file_bytes)) as image:
             actual_type = Image.MIME.get(image.format)
-            if actual_type not in effective_types or (content_type and actual_type != content_type):
+            heic_types = {'image/heic', 'image/heif'}
+            type_matches = (
+                actual_type in effective_types or
+                (image.format in ('HEIF', 'HEIC') and any(t in effective_types for t in heic_types))
+            )
+            if not type_matches:
                 raise HTTPException(400, 'ชนิดไฟล์ไม่ตรงกับรูปภาพที่แนบ')
+            if content_type and actual_type != content_type:
+                if not (content_type in heic_types and (actual_type in heic_types or image.format in ('HEIF', 'HEIC'))):
+                    raise HTTPException(400, 'ชนิดไฟล์ไม่ตรงกับรูปภาพที่แนบ')
             if getattr(image, 'is_animated', False):
                 raise HTTPException(400, 'กรุณาแนบภาพนิ่ง')
             image.verify()

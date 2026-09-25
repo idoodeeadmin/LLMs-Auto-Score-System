@@ -24,6 +24,7 @@ def draft_images(questions_json):
     try:
         for question in json.loads(questions_json or '[]'):
             allowed.update(question.get('question_images_base64') or [])
+            allowed.update(question.get('answer_key_images_base64') or [])
     except (TypeError, json.JSONDecodeError):
         pass
     return allowed
@@ -61,6 +62,7 @@ def normalized_questions(payload, teacher_id, draft_id, allowed=()):
             'rubrics': question.rubrics or [],
             'order_index': question.order_index,
             'question_images_base64': persist_images(question.question_images_base64, teacher_id, draft_id, allowed),
+            'answer_key_images_base64': persist_images(question.answer_key_images_base64, teacher_id, draft_id, allowed),
         })
     return result
 

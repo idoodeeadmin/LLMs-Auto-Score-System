@@ -13,6 +13,7 @@ interface Rubric { name: string; description: string; score: number; }
 interface Question {
   id: number; text: string; score: number;
   answer_key?: string; rubrics?: Rubric[];
+  answer_key_image_paths?: string[];
   order_index: number; image_path?: string | null; image_paths?: string[];
   hide_rubric_from_students?: boolean;
 }
@@ -166,7 +167,7 @@ export default function ExamView() {
                     ) : null}
 
                     {/* Students can inspect scoring criteria; answer keys remain teacher-only. */}
-                    {(isTeacher ? Boolean(q.answer_key || q.rubrics?.length) : Boolean(!q.hide_rubric_from_students && q.rubrics?.length)) && (
+                    {(isTeacher ? Boolean(q.answer_key || q.answer_key_image_paths?.length || q.rubrics?.length) : Boolean(!q.hide_rubric_from_students && q.rubrics?.length)) && (
                       <div className="pl-8 pt-2 border-t border-gray-50 dark:border-gray-800 mt-4">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <button onClick={() => setExpandedId(expandedId === q.id ? null : q.id)} className="text-xs text-emerald-800 dark:text-emerald-300 hover:text-emerald-950 dark:hover:text-emerald-200 font-medium transition-colors flex items-center gap-1.5">
@@ -187,6 +188,16 @@ export default function ExamView() {
                               <div>
                                 <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">แนวคำตอบ</p>
                                 <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">{q.answer_key}</p>
+                              </div>
+                            )}
+                            {isTeacher && q.answer_key_image_paths && q.answer_key_image_paths.length > 0 && (
+                              <div>
+                                <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">ภาพแนวคำตอบ</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {q.answer_key_image_paths.map((src, imageIndex) => (
+                                    <img key={imageIndex} src={src} alt={`ภาพแนวคำตอบ ${imageIndex + 1}`} className="h-32 w-auto rounded-xl border border-gray-200 dark:border-gray-700 cursor-zoom-in" onClick={() => setModalImage({ src, alt: `ภาพแนวคำตอบ ${imageIndex + 1}` })} />
+                                  ))}
+                                </div>
                               </div>
                             )}
                             {q.rubrics && q.rubrics.length > 0 && (
@@ -230,10 +241,27 @@ export default function ExamView() {
                     
                     <div className="space-y-2">
                       <p className="text-xs text-gray-500 dark:text-gray-400">คำตอบของคุณ</p>
-                      <div className="text-sm text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-xl p-4 leading-relaxed">
-                        {ans.answer_text || <span className="italic text-gray-400 dark:text-gray-500">ไม่ได้ระบุคำตอบ</span>}
+                      <div className="text-sm text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-xl p-4 leading-relaxed font-mono whitespace-pre-wrap">
+                        {ans.answer_text || <span className="italic text-gray-400 dark:text-gray-500">ไม่ได้ระบุคำตอบข้อความ</span>}
                       </div>
                     </div>
+
+                    {ans.image_paths && ans.image_paths.length > 0 && (
+                      <div className="space-y-2 pt-1">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">ภาพคำตอบที่แนบ</p>
+                        <div className="flex flex-wrap gap-3">
+                          {ans.image_paths.map((img: string, imgIdx: number) => (
+                            <img
+                              key={imgIdx}
+                              src={img}
+                              alt={`ภาพคำตอบข้อ ${idx + 1} รูปที่ ${imgIdx + 1}`}
+                              className="w-24 h-24 object-cover rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:opacity-80 transition shadow-sm"
+                              onClick={() => setModalImage({ src: img, alt: `ภาพคำตอบข้อ ${idx + 1}` })}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {ans.ai_feedback && (
                       <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-4 mt-2">
@@ -245,6 +273,61 @@ export default function ExamView() {
                       <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4 mt-2">
                         <p className="text-xs text-gray-600 dark:text-gray-400 font-medium mb-2">ความเห็นจากอาจารย์</p>
                         <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">{ans.teacher_comment}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Student Submitted Answers (Pending Teacher Approval - Read Only) */}
+            {!isTeacher && mySubmission?.status && mySubmission.status !== "missing" && mySubmission.status !== "approved" && mySubmission.answers && (
+              <div id="submitted-answers" className="space-y-6 pt-8 mt-4 border-t border-gray-200 dark:border-gray-800">
+                <div className="flex items-center justify-between px-2 flex-wrap gap-2">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">คำตอบที่คุณส่ง</h2>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                      ⏳ กำลังรออาจารย์ตรวจทานและอนุมัติคะแนน (โหมดอ่านอย่างเดียว ไม่สามารถแก้ไขได้)
+                    </p>
+                  </div>
+                  <span className="text-xs bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-3 py-1 rounded-full font-medium">
+                    รออนุมัติคะแนน
+                  </span>
+                </div>
+
+                {mySubmission.answers.map((ans, idx) => (
+                  <div key={idx} className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 space-y-4">
+                    <div className="flex items-start justify-between gap-4 border-b border-gray-100 dark:border-gray-800 pb-4">
+                      <p className="text-base text-gray-800 dark:text-gray-200 flex-1 leading-relaxed">
+                        <span className="text-emerald-700 dark:text-emerald-300 font-semibold mr-2">{idx + 1}.</span>
+                        {ans.question_text || "(ดูโจทย์จากรูปภาพแนบ)"}
+                      </p>
+                      <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-md">
+                        คะแนนเต็ม {ans.max_score} คะแนน
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-gray-600 dark:text-gray-400">คำตอบที่บันทึกไว้:</p>
+                      <div className="text-sm text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-xl p-4 leading-relaxed font-mono whitespace-pre-wrap">
+                        {ans.answer_text ? ans.answer_text : <span className="italic text-gray-400 dark:text-gray-500">ไม่ได้พิมพ์คำตอบข้อความ</span>}
+                      </div>
+                    </div>
+
+                    {ans.image_paths && ans.image_paths.length > 0 && (
+                      <div className="space-y-2 pt-2">
+                        <p className="text-xs font-medium text-gray-600 dark:text-gray-400">ภาพลายมือคำตอบที่แนบ ({ans.image_paths.length} รูป):</p>
+                        <div className="flex flex-wrap gap-3">
+                          {ans.image_paths.map((img: string, imgIdx: number) => (
+                            <img
+                              key={imgIdx}
+                              src={img}
+                              alt={`ภาพคำตอบข้อ ${idx + 1} รูปที่ ${imgIdx + 1}`}
+                              className="w-24 h-24 object-cover rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:opacity-80 transition shadow-sm"
+                              onClick={() => setModalImage({ src: img, alt: `ภาพคำตอบข้อ ${idx + 1}` })}
+                            />
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -331,19 +414,26 @@ export default function ExamView() {
                     </div>
                   )}
                   {mySubmission?.status && mySubmission.status !== "missing" && mySubmission.status !== "approved" && (
-                    <div className="flex flex-col items-center gap-4 text-sm justify-center py-10 px-4 bg-green-50/50 dark:bg-green-900/10 rounded-2xl border border-green-100/50 dark:border-green-900/30">
-                      <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center text-green-600 dark:text-green-400 mb-2">
-                        <CheckCircle2 size={40} />
+                    <div className="flex flex-col items-center gap-4 text-sm justify-center py-8 px-4 bg-green-50/50 dark:bg-green-900/10 rounded-2xl border border-green-100/50 dark:border-green-900/30">
+                      <div className="w-14 h-14 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center text-green-600 dark:text-green-400 mb-1">
+                        <CheckCircle2 size={36} />
                       </div>
-                      <div className="text-center space-y-2">
-                        <p className="font-bold text-green-900 dark:text-green-200 text-xl">
+                      <div className="text-center space-y-1.5">
+                        <p className="font-bold text-green-900 dark:text-green-200 text-lg">
                           ส่งคำตอบสำเร็จ!
                         </p>
-                        <p className="text-[14px] text-green-700 dark:text-green-400/80 leading-relaxed max-w-[280px] mx-auto">
+                        <p className="text-[13px] text-green-700 dark:text-green-400/80 leading-relaxed max-w-[280px] mx-auto">
                           ระบบได้รับคำตอบของคุณเรียบร้อยแล้ว <br/>
-                          โปรดรอการประกาศคะแนนจากอาจารย์
+                          โปรดรอการตรวจทานและอนุมัติคะแนนจากอาจารย์
                         </p>
                       </div>
+                      <Button
+                        variant="outline"
+                        onClick={() => document.getElementById("submitted-answers")?.scrollIntoView({ behavior: "smooth" })}
+                        className="w-full mt-2 text-xs bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50"
+                      >
+                        ดูคำตอบที่คุณส่ง ↓
+                      </Button>
                     </div>
                   )}
                 </>

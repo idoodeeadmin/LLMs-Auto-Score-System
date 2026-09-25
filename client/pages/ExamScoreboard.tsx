@@ -66,10 +66,13 @@ export default function ExamScoreboard() {
     run();
   }, [token, roomId, examId]);
 
-  const handleExportCSV = async () => {
+  const [isExporting, setIsExporting] = useState<string | null>(null);
+
+  const handleExport = async (format: "csv" | "xlsx") => {
     if (!token) return;
+    setIsExporting(format);
     try {
-      const response = await fetch(`/api/rooms/${roomId}/exams/${examId}/export-csv`, {
+      const response = await fetch(`/api/rooms/${roomId}/exams/${examId}/export?format=${format}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.ok) {
@@ -77,16 +80,19 @@ export default function ExamScoreboard() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `scores_${exam?.title.replace(/\s+/g, '_') || 'exam'}.csv`;
+        const safeTitle = exam?.title ? exam.title.replace(/\s+/g, '_') : 'exam';
+        a.download = `scores_${safeTitle}.${format}`;
         document.body.appendChild(a);
         a.click();
         a.remove();
-        toast.success("ดาวน์โหลดไฟล์ CSV สำเร็จ");
+        toast.success(`ดาวน์โหลดไฟล์ ${format.toUpperCase()} สำเร็จ`);
       } else {
-        toast.error("ส่งออกไฟล์ไม่สำเร็จ");
+        toast.error(`ส่งออกไฟล์ ${format.toUpperCase()} ไม่สำเร็จ`);
       }
     } catch (e) {
       toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    } finally {
+      setIsExporting(null);
     }
   };
 
@@ -127,13 +133,24 @@ export default function ExamScoreboard() {
             <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">{exam?.title}</h1>
             <p className="text-slate-500 dark:text-slate-400 dark:text-slate-500 mt-1">คะแนนเต็ม {exam?.total_score ?? "-"} · ตารางคะแนนรายนักเรียน</p>
           </div>
-          <button
-            onClick={handleExportCSV}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition-all shadow-sm shadow-emerald-100 active:scale-95"
-          >
-            <Download size={18} />
-            ส่งออก CSV
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => handleExport("csv")}
+              disabled={isExporting !== null}
+              className="inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition-all shadow-sm shadow-emerald-100 active:scale-95 text-xs sm:text-sm disabled:opacity-50"
+            >
+              <Download size={16} />
+              ส่งออก CSV
+            </button>
+            <button
+              onClick={() => handleExport("xlsx")}
+              disabled={isExporting !== null}
+              className="inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all shadow-sm shadow-blue-100 active:scale-95 text-xs sm:text-sm disabled:opacity-50"
+            >
+              <Download size={16} />
+              ส่งออก Excel (XLSX)
+            </button>
+          </div>
         </div>
 
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">

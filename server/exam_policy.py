@@ -9,24 +9,37 @@ except ImportError:
     word_tokenize = None
 
 MAX_ANSWER_WORDS = 300
-MAX_ANSWER_CHARACTERS = 30000
+MAX_ANSWER_CHARACTERS = 2500
+MAX_SINGLE_TOKEN_CHARACTERS = 60
 MAX_ANSWER_IMAGES = 10
 SUBMISSION_GRACE_SECONDS = 60
 
 
 def count_answer_words(text: str) -> int:
-    # NewMM segments Thai without requiring spaces. Punctuation is not a word.
+    if not text or not text.strip():
+        return 0
     if word_tokenize:
         tokens = word_tokenize(text, engine="newmm", keep_whitespace=False)
-        return sum(1 if any("\u0e01" <= char <= "\u0e5b" and char.isalnum() for char in token)
-                   else len(re.findall(r"[^\W_]+", token, flags=re.UNICODE)) for token in tokens)
-    return len(re.findall(r"\S+", text))
+        return sum(1 for token in tokens if re.search(r"[\u0E01-\u0E5B\w]", token))
+    return len(re.findall(r"[\u0E00-\u0E7F]+|[a-zA-Z0-9_]+", text))
 
 
 def validate_answer_text(text: str) -> int:
     if len(text) > MAX_ANSWER_CHARACTERS:
-        raise HTTPException(422, "คำตอบยาวเกินขนาดที่ระบบรองรับ")
-    count = count_answer_words(text)
+        raise HTTPException(422, f"คำตอบยาวเกินขนาดที่ระบบรองรับ (ไม่เกิน {MAX_ANSWER_CHARACTERS} ตัวอักษร)")
+    
+    if word_tokenize:
+        tokens = word_tokenize(text, engine="newmm", keep_whitespace=False)
+        for token in tokens:
+            if len(token) > MAX_SINGLE_TOKEN_CHARACTERS:
+                raise HTTPException(422, "คำตอบมีข้อความที่ยาวผิดปกติหรืออาจเป็นข้อความสแปม กรุณาตรวจสอบคำตอบ")
+        count = sum(1 for token in tokens if re.search(r"[\u0E01-\u0E5B\w]", token))
+    else:
+        for token in text.split():
+            if len(token) > MAX_SINGLE_TOKEN_CHARACTERS:
+                raise HTTPException(422, "คำตอบมีข้อความที่ยาวผิดปกติหรืออาจเป็นข้อความสแปม กรุณาตรวจสอบคำตอบ")
+        count = len(re.findall(r"[\u0E00-\u0E7F]+|[a-zA-Z0-9_]+", text))
+
     if count > MAX_ANSWER_WORDS:
         raise HTTPException(422, f"คำตอบต้องไม่เกิน {MAX_ANSWER_WORDS} คำ (พบ {count} คำ)")
     return count

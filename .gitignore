@@ -102,7 +102,7 @@ USER_GUIDE.md
 
 # Isolated local verification environment
 .venv-review/
-tmp/coverage-before/
+tmp/
 
 # Local recovery archives and reconstruction evidence (not application source)
 /recovery/

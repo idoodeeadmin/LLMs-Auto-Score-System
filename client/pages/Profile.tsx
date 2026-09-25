@@ -15,6 +15,7 @@ export default function Profile() {
   const navigate = useNavigate();
 
   const [name, setName] = useState("");
+  const [identityId, setIdentityId] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [avatarPreview, setAvatarPreview] = useState("");
@@ -28,6 +29,7 @@ export default function Profile() {
     }
     if (user) {
       setName(user.name);
+      setIdentityId(user.studentId || "");
       if (user.avatarUrl) {
         setAvatarPreview(/^https?:\/\//i.test(user.avatarUrl) || user.avatarUrl.startsWith("/") ? user.avatarUrl : `/uploads/avatars/${user.avatarUrl}`);
       }
@@ -59,6 +61,7 @@ export default function Profile() {
     try {
       const formData = new FormData();
       if (name !== user?.name) formData.append("name", name);
+      if (identityId.trim() !== (user?.studentId || "")) formData.append("student_id", identityId.trim());
       if (password) formData.append("password", password);
       if (avatarFile) formData.append("avatar", avatarFile);
 
@@ -90,6 +93,7 @@ export default function Profile() {
 
         const updatePayload: any = {};
         if (name !== user?.name) updatePayload.name = name;
+        if (Object.prototype.hasOwnProperty.call(data, "studentId")) updatePayload.studentId = data.studentId;
         if (data.avatarUrl) updatePayload.avatarUrl = data.avatarUrl;
 
         updateUser(updatePayload);
@@ -188,7 +192,8 @@ export default function Profile() {
                 </div>
               </div>
               <div className="field"><label htmlFor="profile-name">ชื่อ-นามสกุล</label><Input id="profile-name" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} required className="h-11" /></div>
-              <div className="text-sm"><p className="text-[var(--work-muted)]">บัญชีที่ใช้เข้าสู่ระบบ</p><p className="mt-1 break-all">{user.email}</p>{user.role === "student" && <p className="mt-2 text-[var(--work-muted)]">รหัสนิสิต: {user.studentId || "ยังไม่ได้ระบุ"}</p>}</div>
+              <div className="field"><label htmlFor="profile-identity">{user.role === "teacher" ? "รหัสผู้สอน" : "รหัสนิสิต"} (ไม่บังคับ)</label><Input id="profile-identity" type="text" value={identityId} onChange={(e) => setIdentityId(e.target.value)} className="h-11" /></div>
+              <div className="text-sm"><p className="text-[var(--work-muted)]">บัญชีที่ใช้เข้าสู่ระบบ</p><p className="mt-1 break-all">{user.email}</p></div>
             </div>
           </section>
           <section className="grid gap-6 border-t border-[var(--work-line)] py-8 sm:grid-cols-[190px_1fr]" aria-labelledby="password-title">

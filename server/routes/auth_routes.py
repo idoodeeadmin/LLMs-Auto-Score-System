@@ -64,7 +64,8 @@ async def register(user: UserRegister, request: Request):
         raise HTTPException(status_code=429, detail='Too many registration attempts. Please try again later.')
 
     require_verification = os.getenv('REQUIRE_EMAIL_VERIFICATION', 'false').lower() in ('true', '1')
-    initial_is_verified = 0 if (require_verification and not _IS_DEV_MODE) else 1
+    # Standard registration via email/password always starts with is_verified = 0 until verified
+    initial_is_verified = 0
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -159,7 +160,11 @@ async def get_me(user: dict=Depends(get_current_user)):
      'avatarUrl': user.get('avatar_url', None), 'is_verified': user.get('is_verified', 0)}
 
 @router.put('/profile')
-async def update_profile(name: str=Form(None), student_id: str=Form(None), password: str=Form(None), avatar: UploadFile=File(None), user: dict=Depends(get_current_user)):
+async def update_profile(request: Request, name: str=Form(None), student_id: str=Form(None), password: str=Form(None), avatar: UploadFile=File(None), user: dict=Depends(get_current_user)):
+    # Distinguish an omitted identifier from an explicitly cleared optional field.
+    profile_form = await request.form()
+    if 'student_id' in profile_form:
+        student_id = str(profile_form['student_id']).strip()
     conn = get_db_connection()
     cursor = conn.cursor()
     update_fields = []
@@ -198,7 +203,7 @@ async def update_profile(name: str=Form(None), student_id: str=Form(None), passw
     return {
         'message': 'Profile updated successfully',
         'avatarUrl': avatar_filename,
-        'studentId': student_id if student_id is not None else user.get('student_id')
+        'studentId': (student_id or None) if student_id is not None else user.get('student_id')
     }
 
 @router.post('/set-role')

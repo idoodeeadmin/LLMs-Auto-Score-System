@@ -15,7 +15,8 @@ from typing import Optional, List
 from server.database import get_db_connection
 from server.auth import get_password_hash, verify_password, create_access_token, decode_token
 from server.models import *
-from server.utils import check_rate_limit, upload_to_cloudinary, get_current_user, grading_queue, trigger_socket_notify, _distribution_buckets, sanitize_csv_value, validate_upload_file
+from server.utils import check_rate_limit, upload_to_cloudinary, get_current_user, grading_queue, trigger_socket_notify, _distribution_buckets, sanitize_csv_value, validate_upload_file, normalize_image_bytes
+import urllib.parse
 
 router = APIRouter(prefix="/api/rooms/{room_id}/exams", tags=["Exams"])
 
@@ -42,13 +43,38 @@ def save_question_images(question, exam_id, allowed_existing=()):
     return paths
 
 
+def save_answer_key_images(question, exam_id, allowed_existing=()):
+    import base64
+    paths = []
+    for image in question.answer_key_images_base64 or []:
+        if image in allowed_existing:
+            paths.append(image)
+            continue
+        try:
+            header, encoded = image.split(',', 1)
+            if not header.startswith('data:') or not header.endswith(';base64'):
+                raise ValueError('Not an image data URL')
+            mime = header[5:].split(';')[0]
+            raw = base64.b64decode(encoded, validate=True)
+        except (ValueError, TypeError):
+            raise HTTPException(422, 'ภาพแนวคำตอบไม่ถูกต้อง กรุณาแนบภาพใหม่')
+        validate_upload_file(raw, content_type=mime)
+        raw, mime = normalize_image_bytes(raw, mime)
+        url = upload_to_cloudinary(raw, folder=f'answer-keys/{exam_id}')
+        if not url:
+            raise HTTPException(502, 'บันทึกภาพแนวคำตอบไม่สำเร็จ')
+        paths.append(url)
+    return paths
+
+
 def insert_questions(cursor, exam, exam_id, allowed_existing=()):
     for question in exam.questions:
         images = save_question_images(question, exam_id, allowed_existing)
-        cursor.execute('INSERT INTO questions (exam_id, text, score, answer_key, rubrics, order_index, image_paths, hide_rubric_from_students) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        answer_key_images = save_answer_key_images(question, exam_id, allowed_existing)
+        cursor.execute('INSERT INTO questions (exam_id, text, score, answer_key, rubrics, order_index, image_paths, answer_key_image_paths, hide_rubric_from_students) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
             (exam_id, question.text, question.score, question.answer_key,
              json.dumps(question.rubrics, ensure_ascii=False) if question.rubrics else None,
-             question.order_index, json.dumps(images) if images else None,
+             question.order_index, json.dumps(images) if images else None, json.dumps(answer_key_images) if answer_key_images else None,
              1 if getattr(question, 'hide_rubric_from_students', False) else 0))
 
 
@@ -64,6 +90,7 @@ def get_draft_images(cursor, draft_id, room_id, teacher_id):
     try:
         for question in json.loads(row['questions'] or '[]'):
             allowed.update(question.get('question_images_base64') or [])
+            allowed.update(question.get('answer_key_images_base64') or [])
     except (TypeError, json.JSONDecodeError):
         raise HTTPException(422, 'ข้อมูลแบบร่างไม่ถูกต้อง')
     return allowed
@@ -116,10 +143,11 @@ async def update_exam(room_id: int, exam_id: int, exam: ExamCreate, user: dict=D
         cursor.execute('SELECT id FROM submissions WHERE exam_id = ?', (exam_id,))
         if cursor.fetchone():
             raise HTTPException(400, 'ไม่สามารถแก้ไขข้อสอบได้ เนื่องจากมีนักเรียนส่งคำตอบมาแล้ว')
-        cursor.execute('SELECT image_paths FROM questions WHERE exam_id = ?', (exam_id,))
+        cursor.execute('SELECT image_paths, answer_key_image_paths FROM questions WHERE exam_id = ?', (exam_id,))
         allowed = set()
         for row in cursor.fetchall():
             allowed.update(json.loads(row['image_paths'] or '[]'))
+            allowed.update(json.loads(row['answer_key_image_paths'] or '[]'))
         cursor.execute('UPDATE exams SET title = ?, description = ?, total_score = ?, start_date = ?, end_date = ?, is_randomized = ? WHERE id = ?',
             (exam.title, exam.description, sum(q.score for q in exam.questions), exam.start_date, exam.end_date, exam.is_randomized, exam_id))
         cursor.execute('DELETE FROM questions WHERE exam_id = ?', (exam_id,))
@@ -203,6 +231,14 @@ async def get_exam(room_id: int, exam_id: int, user: dict=Depends(get_current_us
         qd = dict(q)
         if user['role'] != 'teacher':
             qd.pop('answer_key', None)
+            qd.pop('answer_key_image_paths', None)
+        elif qd.get('answer_key_image_paths'):
+            try:
+                qd['answer_key_image_paths'] = json.loads(qd['answer_key_image_paths'])
+            except Exception:
+                qd['answer_key_image_paths'] = []
+        else:
+            qd['answer_key_image_paths'] = []
         if qd.get('rubrics'):
             try:
                 qd['rubrics'] = json.loads(qd['rubrics'])
@@ -281,7 +317,12 @@ async def submit_exam_multipart(request: Request, room_id: int, exam_id: int, us
                 raise HTTPException(422, f'แนบภาพได้ไม่เกิน {MAX_ANSWER_IMAGES} ภาพต่อข้อ')
             raw = await upload.read(5 * 1024 * 1024 + 1)
             validate_upload_file(raw, content_type=upload.content_type)
+            raw, _ = normalize_image_bytes(raw, upload.content_type)
             images[qid].append(raw)
+        has_any_answer = any(bool(text.strip()) for text in answers.values()) or any(len(imgs) > 0 for imgs in images.values())
+        if not has_any_answer:
+            raise HTTPException(422, 'กรุณาตอบคำถามอย่างน้อย 1 ข้อ หรือแนบรูปภาพคำตอบก่อนส่ง (ยังไม่มีคำตอบในข้อใดเลย)')
+
         stored_images = {}
         for qid, uploads in images.items():
             paths = []
@@ -334,7 +375,10 @@ async def export_exam_csv(room_id: int, exam_id: int, user: dict=Depends(get_cur
     for r in results:
         writer.writerow([sanitize_csv_value(r['student_code'] or '-'), sanitize_csv_value(r['name']), r['status'], r['total_score'] if r['total_score'] is not None else '0', r['submitted_at'] or '-'])
     content = output.getvalue()
-    return StreamingResponse(iter([content]), media_type='text/csv', headers={'Content-Disposition': f"attachment; filename=scores_{exam_title.replace(' ', '_')}.csv"})
+    ascii_fn = f"scores_exam_{exam_id}.csv"
+    utf8_fn = urllib.parse.quote(f"scores_{exam_title.replace(' ', '_')}.csv")
+    disposition = f'attachment; filename="{ascii_fn}"; filename*=UTF-8\'\'{utf8_fn}'
+    return StreamingResponse(iter([content]), media_type='text/csv; charset=utf-8', headers={'Content-Disposition': disposition})
 
 @router.get('/{exam_id}/submissions')
 async def list_submissions(room_id: int, exam_id: int, user: dict=Depends(get_current_user)):
@@ -422,8 +466,10 @@ async def export_exam_scores(room_id: int, exam_id: int, user: dict=Depends(get_
             writer.writerow([sanitize_csv_value(r['student_code']), sanitize_csv_value(r['name']), r['status'], r['total_score'], exam['total_score'], r['submitted_at']])
         csv_content = output.getvalue()
         output.close()
-        filename = f'exam_{exam_id}_{safe_title}_scores.csv'
-        return Response(content=csv_content, media_type='text/csv; charset=utf-8', headers={'Content-Disposition': f'attachment; filename="{filename}"'})
+        ascii_fn = f'exam_{exam_id}_scores.csv'
+        utf8_fn = urllib.parse.quote(f'exam_{exam_id}_{safe_title}_scores.csv')
+        disposition = f'attachment; filename="{ascii_fn}"; filename*=UTF-8\'\'{utf8_fn}'
+        return Response(content=csv_content, media_type='text/csv; charset=utf-8', headers={'Content-Disposition': disposition})
     try:
         from openpyxl import Workbook
     except Exception:
@@ -447,8 +493,10 @@ async def export_exam_scores(room_id: int, exam_id: int, user: dict=Depends(get_
     wb.save(bin_output)
     xlsx_bytes = bin_output.getvalue()
     bin_output.close()
-    filename = f'exam_{exam_id}_{safe_title}_scores.xlsx'
-    return Response(content=xlsx_bytes, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={'Content-Disposition': f'attachment; filename="{filename}"'})
+    ascii_fn = f'exam_{exam_id}_scores.xlsx'
+    utf8_fn = urllib.parse.quote(f'exam_{exam_id}_{safe_title}_scores.xlsx')
+    disposition = f'attachment; filename="{ascii_fn}"; filename*=UTF-8\'\'{utf8_fn}'
+    return Response(content=xlsx_bytes, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={'Content-Disposition': disposition})
 
 @router.get('/{exam_id}/submissions/me')
 async def get_my_submission(room_id: int, exam_id: int, user: dict=Depends(get_current_user)):
@@ -467,10 +515,11 @@ async def get_my_submission(room_id: int, exam_id: int, user: dict=Depends(get_c
     if not submission:
         conn.close()
         return {'status': 'missing'}
-    if submission['status'] != 'approved':
-        conn.close()
-        return {'status': submission['status'], 'submission_id': submission['id'], 'submitted_at': submission['submitted_at']}
+    is_approved = (submission['status'] == 'approved')
     submission = dict(submission)
+    if not is_approved:
+        # Mask total score until teacher approves
+        submission['total_score'] = None
     cursor.execute('\n        SELECT sa.answer_text, sa.image_paths, sa.ai_score, sa.ai_feedback, sa.teacher_score, sa.teacher_comment, sa.quality_metrics,\n               q.text AS question_text, q.score AS max_score, q.order_index, q.image_paths AS q_image_paths\n        FROM submission_answers sa\n        JOIN questions q ON sa.question_id = q.id\n        WHERE sa.submission_id = ?\n        ORDER BY q.order_index\n    ', (submission['id'],))
     answers = []
     for a in cursor.fetchall():
@@ -493,6 +542,12 @@ async def get_my_submission(room_id: int, exam_id: int, user: dict=Depends(get_c
                 ad['q_image_paths'] = [ad['q_image_path']] if ad.get('q_image_path') else []
         else:
             ad['q_image_paths'] = [ad['q_image_path']] if ad.get('q_image_path') else []
+        if not is_approved:
+            ad['ai_score'] = None
+            ad['ai_feedback'] = None
+            ad['teacher_score'] = None
+            ad['teacher_comment'] = None
+            ad['quality_metrics'] = {}
         answers.append(ad)
     conn.close()
     submission['answers'] = answers
@@ -728,5 +783,3 @@ async def bulk_approve(room_id: int, exam_id: int, body: BulkApproveRequest, use
             },
         )
     return {'message': f'Approved {len(approved)} submissions', 'approved_student_ids': approved, 'skipped': skipped}
-
-

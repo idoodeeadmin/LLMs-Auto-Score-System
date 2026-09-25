@@ -43,6 +43,7 @@ interface Question {
   answerKey: string;
   rubrics: RubricItem[];
   images?: { name: string; dataUrl: string }[];
+  answerKeyImages?: { name: string; dataUrl: string }[];
   hideRubricFromStudents?: boolean;
 }
 
@@ -70,6 +71,7 @@ interface CloudExamDraft {
     answer_key?: string | null;
     rubrics?: Array<{ name?: string; description?: string; score?: number }>;
     question_images_base64?: string[];
+    answer_key_images_base64?: string[];
     hide_rubric_from_students?: boolean;
   }>;
 }
@@ -101,6 +103,7 @@ const fromCloudDraft = (value: CloudExamDraft): ExamDraft => ({
       score: String(rubric.score ?? 0),
     })) : [{ id: Date.now() + 1000 + questionIndex, name: "", description: "", score: String(question.score) }],
     images: (question.question_images_base64 ?? []).map((url, imageIndex) => ({ name: `รูปประกอบ ${imageIndex + 1}`, dataUrl: url })),
+    answerKeyImages: (question.answer_key_images_base64 ?? []).map((url, imageIndex) => ({ name: `ภาพเฉลย ${imageIndex + 1}`, dataUrl: url })),
     hideRubricFromStudents: Boolean(question.hide_rubric_from_students),
   })),
 });
@@ -113,11 +116,11 @@ export default function CreateExam() {
   const [readingImages, setReadingImages] = useState(false);
   const imageReadLock = useRef(false);
 
-  const attachImages = async (questionId: number, files: File[]) => {
+  const attachImages = async (questionId: number, files: File[], target: "images" | "answerKeyImages" = "images") => {
     if (!files.length || imageReadLock.current || isSaving) return;
     const question = questions.find(q => q.id === questionId);
     if (!question) return;
-    if ((question.images?.length ?? 0) + files.length > 10) {
+    if ((question[target]?.length ?? 0) + files.length > 10) {
       toast.error("แนบรูปได้ไม่เกิน 10 รูปต่อข้อ");
       return;
     }
@@ -137,7 +140,7 @@ export default function CreateExam() {
         reader.readAsDataURL(file);
       })));
       setQuestions(current => current.map(q => q.id === questionId
-        ? { ...q, images: [...(q.images ?? []), ...images] } : q));
+        ? { ...q, [target]: [...(q[target] ?? []), ...images] } : q));
     } catch {
       toast.error("อ่านไฟล์รูปไม่สำเร็จ กรุณาเลือกใหม่");
     } finally {
@@ -314,6 +317,7 @@ export default function CreateExam() {
           })),
           order_index: index,
           question_images_base64: question.images?.map(image => image.dataUrl) ?? [],
+          answer_key_images_base64: question.answerKeyImages?.map(image => image.dataUrl) ?? [],
           hide_rubric_from_students: Boolean(question.hideRubricFromStudents),
         })),
       };
@@ -385,6 +389,11 @@ export default function CreateExam() {
     finally { setGeneratingId(null); }
   };
 
+  const deleteQuestion = (qId: number) => {
+    if (questions.length <= 1) return;
+    setQuestions((prev) => prev.filter((q) => q.id !== qId));
+  };
+
   const updateQuestion = (id: number, patch: Partial<Question>) => {
     setQuestions((prev) =>
       prev.map((q) => (q.id === id ? { ...q, ...patch } : q)),
@@ -447,18 +456,14 @@ export default function CreateExam() {
 
   const handleSave = async () => {
     if (isSaving || imageReadLock.current || generatingId !== null || savingDraft) return;
-    if (questions.some(q => q.images?.length && !q.text.trim())) {
-      toast.error("กรอกคำถามหรือคำชี้แจงให้ข้อที่แนบรูปก่อนบันทึก");
-      return;
-    }
     if (startDateTime && endDateTime && new Date(endDateTime) <= new Date(startDateTime)) {
       toast.error("เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่มสอบ");
       setSettingsOpen(true);
       return;
     }
-    const validQs = questions.filter((q) => q.text.trim());
+    const validQs = questions.filter((q) => q.text.trim() || (q.images && q.images.length > 0));
     if (!validQs.length) {
-      toast.error("เพิ่มคำถามอย่างน้อยหนึ่งข้อ");
+      toast.error("เพิ่มคำถามหรือแนบรูปภาพโจทย์อย่างน้อยหนึ่งข้อ");
       return;
     }
     setIsSaving(true);
@@ -472,14 +477,14 @@ export default function CreateExam() {
         },
         body: JSON.stringify({
           title:
-            examTitle.trim() || validQs[0].text.slice(0, 50) || "ข้อสอบใหม่",
+            examTitle.trim() || (validQs[0].text.trim() ? validQs[0].text.trim().slice(0, 50) : "ข้อสอบใหม่"),
           description: examDescription || null,
           total_score: total,
           start_date: startDateTime ? new Date(startDateTime).toISOString() : null,
           end_date: endDateTime ? new Date(endDateTime).toISOString() : null,
           is_randomized: isRandomized ? 1 : 0,
           questions: validQs.map((q, i) => ({
-            text: q.text,
+            text: q.text.trim() || "(ดูโจทย์จากรูปภาพแนบ)",
             score: parseFloat(q.score) || 0,
             answer_key: q.answerKey || null,
             rubrics: q.rubrics
@@ -491,6 +496,7 @@ export default function CreateExam() {
               })),
             order_index: i,
             question_images_base64: q.images?.length ? q.images.map(image => image.dataUrl) : null,
+            answer_key_images_base64: q.answerKeyImages?.length ? q.answerKeyImages.map(image => image.dataUrl) : null,
             hide_rubric_from_students: Boolean(q.hideRubricFromStudents),
           })),
           draft_id: currentDraftId?.startsWith("cloud-") ? Number(currentDraftId.slice(6)) : null,
@@ -668,6 +674,17 @@ export default function CreateExam() {
                       />
                       <span className="text-xs text-slate-400">คะแนน</span>
                     </div>
+                    {questions.length > 1 && (
+                      <button
+                        type="button"
+                        aria-label={`ลบข้อที่ ${index + 1}`}
+                        title="ลบข้อนี้"
+                        onClick={() => deleteQuestion(q.id)}
+                        className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition shrink-0 pt-1"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
                   </div>
 
                   <div className="pl-6 space-y-3">
@@ -677,7 +694,7 @@ export default function CreateExam() {
                         แนบรูป
                         <input type="file" className="sr-only" multiple
                           aria-label={`แนบรูปโจทย์ข้อที่ ${index + 1}`}
-                          accept="image/jpeg,image/png,image/gif,image/webp"
+                          accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif,.heic,.heif,image/*"
                           disabled={isSaving || readingImages || (q.images?.length ?? 0) >= 10}
                           onChange={event => {
                             const files = Array.from(event.target.files ?? []);
@@ -746,6 +763,31 @@ export default function CreateExam() {
                           placeholder="คำตอบที่คาดหวังหรือประเด็นสำคัญที่ควรตอบ"
                           className="w-full text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-[#1a73e8] focus:outline-none p-2 rounded-md text-slate-700 dark:text-slate-300 resize-y"
                         />
+                        <div className="flex flex-wrap items-center gap-2">
+                          <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-dashed border-slate-300 px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+                            <ImagePlus size={14} aria-hidden="true" />
+                            แนบภาพแนวคำตอบ
+                            <input type="file" className="sr-only" multiple
+                              aria-label={`แนบภาพแนวคำตอบข้อที่ ${index + 1}`}
+                              accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif,.heic,.heif,image/*"
+                              disabled={isSaving || readingImages || (q.answerKeyImages?.length ?? 0) >= 10}
+                              onChange={event => {
+                                const files = Array.from(event.target.files ?? []);
+                                event.target.value = "";
+                                void attachImages(q.id, files, "answerKeyImages");
+                              }} />
+                          </label>
+                          <span className="text-[11px] text-muted-foreground">ใช้ตรวจโดย AI และผู้สอนเท่านั้น</span>
+                        </div>
+                        {!!q.answerKeyImages?.length && <div className="flex flex-wrap gap-2">
+                          {q.answerKeyImages.map((image, imageIndex) => <figure key={imageIndex} className="relative w-28 rounded-lg border p-1.5">
+                            <img src={image.dataUrl} alt={`ภาพแนวคำตอบข้อ ${index + 1} รูปที่ ${imageIndex + 1}`} className="h-20 w-full object-contain" />
+                            <button type="button" disabled={isSaving || readingImages}
+                              aria-label={`ลบภาพแนวคำตอบที่ ${imageIndex + 1} ของข้อ ${index + 1}`}
+                              onClick={() => updateQuestion(q.id, { answerKeyImages: q.answerKeyImages?.filter((_, i) => i !== imageIndex) })}
+                              className="absolute right-1 top-1 rounded border bg-background p-1 hover:bg-muted"><X size={13} /></button>
+                          </figure>)}
+                        </div>}
                       </div>
 
                       {/* Flat Rubrics Section */}

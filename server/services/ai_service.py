@@ -80,6 +80,8 @@ async def grading_worker():
                             img_mime_list.append(mime)
                 q_img_list = []
                 q_img_mime_list = []
+                answer_key_img_list = []
+                answer_key_img_mime_list = []
                 q_image_paths = q.get('image_paths')
                 if q_image_paths:
                     try:
@@ -101,6 +103,18 @@ async def grading_worker():
                     if qb:
                         q_img_list.append(qb)
                         q_img_mime_list.append('image/png' if qp.endswith('.png') else 'image/webp' if qp.endswith('.webp') else 'image/gif' if qp.endswith('.gif') else 'image/jpeg')
+                answer_key_image_paths = q.get('answer_key_image_paths')
+                if answer_key_image_paths:
+                    try:
+                        for path in json.loads(answer_key_image_paths):
+                            raw_bytes = await get_image_bytes(path)
+                            if not raw_bytes:
+                                missing_image = True
+                                continue
+                            answer_key_img_list.append(raw_bytes)
+                            answer_key_img_mime_list.append('image/png' if path.endswith('.png') else 'image/webp' if path.endswith('.webp') else 'image/gif' if path.endswith('.gif') else 'image/jpeg')
+                    except Exception:
+                        missing_image = True
                 rubrics_data = None
                 if q.get('rubrics'):
                     try:
@@ -116,7 +130,7 @@ async def grading_worker():
                     ai_result = _fallback_score(q['score'])
                     ai_result['feedback'] = 'ไม่สามารถอ่านภาพแนบได้ครบ กรุณาให้ผู้สอนตรวจภาพต้นฉบับและประเมินด้วยตนเอง'
                 else:
-                    ai_result = await score_with_openai(question_text=q.get('text') or '', answer_text=answer_text, max_score=q['score'], answer_key=q.get('answer_key'), rubrics=rubrics_data, image_bytes_list=img_list, image_mime_list=img_mime_list, q_image_bytes_list=q_img_list, q_image_mime_list=q_img_mime_list)
+                    ai_result = await score_with_openai(question_text=q.get('text') or '', answer_text=answer_text, max_score=q['score'], answer_key=q.get('answer_key'), rubrics=rubrics_data, image_bytes_list=img_list, image_mime_list=img_mime_list, q_image_bytes_list=q_img_list, q_image_mime_list=q_img_mime_list, answer_key_image_bytes_list=answer_key_img_list, answer_key_image_mime_list=answer_key_img_mime_list)
                 total_ai_score += ai_result['score']
                 confidences.append(ai_result['confidence'])
                 q_metrics = json.dumps({**ai_result.get('metrics', {}), 'transcription': ai_result.get('transcription', '')}, ensure_ascii=False)

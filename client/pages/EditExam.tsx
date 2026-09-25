@@ -57,6 +57,7 @@ interface Question {
   answerKey: string;
   rubrics: RubricItem[];
   images?: { name: string; dataUrl: string }[];
+  answerKeyImages?: { name: string; dataUrl: string }[];
   hideRubricFromStudents?: boolean;
 }
 
@@ -133,6 +134,7 @@ export default function EditExam() {
       answerKey: q.answerKey,
       rubrics: q.rubrics,
       images: q.images?.map((img) => img.dataUrl),
+      answerKeyImages: q.answerKeyImages?.map((img) => img.dataUrl),
       hideRubricFromStudents: q.hideRubricFromStudents,
     })),
   });
@@ -189,6 +191,7 @@ export default function EditExam() {
             ? data.questions.map((q: any, i: number) => {
                 const qId = Date.now() + i;
                 const imgList: string[] = Array.isArray(q.image_paths) ? q.image_paths : [];
+                const answerKeyImgList: string[] = Array.isArray(q.answer_key_image_paths) ? q.answer_key_image_paths : [];
                 return {
                   id: qId,
                   text: q.text || "",
@@ -212,6 +215,10 @@ export default function EditExam() {
                         ],
                   images: imgList.map((p: string, idx: number) => ({
                     name: `รูปประกอบ ${idx + 1}`,
+                    dataUrl: p,
+                  })),
+                  answerKeyImages: answerKeyImgList.map((p: string, idx: number) => ({
+                    name: `ภาพเฉลย ${idx + 1}`,
                     dataUrl: p,
                   })),
                   hideRubricFromStudents: Boolean(q.hide_rubric_from_students),
@@ -271,11 +278,11 @@ export default function EditExam() {
     };
   }, [token, roomId, examId]);
 
-  const attachImages = async (questionId: number, files: File[]) => {
+  const attachImages = async (questionId: number, files: File[], target: "images" | "answerKeyImages" = "images") => {
     if (!files.length || imageReadLock.current || isSaving) return;
     const question = questions.find((q) => q.id === questionId);
     if (!question) return;
-    if ((question.images?.length ?? 0) + files.length > 10) {
+    if ((question[target]?.length ?? 0) + files.length > 10) {
       toast.error("แนบรูปได้ไม่เกิน 10 รูปต่อข้อ");
       return;
     }
@@ -311,7 +318,7 @@ export default function EditExam() {
       setQuestions((current) =>
         current.map((q) =>
           q.id === questionId
-            ? { ...q, images: [...(q.images ?? []), ...images] }
+            ? { ...q, [target]: [...(q[target] ?? []), ...images] }
             : q
         )
       );
@@ -555,6 +562,9 @@ export default function EditExam() {
             question_images_base64: q.images?.length
               ? q.images.map((img) => img.dataUrl)
               : null,
+            answer_key_images_base64: q.answerKeyImages?.length
+              ? q.answerKeyImages.map((img) => img.dataUrl)
+              : null,
             hide_rubric_from_students: Boolean(q.hideRubricFromStudents),
           })),
         }),
@@ -795,7 +805,7 @@ export default function EditExam() {
                           className="sr-only"
                           multiple
                           aria-label={`แนบรูปโจทย์ข้อที่ ${index + 1}`}
-                          accept="image/jpeg,image/png,image/gif,image/webp"
+                          accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif,.heic,.heif,image/*"
                           disabled={
                             isSaving ||
                             readingImages ||
@@ -915,6 +925,31 @@ export default function EditExam() {
                           placeholder="คำตอบที่คาดหวังหรือประเด็นสำคัญที่ควรตอบ"
                           className="w-full text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-[#1a73e8] focus:outline-none p-2 rounded-md text-slate-700 dark:text-slate-300 resize-y"
                         />
+                        <div className="flex flex-wrap items-center gap-2">
+                          <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-dashed border-slate-300 px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+                            <ImagePlus size={14} aria-hidden="true" />
+                            แนบภาพแนวคำตอบ
+                            <input type="file" className="sr-only" multiple
+                              aria-label={`แนบภาพแนวคำตอบข้อที่ ${index + 1}`}
+                              accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif,.heic,.heif,image/*"
+                              disabled={isSaving || readingImages || (q.answerKeyImages?.length ?? 0) >= 10}
+                              onChange={event => {
+                                const files = Array.from(event.target.files ?? []);
+                                event.target.value = "";
+                                void attachImages(q.id, files, "answerKeyImages");
+                              }} />
+                          </label>
+                          <span className="text-[11px] text-muted-foreground">ใช้ตรวจโดย AI และผู้สอนเท่านั้น</span>
+                        </div>
+                        {!!q.answerKeyImages?.length && <div className="flex flex-wrap gap-2">
+                          {q.answerKeyImages.map((image, imageIndex) => <figure key={imageIndex} className="relative w-28 rounded-lg border p-1.5">
+                            <img src={image.dataUrl} alt={`ภาพแนวคำตอบข้อ ${index + 1} รูปที่ ${imageIndex + 1}`} className="h-20 w-full object-contain" />
+                            <button type="button" disabled={isSaving || readingImages}
+                              aria-label={`ลบภาพแนวคำตอบที่ ${imageIndex + 1} ของข้อ ${index + 1}`}
+                              onClick={() => updateQuestion(q.id, { answerKeyImages: q.answerKeyImages?.filter((_, i) => i !== imageIndex) })}
+                              className="absolute right-1 top-1 rounded border bg-background p-1 hover:bg-muted"><X size={13} /></button>
+                          </figure>)}
+                        </div>}
                       </div>
 
                       {/* Flat Rubrics Section */}

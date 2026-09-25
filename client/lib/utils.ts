@@ -9,11 +9,19 @@ export function countWords(text: string): number {
   if (!text || !text.trim()) return 0;
   if (typeof Intl !== "undefined" && (Intl as any).Segmenter) {
     const segmenter = new (Intl as any).Segmenter("th", { granularity: "word" });
+    const segments = [...segmenter.segment(text)].filter((seg: any) => seg.isWordLike);
     let count = 0;
-    for (const seg of segmenter.segment(text)) {
-      if (seg.isWordLike) {
-        count++;
+    for (let i = 0; i < segments.length; i++) {
+      const current = segments[i].segment;
+      // Merge Thai nominalizing prefixes "การ" and "ความ" with subsequent Thai word
+      if (
+        (current === "การ" || current === "ความ") &&
+        i + 1 < segments.length &&
+        /[\u0E00-\u0E7F]/.test(segments[i + 1].segment)
+      ) {
+        continue;
       }
+      count++;
     }
     return count;
   }

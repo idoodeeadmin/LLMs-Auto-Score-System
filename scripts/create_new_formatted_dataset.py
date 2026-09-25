@@ -104,13 +104,13 @@ def create_formatted_dataset():
         if not q_content and q_no == 6:
             q_content = "จงแปลง tree ต่อไปนี้ให้เป็น Binary Tree (1 คะแนน)\n[รูปภาพโจทย์: โจทphoto3/LINE_ALBUM_โจทphoto6_260918_1.jpg]"
 
-        if not std_ans and ans_type == "img":
+        if ans_type == "img":
             if q_no == 4:
-                std_ans = f"[ภาพคำตอบ Blind Test (ปิดทับคะแนน): photo_mask_ชุดที่1/LINE_ALBUM_Photo1_260917_{std_idx}.jpg]"
+                std_ans = f'=HYPERLINK("photo_clean_ชุดที่1/LINE_ALBUM_Photo1_260917_{std_idx}.jpg", "เปิดภาพคำตอบที่ลบคะแนนแล้ว")'
             elif q_no == 5:
-                std_ans = f"[ภาพคำตอบ Blind Test (ปิดทับคะแนน): photo_mask_ชุดที่2/LINE_ALBUM_Photo2.1_260918_{std_idx}.jpg]"
+                std_ans = f'=HYPERLINK("photo_clean_ชุดที่2/LINE_ALBUM_Photo2.1_260918_{std_idx}.jpg", "เปิดภาพคำตอบที่ลบคะแนนแล้ว")'
             elif q_no == 6:
-                std_ans = f"[ภาพคำตอบ Blind Test (ปิดทับคะแนน): photo_mask_ชุดที่3/LINE_ALBUM_Photo2.2_260918_{std_idx}.jpg]"
+                std_ans = f'=HYPERLINK("photo_clean_ชุดที่3/LINE_ALBUM_Photo2.2_260918_{std_idx}.jpg", "เปิดภาพคำตอบที่ลบคะแนนแล้ว")'
 
         row_vals = [sid, q_no, q_type, q_content, ans_type, std_ans, h_score, ai_score, ai_conf, ai_feedback]
 

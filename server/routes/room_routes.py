@@ -456,7 +456,7 @@ async def export_room_summary_csv(room_id: int, user: dict=Depends(get_current_u
     writer = csv.writer(output)
     writer.writerow(['Student ID', 'Name'] + exam_titles + ['Total Cumulative Score'])
     for s in students:
-        row = [s['user_id'], sanitize_csv_value(s['name'])]
+        row = [sanitize_csv_value(s.get('student_id') or str(s['id'])), sanitize_csv_value(s['name'])]
         cumulative_total = 0
         for eid in exam_ids:
             score = scores_map.get(s['id'], {}).get(eid, 0)
@@ -465,8 +465,11 @@ async def export_room_summary_csv(room_id: int, user: dict=Depends(get_current_u
         row.append(cumulative_total)
         writer.writerow(row)
     content = output.getvalue()
-    filename = f"Summary_{room_name.replace(' ', '_')}.csv"
-    return StreamingResponse(iter([content]), media_type='text/csv', headers={'Content-Disposition': f'attachment; filename={filename}'})
+    import urllib.parse
+    safe_ascii = f"Summary_room_{room_id}.csv"
+    utf8_fn = urllib.parse.quote(f"Summary_{room_name.replace(' ', '_')}.csv")
+    disposition = f'attachment; filename="{safe_ascii}"; filename*=UTF-8\'\'{utf8_fn}'
+    return StreamingResponse(iter([content]), media_type='text/csv; charset=utf-8', headers={'Content-Disposition': disposition})
 
 @router.get('/{room_id}/analytics')
 async def get_room_analytics(room_id: int, user: dict=Depends(get_current_user)):
