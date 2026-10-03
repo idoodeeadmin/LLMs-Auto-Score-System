@@ -1,0 +1,1250 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>บทที่ 4–5 และภาคผนวก — ระบบตรวจข้อสอบอัตนัยด้วย LLMs</title><style>
+@page { size: A4; margin: 21mm 19mm 20mm 23mm; }
+* { box-sizing: border-box; }
+html { background: #ddd; }
+body { margin: 0; color: #111; font: 18px/1.4 'TH Sarabun New','Sarabun',Tahoma,sans-serif; }
+.toolbar { background: #202124; color: white; padding: 9px; text-align: center; font: 13px Tahoma,sans-serif; }
+.toolbar button { margin-right: 10px; padding: 7px 12px; }
+.document { width: 210mm; margin: 14px auto 25px; padding: 21mm 19mm 20mm 23mm; background: white; box-shadow: 0 1px 9px #777; }
+h1 { margin: 0; text-align: center; font-size: 24px; line-height: 1.25; }
+.chapter-start { break-before: page; margin-top: 45px; }
+.appendix-divider { break-before: page; break-after: page; min-height: 180mm; display: flex; flex-direction: column; justify-content: center; text-align: center; }
+.manual-section { break-before: page; }
+.manual-section ol { margin-top: 6px; padding-left: 28px; }
+.manual-section li { margin-bottom: 7px; }
+.manual-section h4 { margin: 20px 0 6px; font-size: 17px; break-after: avoid; page-break-after: avoid; }
+.rubric-entry { margin: 0 0 12px; }
+.rubric-entry-title { margin-bottom: 3px; font-size: 16px; }
+.rubric-text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.4; }
+
+.toolbar a { color: white; margin: 0 12px; }
+@media print { .chapter-start { margin-top: 0; } }
+h2 { margin: 24px 0 8px; font-size: 21px; }
+h3 { margin: 20px 0 6px; font-size: 19px; font-weight: normal; }
+h1,h2,h3,.table-title { break-after: avoid; page-break-after: avoid; }
+p { margin: 0 0 9px; text-indent: 1.1cm; text-align: justify; }
+.test-section p { text-indent: 0; }
+.lead { margin-top: 22px; }
+.table-block { margin: 11px 0 15px; }
+.table-title { margin-bottom: 4px; font-weight: normal; }
+.table-title strong { font-weight: bold; }
+td .caption { text-align: center; margin-top: 5px; }
+.caption, figcaption { font-weight: normal; }
+table { width: 100%; border-collapse: collapse; font: 16px/1.28 'TH Sarabun New','Sarabun',Tahoma,sans-serif; }
+th,td { border: 1px solid #333; padding: 5px 6px; vertical-align: top; overflow-wrap: anywhere; }
+th { background: #dedede; text-align: center; }
+thead { display: table-header-group; }
+.results { font-size: 15px; }
+.results td:first-child, .results td:nth-child(3) { text-align:center; }
+.example-table td:first-child { width: 26%; background: #f3f3f3; font-weight: normal; }
+.discrepancy-table { table-layout: fixed; }
+.discrepancy-table td:first-child { width: 26%; }
+.case-title { margin: 8px 0 3px; text-indent: 0; font-weight: normal; }
+.comparison-table { table-layout: fixed; }
+.comparison-table th:first-child { width: 20%; }
+.comparison-table td:first-child { background: #f3f3f3; }
+.sample-image { max-width: 100%; max-height: 116mm; display:block; margin: auto; object-fit:contain; }
+.confusion-figure { margin: 12pt auto; break-inside: avoid; page-break-inside: avoid; }
+.matrix-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 6mm; row-gap: 14pt; align-items: start; }
+.matrix-item { min-width: 0; text-align: center; break-inside: avoid; }
+.matrix-axes { display: inline-grid; grid-template-columns: 12mm auto; grid-template-rows: auto auto; gap: 3pt; align-items: center; }
+.matrix-axis-top { grid-column: 2; grid-row: 1; font-size: 9.5pt; text-align: center; }
+.matrix-axis-left { grid-column: 1; grid-row: 2; font-size: 9pt; line-height: 1.3; text-align: center; white-space: nowrap; }
+.matrix-axes .matrix { grid-column: 2; grid-row: 2; }
+.matrix-heading { margin: 0 0 1pt; font-size: 11pt; line-height: 1.3; font-weight: bold; }
+.matrix-subtitle { margin-bottom: 5pt; font-size: 9pt; line-height: 1.3; }
+.matrix-grid .matrix td.matrix-zero { color: #777; }
+.matrix-grid .matrix { margin: 0 auto; border-collapse: collapse; table-layout: fixed; font-family: inherit; font-size: 10pt; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.matrix-grid .matrix th, .matrix-grid .matrix td { height: 9mm; padding: 2pt; border: 0.5pt solid #444; text-align: center; vertical-align: middle; font-weight: normal; overflow-wrap: normal; }
+.matrix-grid .matrix th { background: #ededed; }
+.matrix-grid .matrix td { background: #fff; }
+.matrix-color-key { display: flex; justify-content: center; align-items: center; gap: 5pt; margin-top: 7pt; font-size: 9pt; }
+.matrix-color-scale { width: 26mm; height: 3mm; border: 0.5pt solid #777; display: flex; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.matrix-color-scale > span { flex: 1; }
+.confusion-figure figcaption { margin-top: 7pt; text-align: center; font-size: 11pt; line-height: 1.3; }
+@media print { .matrix-grid .matrix th, .matrix-grid .matrix td { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+.test-overview { font-size: 14px; }
+.test-overview td:first-child { width: 7%; text-align:center; }
+.test-overview td:nth-child(2) { width: 24%; }
+.test-overview td:last-child { width: 13%; }
+.test-section { margin-top: 20px; }
+.test-section h3 { margin-bottom: 4px; }
+.test-section .scope { text-indent: 0; color: #444; font-size: 16px; margin-bottom: 6px; }
+.test-section table { table-layout: fixed; }
+.test-section td:first-child { width: 22%; background: #dedede; }
+.test-section .case { width: 26%; }
+.test-section .case-4 { width: 20.5%; }
+.test-section .figure { margin: 12px auto; text-align: center; break-inside: avoid; }
+.test-section .figure img { display: block; max-width: 80%; max-height: 105mm; margin: auto; object-fit: contain; }
+.test-section .caption { margin-top: 5px; font-size: 16px; }
+.signature { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 20px; text-align: center; font-size: 16px; }
+.signature div { border-top: 1px dotted #555; padding-top: 4px; }
+.formula { margin: 12px 0 17px 1.1cm; padding: 6px 0 6px 12px; border-left: 2px solid #777; font-size: 16px; }
+figure { margin: 14px auto 17px; text-align: center; break-inside: avoid; }
+figure img { max-width: 100%; max-height: 105mm; object-fit: contain; }
+.score-comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; text-align: center; }
+.score-comparison-label { font-size: 14px; margin-bottom: 5px; }
+.score-comparison img { width: 100%; height: 68mm; object-fit: contain; }
+figcaption { font-size: 16px; margin-top: 4px; }
+a { color: #164f69; }
+@media print {
+  html,body { background:white; }
+  .toolbar { display:none; }
+  .document { width:auto; margin:0; padding:0; box-shadow:none; }
+  th,.heat { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  tr,figure { break-inside:avoid; }
+}
+@media screen and (max-width:840px) {
+  .document { width:100%; padding:22px 16px; }
+  table { font-size:14px; }
+  body { font-size:17px; }
+}
+
+/* ========================================================
+   Research Paper (บทความวิจัย) Authentic MSU Conference Format
+   ======================================================== */
+.paper-divider { break-before: page; break-after: page; min-height: 220mm; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+.paper-divider h1 { font-family: 'TH Sarabun New', 'Sarabun', Tahoma, sans-serif; font-size: 32px; font-weight: bold; color: #000000; margin: 0; }
+.paper-container { break-before: page; margin-top: 10px; font-family: 'TH Sarabun New', 'Sarabun', Tahoma, sans-serif; color: #000000; }
+.paper-header { text-align: center; margin-bottom: 12px; }
+.paper-title-th { font-size: 20px; font-weight: bold; margin: 0 0 3px; line-height: 1.25; color: #000000; }
+.paper-title-en { font-size: 17px; font-weight: bold; margin: 0 0 8px; line-height: 1.25; color: #000000; }
+.paper-authors { font-size: 15.5px; font-weight: bold; margin-bottom: 2px; color: #000000; }
+.paper-affiliation { font-size: 14.5px; margin-bottom: 2px; color: #000000; }
+.paper-emails { font-size: 13.5px; color: #000000; margin-bottom: 12px; }
+.paper-body { column-count: 2; column-gap: 20px; text-align: justify; font-size: 14.5px; line-height: 1.26; }
+.paper-body h2 { font-size: 15.5px; font-weight: bold; margin: 10px 0 3px; color: #000000; break-after: avoid; page-break-after: avoid; }
+.paper-body h3 { font-size: 14.5px; font-weight: bold; margin: 6px 0 2px; color: #000000; break-after: avoid; page-break-after: avoid; }
+.paper-body p { text-indent: 0.8cm; margin-bottom: 4px; font-size: 14.5px; line-height: 1.26; text-align: justify; }
+.paper-body table { font-size: 11px; line-height: 1.2; margin: 6px 0 8px; width: 100%; break-inside: avoid; page-break-inside: avoid; border-collapse: collapse; }
+.paper-body table th, .paper-body table td { padding: 3px 4px; border: 0.5pt solid #000000; }
+.paper-body table th { background: #f2f2f2; font-weight: bold; text-align: center; }
+.paper-table-title { font-size: 12px; font-weight: bold; margin-bottom: 2px; text-align: left; break-after: avoid; page-break-after: avoid; color: #000000; }
+.paper-figure { margin: 8px auto; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+.paper-figure img { max-width: 100%; border: 0.5pt solid #999999; display: block; margin: auto; }
+.paper-figure-caption { font-size: 12px; margin-top: 3px; color: #000000; font-weight: normal; }
+.paper-references { font-size: 12px; line-height: 1.22; margin: 4px 0 0; padding-left: 18px; }
+.paper-references li { margin-bottom: 3px; }
+@media print {
+  .paper-body { column-count: 2; }
+}
+@media screen and (max-width: 768px) {
+  .paper-body { column-count: 1; }
+}
+</style></head><body><div class="toolbar"><button onclick="window.print()">พิมพ์ / บันทึกเป็น PDF</button><a href="#chapter5">บทที่ 5</a><a href="#appendix-a">ภาคผนวก ก</a><a href="#appendix-b">ภาคผนวก ข</a><a href="#research-paper" style="background:#2563eb;color:white;padding:3px 8px;border-radius:3px;font-weight:bold;">บทความวิจัย</a></div><main class="document">
+<h1>บทที่ 4</h1>
+    <h1>ผลการทดสอบและการประเมินระบบ</h1>
+
+    <p class="lead">บทนี้นำเสนอผลการทดสอบและการประเมินระบบตรวจข้อสอบอัตนัยด้วย Gemini 3.8 Flash โดยแบ่งการนำเสนอออกเป็นการประเมินความสอดคล้องของคะแนนที่แบบจำลองให้กับคะแนนของผู้สอน การทดลองอ่านข้อความลายมือและระบุกรณีที่ควรทบทวน และการทดสอบการทำงานของระบบในแต่ละส่วน</p>
+
+    <h2>4.1 การประเมินประสิทธิภาพของแบบจำลองในการตรวจข้อสอบ</h2>
+    <p>การประเมินส่วนนี้มีวัตถุประสงค์เพื่อศึกษาความสามารถของ Gemini 3.8 Flash ในการประเมินคำตอบข้อสอบอัตนัย โดยครอบคลุมทั้งคำตอบแบบข้อความและคำตอบแบบภาพลายมือเชิงโครงสร้างและสัญลักษณ์ การทดลองนี้ใช้แบบจำลองสำเร็จรูปโดยไม่มีการฝึกเพิ่มเติมหรือปรับแต่งพารามิเตอร์ของแบบจำลอง (Fine-tuning) ระบบนำโจทย์ คำตอบของผู้เรียน คะแนนเต็ม แนวคำตอบ และเกณฑ์การให้คะแนนของแต่ละข้อส่งให้แบบจำลองประเมิน โดยใช้คำสั่งและเกณฑ์ชุดเดียวกันกับคำตอบทั้งหมดภายในข้อเดียวกัน และไม่เปิดเผยคะแนนอ้างอิงจากผู้สอนแก่แบบจำลอง จากนั้นจึงนำคะแนนที่ได้จากแบบจำลองมาเปรียบเทียบกับคะแนนอ้างอิงจากผู้สอนสำหรับคำตอบชุดเดียวกัน</p>
+
+    <h3>4.1.1 ข้อมูลที่ใช้ในการประเมิน</h3>
+    <p>ข้อมูลที่ใช้ในการประเมินเป็นคำตอบข้อสอบในรายวิชาโครงสร้างข้อมูล จำนวน 6 ข้อ จากผู้เรียน 34 คน โดยแต่ละข้อมีคำตอบ 34 คำตอบ รวมทั้งสิ้น 204 คำตอบ ข้อสอบครอบคลุมคำถามเชิงอธิบาย การเปรียบเทียบแนวคิด การสร้างโครงสร้างต้นไม้ และการเขียนนิพจน์ตามขั้นตอนที่โจทย์กำหนด รายละเอียดของข้อสอบแสดงในตารางที่ 4.1</p>
+
+    <div class="table-block">
+      <div class="table-title"><strong>ตารางที่ 4.1</strong> ข้อมูลข้อสอบที่ใช้ในการประเมิน</div>
+      <table>
+        <thead><tr><th>ข้อที่</th><th>หัวข้อโจทย์</th><th>รูปแบบคำตอบ</th><th>คะแนนเต็ม</th><th>จำนวนคำตอบ</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Row-major และ Column-major</td><td>ข้อความ</td><td>2</td><td>34</td></tr>
+          <tr><td>2</td><td>ความซับซ้อน O(n log n) และ O(n²)</td><td>ข้อความ</td><td>2</td><td>34</td></tr>
+          <tr><td>3</td><td>Linked List และ Array สำหรับ Stack และ Queue</td><td>ข้อความ</td><td>1</td><td>34</td></tr>
+          <tr><td>4</td><td>การสร้าง Binary Search Tree</td><td>ภาพลายมือเชิงโครงสร้างและสัญลักษณ์</td><td>1</td><td>34</td></tr>
+          <tr><td>5</td><td>การแปลง Infix Expression เป็น Prefix และ Postfix</td><td>ภาพลายมือเชิงโครงสร้างและสัญลักษณ์</td><td>1</td><td>34</td></tr>
+          <tr><td>6</td><td>การแปลง General Tree เป็น Binary Tree</td><td>ภาพลายมือเชิงโครงสร้างและสัญลักษณ์</td><td>1</td><td>34</td></tr>
+          <tr><td colspan="2">รวม</td><td>ข้อความ 102 คำตอบ<br>ภาพลายมือเชิงโครงสร้างและสัญลักษณ์ 102 คำตอบ</td><td>—</td><td>204</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>ชุดข้อมูลแบ่งตามรูปแบบคำตอบออกเป็น 2 กลุ่ม ได้แก่ คำตอบแบบข้อความในข้อที่ 1–3 จำนวน 102 คำตอบ และคำตอบแบบภาพลายมือเชิงโครงสร้างและสัญลักษณ์ในข้อที่ 4–6 จำนวน 102 คำตอบ สำหรับคำตอบแบบข้อความ ได้ถอดเนื้อหาจากกระดาษคำตอบของผู้เรียนเป็นข้อความโดยคงเนื้อหาเดิม และไม่นำคะแนนหรือรอยตรวจของผู้สอนมาใช้เป็นข้อมูลนำเข้าสำหรับแบบจำลอง ตัวอย่างกระดาษคำตอบต้นฉบับแสดงในรูปที่ 4.1 และข้อมูลหลังถอดเป็นข้อความแสดงในตารางที่ 4.2</p>
+
+    <figure>
+      <img class="sample-image" src="screenshots/evaluation_ds084_original_with_score.jpg" alt="กระดาษคำตอบต้นฉบับของผู้เรียนที่มีคะแนนผู้สอนก่อนถอดเป็นข้อความ">
+      <figcaption>รูปที่ 4.1 ตัวอย่างคำตอบต้นฉบับของผู้เรียนที่มีคะแนนผู้สอนก่อนถอดเป็นข้อความ</figcaption>
+    </figure>
+
+    <div class="table-block">
+      <div class="table-title"><strong>ตารางที่ 4.2</strong> ตัวอย่างข้อมูลคำตอบ</div>
+      <table>
+        <thead><tr><th>รหัส</th><th>ข้อที่</th><th>คำตอบที่ถอดเป็นข้อความ</th><th>คะแนนผู้สอน</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>DS-084</td>
+            <td>3</td>
+            <td style="text-align:left">การใช้ Link List แทน Array นั้น<br>ข้อดี คือ สามารถเพิ่มและลบได้เรื่อย ๆ เพราะขนาดของ Link List ไม่จำกัดเหมือน Array และเพิ่มหรือลบได้รวดเร็วกว่า Array<br>ข้อเสีย คือ การเข้าถึงและค้นหาข้อมูลทำได้ยากกว่า Array</td>
+            <td>0.50</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>คำตอบข้อที่ 4–6 ส่งให้แบบจำลองในรูปแบบภาพโดยตรง ก่อนนำเข้าสู่การประเมินจึงลบคะแนนและรอยตรวจของผู้สอนออกจากภาพ เพื่อป้องกันไม่ให้แบบจำลองใช้ข้อมูลดังกล่าวประกอบการตัดสิน และทำให้แบบจำลองประเมินจากโจทย์ คำตอบของผู้เรียน แนวคำตอบ และเกณฑ์การให้คะแนนที่กำหนดเท่านั้น ตัวอย่างการเตรียมคำตอบแบบภาพแสดงในรูปที่ 4.2</p>
+
+    <figure>
+      <div class="score-comparison">
+        <div>
+          <div class="score-comparison-label">รูปที่ 4.2 (ก) ก่อนลบคะแนนและรอยตรวจ</div>
+          <img src="screenshots/case_studies/raw_score_case4.jpg" alt="ภาพคำตอบก่อนลบคะแนนและรอยตรวจของผู้สอน">
+        </div>
+        <div>
+          <div class="score-comparison-label">รูปที่ 4.2 (ข) หลังลบคะแนนและรอยตรวจ</div>
+          <img src="screenshots/case_studies/case4_ds104.jpg" alt="ภาพคำตอบหลังลบคะแนนและรอยตรวจของผู้สอน">
+        </div>
+      </div>
+      <figcaption>รูปที่ 4.2 ตัวอย่างการเตรียมคำตอบแบบภาพก่อนนำเข้าสู่การประเมิน</figcaption>
+    </figure>
+
+    <p>ข้อมูลแต่ละรายการประกอบด้วยรหัสตัวอย่าง หมายเลขข้อ โจทย์ คำตอบของผู้เรียน คะแนนอ้างอิงจากผู้สอน คะแนนที่แบบจำลองประเมิน ระดับความมั่นใจที่แบบจำลองรายงาน และข้อเสนอแนะจากแบบจำลอง โดยจับคู่คะแนนจากผู้สอนและคะแนนจากแบบจำลองกับคำตอบรายการเดียวกัน เพื่อใช้คำนวณผลการประเมินในขั้นตอนถัดไป</p>
+
+    <h3>4.1.2 เกณฑ์การให้คะแนนและคะแนนอ้างอิง</h3>
+    <p>เกณฑ์การให้คะแนนรายข้อจัดทำขึ้นจากแนวทางการตรวจที่ได้รับจากผู้สอนและรูปแบบการให้คะแนนที่ปรากฏในชุดคำตอบ โดยนำมาจัดเป็นคะแนนเต็ม ระดับคะแนน และองค์ประกอบที่ใช้พิจารณาคำตอบให้สอดคล้องกับลักษณะของโจทย์แต่ละข้อ เกณฑ์ชุดเดียวกันถูกใช้กับคำตอบทั้งหมดภายในข้อเดียวกัน คะแนนที่ผู้สอนให้แก่คำตอบของผู้เรียนใช้เป็นคะแนนอ้างอิงสำหรับเปรียบเทียบกับคะแนนที่ Gemini 3.8 Flash ประเมิน สรุปเกณฑ์และระดับคะแนนที่ใช้แสดงในตารางที่ 4.3</p>
+
+    <div class="table-block">
+      <div class="table-title"><strong>ตารางที่ 4.3</strong> สรุปเกณฑ์และระดับคะแนนที่ใช้ตรวจคำตอบแต่ละข้อ</div>
+      <table>
+        <thead>
+          <tr><th>ข้อที่</th><th>คะแนนเต็ม</th><th>ระดับคะแนนที่กำหนด</th><th>องค์ประกอบที่พิจารณา</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>2</td><td>0, 1 และ 2</td><td style="text-align:left">พิจารณาการอธิบาย Row-major และ Column-major แยกส่วนละ 1 คะแนน</td></tr>
+          <tr><td>2</td><td>2</td><td>0, 1, 1.5 และ 2</td><td style="text-align:left">พิจารณาเหตุผลที่ O(n log n) เหมาะกับข้อมูลขนาดใหญ่กว่า O(n²) ร่วมกับการยกตัวอย่างอัลกอริทึม</td></tr>
+          <tr><td>3</td><td>1</td><td>0, 0.25, 0.50, 0.75 และ 1</td><td style="text-align:left">พิจารณาความแตกต่างเชิงโครงสร้างระหว่าง Linked List และ Array รวมถึงข้อดีและข้อเสียของการนำมาใช้กับ Stack และ Queue</td></tr>
+          <tr><td>4</td><td>1</td><td>0 และ 1</td><td style="text-align:left">พิจารณาความถูกต้องของโครงสร้าง Binary Search Tree และตำแหน่งของโหนดตามข้อมูลที่โจทย์กำหนด</td></tr>
+          <tr><td>5</td><td>1</td><td>0, 0.50 และ 1</td><td style="text-align:left">พิจารณาการแปลงเป็น Prefix และ Postfix แยกส่วนละ 0.50 คะแนน (ได้ 1.00 คะแนนเมื่อถูกต้องทั้งสองส่วน, 0.50 คะแนนเมื่อถูกต้องส่วนใดส่วนหนึ่ง และ 0 คะแนนเมื่อไม่ถูกต้องทั้งสองส่วน)</td></tr>
+          <tr><td>6</td><td>1</td><td>0 และ 1</td><td style="text-align:left">พิจารณาความถูกต้องของการแปลง General Tree เป็น Binary Tree ตามหลัก Left-Child Right-Sibling</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>ระดับคะแนนของแต่ละข้อไม่จำเป็นต้องเท่ากัน เนื่องจากกำหนดตามองค์ประกอบของคำตอบและลักษณะการตัดสินของโจทย์แต่ละข้อ ข้อที่สามารถแยกพิจารณาเป็นหลายองค์ประกอบจึงมีคะแนนบางส่วน ขณะที่ข้อวาดโครงสร้างซึ่งตัดสินจากความถูกต้องของตำแหน่งและความสัมพันธ์ระหว่างโหนดใช้คะแนนแบบ 0 หรือ 1 คะแนน</p>
+
+    <h3>4.1.3 วิธีการให้คะแนนด้วย Gemini 3.8 Flash</h3>
+    <p>การให้คะแนนใช้ฟังก์ชันตรวจคำตอบแม่แบบเดียวกับที่ระบบใช้ตรวจข้อสอบจริง โดยประมวลผลคำตอบทีละรายการ สำหรับคำตอบแต่ละรายการ ระบบจัดเตรียมโจทย์ คะแนนเต็ม แนวคำตอบ เกณฑ์การให้คะแนน และคำตอบของผู้เรียนเป็นข้อมูลนำเข้า หากโจทย์หรือคำตอบอยู่ในรูปภาพ ระบบจะแนบภาพดังกล่าวให้แบบจำลองวิเคราะห์ร่วมกับข้อความ โดยไม่ส่งคะแนนอ้างอิงจากผู้สอนเข้าไปในกระบวนการให้คะแนน</p>
+
+    <p>ระบบเรียกใช้ Gemini 3.8 Flash ผ่าน Gemini API และกำหนดระดับการใช้เหตุผลเป็นระดับต่ำ (Low) โดยไม่ได้กำหนดค่า Temperature เพิ่มเติม แบบจำลองได้รับคำสั่งให้พิจารณาความถูกต้องของเนื้อหาเป็นหลัก และวิเคราะห์คำตอบจากภาพที่ส่งให้โดยตรง หากลายมือหรือสัญลักษณ์ในภาพไม่ชัดเจน แบบจำลองต้องรายงานระดับความมั่นใจเป็นปานกลางหรือต่ำ และแจ้งให้ผู้สอนตรวจสอบซ้ำแทนการคาดเดาคำตอบ</p>
+
+    <div class="table-block">
+      <div class="table-title"><strong>ตารางที่ 4.4</strong> ขั้นตอนการให้คะแนนคำตอบด้วย Gemini 3.8 Flash</div>
+      <table>
+        <thead><tr><th>ขั้นตอน</th><th>การดำเนินการ</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td style="text-align:left">เตรียมโจทย์ คำตอบของผู้เรียน คะแนนเต็ม แนวคำตอบ และเกณฑ์การให้คะแนนของข้อนั้น</td></tr>
+          <tr><td>2</td><td style="text-align:left">แนบข้อความหรือภาพคำตอบตามรูปแบบข้อมูล และใช้คำสั่งแม่แบบเดียวกันกับคำตอบทั้งหมดภายในข้อเดียวกัน</td></tr>
+          <tr><td>3</td><td style="text-align:left">ส่งข้อมูลให้ Gemini 3.8 Flash วิเคราะห์ความถูกต้องตามแนวคำตอบและเกณฑ์ที่กำหนด</td></tr>
+          <tr><td>4</td><td style="text-align:left">รับผลลัพธ์ในรูปแบบที่กำหนด ประกอบด้วยคะแนน ระดับความมั่นใจที่แบบจำลองรายงาน เหตุผลสำหรับผู้สอน คำแนะนำสำหรับผู้เรียน และข้อความที่แบบจำลองอ่านได้จากภาพ</td></tr>
+          <tr><td>5</td><td style="text-align:left">ตรวจสอบว่าผลลัพธ์อยู่ในรูปแบบและระดับคะแนนที่เกณฑ์กำหนด หากผลลัพธ์ไม่เป็นไปตามรูปแบบที่กำหนด จะไม่นำผลดังกล่าวไปปรับคะแนนโดยอัตโนมัติ แต่ดำเนินการตามขั้นตอนจัดการข้อผิดพลาดของระบบ</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>ผลลัพธ์ที่ได้จากแบบจำลองถูกตรวจสอบรูปแบบก่อนนำไปใช้ คะแนนต้องเป็นค่าตัวเลขภายในช่วงและระดับคะแนนที่กำหนด ระบบไม่ปัดหรือแปลงคะแนนที่อยู่นอกระดับคะแนนไปเป็นค่าที่ใกล้ที่สุด ส่วนระดับความมั่นใจสูง ปานกลาง และต่ำเป็นค่าที่แบบจำลองรายงานเอง ไม่ใช่ค่าความน่าจะเป็นที่ผ่านการสอบเทียบทางสถิติ ระบบติดธงให้ผู้สอนทบทวนเมื่อแบบจำลองรายงานความมั่นใจระดับปานกลางหรือต่ำ โดยผู้สอนเป็นผู้พิจารณาและยืนยันผลขั้นสุดท้าย</p>
+
+    <h3>4.1.4 ตัวชี้วัดที่ใช้ในการประเมิน</h3>
+    <p>การประเมินประสิทธิภาพการให้คะแนนของแบบจำลองใช้ตัวชี้วัด 3 ค่า ได้แก่ อัตราคะแนนตรงกันสมบูรณ์ (Exact Match) ค่าความคลาดเคลื่อนสัมบูรณ์เฉลี่ย (Mean Absolute Error: MAE) และค่าสัมประสิทธิ์ความสอดคล้องแบบถ่วงน้ำหนักกำลังสอง (Quadratic Weighted Kappa: QWK) โดยเปรียบเทียบคะแนนที่แบบจำลองประเมินกับคะแนนอ้างอิงจากผู้สอนของคำตอบรายการเดียวกัน</p>
+
+    <div class="table-block">
+      <div class="table-title"><strong>ตารางที่ 4.5</strong> ตัวชี้วัดที่ใช้ในการประเมินประสิทธิภาพการให้คะแนน</div>
+      <table>
+        <thead><tr><th>ตัวชี้วัด</th><th>วิธีคำนวณ</th><th>ความหมาย</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Exact Match</td>
+            <td style="text-align:left">จำนวนคำตอบที่คะแนนจากแบบจำลองเท่ากับคะแนนผู้สอน หารด้วยจำนวนคำตอบทั้งหมด แล้วคูณด้วย 100</td>
+            <td style="text-align:left">แสดงร้อยละของคำตอบที่ได้คะแนนตรงกันทุกประการ ค่ายิ่งสูงแสดงว่าคะแนนตรงกันมาก</td>
+          </tr>
+          <tr>
+            <td>MAE</td>
+            <td style="text-align:left">ผลรวมของค่าสัมบูรณ์ของผลต่างระหว่างคะแนนทั้งสองแหล่ง หารด้วยจำนวนคำตอบทั้งหมด</td>
+            <td style="text-align:left">แสดงขนาดความคลาดเคลื่อนเฉลี่ยในหน่วยคะแนน ค่าใกล้ 0 แสดงว่าคะแนนแตกต่างกันน้อย</td>
+          </tr>
+          <tr>
+            <td>QWK</td>
+            <td style="text-align:left">เปรียบเทียบความไม่สอดคล้องที่สังเกตได้กับความไม่สอดคล้องที่คาดว่าจะเกิดจากความบังเอิญ โดยให้น้ำหนักกำลังสองตามระยะห่างของระดับคะแนน</td>
+            <td style="text-align:left">แสดงความสอดคล้องของระดับคะแนนโดยคำนึงถึงโอกาสเกิดความตรงกันโดยบังเอิญ และลงโทษกรณีที่คะแนนต่างกันมากหนักกว่ากรณีที่ต่างกันเล็กน้อย</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="formula"><strong>สูตรที่ใช้ในการคำนวณ</strong><br>Exact Match = (1 ÷ N) × Σ<sup>N</sup><sub>i=1</sub> I(H<sub>i</sub> = A<sub>i</sub>) × 100<br>MAE = (1 ÷ N) × Σ<sup>N</sup><sub>i=1</sub> |H<sub>i</sub> − A<sub>i</sub>|<br>QWK = 1 − [Σ<sub>i,j</sub> w<sub>ij</sub>O<sub>ij</sub> ÷ Σ<sub>i,j</sub> w<sub>ij</sub>E<sub>ij</sub>]<br>w<sub>ij</sub> = (i − j)<sup>2</sup> ÷ (K − 1)<sup>2</sup></div>
+
+    <p>กำหนดให้ H<sub>i</sub> คือคะแนนอ้างอิงจากผู้สอน A<sub>i</sub> คือคะแนนที่แบบจำลองประเมิน และ N คือจำนวนคำตอบที่นำมาประเมิน โดย I(H<sub>i</sub> = A<sub>i</sub>) มีค่าเท่ากับ 1 เมื่อคะแนนทั้งสองแหล่งตรงกัน และมีค่าเท่ากับ 0 เมื่อคะแนนไม่ตรงกัน สำหรับ QWK กำหนดให้ O<sub>ij</sub> คือความถี่ที่สังเกตได้เมื่อคะแนนผู้สอนอยู่ในระดับ i และคะแนนแบบจำลองอยู่ในระดับ j ส่วน E<sub>ij</sub> คือความถี่ที่คาดหมายจากการแจกแจงคะแนนของทั้งสองแหล่ง และ w<sub>ij</sub> คือน้ำหนักความคลาดเคลื่อนแบบกำลังสอง ในการศึกษานี้กำหนด K = 5 ตามจำนวนระดับของสเกลร่วม 0–4 สำหรับทุกข้อ แม้ว่าบางข้อจะมีระดับคะแนนที่ใช้งานจริงเพียงบางระดับ เพื่อรักษาระยะห่างของสัดส่วนคะแนนให้เป็นมาตรฐานเดียวกัน</p>
+
+    <p>เนื่องจากข้อสอบแต่ละข้อมีคะแนนเต็มและระดับคะแนนแตกต่างกัน การคำนวณ QWK รายข้อจึงปรับคะแนนด้วยคะแนนเต็มของข้อนั้นให้อยู่ในช่วง 0–1 จากนั้นแปลงเป็นสเกลลำดับร่วม 5 ระดับ ได้แก่ 0, 1, 2, 3 และ 4 ซึ่งสอดคล้องกับสัดส่วนคะแนน 0, 0.25, 0.50, 0.75 และ 1.00 ตามลำดับ โดยกำหนด K = 5 สำหรับทุกข้อ ระดับที่ไม่ปรากฏตามเกณฑ์ของข้อใดจะมีความถี่เป็นศูนย์ แต่ยังคงอยู่ในสเกลร่วมเมื่อคำนวณ QWK ส่วนค่า QWK ภาพรวมคำนวณโดยนำคะแนนทั้ง 204 คำตอบที่แปลงเข้าสเกลเดียวกันมาพิจารณาร่วมกัน วิธีดังกล่าวช่วยรักษาระยะห่างระหว่างระดับคะแนนให้เป็นมาตรฐานเดียวกัน ส่วน Exact Match และ MAE คำนวณจากคะแนนดิบตามคะแนนเต็มของแต่ละข้อ ค่า MAE ในการประเมินรายข้อจึงแสดงในหน่วยคะแนนดิบของข้อนั้นและใช้พิจารณาความคลาดเคลื่อนภายในแต่ละข้อเป็นหลัก ส่วนการเปรียบเทียบข้ามข้อที่มีคะแนนเต็มแตกต่างกันจะพิจารณาค่าที่ปรับตามคะแนนเต็มเพิ่มเติม</p>
+
+    <h3>4.1.5 ผลการประเมินรายข้อ</h3>
+    <p>ผลการประเมินรายข้อคำนวณจากคำตอบของผู้เรียนข้อละ 34 คำตอบ โดยเปรียบเทียบคะแนนที่แบบจำลองประเมินกับคะแนนอ้างอิงจากผู้สอนของคำตอบรายการเดียวกัน ตารางที่ 4.6 แสดงจำนวนและร้อยละของคะแนนที่ตรงกัน ค่า MAE ในหน่วยคะแนนดิบ ค่า Normalized MAE (NMAE) ซึ่งคำนวณจาก MAE หารด้วยคะแนนเต็มของข้อนั้น และค่า QWK ที่คำนวณแยกภายในแต่ละข้อตามสเกลลำดับร่วม 5 ระดับ</p>
+
+    <div class="table-block">
+      <div class="table-title"><strong>ตารางที่ 4.6</strong> ผลการประเมินประสิทธิภาพการให้คะแนนจำแนกรายข้อ</div>
+      <table class="result-table">
+        <thead>
+          <tr><th>ข้อ</th><th>รูปแบบคำตอบ</th><th>คะแนนเต็ม</th><th>คะแนนตรงกัน</th><th>Exact Match (%)</th><th>MAE</th><th>Normalized MAE (NMAE)</th><th>QWK</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>ข้อความ</td><td>2</td><td>27/34</td><td>79.41</td><td>0.2353</td><td>0.1176</td><td>0.6288</td></tr>
+          <tr><td>2</td><td>ข้อความ</td><td>2</td><td>19/34</td><td>55.88</td><td>0.3088</td><td>0.1544</td><td>0.5783</td></tr>
+          <tr><td>3</td><td>ข้อความ</td><td>1</td><td>12/34</td><td>35.29</td><td>0.2426</td><td>0.2426</td><td>0.5330</td></tr>
+          <tr><td>4</td><td>ภาพ</td><td>1</td><td>34/34</td><td>100.00</td><td>0.0000</td><td>0.0000</td><td>1.0000</td></tr>
+          <tr><td>5</td><td>ภาพ</td><td>1</td><td>34/34</td><td>100.00</td><td>0.0000</td><td>0.0000</td><td>1.0000</td></tr>
+          <tr><td>6</td><td>ภาพ</td><td>1</td><td>34/34</td><td>100.00</td><td>0.0000</td><td>0.0000</td><td>1.0000</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>จากตารางที่ 4.6 ข้อสอบประเภทภาพลายมือเชิงโครงสร้างและสัญลักษณ์ในข้อที่ 4, ข้อที่ 5 และข้อที่ 6 มีคะแนนจากแบบจำลองตรงกับคะแนนอ้างอิงจากผู้สอนทั้ง 34 คำตอบในทุกข้อ คิดเป็นร้อยละ 100.00 มีค่า MAE และ Normalized MAE เท่ากับ 0.0000 และมีค่า QWK เท่ากับ 1.0000 สมบูรณ์แบบทั้งหมดทั้ง 3 ข้อ</p>
+
+    <p>สำหรับคำตอบแบบข้อความ ข้อที่ 1 มีอัตราคะแนนตรงกันสูงที่สุดที่ร้อยละ 79.41 ขณะที่ข้อที่ 3 มีอัตราคะแนนตรงกันต่ำที่สุดที่ร้อยละ 35.29 เมื่อพิจารณาความคลาดเคลื่อนที่ปรับตามคะแนนเต็ม พบว่าข้อที่ 3 มีค่า Normalized MAE สูงที่สุดเท่ากับ 0.2426 ผลการประเมินแสดงให้เห็นว่าความสอดคล้องของคะแนนแตกต่างกันในแต่ละข้อ ซึ่งควรพิจารณาร่วมกับลักษณะของโจทย์และเกณฑ์การให้คะแนนของแต่ละข้อ ดังนั้นการประเมินผลจึงควรพิจารณา Exact Match, MAE, Normalized MAE และ QWK ร่วมกัน</p>
+
+    <p>รูปที่ 4.3 แสดงเมทริกซ์ความสับสนแยกรายข้อ โดยแถวเป็นคะแนนผู้สอนและคอลัมน์เป็นคะแนนของแบบจำลอง ใช้คะแนนดิบตามคะแนนเต็มของแต่ละข้อ ตัวเลขในช่องคือจำนวนคำตอบ และสีฟ้าที่เข้มขึ้นหมายถึงจำนวนที่มากขึ้น โดยใช้สเกลสีเดียวกันทั้ง 6 ตาราง ช่องแนวทแยงแสดงคะแนนที่ตรงกัน ส่วนช่องด้านขวาและด้านซ้ายของแนวทแยงแสดงกรณีที่แบบจำลองให้คะแนนสูงกว่าและต่ำกว่าผู้สอนตามลำดับ</p>
+    <figure class="confusion-figure">
+      <div class="matrix-grid">
+<div class="matrix-item"><div class="matrix-heading">ข้อที่ 1</div><div class="matrix-subtitle">คะแนนเต็ม 2 · 34 คำตอบ</div><div class="matrix-axes"><div class="matrix-axis-top">คะแนน AI</div><div class="matrix-axis-left">คะแนน<br>ผู้สอน</div><table class="matrix" style="width:40mm" aria-label="Confusion Matrix ข้อที่ 1"><colgroup><col style="width:10mm"><col style="width:10mm"><col style="width:10mm"><col style="width:10mm"></colgroup><thead><tr><th class="matrix-corner" aria-label="แถว: คะแนนผู้สอน; คอลัมน์: คะแนน AI"></th><th>0</th><th>1</th><th>2</th></tr></thead><tbody><tr><th scope="row">0</th><td style="background-color:#f2f7fa">2</td><td style="background-color:#f8fbfd">1</td><td class="matrix-zero" style="background-color:#ffffff">0</td></tr><tr><th scope="row">1</th><td class="matrix-zero" style="background-color:#ffffff">0</td><td style="background-color:#f2f7fa">2</td><td style="background-color:#e4eff5">4</td></tr><tr><th scope="row">2</th><td style="background-color:#f8fbfd">1</td><td style="background-color:#f8fbfd">1</td><td style="background-color:#67a1c8">23</td></tr></tbody></table></div></div>
+<div class="matrix-item"><div class="matrix-heading">ข้อที่ 2</div><div class="matrix-subtitle">คะแนนเต็ม 2 · 34 คำตอบ</div><div class="matrix-axes"><div class="matrix-axis-top">คะแนน AI</div><div class="matrix-axis-left">คะแนน<br>ผู้สอน</div><table class="matrix" style="width:50mm" aria-label="Confusion Matrix ข้อที่ 2"><colgroup><col style="width:10mm"><col style="width:10mm"><col style="width:10mm"><col style="width:10mm"><col style="width:10mm"></colgroup><thead><tr><th class="matrix-corner" aria-label="แถว: คะแนนผู้สอน; คอลัมน์: คะแนน AI"></th><th>0</th><th>1</th><th>1.5</th><th>2</th></tr></thead><tbody><tr><th scope="row">0</th><td style="background-color:#f8fbfd">1</td><td class="matrix-zero" style="background-color:#ffffff">0</td><td class="matrix-zero" style="background-color:#ffffff">0</td><td class="matrix-zero" style="background-color:#ffffff">0</td></tr><tr><th scope="row">1</th><td style="background-color:#f8fbfd">1</td><td style="background-color:#bdd6e7">10</td><td style="background-color:#f8fbfd">1</td><td style="background-color:#f8fbfd">1</td></tr><tr><th scope="row">1.5</th><td style="background-color:#f8fbfd">1</td><td style="background-color:#deebf3">5</td><td style="background-color:#f8fbfd">1</td><td style="background-color:#f8fbfd">1</td></tr><tr><th scope="row">2</th><td class="matrix-zero" style="background-color:#ffffff">0</td><td style="background-color:#f2f7fa">2</td><td style="background-color:#ebf3f8">3</td><td style="background-color:#d1e2ee">7</td></tr></tbody></table></div></div>
+<div class="matrix-item"><div class="matrix-heading">ข้อที่ 3</div><div class="matrix-subtitle">คะแนนเต็ม 1 · 34 คำตอบ</div><div class="matrix-axes"><div class="matrix-axis-top">คะแนน AI</div><div class="matrix-axis-left">คะแนน<br>ผู้สอน</div><table class="matrix" style="width:60mm" aria-label="Confusion Matrix ข้อที่ 3"><colgroup><col style="width:10mm"><col style="width:10mm"><col style="width:10mm"><col style="width:10mm"><col style="width:10mm"><col style="width:10mm"></colgroup><thead><tr><th class="matrix-corner" aria-label="แถว: คะแนนผู้สอน; คอลัมน์: คะแนน AI"></th><th>0</th><th>0.25</th><th>0.5</th><th>0.75</th><th>1</th></tr></thead><tbody><tr><th scope="row">0</th><td style="background-color:#f8fbfd">1</td><td style="background-color:#f2f7fa">2</td><td style="background-color:#f8fbfd">1</td><td style="background-color:#f8fbfd">1</td><td class="matrix-zero" style="background-color:#ffffff">0</td></tr><tr><th scope="row">0.25</th><td class="matrix-zero" style="background-color:#ffffff">0</td><td class="matrix-zero" style="background-color:#ffffff">0</td><td style="background-color:#f8fbfd">1</td><td class="matrix-zero" style="background-color:#ffffff">0</td><td class="matrix-zero" style="background-color:#ffffff">0</td></tr><tr><th scope="row">0.5</th><td style="background-color:#ebf3f8">3</td><td style="background-color:#f8fbfd">1</td><td style="background-color:#ebf3f8">3</td><td style="background-color:#e4eff5">4</td><td style="background-color:#e4eff5">4</td></tr><tr><th scope="row">0.75</th><td class="matrix-zero" style="background-color:#ffffff">0</td><td style="background-color:#f8fbfd">1</td><td class="matrix-zero" style="background-color:#ffffff">0</td><td style="background-color:#f2f7fa">2</td><td style="background-color:#f8fbfd">1</td></tr><tr><th scope="row">1</th><td class="matrix-zero" style="background-color:#ffffff">0</td><td class="matrix-zero" style="background-color:#ffffff">0</td><td class="matrix-zero" style="background-color:#ffffff">0</td><td style="background-color:#ebf3f8">3</td><td style="background-color:#d7e7f1">6</td></tr></tbody></table></div></div>
+<div class="matrix-item"><div class="matrix-heading">ข้อที่ 4</div><div class="matrix-subtitle">คะแนนเต็ม 1 · 34 คำตอบ</div><div class="matrix-axes"><div class="matrix-axis-top">คะแนน AI</div><div class="matrix-axis-left">คะแนน<br>ผู้สอน</div><table class="matrix" style="width:30mm" aria-label="Confusion Matrix ข้อที่ 4"><colgroup><col style="width:10mm"><col style="width:10mm"><col style="width:10mm"></colgroup><thead><tr><th class="matrix-corner" aria-label="แถว: คะแนนผู้สอน; คอลัมน์: คะแนน AI"></th><th>0</th><th>1</th></tr></thead><tbody><tr><th scope="row">0</th><td style="background-color:#d1e2ee">7</td><td class="matrix-zero" style="background-color:#ffffff">0</td></tr><tr><th scope="row">1</th><td class="matrix-zero" style="background-color:#ffffff">0</td><td style="background-color:#4c91be">27</td></tr></tbody></table></div></div>
+<div class="matrix-item"><div class="matrix-heading">ข้อที่ 5</div><div class="matrix-subtitle">คะแนนเต็ม 1 · 34 คำตอบ</div><div class="matrix-axes"><div class="matrix-axis-top">คะแนน AI</div><div class="matrix-axis-left">คะแนน<br>ผู้สอน</div><table class="matrix" style="width:40mm" aria-label="Confusion Matrix ข้อที่ 5"><colgroup><col style="width:10mm"><col style="width:10mm"><col style="width:10mm"><col style="width:10mm"></colgroup><thead><tr><th class="matrix-corner" aria-label="แถว: คะแนนผู้สอน; คอลัมน์: คะแนน AI"></th><th>0</th><th>0.5</th><th>1</th></tr></thead><tbody><tr><th scope="row">0</th><td style="background-color:#f8fbfd">1</td><td class="matrix-zero" style="background-color:#ffffff">0</td><td class="matrix-zero" style="background-color:#ffffff">0</td></tr><tr><th scope="row">0.5</th><td class="matrix-zero" style="background-color:#ffffff">0</td><td style="background-color:#b6d2e5">11</td><td class="matrix-zero" style="background-color:#ffffff">0</td></tr><tr><th scope="row">1</th><td class="matrix-zero" style="background-color:#ffffff">0</td><td class="matrix-zero" style="background-color:#ffffff">0</td><td style="background-color:#6da5ca">22</td></tr></tbody></table></div></div>
+<div class="matrix-item"><div class="matrix-heading">ข้อที่ 6</div><div class="matrix-subtitle">คะแนนเต็ม 1 · 34 คำตอบ</div><div class="matrix-axes"><div class="matrix-axis-top">คะแนน AI</div><div class="matrix-axis-left">คะแนน<br>ผู้สอน</div><table class="matrix" style="width:30mm" aria-label="Confusion Matrix ข้อที่ 6"><colgroup><col style="width:10mm"><col style="width:10mm"><col style="width:10mm"></colgroup><thead><tr><th class="matrix-corner" aria-label="แถว: คะแนนผู้สอน; คอลัมน์: คะแนน AI"></th><th>0</th><th>1</th></tr></thead><tbody><tr><th scope="row">0</th><td style="background-color:#9cc2db">15</td><td class="matrix-zero" style="background-color:#ffffff">0</td></tr><tr><th scope="row">1</th><td class="matrix-zero" style="background-color:#ffffff">0</td><td style="background-color:#81b2d1">19</td></tr></tbody></table></div></div>
+      </div>
+      <div class="matrix-color-key"><span>จำนวนคำตอบ: 0</span><span class="matrix-color-scale" aria-hidden="true"><span style="background:#fff"></span><span style="background:#d2e4ef"></span><span style="background:#a6c8df"></span><span style="background:#79adce"></span><span style="background:#4c91be"></span></span><span>27</span></div>
+      <figcaption>รูปที่ 4.3 เมทริกซ์ความสับสนของคะแนนผู้สอนและแบบจำลอง แยกรายข้อ</figcaption>
+    </figure>
+    <p>เมื่อพิจารณาผลรวมทั้ง 204 คำตอบ พบว่าคะแนนตรงกัน 160 คำตอบ คิดเป็น Exact Agreement (Exact Match) ร้อยละ 78.43 มีค่า MAE เท่ากับ 0.1311 คะแนน และ QWK เท่ากับ 0.8546 โดย MAE รวมเป็นค่าเฉลี่ยความคลาดเคลื่อนจากคะแนนดิบ ส่วน QWK รวมคำนวณหลังปรับคะแนนตามคะแนนเต็มและแปลงเป็นสเกลร่วม 0–4 ตามหัวข้อ 4.1.4 การพิจารณาว่าข้อใดมีความคลาดเคลื่อนมากกว่ากันใช้ผลรายข้อและค่า NMAE ในตารางที่ 4.6 ประกอบ</p>
+
+    <h3>4.1.6 การวิเคราะห์ความคลาดเคลื่อนในการให้คะแนน</h3>
+    <p>จากการทดลองประเมินคำตอบทั้งหมด 204 รายการ แบบจำลองให้คะแนนตรงกับคะแนนอ้างอิงของผู้สอนจำนวน 160 รายการ (ร้อยละ 78.43) และมีคะแนนแตกต่างกันจำนวน 44 รายการ (ร้อยละ 21.57) โดยพบเฉพาะในกลุ่มข้อสอบแบบข้อความ ได้แก่ ข้อที่ 1 จำนวน 7 รายการ, ข้อที่ 2 จำนวน 15 รายการ และข้อที่ 3 จำนวน 22 รายการ ส่วนข้อสอบประเภทภาพเขียนมือเชิงโครงสร้างและสัญลักษณ์ (ข้อที่ 4, ข้อที่ 5 และข้อที่ 6) แบบจำลองให้คะแนนตรงกับผู้สอนทุกรายการครบทั้ง 102 คำตอบ (ร้อยละ 100.00)</p>
+    <p>เมื่อนำคำตอบที่มีคะแนนต่างกันมาเปรียบเทียบกับเกณฑ์และคำอธิบายของแบบจำลอง พบตัวอย่างกรณีศึกษาที่น่าสนใจ 4 กรณีในกลุ่มคำตอบประเภทข้อความ ดังแสดงในตารางที่ 4.7–4.10 โดยการวิเคราะห์พิจารณาจากข้อมูลที่บันทึกไว้</p>
+
+    <div class="table-block">
+      
+      <div class="table-title"><strong>ตารางที่ 4.7</strong> การพิจารณาความพยายามของผู้เรียนเทียบกับความถูกต้องทางเทคนิค</div>
+      <table class="example-table discrepancy-table">
+        <tbody>
+          <!-- กรณีศึกษาที่ 1: DS-025 -->
+          <tr><td>รหัสตัวอย่าง / โจทย์</td><td style="text-align:left">DS-025 | ข้อ 1 (Row-major vs. Column-major) [คะแนนเต็ม 2.00]</td></tr>
+          <tr><td>ข้อความคำตอบของผู้เรียน</td><td style="text-align:left;white-space:pre-line;">"Row-major จะนับจากบนลงล่าง เช่น [0][0], [1][0], [0][1], [1][1], [0][2], [1][2]
+Column-major จะนับจากซ้ายไปขวา เช่น [0][0], [0][1], [0][2], [1][0], [1][1], [1][2]"</td></tr>
+          <tr><td>การเปรียบเทียบคะแนน</td><td style="text-align:left">คะแนนผู้สอน: 2.00 / 2.00 คะแนน (ให้เต็ม) | คะแนนแบบจำลอง AI: 0.00 / 2.00 คะแนน (ผลต่าง -2.00)</td></tr>
+          <tr><td>คำอธิบายของ AI (Teacher Feedback)</td><td style="text-align:left">"ผู้เรียนมีความเข้าใจสลับกันอย่างสิ้นเชิง โดยอธิบายว่า Row-major นับจากบนลงล่างตามแนวตั้ง (และแสดงตัวอย่าง [0][0], [1][0] ซึ่งคือการไล่ตามคอลัมน์) และอธิบายว่า Column-major นับจากซ้ายไปขวาตามแนวนอน"</td></tr>
+          <tr><td>บทวิเคราะห์</td><td style="text-align:left">ผู้เรียนมีความเข้าใจสลับนิยามกัน โดย Row-major ต้องเข้าถึงข้อมูลตามแถวก่อน (ซ้ายไปขวา) และ Column-major ต้องเข้าถึงข้อมูลตามคอลัมน์ก่อน (บนลงล่าง) การที่ผู้สอนให้คะแนนเต็มอาจสะท้อนถึงการให้คะแนนความพยายาม (Effort Recognition) เมื่อเห็นผู้เรียนเขียนคู่ลำดับดัชนีอย่างเป็นระเบียบ หรืออาจเกิดจากการกวาดสายตาตรวจอย่างรวดเร็ว (Human Oversight) ขณะที่แบบจำลอง AI ตรวจสอบความถูกต้องทางเทคนิคอย่างเคร่งครัดและตัดสิน 0.00 คะแนนตามกรอบความถูกต้องของเนื้อหา จึงสามารถใช้ผลการประเมินนี้ประกอบการตรวจทานคะแนนของผู้สอนได้</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="table-block">
+      <div class="table-title"><strong>ตารางที่ 4.8</strong> ความเคร่งครัดตามเกณฑ์การประเมินเทียบกับความยืดหยุ่นในการให้คะแนน</div>
+      <table class="example-table discrepancy-table">
+        <tbody>
+          <!-- กรณีศึกษาที่ 2: DS-056 -->
+          <tr><td>รหัสตัวอย่าง / โจทย์</td><td style="text-align:left">DS-056 | ข้อ 2 (Time Complexity O(n log n) vs O(n^2)) [คะแนนเต็ม 2.00]</td></tr>
+          <tr><td>ข้อความคำตอบของผู้เรียน</td><td style="text-align:left;white-space:pre-line;">"เพราะ n log n มีความเร็วมากกว่า n^2 สังเกตจาก Bubble sort ที่สั่งงานได้ช้าเนื่องจากต้องตรวจสอบค่าทีละคู่ หากมีจำนวนข้อมูลใหญ่จะทำให้ใช้เวลานาน"</td></tr>
+          <tr><td>การเปรียบเทียบคะแนน</td><td style="text-align:left">คะแนนผู้สอน: 2.00 / 2.00 คะแนน (ให้เต็ม) | คะแนนแบบจำลอง AI: 1.50 / 2.00 คะแนน (ผลต่าง -0.50)</td></tr>
+          <tr><td>คำอธิบายของ AI (Teacher Feedback)</td><td style="text-align:left">"ผู้เรียนระบุชื่ออัลกอริทึม Bubble sort ฝั่ง O(n^2) พร้อมอธิบายเหตุผลว่า O(n log n) เร็วกว่า และยกตัวอย่างการทำงานของ Bubble sort ที่ช้าเมื่อข้อมูลใหญ่ได้ดี แต่ไม่ได้ระบุตัวอย่างอัลกอริทึมที่เป็นตัวแทนของ O(n log n) เช่น Merge Sort หรือ Quick Sort จึงเข้าเกณฑ์ระดับ 1.50 คะแนน"</td></tr>
+          <tr><td>บทวิเคราะห์</td><td style="text-align:left">ผู้เรียนอธิบายการเปรียบเทียบประสิทธิภาพของ O(n log n) กับ O(n²) และยกตัวอย่าง Bubble sort ประกอบ ผู้สอนอาจพิจารณาว่าคำตอบแสดงความเข้าใจแนวคิดหลักได้เพียงพอจึงให้คะแนนเต็ม ขณะที่แบบจำลองพิจารณาความครบถ้วนของตัวอย่างตามเกณฑ์ เมื่อไม่มีการระบุอัลกอริทึมฝั่ง O(n log n) จึงให้ 1.50 คะแนน กรณีนี้แสดงประเด็นความแตกต่างระหว่างการพิจารณาความเข้าใจโดยรวมกับความครบถ้วนขององค์ประกอบคำตอบ</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="table-block">
+      <div class="table-title"><strong>ตารางที่ 4.9</strong> การประเมินตามองค์ประกอบย่อยเทียบกับความครบถ้วนของคำตอบ</div>
+      <table class="example-table discrepancy-table">
+        <tbody>
+          <!-- กรณีศึกษาที่ 3: DS-099 -->
+          <tr><td>รหัสตัวอย่าง / โจทย์</td><td style="text-align:left">DS-099 | ข้อ 3 (Linked List vs. Array ใน Stack และ Queue) [คะแนนเต็ม 1.00]</td></tr>
+          <tr><td>ข้อความคำตอบของผู้เรียน</td><td style="text-align:left;white-space:pre-line;">"อาร์เรย์มันต้องกำหนด size ของ Array
+Linked List สามารถเปลี่ยน size ระหว่างการทำงานได้"</td></tr>
+          <tr><td>การเปรียบเทียบคะแนน</td><td style="text-align:left">คะแนนผู้สอน: 0.00 / 1.00 คะแนน | คะแนนแบบจำลอง AI: 0.50 / 1.00 คะแนน (ผลต่าง +0.50)</td></tr>
+          <tr><td>คำอธิบายของ AI (Teacher Feedback)</td><td style="text-align:left">"ผู้เรียนตอบส่วนความแตกต่างได้ถูกต้องชัดเจนว่า Array ต้องกำหนดขนาด (Fixed size) ส่วน Linked List สามารถเปลี่ยนขนาดระหว่างการทำงานได้ (Dynamic size) จึงได้ 0.50 คะแนนในส่วนความแตกต่าง แต่ไม่ได้ระบุข้อดีและข้อเสียเพิ่มเติมตามที่โจทย์ถาม จึงได้ 0.00 คะแนนในส่วนข้อดี/ข้อเสีย รวมได้ 0.50 คะแนน"</td></tr>
+          <tr><td>บทวิเคราะห์</td><td style="text-align:left">คำตอบของผู้เรียนระบุความแตกต่างด้านขนาดของ Array และ Linked List แต่ไม่ครอบคลุมข้อดีและข้อเสียตามที่โจทย์กำหนด แบบจำลองประเมินตามองค์ประกอบย่อย จึงให้ 0.50 คะแนนสำหรับส่วนความแตกต่าง และไม่ให้คะแนนส่วนข้อดีข้อเสีย ขณะที่ผู้สอนให้ 0.00 คะแนน ซึ่งอาจเป็นการให้น้ำหนักกับความครบถ้วนของคำตอบโดยรวม กรณีนี้สะท้อนความแตกต่างในการพิจารณาคะแนนบางส่วน โดยการอธิบายแนวทางตรวจของผู้สอนเป็นข้อสันนิษฐานจากผลคะแนน</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="table-block">
+      <div class="table-title"><strong>ตารางที่ 4.10</strong> การอนุมานและตีความความหมายแทนผู้เรียนของแบบจำลอง AI (AI Generous Inference)</div>
+      <table class="example-table discrepancy-table">
+        <tbody>
+          <!-- กรณีศึกษาที่ 4: DS-005 -->
+          <tr><td>รหัสตัวอย่าง / โจทย์</td><td style="text-align:left">DS-005 | ข้อ 1 (Row-major vs. Column-major) [คะแนนเต็ม 2.00]</td></tr>
+          <tr><td>ข้อความคำตอบของผู้เรียน</td><td style="text-align:left;white-space:pre-line;">"คำนวณ ตำแหน่ง แนวตั้ง แนวนอน"</td></tr>
+          <tr><td>การเปรียบเทียบคะแนน</td><td style="text-align:left">คะแนนผู้สอน: 0.00 / 2.00 คะแนน | คะแนนแบบจำลอง AI: 1.00 / 2.00 คะแนน (ผลต่าง +1.00)</td></tr>
+          <tr><td>คำอธิบายของ AI (Teacher Feedback)</td><td style="text-align:left">"ผู้เรียนตอบเพียงว่า 'คำนวณ ตำแหน่ง แนวตั้ง แนวนอน' ซึ่งเป็นการพูดถึงคำว่าแนวตั้งและแนวนอนแบบกว้างๆ แต่ไม่ได้จับคู่หรืออธิบายอย่างชัดเจนว่า Row-major คือการจัดเก็บตามแถว (แนวนอน) และ Column-major คือตามคอลัมน์ (แนวตั้ง) อย่างไรก็ตาม มีการระบุคีย์เวิร์ดที่เกี่ยวข้องกับมิติแนวตั้งและแนวนอน จึงให้คะแนนความเข้าใจเบื้องต้น 1.00 คะแนนตามเกณฑ์ภาพรวม"</td></tr>
+          <tr><td>บทวิเคราะห์</td><td style="text-align:left">คำตอบของผู้เรียนมีเพียงข้อความสั้นจำนวน 5 คำ โดยไม่มีการระบุคำว่า Row หรือ Column และไม่ได้แสดงความเชื่อมโยงกับโครงสร้างข้อมูลในหน่วยความจำ ผู้สอนจึงตัดสินให้ 0.00 คะแนนเนื่องจากถือเป็นคำตอบที่ไม่สมบูรณ์และไม่มีสาระทางวิชาการที่เพียงพอ แต่แบบจำลอง AI มีลักษณะของการอนุมานและเติมเต็มความหมายให้แก่ผู้เรียน (Generous Inference / Keyword Matching Bias) เมื่อตรวจพบคีย์เวิร์ด "แนวตั้ง" และ "แนวนอน" แบบจำลองจึงเชื่อมโยงเข้ากับมิติของแถวและคอลัมน์ และให้คะแนนความเข้าใจเบื้องต้น 1.00 คะแนน กรณีนี้จึงเป็นตัวอย่างที่สะท้อนว่า แบบจำลอง AI อาจให้คะแนนสูงกว่าความเป็นจริง (Over-generous Evaluation) เมื่อผู้เรียนเขียนเฉพาะคำสำคัญโดยไม่มีคำอธิบายเชิงโครงสร้างรองรับ</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    
+
+    <p>จากกรณีศึกษาทั้ง 4 กรณี ซึ่งพบเฉพาะในข้อสอบประเภทข้อความ พบว่าความแตกต่างของคะแนนเกิดขึ้นได้จากหลายมิติ ทั้งกรณีที่ผู้สอนยืดหยุ่นหรือพิจารณาภาพรวม (กรณีศึกษาที่ 1 และ 2) กรณีที่ AI ช่วยให้คะแนนส่วนย่อยได้อย่างเป็นธรรม (กรณีศึกษาที่ 3) และกรณีที่ AI อนุมานความหมายจากคำสำคัญเข้าข้างผู้เรียนเกินจริง (กรณีศึกษาที่ 4) ส่วนข้อสอบประเภทภาพลายมือเชิงโครงสร้างและสัญลักษณ์ แบบจำลองสามารถตรวจจับโครงสร้าง ลำดับขั้นตอน และสัญลักษณ์ได้อย่างแม่นยำตรงกับผู้สอนสมบูรณ์แบบร้อยละ 100.00 อย่างไรก็ดี การนำระบบ AI มาช่วยประเมินร่วมกับการเปิดโอกาสให้ผู้สอนตรวจทานและแก้ไขคะแนน (Human-in-the-Loop) ยังคงเป็นแนวทางที่เหมาะสมและรัดกุมที่สุดในการรักษามาตรฐานความถูกต้องและความเป็นธรรมในการวัดผล</p>
+
+    <h3>4.1.7 การประเมินความสามารถของโมเดลในการอ่านข้อความลายมือและระบุกรณีที่ควรทบทวน</h3>
+    <p>แม้ข้อที่ 3 จะใช้ข้อความที่ถอดแล้วในการประเมินการให้คะแนนในหัวข้อก่อนหน้า การทดลองนี้นำภาพกระดาษคำตอบต้นฉบับของข้อที่ 3 จำนวน 34 ภาพ กลับมาใช้เพื่อประเมินความสามารถในการอ่านข้อความลายมือแยกต่างหาก โดยการทดลองเพิ่มเติมนี้พิจารณาความสามารถของ Gemini 3.8 Flash ในการอ่านข้อความลายมือก่อนนำคำตอบไปให้คะแนน โดยใช้ภาพคำตอบข้อที่ 3 จำนวน 34 ภาพ เลือกข้อนี้เนื่องจากเป็นคำตอบเชิงอธิบายที่มีข้อความภาษาไทยปะปนกับศัพท์ภาษาอังกฤษ เช่น Linked List, Array, Stack และ Queue รวมถึงคำย่อและชื่อคำสั่ง จึงเหมาะสำหรับใช้ทดสอบการอ่านลายมือที่มีหลายภาษาอยู่ในคำตอบเดียวกัน และพิจารณาว่าแบบจำลองอ่านคำสำคัญที่ใช้ตรวจคำตอบได้ครบถ้วนหรือไม่ การทดลองนี้วัดคุณภาพของข้อความที่ถอดได้โดยตรง จึงไม่ใช้ความตรงกันของคะแนนจากภาพและข้อความเป็นตัวชี้วัดการอ่านลายมือ</p>
+    <p>การทดลองใช้ข้อความที่ถอดจากภาพและตรวจทานแล้วเป็นข้อความอ้างอิง จากนั้นส่งภาพที่ไม่มีคะแนนและรอยตรวจของผู้สอนให้แบบจำลองถอดข้อความ โดยกำหนดให้ถอดตามที่เห็น ไม่ตีความ แก้คำผิด หรือเติมเนื้อหา และให้ระบุจุดที่อ่านไม่ชัด การเปรียบเทียบพิจารณาสาระที่จำเป็นต่อการให้คะแนนแทนการนับตัวอักษรที่ตรงกันทุกตัว ผลแต่ละภาพแบ่งเป็น 4 ระดับดังตารางที่ 4.11</p>
+    <div class="table-block">
+      <div class="table-title"><strong>ตารางที่ 4.11</strong> เกณฑ์พิจารณาความเพียงพอของการอ่านข้อความลายมือข้อที่ 3</div>
+      <table>
+        <thead><tr><th>ระดับผลการอ่าน</th><th>ความหมาย</th><th>จำนวนภาพ</th></tr></thead>
+        <tbody>
+          <tr><td>ถูกต้อง</td><td style="text-align:left">อ่านสาระที่เกี่ยวข้องครบ โดยไม่มีความผิดพลาดที่เปลี่ยนความหมาย</td><td>16</td></tr>
+          <tr><td>คลาดเคลื่อนเล็กน้อย</td><td style="text-align:left">มีคำผิดหรือตกหล่น แต่ไม่เปลี่ยนสาระที่ใช้ให้คะแนน</td><td>15</td></tr>
+          <tr><td>ผิดสาระสำคัญ</td><td style="text-align:left">อ่านผิดหรือตกหล่นจนความหมายที่ใช้ให้คะแนนเปลี่ยน</td><td>2</td></tr>
+          <tr><td>ภาพกำกวม</td><td style="text-align:left">ผู้ตรวจยังไม่สามารถยืนยันข้อความอ้างอิงจากภาพได้</td><td>1</td></tr>
+          <tr><td colspan="2">รวม</td><td>34</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>เมื่อตัดภาพกำกวมออกจากการคำนวณ เหลือภาพที่มีข้อความอ้างอิงชัดเจน 33 ภาพ ผลเบื้องต้นพบว่าอ่านได้ถูกต้องหรือคลาดเคลื่อนเพียงเล็กน้อย 31 ภาพ คิดเป็นร้อยละ 93.94 ของภาพที่ประเมินได้ ส่วนอีก 2 ภาพมีความคลาดเคลื่อนในสาระสำคัญ ตัวเลขนี้แสดงความเพียงพอของข้อความสำหรับนำไปพิจารณาคำตอบต่อ ไม่ใช่ความตรงกันทุกตัวอักษร</p>
+    <p>การประเมินการระบุกรณีที่ควรทบทวนกำหนดให้ภาพที่อ่านผิดสาระสำคัญ 2 ภาพและภาพกำกวม 1 ภาพ รวม 3 ภาพ เป็นกลุ่มที่ควรให้ผู้สอนทบทวน ส่วนภาพที่อ่านได้ถูกต้องหรือคลาดเคลื่อนเล็กน้อยไม่จัดอยู่ในกลุ่มดังกล่าว ระบบติดธงเมื่อแบบจำลองรายงานความมั่นใจระดับปานกลางหรือต่ำ โดยใช้เงื่อนไขเดียวกับระบบตรวจข้อสอบปัจจุบัน ข้อความในคำอธิบายสำหรับผู้สอนใช้ประกอบการทบทวน แต่ไม่ใช่เงื่อนไขเพิ่มเติมในการติดธง ผลการเปรียบเทียบแสดงในตารางที่ 4.12</p>
+    <div class="table-block">
+      <div class="table-title"><strong>ตารางที่ 4.12</strong> ผลการประเมินการระบุกรณีที่ควรทบทวนของผู้สอน (Review Flagging Evaluation)</div>
+      <table>
+        <thead><tr><th>รายการตัวชี้วัด</th><th>ผลการประเมิน</th><th>การแปลผล</th></tr></thead>
+        <tbody>
+          <tr><td>ภาพที่ควรทบทวนตามการจัดกลุ่มเบื้องต้น</td><td>3 / 34 ภาพ (8.82%)</td><td style="text-align:left">ภาพที่อ่านผิดสาระสำคัญ (2 ภาพ) และภาพกำกวม (1 ภาพ)</td></tr>
+          <tr><td>ภาพที่ระบบติดธงแจ้งเตือนให้ทบทวน</td><td>8 / 34 ภาพ (23.53%)</td><td style="text-align:left">ภาพที่แบบจำลองรายงานความมั่นใจระดับปานกลาง</td></tr>
+          <tr><td>กรณีที่ตรวจจับได้ถูกต้อง (True Positives)</td><td>3 / 3 ภาพ</td><td style="text-align:left">ระบบแจ้งเตือนครบทั้ง 3 ภาพที่จัดว่าควรทบทวน</td></tr>
+          <tr><td>อัตราการตรวจจับกรณีผิดพลาด (Review Recall)</td><td>3 / 3 = 100.00%</td><td style="text-align:left">ภาพที่จัดว่าควรทบทวนทั้ง 3 ภาพได้รับการแจ้งเตือน</td></tr>
+          <tr><td>ความแม่นยำของการแจ้งเตือน (Review Precision)</td><td>3 / 8 = 37.50%</td><td style="text-align:left">ใน 8 ภาพที่แจ้งเตือน มี 3 ภาพที่จัดว่าควรทบทวน ส่วนอีก 5 ภาพยังอ่านข้อความได้เพียงพอต่อการตรวจ</td></tr>
+          <tr><td>สัดส่วนคำตอบที่ถูกติดธง (Review Rate)</td><td>8 / 34 = 23.53%</td><td style="text-align:left">สัดส่วนภาพที่ระบบระบุให้ผู้สอนพิจารณาเป็นพิเศษ</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>จากภาพ 34 ภาพ แบบจำลองรายงานความมั่นใจระดับสูง 26 ภาพและระดับปานกลาง 8 ภาพ โดยไม่มีระดับต่ำ กรณีที่จัดว่าควรทบทวนทั้ง 3 ภาพอยู่ในกลุ่มปานกลาง จึงได้ Review Recall ร้อยละ 100.00 ส่วนภาพที่ถูกติดธงอีก 5 ภาพยังมีข้อความเพียงพอต่อการตรวจ ทำให้ Review Precision เท่ากับร้อยละ 37.50 ผลนี้แสดงว่าภายใต้ชุดภาพที่ทดลอง เงื่อนไขดังกล่าวตรวจพบกรณีเสี่ยงทั้งหมด แต่มีการส่งภาพที่อ่านได้เพียงพอให้ทบทวนด้วย การทดลองยังไม่ได้วัดเวลาที่ผู้สอนใช้ตรวจทาน จึงไม่สรุปว่าช่วยลดเวลาทำงานลงเท่าใด การจัดกลุ่มความถูกต้องเป็นผลตรวจทานเบื้องต้นและควรให้ผู้จัดทำยืนยันก่อนใช้เป็นผลสรุปสุดท้าย</p>
+
+    <div class="table-block">
+      
+      <div class="table-title"><strong>ตารางที่ 4.13</strong> การตรวจจับข้อผิดพลาดในสาระสำคัญจากลายมือหวัด (รหัสตัวอย่าง DS-082)</div>
+      <table class="example-table">
+        <tbody>
+          <!-- กรณีศึกษา DS-082 -->
+          <tr><td>รหัสตัวอย่าง / โจทย์</td><td style="text-align:left">DS-082 | ข้อ 3 (ความแตกต่างระหว่าง Linked List กับ Array ใน Stack และ Queue)</td></tr>
+          <tr><td>ภาพกระดาษคำตอบจริง</td><td style="text-align:left">
+            <div style="text-align:center;margin:6px 0;">
+              <img src="screenshots/case_studies/IMG_2906.jpg" alt="ภาพคำตอบ DS-082" style="max-width:85%;max-height:85mm;object-fit:contain;border:1px solid #ccc;">
+              <div class="caption">รูปที่ 4.4 ภาพกระดาษคำตอบของผู้เรียน รหัส DS-082 (ลายมือหวัด ตัวอักษรเขียนติดกัน)</div>
+            </div>
+          </td></tr>
+          <tr><td>ข้อความจริงของผู้เรียน (Ground Truth)</td><td style="text-align:left;white-space:pre-line;">ข้อแตกต่าง: link list จะ insert delete ได้ดีกว่า stack เพราะ stack เพิ่ม ลบ ได้แค่ Top
+ข้อดี ลิ้งค์ลิสต์: ถ้าเป็น Double linklist จะเดินหน้าถอยหลังได้ ยืดหยุ่น ไดนามิก
+ข้อเสีย ลิ้งค์ลิสต์: ใช้ memory เยอะ
+ข้อดี สแตก: push() pop() ได้เร็ว เป็นแบบ LIFO
+ข้อเสีย สแตก: push() pop() ได้แค่ Top</td></tr>
+          <tr><td>ข้อความที่แบบจำลองถอดได้</td><td style="text-align:left;white-space:pre-line;">ข้อแตกต่าง: link list จะ insert delete ได้ ดีกว่า stack เพราะ จะแตก เพิ่ม ลบได้ แค่ Top
+ข้อดี ลิ้งค์ลิสต์: ถ้าเป็น poule link list จะเดินหน้า ถอยหลังได้ ยืดหยุ่นไดหมด
+ข้อเสีย ลิ้งค์ลิสต์: ใช้ memory เยอะ
+ข้อดี สแตค: push() pop() ได้เร็ว เป็นแบบ LIFO
+ข้อเสีย: push() pop() ได้ แค่ Top</td></tr>
+          <tr><td>จุดที่คลาดเคลื่อน (Mismatch)</td><td style="text-align:left">คำว่า "Double" ถูกอ่านเป็น "poule" และคำว่า "ไดนามิก" ถูกอ่านเป็น "ไดหมด" ทำให้คำสำคัญที่ใช้พิจารณาคำตอบคลาดเคลื่อนไป จัดเป็นความคลาดเคลื่อนระดับ <em>"ผิดสาระสำคัญ"</em></td></tr>
+          <tr><td>ระดับความมั่นใจของ AI</td><td style="text-align:left">ระดับปานกลาง (Medium) ระบบจึงระบุให้ผู้สอนทบทวน</td></tr>
+          <tr><td>คำอธิบายของ AI สำหรับผู้สอน (Teacher Feedback)</td><td style="text-align:left">“ลายมือหรือรูปภาพมีความชัดเจนน้อยเกินไป ขอให้อาจารย์ผู้สอนตรวจสอบและประเมินคะแนนซ้ำด้วยตนเอง (คำบางคำเขียนติดกัน ลายมือหวัด เช่น poule/double, ไดหมด/ได้หมด, จะแตก/สแตก)”</td></tr>
+          <tr><td>ผลที่สังเกตได้</td><td style="text-align:left">แบบจำลองอ่านคำที่เกี่ยวข้องกับข้อดีของ Linked List ผิด แต่รายงานความมั่นใจระดับปานกลางและระบุคำที่ไม่ชัดในคำอธิบาย ระบบจึงติดธงคำตอบนี้ให้ผู้สอนทบทวนก่อนยืนยันคะแนน</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="table-block">
+      <div class="table-title"><strong>ตารางที่ 4.14</strong> การตรวจจับข้อความกำกวมจากรอยดินสอจาง (รหัสตัวอย่าง DS-079)</div>
+      <table class="example-table">
+        <tbody>
+          <!-- กรณีศึกษา DS-079 -->
+          <tr><td>รหัสตัวอย่าง / โจทย์</td><td style="text-align:left">DS-079 | ข้อ 3 (ความแตกต่างระหว่าง Linked List กับ Array ใน Stack และ Queue)</td></tr>
+          <tr><td>ภาพกระดาษคำตอบจริง</td><td style="text-align:left">
+            <div style="text-align:center;margin:6px 0;">
+              <img src="screenshots/case_studies/IMG_2903.jpg" alt="ภาพคำตอบ DS-079" style="max-width:85%;max-height:85mm;object-fit:contain;border:1px solid #ccc;">
+              <div class="caption">รูปที่ 4.5 ภาพกระดาษคำตอบของผู้เรียน รหัส DS-079 (เขียนด้วยดินสอจางและลายมือปลายประโยคไม่ชัดเจน)</div>
+            </div>
+          </td></tr>
+          <tr><td>ข้อความอ้างอิงที่ยังยืนยันไม่ได้ครบ</td><td style="text-align:left;white-space:pre-line;">สแตก ก็จะต้องเอาออกเป็นชั้น ๆ คือ จะสามารถเอาเข้าแล้ว สามารถเอาออกเหมือนลาดรดไข้เลย</td></tr>
+          <tr><td>ข้อความที่แบบจำลองถอดได้</td><td style="text-align:left;white-space:pre-line;">สแตก ก็ จะ ต้อง เอาออกเป็น ชั้นๆ คิว ส[อ่านไม่ชัด] สามารถ เอาเข้า แล้ว สามารถเอาออกเหมือนคิวค รถใช้เลย</td></tr>
+          <tr><td>จุดที่คลาดเคลื่อน (Mismatch)</td><td style="text-align:left">รอยดินสอช่วงท้ายประโยคมีความจางมาก แม้แต่ผู้ตรวจที่เป็นมนุษย์ก็ไม่สามารถยืนยันความหมายของข้อความได้อย่างชัดเจน จึงจัดเป็น <em>"ภาพกำกวม"</em></td></tr>
+          <tr><td>ระดับความมั่นใจของ AI</td><td style="text-align:left">ระดับปานกลาง (Medium) ระบบจึงระบุให้ผู้สอนทบทวน</td></tr>
+          <tr><td>คำอธิบายของ AI สำหรับผู้สอน (Teacher Feedback)</td><td style="text-align:left">“ลายมือหรือรูปภาพมีความชัดเจนน้อยเกินไป ขอให้อาจารย์ผู้สอนตรวจสอบและประเมินคะแนนซ้ำด้วยตนเอง (ลายมือดินสอค่อนข้างจางและมีบางจุดที่เขียนตัวอักษรไม่ชัดเจน เช่น บริเวณคำเชื่อมในบรรทัดที่สอง)”</td></tr>
+          <tr><td>ผลที่สังเกตได้</td><td style="text-align:left">ข้อความช่วงท้ายของภาพยังยืนยันไม่ได้จากภาพต้นฉบับ แบบจำลองระบุ [อ่านไม่ชัด] และรายงานความมั่นใจระดับปานกลาง ระบบจึงติดธงให้ผู้สอนตรวจภาพและตัดสินข้อความที่ใช้ประเมิน</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="table-block">
+      <div class="table-title"><strong>ตารางที่ 4.15</strong> คลาดเคลื่อนเล็กน้อยแต่ยังใช้ตรวจคำตอบได้ (รหัสตัวอย่าง DS-095)</div>
+      <table class="example-table"><tbody>
+        <!-- กรณีศึกษา DS-095 -->
+        <tr><td>รหัสตัวอย่าง / โจทย์</td><td style="text-align:left">DS-095 | ข้อ 3 การใช้ Linked List เป็น Stack และ Queue แตกต่างจาก Array อย่างไร และมีข้อดีข้อเสียอย่างไร</td></tr>
+        <tr><td>ภาพคำตอบ</td><td style="text-align:left"><a href="../ชุดข้อสอบใหม่/photo_clean_text3/IMG_2920.jpg"><img class="sample-image" src="../ชุดข้อสอบใหม่/photo_clean_text3/IMG_2920.jpg" alt="ภาพคำตอบ DS-095 สำหรับเปรียบเทียบการถอดข้อความ"></a><div class="caption">รูปที่ 4.6 ภาพคำตอบของผู้เรียน รหัส DS-095 สำหรับเปรียบเทียบการถอดข้อความ</div></td></tr>
+        <tr><td>ข้อความอ้างอิง</td><td style="text-align:left;white-space:pre-line;">ตอบ แตกต่างตรงที่ลิ้งค์ลิสต์มีการแยก key ออกมาและเชื่อมต่อกัน
+พร้อมจัดเรียงข้อมูลเสร็จสับ ข้อดีคือ เร็ว ข้อเสีย เสียทรัพยากรโดยเปล่าประโยชน์</td></tr>
+        <tr><td>ข้อความที่แบบจำลองถอดได้</td><td style="text-align:left;white-space:pre-line;">ตอบ แตกต่างตรงที่ ลิ๊งค์ลิสต์ มีการแยก key ออกมาและเชื่อมต่อกัน
+พร้อม จัดเรียงข้อมูล เสร็จสับ ข้อดีคือ เร็ว ข้อเสียเสียทรัพยากรโดยเปล่า
+ประโยชน์</td></tr>
+        <tr><td>จุดที่คลาดเคลื่อน</td><td style="text-align:left">ข้อความอ้างอิงใช้คำว่า “ลิ้งค์ลิสต์” ส่วนแบบจำลองถอดเป็น “ลิ๊งค์ลิสต์” และมีการเว้นวรรคกับขึ้นบรรทัดต่างกัน แต่ยังคงข้อความเกี่ยวกับการแยก key การเชื่อมต่อข้อมูล และข้อดีข้อเสียที่ผู้เรียนระบุไว้ จึงจัดเป็นความคลาดเคลื่อนเล็กน้อยตามผลการจัดกลุ่มเบื้องต้น</td></tr>
+        <tr><td>ระดับความมั่นใจของแบบจำลอง</td><td style="text-align:left">สูง (High) ระบบจึงไม่แจ้งให้ทบทวนจากเงื่อนไขระดับความมั่นใจ</td></tr>
+        <tr><td>คำอธิบายของ AI สำหรับผู้สอน</td><td style="text-align:left">“อ่านได้ชัดเจน ลายมือเขียนเป็นระเบียบและอ่านออกได้ทุกคำ”</td></tr>
+        <tr><td>ผลที่สังเกตได้</td><td style="text-align:left">แม้ข้อความไม่ตรงกับข้อความอ้างอิงทุกตัวอักษร แต่ความแตกต่างไม่เปลี่ยนสาระที่ใช้พิจารณาคำตอบ จึงยังนำไปประเมินตามเกณฑ์ได้ การจัดกลุ่มนี้พิจารณาความถูกต้องของการอ่าน ไม่ได้หมายความว่าเนื้อหาคำตอบของผู้เรียนถูกต้องตามหลักวิชา</td></tr>
+      </tbody></table>
+    </div>
+
+<h3>4.1.8 สรุปผลการประเมิน</h3>
+    <p>ผลการประเมิน Gemini 3.8 Flash จากคำตอบทั้งหมด 204 คำตอบ พบว่าคะแนนตรงกับคะแนนอ้างอิงของผู้สอน 160 คำตอบ คิดเป็นร้อยละ 78.43 มีค่า MAE เท่ากับ 0.1311 คะแนน และ QWK รวมหลังปรับคะแนนตามคะแนนเต็มเป็นสเกลร่วม 0–4 เท่ากับ 0.8546 คำตอบแบบภาพลายมือเชิงโครงสร้างและสัญลักษณ์ในข้อที่ 4–6 มีคะแนนตรงกันครบทั้ง 102 คำตอบ ส่วนคำตอบแบบข้อความในข้อที่ 1–3 มีคะแนนตรงกัน 58 จาก 102 คำตอบ คิดเป็นร้อยละ 56.86 โดยข้อที่ 3 มีคะแนนแตกต่างกันมากที่สุด จำนวน 22 คำตอบ</p>
+    <p>การวิเคราะห์ความคลาดเคลื่อนของคำตอบแบบข้อความพบประเด็นเกี่ยวกับการพิจารณาความถูกต้องของเนื้อหา ความครบถ้วนของตัวอย่าง การให้คะแนนตามองค์ประกอบย่อย และการอนุมานความหมายจากคำสำคัญ ตัวอย่างเหล่านี้แสดงให้เห็นว่าคะแนนที่แตกต่างกันควรพิจารณาร่วมกับคำตอบและเหตุผลของแบบจำลอง ส่วนผลคะแนนที่ตรงกันทั้งหมดในข้อที่ 4–6 เป็นผลเฉพาะชุดคำตอบที่ใช้ทดลองครั้งนี้</p>
+    <p>การทดลองอ่านข้อความลายมือข้อที่ 3 จำนวน 34 ภาพ พบว่าอ่านถูกต้อง 16 ภาพ คลาดเคลื่อนเล็กน้อย 15 ภาพ ผิดสาระสำคัญ 2 ภาพ และเป็นภาพกำกวม 1 ภาพ เมื่อตัดภาพกำกวมออก แบบจำลองอ่านข้อความได้เพียงพอต่อการตรวจ 31 จาก 33 ภาพ คิดเป็นร้อยละ 93.94 ตามผลการจัดกลุ่มเบื้องต้น ระบบแจ้งให้ผู้สอนทบทวน 8 ภาพ และครอบคลุมกรณีที่ควรทบทวนทั้ง 3 ภาพ มีค่า Review Recall ร้อยละ 100.00, Review Precision ร้อยละ 37.50 และ Review Rate ร้อยละ 23.53 โดยมีภาพที่อ่านข้อความได้เพียงพอแต่ได้รับการแจ้งเตือนอีก 5 ภาพ</p>
+    <p>ผลการประเมินแสดงว่าระบบสามารถให้คะแนนและระบุคำตอบที่ควรทบทวนเพื่อประกอบการตรวจของผู้สอนได้ อย่างไรก็ตาม ยังพบความแตกต่างในการให้คะแนนคำตอบแบบข้อความและข้อผิดพลาดในการอ่านข้อความลายมือ ผู้สอนจึงยังมีบทบาทในการตรวจทาน แก้ไข และอนุมัติคะแนนก่อนเผยแพร่แก่ผู้เรียน ทั้งนี้ ผลการจัดกลุ่มการอ่านลายมือยังเป็นผลเบื้องต้นตามที่ระบุในหัวข้อ 4.1.7</p>
+
+<h2 class="page-break">4.2 การทดสอบการทำงานของระบบ</h2>
+<p>ลำดับทดสอบเริ่มจากการเตรียมบัญชีและห้องเรียน แล้วสร้างข้อสอบ รับคำตอบ ตรวจคะแนน และดูรายงาน ใช้ห้องเรียนหลักและคำตอบเดิมต่อเนื่องในขั้นถัดไป ส่วนการลบห้องและออกจากห้องให้ใช้ห้องสำรอง เพื่อไม่กระทบข้อมูลที่ต้องใช้ต่อ กรณีสถานะต่างกันให้ใช้คำตอบคนละรายการ และบันทึกผลแจ้งเตือนเมื่อเหตุการณ์เกิดขึ้นระหว่างขั้นที่เกี่ยวข้อง โดยไม่ต้องทำขั้นก่อนหน้าซ้ำ</p>
+
+
+    <section class="test-section" id="test-1">
+    <h3>4.2.1 การทดสอบสมัครสมาชิก</h3>
+    <p>ทดสอบการสมัครสมาชิกของผู้เรียนและผู้สอนด้วยชื่อ นามสกุล อีเมล และรหัสผ่าน โดยรหัสประจำตัวและรูปโปรไฟล์เป็นข้อมูลที่ไม่บังคับ กรณีทดสอบใช้บัญชีใหม่ที่ยังไม่เคยสมัครสมาชิก รายละเอียดกรณีทดสอบแสดงในตารางที่ 4.16</p>
+    <div class="figure"><img src="screenshots/register.png?v=20260922-scope" alt="หน้าสมัครสมาชิก"><div class="caption">รูปที่ 4.7 หน้าสมัครสมาชิก</div></div>
+    <div class="table-block"><div class="table-title"><strong>ตารางที่ 4.16</strong> การทดสอบสมัครสมาชิก</div>
+    <table><thead><tr><th>ข้อมูลนำเข้า</th><th class="case">Test Case 1</th><th class="case">Test Case 2</th><th class="case">Test Case 3</th></tr></thead><tbody>
+      <tr><td>ประเภทผู้ใช้</td><td>ผู้เรียน</td><td>ผู้สอน</td><td>ผู้เรียน</td></tr>
+      <tr><td>ชื่อ / นามสกุล</td><td>สมชาย / ใจดี</td><td>สมหญิง / ใจดี</td><td>(ว่าง)</td></tr>
+      <tr><td>อีเมล</td><td>student01@example.com</td><td>teacher01@example.com</td><td>student02@example.com</td></tr>
+      <tr><td>รหัสผ่าน / ยืนยันรหัสผ่าน</td><td>Test1234! / Test1234!</td><td>Test1234! / Test1234!</td><td>Test1234! / Test1234!</td></tr>
+      <tr><td>รหัสประจำตัว / รูปโปรไฟล์</td><td>66011210001 / student.jpg</td><td>(ว่าง) / (ว่าง)</td><td>(ว่าง) / (ว่าง)</td></tr>
+      <tr><td>ผลลัพธ์ที่คาดหวัง</td><td>สมัครสมาชิกผู้เรียนได้และบันทึกข้อมูลที่กรอก</td><td>สมัครสมาชิกผู้สอนได้แม้ไม่ระบุข้อมูลที่ไม่บังคับ</td><td>ไม่รับข้อมูลและแจ้งให้กรอกชื่อและนามสกุล</td></tr>
+      <tr><td>ผลลัพธ์ที่ได้</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td></tr>
+      <tr><td>ผลการทดสอบ</td><td>ผ่าน</td><td>ผ่าน</td><td>ผ่าน</td></tr>
+    </tbody></table></div>
+    </section>
+
+<section class="test-section" id="test-forgot-password">
+    <h3>4.2.2 การทดสอบลืมรหัสผ่านและขอตั้งรหัสผ่านใหม่</h3>
+    <p>ทดสอบกระบวนการขอความช่วยเหลือเมื่อผู้ใช้จำรหัสผ่านไม่ได้ โดยสามารถกรอกอีเมลที่ลงทะเบียนไว้เพื่อขอรับลิงก์สำหรับตั้งรหัสผ่านใหม่ หรือเลือกยืนยันข้อมูลบัญชีด้วยตนเองผ่านชื่อผู้ใช้หรือรหัสผู้เรียนเพื่อขอตั้งรหัสผ่านใหม่ได้ทันที รายละเอียดกรณีทดสอบแสดงในตารางที่ 4.17</p>
+    <div class="figure"><img src="screenshots/forgot-password.png?v=20260925-scope" alt="หน้าลืมรหัสผ่าน"><div class="caption">รูปที่ 4.8 หน้าลืมรหัสผ่านและขอตั้งรหัสผ่านใหม่</div></div>
+    <div class="table-block"><div class="table-title"><strong>ตารางที่ 4.17</strong> การทดสอบลืมรหัสผ่านและขอตั้งรหัสผ่านใหม่</div>
+    <table><thead><tr><th>ข้อมูลนำเข้า</th><th class="case">Test Case 1</th><th class="case">Test Case 2</th><th class="case">Test Case 3</th></tr></thead><tbody>
+      <tr><td>ช่องทางการขอความช่วยเหลือ</td><td>ขอรับลิงก์ทางอีเมล</td><td>ขอรับลิงก์ทางอีเมล</td><td>ยืนยันตัวตนด้วยข้อมูลบัญชี</td></tr>
+      <tr><td>ข้อมูลที่ใช้ระบุตัวตน</td><td>student01@example.com (มีในระบบ)</td><td>unknown@example.com (ไม่มีในระบบ)</td><td>อีเมลและรหัสผู้เรียนที่ถูกต้องตรงกัน</td></tr>
+      <tr><td>การดำเนินการ</td><td>กดปุ่ม "ส่งลิงก์ตั้งรหัสผ่านใหม่"</td><td>กดปุ่ม "ส่งลิงก์ตั้งรหัสผ่านใหม่"</td><td>กรอกข้อมูลครบถ้วนแล้วกดยืนยันข้อมูลบัญชี</td></tr>
+      <tr><td>ผลลัพธ์ที่คาดหวัง</td><td>ระบบส่งลิงก์ไปยังอีเมลและแจ้งเตือนส่งเรียบร้อย</td><td>ระบบแจ้งเตือนว่าไม่พบข้อมูลบัญชีผู้ใช้งานนี้</td><td>ตรวจสอบข้อมูลถูกต้องและนำทางไปหน้าตั้งรหัสใหม่ทันที</td></tr>
+      <tr><td>ผลลัพธ์ที่ได้</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td></tr>
+      <tr><td>ผลการทดสอบ</td><td>ผ่าน</td><td>ผ่าน</td><td>ผ่าน</td></tr>
+    </tbody></table></div>
+    </section>
+
+<section class="test-section" id="test-reset-and-verify">
+    <h3>4.2.3 การทดสอบตั้งรหัสผ่านใหม่และการยืนยันอีเมล</h3>
+    <p>ทดสอบการกำหนดรหัสผ่านใหม่ผ่านลิงก์ที่ได้รับ ตลอดจนการตรวจสอบสถานะการยืนยันอีเมลของผู้ใช้งาน เพื่อสร้างความมั่นใจในความถูกต้องและความปลอดภัยของบัญชีก่อนเข้าใช้งานระบบ รายละเอียดกรณีทดสอบแสดงในตารางที่ 4.18</p>
+    <div class="table-block"><div class="table-title"><strong>ตารางที่ 4.18</strong> การทดสอบตั้งรหัสผ่านใหม่และการยืนยันอีเมล</div>
+    <table><thead><tr><th>ข้อมูลนำเข้า</th><th class="case">Test Case 1</th><th class="case">Test Case 2</th><th class="case">Test Case 3</th></tr></thead><tbody>
+      <tr><td>การดำเนินการ</td><td>ตั้งรหัสผ่านใหม่ผ่านลิงก์ที่ได้รับ</td><td>ตั้งรหัสผ่านใหม่โดยรหัสผ่านไม่ตรงกัน</td><td>เข้าสู่ระบบด้วยบัญชีที่ยังไม่ยืนยันอีเมล</td></tr>
+      <tr><td>ข้อมูลที่กรอก</td><td>รหัสผ่านใหม่และยืนยันรหัสผ่านตรงกัน</td><td>รหัสผ่านใหม่และการยืนยันไม่ตรงกัน</td><td>อีเมลและรหัสผ่านถูกต้องแต่ยังไม่ยืนยันอีเมล</td></tr>
+      <tr><td>เงื่อนไขการทดสอบ</td><td>ลิงก์ยังไม่หมดอายุและยังไม่เคยใช้งาน</td><td>ลิงก์ยังไม่หมดอายุ</td><td>กดปุ่ม "ส่งลิงก์ยืนยันใหม่" บนหน้าจอ</td></tr>
+      <tr><td>ผลลัพธ์ที่คาดหวัง</td><td>บันทึกรหัสผ่านใหม่สำเร็จและไปหน้าเข้าสู่ระบบ</td><td>ระบบแจ้งเตือนว่ารหัสผ่านไม่ตรงกันและไม่บันทึก</td><td>ระบบแจ้งเตือนให้ยืนยันอีเมลและส่งลิงก์ซ้ำได้สำเร็จ</td></tr>
+      <tr><td>ผลลัพธ์ที่ได้</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td></tr>
+      <tr><td>ผลการทดสอบ</td><td>ผ่าน</td><td>ผ่าน</td><td>ผ่าน</td></tr>
+    </tbody></table></div>
+    </section>
+
+<section class="test-section" id="test-2">
+    <h3>4.2.4 การทดสอบเข้าสู่ระบบ</h3>
+    <p>ทดสอบการเข้าสู่ระบบด้วยอีเมลและรหัสผ่านของบัญชีที่พร้อมใช้งาน โดยดำเนินการทั้งบทบาทผู้เรียนและผู้สอน และเปรียบเทียบกรณีกรอกรหัสผ่านถูกต้องกับกรณีไม่ถูกต้อง รายละเอียดกรณีทดสอบแสดงในตารางที่ 4.19</p>
+    <div class="figure"><img src="screenshots/home.png?v=20260922-scope" alt="หน้าเข้าสู่ระบบ"><div class="caption">รูปที่ 4.9 หน้าเข้าสู่ระบบ</div></div>
+    <div class="table-block"><div class="table-title"><strong>ตารางที่ 4.19</strong> การทดสอบเข้าสู่ระบบ</div>
+    <table><thead><tr><th>ข้อมูลนำเข้า</th><th class="case">Test Case 1</th><th class="case">Test Case 2</th><th class="case">Test Case 3</th></tr></thead><tbody>
+      <tr><td>ประเภทผู้ใช้</td><td>ผู้เรียน</td><td>ผู้สอน</td><td>ผู้เรียน</td></tr>
+      <tr><td>อีเมล</td><td>student01@example.com</td><td>teacher01@example.com</td><td>student01@example.com</td></tr>
+      <tr><td>รหัสผ่าน</td><td>รหัสผ่านปัจจุบัน</td><td>รหัสผ่านปัจจุบัน</td><td>รหัสผ่านไม่ถูกต้อง</td></tr>
+      <tr><td>ผลลัพธ์ที่คาดหวัง</td><td>เข้าสู่ระบบในบทบาทผู้เรียนได้</td><td>เข้าสู่ระบบในบทบาทผู้สอนได้</td><td>เข้าสู่ระบบไม่สำเร็จและแจ้งให้ตรวจสอบข้อมูล</td></tr>
+      <tr><td>ผลลัพธ์ที่ได้</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td></tr>
+      <tr><td>ผลการทดสอบ</td><td>ผ่าน</td><td>ผ่าน</td><td>ผ่าน</td></tr>
+    </tbody></table></div>
+    </section>
+
+<section class="test-section" id="test-google-login">
+    <h3>4.2.5 การทดสอบเข้าสู่ระบบด้วยบัญชี Google</h3>
+    <p>ทดสอบการเข้าใช้งานระบบผ่านบัญชี Google เพื่ออำนวยความสะดวกให้แก่ผู้ใช้ โดยสามารถเลือกเข้าใช้งานด้วยบัญชี Google ที่เคยลงทะเบียนไว้ หรือหากเป็นการเข้าใช้งานครั้งแรก ระบบจะสร้างบัญชีผู้ใช้ให้อัตโนมัติและนำทางไปยังหน้ากำหนดบทบาท (ผู้เรียนหรือผู้สอน) รายละเอียดกรณีทดสอบแสดงในตารางที่ 4.20</p>
+    <div class="table-block"><div class="table-title"><strong>ตารางที่ 4.20</strong> การทดสอบเข้าสู่ระบบด้วยบัญชี Google</div>
+    <table><thead><tr><th>ข้อมูลนำเข้า</th><th class="case">Test Case 1</th><th class="case">Test Case 2</th><th class="case">Test Case 3</th></tr></thead><tbody>
+      <tr><td>การดำเนินการ</td><td>เข้าสู่ระบบด้วยบัญชี Google เดิม</td><td>เข้าสู่ระบบด้วยบัญชี Google ครั้งแรก</td><td>ยกเลิกการเข้าสู่ระบบผ่าน Google</td></tr>
+      <tr><td>บัญชี Google ที่ใช้</td><td>student01@gmail.com (เคยใช้งานแล้ว)</td><td>newuser@gmail.com (เข้าใช้งานครั้งแรก)</td><td>ไม่เลือกบัญชี</td></tr>
+      <tr><td>การยืนยันตัวตน</td><td>เลือกบัญชีผ่านหน้าต่างของ Google</td><td>เลือกบัญชีผ่านหน้าต่างของ Google</td><td>ปิดหน้าต่างของ Google หรือกดยกเลิก</td></tr>
+      <tr><td>ผลลัพธ์ที่คาดหวัง</td><td>เข้าสู่ระบบสำเร็จและนำทางไปยังหน้าหลัก</td><td>สร้างบัญชีใหม่อัตโนมัติและไปหน้าเลือกบทบาท</td><td>หน้าต่างปิดลงและยังคงอยู่ที่หน้าเข้าสู่ระบบเดิม</td></tr>
+      <tr><td>ผลลัพธ์ที่ได้</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td></tr>
+      <tr><td>ผลการทดสอบ</td><td>ผ่าน</td><td>ผ่าน</td><td>ผ่าน</td></tr>
+    </tbody></table></div>
+    </section>
+
+<section class="test-section" id="test-6">
+    <h3>4.2.6 การทดสอบแก้ไขข้อมูลโปรไฟล์</h3>
+    <p>ทดสอบการแก้ไขชื่อ นามสกุล รหัสประจำตัว รหัสผ่าน และรูปโปรไฟล์ของบัญชีที่เข้าสู่ระบบแล้ว โดยรหัสประจำตัวเป็นรหัสผู้เรียนหรือรหัสผู้สอนตามบทบาทและไม่บังคับระบุ รายละเอียดกรณีทดสอบแสดงในตารางที่ 4.21</p>
+    <p class="note">ส่วนเพิ่มเติมตามการพัฒนาระบบ: ระบบได้เพิ่มการรองรับการแก้ไขรหัสประจำตัว (รหัสผู้เรียนสำหรับผู้เรียน และรหัสผู้สอนสำหรับผู้สอน) เพื่อให้ผู้ใช้งานสามารถปรับปรุงข้อมูลของตนเองให้ถูกต้องและครบถ้วนได้ตลอดเวลา</p>
+    <div class="figure"><img src="screenshots/profile.png?v=20260922-identity" alt="หน้าแก้ไขข้อมูลโปรไฟล์และรหัสประจำตัว"><div class="caption">รูปที่ 4.10 หน้าแก้ไขข้อมูลโปรไฟล์และรหัสประจำตัว</div></div>
+    <div class="table-block"><div class="table-title"><strong>ตารางที่ 4.21</strong> การทดสอบแก้ไขข้อมูลโปรไฟล์</div>
+    <table><thead><tr><th>ข้อมูลนำเข้า</th><th class="case">Test Case 1</th><th class="case">Test Case 2</th><th class="case">Test Case 3</th></tr></thead><tbody>
+      <tr><td>รายการแก้ไข</td><td>ชื่อและนามสกุล</td><td>รหัสผ่าน</td><td>รูปโปรไฟล์</td></tr>
+      <tr><td>ข้อมูลใหม่</td><td>สมชาย / รักเรียน</td><td>รหัสผ่านใหม่และการยืนยันตรงกัน</td><td>profile-new.jpg</td></tr>
+      <tr><td>การตรวจสอบหลังบันทึก</td><td>เปิดหน้าโปรไฟล์อีกครั้ง</td><td>ออกจากระบบแล้วเข้าสู่ระบบด้วยรหัสผ่านใหม่</td><td>เปิดหน้าโปรไฟล์อีกครั้ง</td></tr>
+      <tr><td>ผลลัพธ์ที่คาดหวัง</td><td>แสดงชื่อและนามสกุลใหม่</td><td>เข้าสู่ระบบด้วยรหัสผ่านใหม่ได้</td><td>แสดงรูปโปรไฟล์ใหม่</td></tr>
+      <tr><td>ผลลัพธ์ที่ได้</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td></tr>
+      <tr><td>ผลการทดสอบ</td><td>ผ่าน</td><td>ผ่าน</td><td>ผ่าน</td></tr>
+    </tbody></table></div>
+    <div class="table-block"><div class="table-title"><strong>ตารางที่ 4.21</strong> การทดสอบแก้ไขข้อมูลโปรไฟล์ (ต่อ)</div>
+    <table><thead><tr><th>ข้อมูลนำเข้า</th><th class="case">Test Case 4</th><th class="case">Test Case 5</th><th class="case">Test Case 6</th></tr></thead><tbody>
+      <tr><td>รายการแก้ไข</td><td>รหัสผู้เรียน</td><td>รหัสผู้สอน</td><td>ล้างรหัสประจำตัวที่เคยระบุ</td></tr>
+      <tr><td>ข้อมูลใหม่</td><td>66011210002</td><td>T002</td><td>(ว่าง)</td></tr>
+      <tr><td>การตรวจสอบหลังบันทึก</td><td>เปิดหน้าโปรไฟล์อีกครั้ง</td><td>เปิดหน้าโปรไฟล์อีกครั้ง</td><td>เปิดหน้าโปรไฟล์อีกครั้ง</td></tr>
+      <tr><td>ผลลัพธ์ที่คาดหวัง</td><td>แสดงรหัสผู้เรียนใหม่</td><td>แสดงรหัสผู้สอนใหม่</td><td>บันทึกได้และช่องรหัสประจำตัวว่าง</td></tr>
+      <tr><td>ผลลัพธ์ที่ได้</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td></tr>
+      <tr><td>ผลการทดสอบ</td><td>ผ่าน</td><td>ผ่าน</td><td>ผ่าน</td></tr>
+    </tbody></table></div>
+
+    </section>
+
+<section class="test-section" id="test-11">
+    <h3>4.2.7 การทดสอบจัดการและค้นหาห้องเรียน</h3>
+    <p>ทดสอบให้ผู้สอนเพิ่ม แก้ไข ลบ และค้นหาห้องเรียน รวมทั้งตรวจสอบว่าระบบแสดงรหัสห้องเรียนและสร้างรหัสไม่ซ้ำกับห้องที่มีอยู่ รายละเอียดกรณีทดสอบแสดงในตารางที่ 4.22</p>
+    <div class="figure"><img src="screenshots/dashboard.png?v=20260922-scope" alt="หน้าห้องเรียนและเมนูแก้ไข/ลบห้องเรียน"><div class="caption">รูปที่ 4.11 หน้าห้องเรียนและเมนูแก้ไข/ลบห้องเรียน</div></div>
+    <div class="table-block"><div class="table-title"><strong>ตารางที่ 4.22</strong> การทดสอบจัดการและค้นหาห้องเรียน</div>
+    <table><thead><tr><th>ข้อมูลนำเข้า</th><th class="case">Test Case 1</th><th class="case">Test Case 2</th><th class="case">Test Case 3</th></tr></thead><tbody>
+      <tr><td>การดำเนินการ</td><td>เพิ่มห้องเรียน</td><td>แก้ไขห้องเรียน</td><td>ลบห้องเรียน</td></tr>
+      <tr><td>ข้อมูลทดสอบ</td><td>ชื่อ โครงสร้างข้อมูล กลุ่ม 1</td><td>เปลี่ยนชื่อเป็น โครงสร้างข้อมูล กลุ่ม 2</td><td>เลือกห้องสำรองและยืนยันลบ</td></tr>
+      <tr><td>ผลลัพธ์ที่คาดหวัง</td><td>สร้างห้องได้และแสดงรหัสห้องที่ไม่ซ้ำกับห้องเดิม</td><td>บันทึกและแสดงชื่อห้องที่แก้ไข</td><td>ลบห้องสำรองและไม่แสดงในรายการ โดยห้องหลักยังอยู่</td></tr>
+      <tr><td>ผลลัพธ์ที่ได้</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td></tr>
+      <tr><td>ผลการทดสอบ</td><td>ผ่าน</td><td>ผ่าน</td><td>ผ่าน</td></tr>
+    </tbody></table></div>
+    <div class="table-block"><div class="table-title"><strong>ตารางที่ 4.22</strong> การทดสอบจัดการและค้นหาห้องเรียน (ต่อ)</div>
+    <table><thead><tr><th>ข้อมูลนำเข้า</th><th class="case">Test Case 4</th><th class="case">Test Case 5</th><th class="case">Test Case 6</th></tr></thead><tbody>
+      <tr><td>การดำเนินการ</td><td>ค้นหาด้วยชื่อห้อง</td><td>ค้นหาด้วยรหัสห้อง</td><td>เพิ่มห้องเรียนอีกห้อง</td></tr>
+      <tr><td>ข้อมูลทดสอบ</td><td>ชื่อห้องที่มีอยู่จริง</td><td>รหัสที่แสดงในห้องทดสอบ</td><td>ชื่อ โครงสร้างข้อมูล กลุ่ม 3</td></tr>
+      <tr><td>ผลลัพธ์ที่คาดหวัง</td><td>แสดงห้องที่ตรงกับชื่อค้นหา</td><td>แสดงห้องที่ตรงกับรหัสค้นหา</td><td>แสดงรหัสห้องใหม่ที่ไม่ซ้ำกับรหัสห้องที่มีอยู่</td></tr>
+      <tr><td>ผลลัพธ์ที่ได้</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td></tr>
+      <tr><td>ผลการทดสอบ</td><td>ผ่าน</td><td>ผ่าน</td><td>ผ่าน</td></tr>
+    </tbody></table></div>
+    </section>
+
+<section class="test-section" id="test-7">
+    <h3>4.2.8 การทดสอบเข้าร่วมและออกจากห้องเรียน</h3>
+    <p>ทดสอบให้ผู้เรียนเข้าร่วมห้องเรียนด้วยรหัสที่ได้รับจากผู้สอน รวมทั้งออกจากห้องเรียนที่เป็นสมาชิกอยู่แล้ว รายละเอียดกรณีทดสอบแสดงในตารางที่ 4.23</p>
+    <div class="table-block"><div class="table-title"><strong>ตารางที่ 4.23</strong> การทดสอบเข้าร่วมและออกจากห้องเรียน</div>
+    <table><thead><tr><th>ข้อมูลนำเข้า</th><th class="case">Test Case 1</th><th class="case">Test Case 2</th><th class="case">Test Case 3</th></tr></thead><tbody>
+      <tr><td>การดำเนินการ</td><td>เข้าร่วมห้องเรียน</td><td>เข้าร่วมห้องเรียน</td><td>ออกจากห้องเรียน</td></tr>
+      <tr><td>รหัส / ห้องเรียน</td><td>รหัสของห้องที่มีอยู่จริง</td><td>รหัสที่ไม่มีอยู่ในระบบ</td><td>ห้องสำรองที่ผู้เรียนเป็นสมาชิก</td></tr>
+      <tr><td>ผลลัพธ์ที่คาดหวัง</td><td>เข้าร่วมห้องเรียนได้และแสดงห้องในรายการของผู้เรียน</td><td>เข้าร่วมไม่ได้และแจ้งว่ารหัสไม่ถูกต้อง</td><td>ออกจากห้องเรียนได้และไม่แสดงห้องในรายการที่เข้าร่วม</td></tr>
+      <tr><td>ผลลัพธ์ที่ได้</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td></tr>
+      <tr><td>ผลการทดสอบ</td><td>ผ่าน</td><td>ผ่าน</td><td>ผ่าน</td></tr>
+    </tbody></table></div>
+    </section>
+
+<section class="test-section" id="test-18">
+    <h3>4.2.9 การทดสอบประกาศข่าวสารและสถานะการอ่าน</h3>
+    <p>ทดสอบให้ผู้สอนสร้างประกาศในห้องเรียน และตรวจสอบสถานะการอ่านโดยใช้ผู้เรียนที่เปิดอ่านแล้วและยังไม่เปิดอ่าน รายละเอียดกรณีทดสอบแสดงในตารางที่ 4.24</p>
+    <div class="figure"><img src="screenshots/room-detail.png?v=20260922-scope" alt="หน้าห้องเรียนและประกาศข่าวสาร"><div class="caption">รูปที่ 4.12 หน้าห้องเรียนและประกาศข่าวสาร</div></div>
+    <div class="table-block"><div class="table-title"><strong>ตารางที่ 4.24</strong> การทดสอบประกาศข่าวสารและสถานะการอ่าน</div>
+    <table><thead><tr><th>ข้อมูลนำเข้า</th><th class="case">Test Case 1</th><th class="case">Test Case 2</th><th class="case">Test Case 3</th></tr></thead><tbody>
+      <tr><td>การดำเนินการ</td><td>ผู้สอนสร้างประกาศ</td><td>ผู้เรียน ก เปิดอ่านประกาศ</td><td>ผู้เรียน ข ยังไม่เปิดอ่าน</td></tr>
+      <tr><td>ข้อมูลทดสอบ</td><td>เตรียมสอบเรื่อง Stack และ Queue</td><td>ประกาศเดียวกับ Test Case 1</td><td>ประกาศเดียวกับ Test Case 1</td></tr>
+      <tr><td>ผลลัพธ์ที่คาดหวัง</td><td>ประกาศปรากฏภายในห้องเรียน</td><td>ผู้สอนตรวจสอบได้ว่าผู้เรียน ก อ่านแล้ว</td><td>สถานะของผู้เรียน ข ยังเป็นยังไม่อ่าน</td></tr>
+      <tr><td>ผลลัพธ์ที่ได้</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td></tr>
+      <tr><td>ผลการทดสอบ</td><td>ผ่าน</td><td>ผ่าน</td><td>ผ่าน</td></tr>
+    </tbody></table></div>
+    </section>
+
+<section class="test-section" id="test-12">
+    <h3>4.2.10 การทดสอบเพิ่มและแก้ไขโจทย์ข้อสอบ</h3>
+    <p>ทดสอบให้ผู้สอนเพิ่มและแก้ไขข้อสอบในห้องเรียน โดยระบุชื่อข้อสอบ โจทย์ ธงคำตอบ เกณฑ์การให้คะแนน และคะแนนเต็ม โจทย์ใช้ข้อความหรือรูปภาพได้ และวันเวลาเริ่มสอบกับสิ้นสุดการสอบเป็นข้อมูลที่ไม่บังคับ รายละเอียดกรณีทดสอบแสดงในตารางที่ 4.25</p>
+    <div class="figure"><img src="screenshots/create-exam.png?v=20260922-scope" alt="หน้าสร้างข้อสอบ"><div class="caption">รูปที่ 4.13 หน้าสร้างข้อสอบ</div></div>
+    <div class="table-block"><div class="table-title"><strong>ตารางที่ 4.25</strong> การทดสอบเพิ่มและแก้ไขโจทย์ข้อสอบ</div>
+    <table><thead><tr><th>ข้อมูลนำเข้า</th><th class="case">Test Case 1</th><th class="case">Test Case 2</th><th class="case">Test Case 3</th></tr></thead><tbody>
+      <tr><td>การดำเนินการ</td><td>เพิ่มข้อสอบด้วยข้อความ</td><td>เพิ่มข้อสอบด้วยรูปภาพ</td><td>แก้ไขข้อสอบเดิม</td></tr>
+      <tr><td>ชื่อข้อสอบ</td><td>แบบทดสอบ Stack</td><td>แบบทดสอบ Queue</td><td>แบบทดสอบ Stack ฉบับแก้ไข</td></tr>
+      <tr><td>โจทย์</td><td>อธิบายหลักการ LIFO</td><td>queue-question.jpg</td><td>เพิ่มคำสั่งให้ยกตัวอย่าง LIFO</td></tr>
+      <tr><td>ธงคำตอบ</td><td>ข้อมูลเข้าหลังออกก่อน</td><td>ข้อมูลเข้าก่อนออกก่อน</td><td>ข้อมูลเข้าหลังออกก่อน พร้อมตัวอย่าง</td></tr>
+      <tr><td>เกณฑ์ / คะแนนเต็ม</td><td>หลักการถูกต้อง 5 คะแนน</td><td>หลักการถูกต้อง 5 คะแนน</td><td>หลักการ 3 และตัวอย่าง 2 คะแนน</td></tr>
+      <tr><td>วันเวลาเริ่ม / สิ้นสุด</td><td>กำหนดวันที่และช่วงเวลาทดสอบ</td><td>(ไม่ระบุ)</td><td>แก้ไขช่วงเวลาจากค่าเดิม</td></tr>
+      <tr><td>ผลลัพธ์ที่คาดหวัง</td><td>บันทึกโจทย์ข้อความและรายละเอียดครบ</td><td>บันทึกโจทย์รูปภาพได้โดยไม่บังคับวันเวลา</td><td>แสดงโจทย์ เกณฑ์ และช่วงเวลาตามข้อมูลที่แก้ไข</td></tr>
+      <tr><td>ผลลัพธ์ที่ได้</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td></tr>
+      <tr><td>ผลการทดสอบ</td><td>ผ่าน</td><td>ผ่าน</td><td>ผ่าน</td></tr>
+    </tbody></table></div>
+    </section>
+
+<section class="test-section" id="test-13">
+    <h3>4.2.11 การทดสอบสร้างเกณฑ์การให้คะแนนอัตโนมัติ</h3>
+    <p>ทดสอบการสร้างเกณฑ์การให้คะแนนจากโจทย์รายวิชาโครงสร้างข้อมูล โดยตรวจสอบว่าเกณฑ์สอดคล้องกับสิ่งที่โจทย์ต้องการและสามารถนำไปใช้ประกอบการตรวจคำตอบได้ รายละเอียดกรณีทดสอบแสดงในตารางที่ 4.26</p>
+    <div class="table-block"><div class="table-title"><strong>ตารางที่ 4.26</strong> การทดสอบสร้างเกณฑ์การให้คะแนนอัตโนมัติ</div>
+    <table><thead><tr><th>ข้อมูลนำเข้า</th><th class="case">Test Case 1</th><th class="case">Test Case 2</th><th class="case">Test Case 3</th></tr></thead><tbody>
+      <tr><td>โจทย์</td><td>อธิบายการทำงานของ Stack</td><td>อธิบายการทำงานของ Queue</td><td>เขียนขั้นตอนแทรกโหนดใน Linked List</td></tr>
+      <tr><td>คะแนนเต็ม</td><td>5</td><td>5</td><td>10</td></tr>
+      <tr><td>การดำเนินการ</td><td>สร้างเกณฑ์อัตโนมัติ</td><td>สร้างเกณฑ์อัตโนมัติ</td><td>สร้างเกณฑ์อัตโนมัติ</td></tr>
+      <tr><td>ผลลัพธ์ที่คาดหวัง</td><td>ได้เกณฑ์ที่พิจารณาหลักการ LIFO</td><td>ได้เกณฑ์ที่พิจารณาหลักการ FIFO</td><td>ได้เกณฑ์ที่พิจารณาขั้นตอนและการเชื่อมโยงโหนด</td></tr>
+      <tr><td>ผลลัพธ์ที่ได้</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td></tr>
+      <tr><td>ผลการทดสอบ</td><td>ผ่าน</td><td>ผ่าน</td><td>ผ่าน</td></tr>
+    </tbody></table></div>
+    </section>
+
+<section class="test-section" id="test-8">
+    <h3>4.2.12 การทดสอบทำข้อสอบและส่งคำตอบ</h3>
+    <p>ทดสอบการส่งคำตอบรายวิชาโครงสร้างข้อมูลด้วยการพิมพ์ข้อความและการอัปโหลดภาพลายมือ โดยคำตอบสามารถมีภาษาไทยและภาษาอังกฤษปนกันในคำตอบเดียว เช่น คำอธิบายภาษาไทยร่วมกับคำศัพท์ Stack, Push และ Pop ใช้ข้อสอบที่เปิดให้ส่งคำตอบและผู้เรียนเป็นสมาชิกห้อง กำหนดข้อความ 299, 300 และ 301 คำด้วยวิธีนับคำเดียวกันก่อนทดสอบ ส่วนกรณีรูปภาพใช้คำตอบไม่เกิน 300 คำ รายละเอียดกรณีทดสอบแสดงในตารางที่ 4.27</p>
+    <div class="figure"><img src="screenshots/exam-view.png?v=20260922-scope" alt="หน้าข้อสอบรายวิชาโครงสร้างข้อมูล"><div class="caption">รูปที่ 4.14 หน้าข้อสอบรายวิชาโครงสร้างข้อมูล</div></div>
+    <div class="table-block"><div class="table-title"><strong>ตารางที่ 4.27</strong> การทดสอบทำข้อสอบและส่งคำตอบ</div>
+    <table><thead><tr><th>ข้อมูลนำเข้า</th><th class="case">Test Case 1</th><th class="case">Test Case 2</th><th class="case">Test Case 3</th></tr></thead><tbody>
+      <tr><td>รูปแบบคำตอบ</td><td>ข้อความที่พิมพ์</td><td>ภาพลายมือที่มีภาษาไทยและอังกฤษปนกัน</td><td>ไม่ได้กรอกหรือแนบคำตอบ</td></tr>
+      <tr><td>ข้อมูลคำตอบ</td><td>Stack ทำงานแบบ LIFO โดย Push เพิ่มข้อมูล และ Pop นำข้อมูลออก</td><td>mixed-stack.jpg ภาพลายมือคำอธิบายภาษาไทยร่วมกับคำว่า Stack, LIFO, Push และ Pop ที่อ่านได้ชัดเจน</td><td>ช่องข้อความว่างและไม่แนบรูปภาพ</td></tr>
+      <tr><td>ผลลัพธ์ที่คาดหวัง</td><td>ส่งและบันทึกข้อความภาษาไทยและอังกฤษในคำตอบเดียวได้</td><td>ส่งรูปภาพได้และแปลงลายมือที่มีทั้งสองภาษาปนกันเป็นข้อความดิจิทัล โดยคงเนื้อหาและคำศัพท์ในคำตอบ</td><td>ไม่ส่งคำตอบว่างและแจ้งให้พิมพ์ข้อความหรือแนบรูปภาพคำตอบ</td></tr>
+      <tr><td>ผลลัพธ์ที่ได้</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td></tr>
+      <tr><td>ผลการทดสอบ</td><td>ผ่าน</td><td>ผ่าน</td><td>ผ่าน</td></tr>
+    </tbody></table></div>
+    <div class="table-block"><div class="table-title"><strong>ตารางที่ 4.27</strong> การทดสอบทำข้อสอบและส่งคำตอบ (ต่อ)</div>
+    <table><thead><tr><th>ข้อมูลนำเข้า</th><th class="case">Test Case 4</th><th class="case">Test Case 5</th><th class="case">Test Case 6</th></tr></thead><tbody>
+      <tr><td>รูปแบบคำตอบ</td><td>ข้อความ</td><td>ข้อความ</td><td>ข้อความ</td></tr>
+      <tr><td>ความยาวคำตอบ</td><td>299 คำ</td><td>300 คำ</td><td>301 คำ</td></tr>
+      <tr><td>ผลลัพธ์ที่คาดหวัง</td><td>รับคำตอบได้</td><td>รับคำตอบได้ตามขอบเขตสูงสุด</td><td>ไม่รับคำตอบที่เกินขอบเขตและแจ้งให้ปรับความยาว</td></tr>
+      <tr><td>ผลลัพธ์ที่ได้</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td></tr>
+      <tr><td>ผลการทดสอบ</td><td>ผ่าน</td><td>ผ่าน</td><td>ผ่าน</td></tr>
+    </tbody></table></div>
+    <div class="table-block"><div class="table-title"><strong>ตารางที่ 4.27</strong> การทดสอบทำข้อสอบและส่งคำตอบ (ต่อ)</div>
+    <table><thead><tr><th>ข้อมูลนำเข้า</th><th class="case">Test Case 7</th><th class="case">Test Case 8</th><th class="case">Test Case 9</th></tr></thead><tbody>
+      <tr><td>ชนิดข้อมูลนำเข้า</td><td>รูปภาพคำตอบ</td><td>ไฟล์เสียง</td><td>ไฟล์วิดีโอ</td></tr>
+      <tr><td>ไฟล์ทดสอบ</td><td>answer.jpg</td><td>answer.mp3</td><td>answer.mp4</td></tr>
+      <tr><td>ผลลัพธ์ที่คาดหวัง</td><td>รับรูปภาพคำตอบได้</td><td>ไม่รองรับการส่งไฟล์เสียงเป็นคำตอบ</td><td>ไม่รองรับการส่งไฟล์วิดีโอเป็นคำตอบ</td></tr>
+      <tr><td>ผลลัพธ์ที่ได้</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td></tr>
+      <tr><td>ผลการทดสอบ</td><td>ผ่าน</td><td>ผ่าน</td><td>ผ่าน</td></tr>
+    </tbody></table></div>
+    </section>
+
+<section class="test-section" id="test-15">
+    <h3>4.2.13 การทดสอบติดตามการส่งข้อสอบของผู้เรียน</h3>
+    <p>ทดสอบให้ผู้สอนเปิดรายการส่งข้อสอบของห้องเรียนที่มีรายชื่อผู้เรียนและสถานะการส่งที่ทราบล่วงหน้า แล้วเปรียบเทียบข้อมูลที่แสดงกับรายการจริง รายละเอียดกรณีทดสอบแสดงในตารางที่ 4.28</p>
+    <div class="table-block"><div class="table-title"><strong>ตารางที่ 4.28</strong> การทดสอบติดตามการส่งข้อสอบของผู้เรียน</div>
+    <table><thead><tr><th>ข้อมูลนำเข้า</th><th class="case">Test Case 1</th><th class="case">Test Case 2</th><th class="case">Test Case 3</th></tr></thead><tbody>
+      <tr><td>ผู้เรียนทดสอบ</td><td>ผู้เรียน ก</td><td>ผู้เรียน ข</td><td>ผู้เรียน ข หลังส่งคำตอบ</td></tr>
+      <tr><td>ข้อมูลที่เตรียมไว้</td><td>ส่งคำตอบแล้ว</td><td>ยังไม่ส่งคำตอบ</td><td>ส่งคำตอบแล้วในรอบตรวจสอบถัดไป</td></tr>
+      <tr><td>ผลลัพธ์ที่คาดหวัง</td><td>ผู้สอนเห็นสถานะส่งแล้ว</td><td>ผู้สอนเห็นสถานะยังไม่ส่ง</td><td>สถานะเปลี่ยนเป็นส่งแล้วตรงกับข้อมูลล่าสุด</td></tr>
+      <tr><td>ผลลัพธ์ที่ได้</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td></tr>
+      <tr><td>ผลการทดสอบ</td><td>ผ่าน</td><td>ผ่าน</td><td>ผ่าน</td></tr>
+    </tbody></table></div>
+    </section>
+
+<section class="test-section" id="test-14">
+    <h3>4.2.14 การทดสอบประเมินคำตอบด้วย LLM</h3>
+    <p>ทดสอบการวิเคราะห์ความหมายโดยใช้โจทย์และเกณฑ์เดียวกันกับคำตอบที่เขียนต่างถ้อยคำ รวมทั้งตรวจสอบการส่งคะแนนและข้อเสนอแนะกลับให้ผู้สอน และการแจ้งเตือนเมื่อค่าความมั่นใจต่ำ การวัดความแม่นยำเชิงสถิติเป็นอีกส่วนหนึ่งตามขอบเขตข้อ 1.3.5 รายละเอียดกรณีทดสอบแสดงในตารางที่ 4.29</p>
+    <div class="figure"><img src="screenshots/live_scoring_experiment_result.png?v=20260922-scope" alt="ตัวอย่างหน้าผลการประเมินคำตอบด้วย LLM"><div class="caption">รูปที่ 4.15 ตัวอย่างหน้าผลการประเมินคำตอบด้วย LLM</div></div>
+    <div class="table-block"><div class="table-title"><strong>ตารางที่ 4.29</strong> การทดสอบประเมินคำตอบด้วย LLM</div>
+    <table><thead><tr><th>ข้อมูลนำเข้า</th><th class="case">Test Case 1</th><th class="case">Test Case 2</th><th class="case">Test Case 3</th></tr></thead><tbody>
+      <tr><td>โจทย์ / เกณฑ์</td><td>อธิบาย Stack / ถูกหลัก LIFO</td><td>อธิบาย Stack / ถูกหลัก LIFO</td><td>อธิบาย Stack / ถูกหลัก LIFO</td></tr>
+      <tr><td>คำตอบ / เงื่อนไข</td><td>ข้อมูลที่ใส่ทีหลังจะถูกนำออกก่อน</td><td>หยิบสมาชิกที่เพิ่งเพิ่มออกก่อนสมาชิกเก่า</td><td>คำตอบที่ AI คืนค่าความมั่นใจต่ำตามเกณฑ์ระบบ</td></tr>
+      <tr><td>ผลลัพธ์ที่คาดหวัง</td><td>ส่งคะแนนและข้อเสนอแนะตามเกณฑ์ให้ผู้สอนตรวจสอบ</td><td>พิจารณาว่าความหมายถูกต้องเช่นเดียวกับกรณีแรก แม้ถ้อยคำต่างกัน</td><td>แจ้งเตือนความมั่นใจต่ำให้ผู้สอนพร้อมคะแนนและข้อเสนอแนะ</td></tr>
+      <tr><td>ผลลัพธ์ที่ได้</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td></tr>
+      <tr><td>ผลการทดสอบ</td><td>ผ่าน</td><td>ผ่าน</td><td>ผ่าน</td></tr>
+    </tbody></table></div>
+    </section>
+
+<section class="test-section" id="test-16">
+    <h3>4.2.15 การทดสอบตรวจสอบ แก้ไข และอนุมัติคะแนน</h3>
+    <p>ทดสอบให้ผู้สอนตรวจสอบคะแนนที่ LLM ประเมิน แก้ไขคะแนน เพิ่มความคิดเห็น และอนุมัติผลเพื่อประกาศแก่ผู้เรียน โดยใช้คำตอบที่ระบบประเมินแล้ว รายละเอียดกรณีทดสอบแสดงในตารางที่ 4.30</p>
+    <div class="table-block"><div class="table-title"><strong>ตารางที่ 4.30</strong> การทดสอบตรวจสอบ แก้ไข และอนุมัติคะแนน</div>
+    <table><thead><tr><th>ข้อมูลนำเข้า</th><th class="case">Test Case 1</th><th class="case">Test Case 2</th><th class="case">Test Case 3</th></tr></thead><tbody>
+      <tr><td>การดำเนินการ</td><td>ตรวจสอบและอนุมัติคะแนนเดิม</td><td>แก้ไขคะแนนและอนุมัติ</td><td>เพิ่มความคิดเห็นและอนุมัติ</td></tr>
+      <tr><td>คะแนน AI / คะแนนเต็ม</td><td>3 / 5</td><td>3 / 5</td><td>3 / 5</td></tr>
+      <tr><td>ข้อมูลที่ผู้สอนบันทึก</td><td>คงคะแนน 3</td><td>แก้ไขเป็น 4</td><td>ควรอธิบายขั้นตอนให้ครบ</td></tr>
+      <tr><td>ผลลัพธ์ที่คาดหวัง</td><td>อนุมัติคะแนน 3 เพื่อประกาศให้ผู้เรียน</td><td>บันทึกและประกาศคะแนนที่แก้ไขเป็น 4</td><td>บันทึกความคิดเห็นของผู้สอนร่วมกับผลคะแนนที่อนุมัติ</td></tr>
+      <tr><td>ผลลัพธ์ที่ได้</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td></tr>
+      <tr><td>ผลการทดสอบ</td><td>ผ่าน</td><td>ผ่าน</td><td>ผ่าน</td></tr>
+    </tbody></table></div>
+    </section>
+
+<section class="test-section" id="test-9">
+    <h3>4.2.16 การทดสอบดูสถานะการส่งคำตอบ</h3>
+    <p>ทดสอบให้ผู้เรียนเปิดดูสถานะของตนเองในสามช่วง ได้แก่ ก่อนส่งคำตอบ หลังส่งคำตอบขณะที่รอตรวจ และเมื่อการตรวจเสร็จสิ้น รายละเอียดกรณีทดสอบแสดงในตารางที่ 4.31</p>
+    <div class="table-block"><div class="table-title"><strong>ตารางที่ 4.31</strong> การทดสอบดูสถานะการส่งคำตอบ</div>
+    <table><thead><tr><th>ข้อมูลนำเข้า</th><th class="case">Test Case 1</th><th class="case">Test Case 2</th><th class="case">Test Case 3</th></tr></thead><tbody>
+      <tr><td>สภาพข้อมูล</td><td>ยังไม่ได้ส่งคำตอบ</td><td>ส่งคำตอบแล้วและยังตรวจไม่เสร็จ</td><td>ตรวจคำตอบเสร็จแล้ว</td></tr>
+      <tr><td>ผู้ดำเนินการ</td><td>เจ้าของคำตอบ</td><td>เจ้าของคำตอบ</td><td>เจ้าของคำตอบ</td></tr>
+      <tr><td>ผลลัพธ์ที่คาดหวัง</td><td>แสดงสถานะยังไม่ส่ง</td><td>แสดงสถานะส่งแล้ว (รอตรวจ)</td><td>แสดงสถานะตรวจแล้ว</td></tr>
+      <tr><td>ผลลัพธ์ที่ได้</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td></tr>
+      <tr><td>ผลการทดสอบ</td><td>ผ่าน</td><td>ผ่าน</td><td>ผ่าน</td></tr>
+    </tbody></table></div>
+    </section>
+
+<section class="test-section" id="test-10">
+    <h3>4.2.17 การทดสอบดูคะแนนและข้อเสนอแนะ</h3>
+    <p>ทดสอบการแสดงคะแนนและข้อเสนอแนะให้ผู้เรียนหลังผู้สอนอนุมัติผล โดยตรวจสอบทั้งรายการที่ยังไม่อนุมัติและรายการที่อนุมัติแล้ว รายละเอียดกรณีทดสอบแสดงในตารางที่ 4.32</p>
+    <div class="table-block"><div class="table-title"><strong>ตารางที่ 4.32</strong> การทดสอบดูคะแนนและข้อเสนอแนะ</div>
+    <table><thead><tr><th>ข้อมูลนำเข้า</th><th class="case">Test Case 1</th><th class="case">Test Case 2</th><th class="case">Test Case 3</th></tr></thead><tbody>
+      <tr><td>สถานะการอนุมัติ</td><td>ยังไม่อนุมัติ</td><td>อนุมัติแล้ว</td><td>อนุมัติหลังแก้ไขคะแนน</td></tr>
+      <tr><td>คะแนนที่เตรียมไว้</td><td>AI ประเมิน 3 จาก 5</td><td>ผู้สอนอนุมัติ 3 จาก 5</td><td>ผู้สอนแก้ไขเป็น 4 จาก 5</td></tr>
+      <tr><td>ผลลัพธ์ที่คาดหวัง</td><td>ยังไม่แสดงคะแนนและข้อเสนอแนะก่อนอนุมัติ</td><td>แสดง 3 คะแนนและข้อเสนอแนะของรายการนั้น</td><td>แสดงคะแนนที่อนุมัติล่าสุด 4 คะแนนและข้อเสนอแนะที่เกี่ยวข้อง</td></tr>
+      <tr><td>ผลลัพธ์ที่ได้</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td></tr>
+      <tr><td>ผลการทดสอบ</td><td>ผ่าน</td><td>ผ่าน</td><td>ผ่าน</td></tr>
+    </tbody></table></div>
+    </section>
+
+<section class="test-section" id="test-17">
+    <h3>4.2.18 การทดสอบรายงานสถิติและส่งออกรายงาน</h3>
+    <p>ทดสอบรายงานโดยเตรียมผลสอบที่ตรวจสอบได้ล่วงหน้า ซึ่งมีรหัสผู้เรียน คะแนน วันเวลาส่ง และข้อเสนอแนะ จากนั้นเปรียบเทียบข้อมูลในระบบกับรายงานที่ส่งออกทั้ง CSV และ XLSX ตามขอบเขต รายละเอียดกรณีทดสอบแสดงในตารางที่ 4.33</p>
+    <div class="figure"><img src="screenshots/room-report-current.png?v=20260922-scope" alt="หน้ารายงานผลการเรียนของห้องเรียน"><div class="caption">รูปที่ 4.16 หน้ารายงานผลการเรียนของห้องเรียน</div></div>
+    <div class="table-block"><div class="table-title"><strong>ตารางที่ 4.33</strong> การทดสอบรายงานสถิติและส่งออกรายงาน</div>
+    <table><thead><tr><th>ข้อมูลนำเข้า</th><th class="case">Test Case 1</th><th class="case">Test Case 2</th><th class="case">Test Case 3</th></tr></thead><tbody>
+      <tr><td>ชุดข้อมูล</td><td>ผู้เรียน 3 คน ได้ 2, 3, 4 จาก 5 คะแนน</td><td>ชุดเดียวกับ Test Case 1</td><td>ชุดเดียวกับ Test Case 1</td></tr>
+      <tr><td>ข้อมูลประกอบ</td><td>รหัสผู้เรียน วันเวลาส่ง และข้อเสนอแนะครบ</td><td>รหัสผู้เรียน วันเวลาส่ง และข้อเสนอแนะครบ</td><td>รหัสผู้เรียน วันเวลาส่ง และข้อเสนอแนะครบ</td></tr>
+      <tr><td>การดำเนินการ</td><td>ดูรายงานและข้อมูลการสอบแต่ละรอบ</td><td>ส่งออกรายงาน CSV</td><td>ส่งออกรายงาน XLSX</td></tr>
+      <tr><td>ผลลัพธ์ที่คาดหวัง</td><td>ข้อมูลการสอบครบและสถิติถูกต้อง เช่น ค่าเฉลี่ย 3 สูงสุด 4 ต่ำสุด 2</td><td>ได้ไฟล์ CSV ที่ข้อมูลตรงกับรายการสอบที่เลือก</td><td>ได้ไฟล์ XLSX ที่ข้อมูลตรงกับรายการสอบที่เลือก</td></tr>
+      <tr><td>ผลลัพธ์ที่ได้</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td></tr>
+      <tr><td>ผลการทดสอบ</td><td>ผ่าน</td><td>ผ่าน</td><td>ผ่าน</td></tr>
+    </tbody></table></div>
+    </section>
+
+<section class="test-section" id="test-19">
+    <h3>4.2.19 การทดสอบแจ้งเตือนแบบเรียลไทม์</h3>
+    <p>ทดสอบการแจ้งเตือนตามเหตุการณ์ที่ระบุในขอบเขต โดยให้ผู้ใช้ที่เกี่ยวข้องเปิดระบบอยู่ และใช้ช่วงเวลาแจ้งเตือนใกล้หมดเวลาตามค่าที่ระบบกำหนด รายละเอียดกรณีทดสอบแสดงในตารางที่ 4.34</p>
+    <div class="table-block"><div class="table-title"><strong>ตารางที่ 4.34</strong> การทดสอบแจ้งเตือนแบบเรียลไทม์</div>
+    <table><thead><tr><th>ข้อมูลนำเข้า</th><th class="case">Test Case 1</th><th class="case">Test Case 2</th><th class="case">Test Case 3</th></tr></thead><tbody>
+      <tr><td>เหตุการณ์</td><td>ผู้สอนเพิ่มข้อสอบใหม่</td><td>เข้าสู่ช่วงใกล้หมดเวลาสอบ</td><td>ผู้สอนประกาศผลคะแนน</td></tr>
+      <tr><td>ผู้รับแจ้งเตือน</td><td>ผู้เรียนในห้อง</td><td>ผู้เรียนที่กำลังทำข้อสอบ</td><td>ผู้เรียนเจ้าของผลสอบ</td></tr>
+      <tr><td>ผลลัพธ์ที่คาดหวัง</td><td>ได้รับแจ้งเตือนข้อสอบใหม่ขณะใช้งาน</td><td>ได้รับแจ้งเตือนใกล้หมดเวลาสอบขณะใช้งาน</td><td>ได้รับแจ้งเตือนการประกาศผลคะแนนขณะใช้งาน</td></tr>
+      <tr><td>ผลลัพธ์ที่ได้</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td><td>เป็นไปตามผลลัพธ์ที่คาดหวัง</td></tr>
+      <tr><td>ผลการทดสอบ</td><td>ผ่าน</td><td>ผ่าน</td><td>ผ่าน</td></tr>
+    </tbody></table></div>
+    </section>
+
+    <section class="test-section" id="test-summary">
+    <h3>4.2.20 สรุปผลการทดสอบการทำงานของระบบ</h3>
+    <p>จากการดำเนินการทดสอบการทำงานของระบบตามหน้าที่ (Functional Testing) ทั้งหมด 19 ฟังก์ชันงาน ครอบคลุมกรณีทดสอบรวมทั้งสิ้น 57 กรณีทดสอบ (ฟังก์ชันงานละ 3 กรณีทดสอบ) พบว่าผลการทดสอบทุกกรณีเป็นไปตามผลลัพธ์ที่คาดหวัง ระบบสามารถทำงานได้อย่างถูกต้องสมบูรณ์ คิดเป็นร้อยละ 100.00 โดยมีรายละเอียดสรุปผลการทดสอบแสดงดังตารางที่ 4.35</p>
+    <div class="table-block"><div class="table-title"><strong>ตารางที่ 4.35</strong> สรุปผลการทดสอบการทำงานของระบบตามฟังก์ชันงาน</div>
+    <table><thead><tr><th>ลำดับ</th><th>หัวข้อการทดสอบโมดูลระบบ</th><th>จำนวนกรณีทดสอบ</th><th>ผ่าน</th><th>ไม่ผ่าน</th><th>ร้อยละที่ผ่าน</th></tr></thead><tbody>
+      <tr><td style="text-align:center;">1</td><td>การสมัครสมาชิก</td><td style="text-align:center;">3</td><td style="text-align:center;">3</td><td style="text-align:center;">0</td><td style="text-align:center;">100%</td></tr>
+      <tr><td style="text-align:center;">2</td><td>การลืมรหัสผ่านและขอตั้งรหัสผ่านใหม่</td><td style="text-align:center;">3</td><td style="text-align:center;">3</td><td style="text-align:center;">0</td><td style="text-align:center;">100%</td></tr>
+      <tr><td style="text-align:center;">3</td><td>การตั้งรหัสผ่านใหม่และการยืนยันอีเมล</td><td style="text-align:center;">3</td><td style="text-align:center;">3</td><td style="text-align:center;">0</td><td style="text-align:center;">100%</td></tr>
+      <tr><td style="text-align:center;">4</td><td>การเข้าสู่ระบบ</td><td style="text-align:center;">3</td><td style="text-align:center;">3</td><td style="text-align:center;">0</td><td style="text-align:center;">100%</td></tr>
+      <tr><td style="text-align:center;">5</td><td>การเข้าสู่ระบบด้วยบัญชี Google</td><td style="text-align:center;">3</td><td style="text-align:center;">3</td><td style="text-align:center;">0</td><td style="text-align:center;">100%</td></tr>
+      <tr><td style="text-align:center;">6</td><td>การแก้ไขข้อมูลโปรไฟล์</td><td style="text-align:center;">3</td><td style="text-align:center;">3</td><td style="text-align:center;">0</td><td style="text-align:center;">100%</td></tr>
+      <tr><td style="text-align:center;">7</td><td>การจัดการและค้นหาห้องเรียน</td><td style="text-align:center;">3</td><td style="text-align:center;">3</td><td style="text-align:center;">0</td><td style="text-align:center;">100%</td></tr>
+      <tr><td style="text-align:center;">8</td><td>การเข้าร่วมและออกจากห้องเรียน</td><td style="text-align:center;">3</td><td style="text-align:center;">3</td><td style="text-align:center;">0</td><td style="text-align:center;">100%</td></tr>
+      <tr><td style="text-align:center;">9</td><td>การประกาศข่าวสารและสถานะการอ่าน</td><td style="text-align:center;">3</td><td style="text-align:center;">3</td><td style="text-align:center;">0</td><td style="text-align:center;">100%</td></tr>
+      <tr><td style="text-align:center;">10</td><td>การเพิ่มและแก้ไขโจทย์ข้อสอบ</td><td style="text-align:center;">3</td><td style="text-align:center;">3</td><td style="text-align:center;">0</td><td style="text-align:center;">100%</td></tr>
+      <tr><td style="text-align:center;">11</td><td>การสร้างเกณฑ์การให้คะแนนอัตโนมัติ</td><td style="text-align:center;">3</td><td style="text-align:center;">3</td><td style="text-align:center;">0</td><td style="text-align:center;">100%</td></tr>
+      <tr><td style="text-align:center;">12</td><td>การทำข้อสอบและส่งคำตอบ</td><td style="text-align:center;">3</td><td style="text-align:center;">3</td><td style="text-align:center;">0</td><td style="text-align:center;">100%</td></tr>
+      <tr><td style="text-align:center;">13</td><td>การติดตามการส่งข้อสอบของผู้เรียน</td><td style="text-align:center;">3</td><td style="text-align:center;">3</td><td style="text-align:center;">0</td><td style="text-align:center;">100%</td></tr>
+      <tr><td style="text-align:center;">14</td><td>การประเมินคำตอบด้วย LLM</td><td style="text-align:center;">3</td><td style="text-align:center;">3</td><td style="text-align:center;">0</td><td style="text-align:center;">100%</td></tr>
+      <tr><td style="text-align:center;">15</td><td>การตรวจสอบ แก้ไข และอนุมัติคะแนน</td><td style="text-align:center;">3</td><td style="text-align:center;">3</td><td style="text-align:center;">0</td><td style="text-align:center;">100%</td></tr>
+      <tr><td style="text-align:center;">16</td><td>การดูสถานะการส่งคำตอบ</td><td style="text-align:center;">3</td><td style="text-align:center;">3</td><td style="text-align:center;">0</td><td style="text-align:center;">100%</td></tr>
+      <tr><td style="text-align:center;">17</td><td>การดูคะแนนและข้อเสนอแนะ</td><td style="text-align:center;">3</td><td style="text-align:center;">3</td><td style="text-align:center;">0</td><td style="text-align:center;">100%</td></tr>
+      <tr><td style="text-align:center;">18</td><td>การรายงานสถิติและส่งออกรายงาน</td><td style="text-align:center;">3</td><td style="text-align:center;">3</td><td style="text-align:center;">0</td><td style="text-align:center;">100%</td></tr>
+      <tr><td style="text-align:center;">19</td><td>การแจ้งเตือนแบบเรียลไทม์</td><td style="text-align:center;">3</td><td style="text-align:center;">3</td><td style="text-align:center;">0</td><td style="text-align:center;">100%</td></tr>
+      <tr><td colspan="2" style="text-align:center; font-weight:bold;">รวมทั้งหมด</td><td style="text-align:center; font-weight:bold;">57</td><td style="text-align:center; font-weight:bold;">57</td><td style="text-align:center; font-weight:bold;">0</td><td style="text-align:center; font-weight:bold;">100.00%</td></tr>
+    </tbody></table></div>
+    </section>
+
+
+<section id="chapter5" class="chapter-start">
+<h1>บทที่ 5<br>สรุปผลและข้อเสนอแนะ</h1>
+<h2>5.1 สรุปผลและอภิปรายผล</h2>
+<p>โครงงานนี้พัฒนาระบบตรวจข้อสอบอัตนัยด้วยแบบจำลองภาษาขนาดใหญ่ในรูปแบบเว็บแอปพลิเคชัน โดยใช้ Gemini 3.8 Flash ประเมินคำตอบแบบข้อความและภาพลายมือ ระบบรองรับการจัดการห้องเรียน การสร้างข้อสอบและเกณฑ์การให้คะแนน การส่งคำตอบ การประเมินด้วย AI และการรายงานผล พร้อมแสดงคะแนนและข้อเสนอแนะเพื่อให้ผู้สอนตรวจทาน แก้ไข และอนุมัติก่อนเผยแพร่แก่ผู้เรียน</p>
+<p>การประเมินการให้คะแนนใช้คำตอบในรายวิชาโครงสร้างข้อมูลจำนวน 204 คำตอบ จากข้อสอบ 6 ข้อ ข้อละ 34 คำตอบ แบ่งเป็นข้อความ 102 คำตอบและภาพลายมือเชิงโครงสร้างและสัญลักษณ์ 102 คำตอบ โดยไม่เปิดเผยคะแนนผู้สอนแก่แบบจำลอง ผลพบว่าคะแนนตรงกับผู้สอน 160 คำตอบ คิดเป็นร้อยละ 78.43 มีค่า MAE เท่ากับ 0.1311 คะแนน และ QWK รวมหลังปรับคะแนนตามคะแนนเต็มเป็นสเกลร่วม 0–4 เท่ากับ 0.8546</p>
+<p>เมื่อพิจารณารายกลุ่ม คำตอบแบบภาพในข้อที่ 4–6 มีคะแนนตรงกับผู้สอนครบทั้ง 102 คำตอบ ส่วนคำตอบแบบข้อความในข้อที่ 1–3 ตรงกัน 58 จาก 102 คำตอบ คิดเป็นร้อยละ 56.86 โดยข้อที่ 3 มีความแตกต่างมากที่สุด 22 คำตอบ กรณีศึกษาพบประเด็นเกี่ยวกับความครบถ้วนของคำตอบ การให้คะแนนบางส่วน และการอนุมานความหมายจากคำสำคัญ ผลดังกล่าวแสดงว่าการใช้เกณฑ์และการตีความคำตอบเป็นส่วนสำคัญที่ผู้สอนควรพิจารณาประกอบการตรวจทาน ทั้งนี้ ผลของแต่ละกลุ่มมาจากโจทย์และเกณฑ์ต่างกัน จึงยังไม่สามารถสรุปว่ารูปแบบภาพให้ผลดีกว่าข้อความในทุกกรณี</p>
+<p>การทดลองอ่านลายมือใช้ภาพคำตอบข้อที่ 3 จำนวน 34 ภาพ ซึ่งมีภาษาไทยและศัพท์ภาษาอังกฤษปะปนกัน ผลการจัดกลุ่มเบื้องต้นพบว่าอ่านถูกต้อง 16 ภาพ คลาดเคลื่อนเล็กน้อย 15 ภาพ ผิดสาระสำคัญ 2 ภาพ และเป็นภาพกำกวม 1 ภาพ เมื่อตัดภาพกำกวมออก แบบจำลองอ่านข้อความได้เพียงพอต่อการตรวจ 31 จาก 33 ภาพ คิดเป็นร้อยละ 93.94 ผลนี้แสดงความสามารถในการรักษาสาระที่ใช้ประเมินคำตอบ แม้ข้อความที่ถอดได้บางรายการจะไม่ตรงกับข้อความอ้างอิงทุกตัวอักษร</p>
+<p>ระบบแจ้งให้ผู้สอนทบทวนเมื่อแบบจำลองรายงานความมั่นใจระดับปานกลางหรือต่ำ ในการทดลองมีภาพได้รับการแจ้งเตือน 8 จาก 34 ภาพ และครอบคลุมกรณีที่ควรทบทวนทั้ง 3 ภาพ มีค่า Review Recall ร้อยละ 100.00, Review Precision ร้อยละ 37.50 และ Review Rate ร้อยละ 23.53 จึงตรวจพบกรณีที่ควรทบทวนครบในชุดทดลองนี้ แต่ยังแจ้งเตือนอีก 5 ภาพที่อ่านข้อความได้เพียงพอต่อการตรวจ ผลดังกล่าวสะท้อนทั้งประโยชน์ของการแจ้งเตือนและภาระการตรวจทานเพิ่มเติม โดยผลการจัดกลุ่มยังเป็นผลเบื้องต้นตามที่ระบุในบทที่ 4</p>
+<p>การทดสอบการทำงานของระบบครอบคลุม 19 หัวข้อ ตั้งแต่การจัดการบัญชีผู้ใช้ ห้องเรียน ข้อสอบ การส่งและประเมินคำตอบ ไปจนถึงการรายงานผลและแจ้งเตือน โดยผ่านทุกกรณีที่กำหนด รวมถึงกรณีข้อมูลไม่ครบหรือไม่เป็นไปตามเงื่อนไข ผลการดำเนินงานแสดงว่าระบบรองรับกระบวนการตรวจข้อสอบตามขอบเขตโครงงาน และใช้คะแนนพร้อมข้อเสนอแนะจาก AI ประกอบการตัดสินของผู้สอนได้ โดยผู้สอนเป็นผู้อนุมัติผลขั้นสุดท้าย</p>
+<p>จากผลการพัฒนาและทดสอบ ระบบสามารถดำเนินกระบวนการตรวจคำตอบข้อความและภาพ พร้อมส่งคะแนนและข้อเสนอแนะให้ผู้สอนตรวจทานได้ตามวัตถุประสงค์ของโครงงาน อย่างไรก็ตาม ผลการประเมินประสิทธิภาพในโครงงานนี้ยังจำกัดอยู่บนชุดข้อมูลคำตอบในรายวิชาโครงสร้างข้อมูลและได้รับการตรวจประเมินโดยผู้สอนหนึ่งท่าน รวมถึงการทดสอบในระยะนี้ยังไม่ได้วัดผลกระทบในด้านระยะเวลาการตรวจ ต้นทุนค่าใช้จ่ายในการประมวลผลของโมเดล หรือการสำรวจความพึงพอใจของผู้ใช้งานจริงในวงกว้าง ซึ่งสามารถนำไปพัฒนาต่อยอดในงานวิจัยขั้นต่อไป</p>
+<h2>5.2 ปัญหาและอุปสรรคในการดำเนินงาน</h2>
+<ol>
+<li>การเตรียมข้อมูลคำตอบต้องตรวจสอบการจับคู่ภาพกับข้อความที่ถอด และลบคะแนนหรือรอยตรวจของผู้สอนออกจากภาพโดยรักษาเนื้อหาคำตอบเดิม เพื่อให้ข้อมูลนำเข้าตรงกับคำตอบของผู้เรียนและไม่เปิดเผยคะแนนอ้างอิงแก่แบบจำลอง</li>
+<li>คำตอบแบบข้อความมีระดับรายละเอียดแตกต่างกัน โดยเฉพาะคำตอบสั้นและคำตอบที่ถูกบางส่วน ทำให้การพิจารณาความครบถ้วนและการให้คะแนนตามเกณฑ์แตกต่างจากผู้สอนได้ ในบางกรณีแบบจำลองให้คะแนนจากคำสำคัญแม้คำตอบยังอธิบายไม่ครบ</li>
+<li>ลายมือจาง ตัวอักษรเขียนติดกัน และข้อความภาษาไทยปะปนภาษาอังกฤษทำให้เกิดความคลาดเคลื่อนในการอ่าน บางภาพไม่สามารถยืนยันข้อความอ้างอิงได้ชัดเจน จึงต้องแยกเป็นภาพกำกวมในการประเมิน</li>
+<li>เงื่อนไขแจ้งเตือนที่ใช้ความมั่นใจระดับปานกลางหรือต่ำครอบคลุมกรณีที่ควรทบทวนในชุดทดลอง แต่มีการแจ้งเตือนภาพที่อ่านได้เพียงพอด้วย ระดับความมั่นใจที่แบบจำลองรายงานจึงต้องใช้ประกอบกับการตรวจคำตอบจริง</li>
+<li>การประเมินใช้ข้อสอบรายวิชาเดียว 6 ข้อและคะแนนอ้างอิงจากผู้สอนหนึ่งคน ส่วนการอ่านลายมือทดลองด้วยภาพข้อที่ 3 จำนวน 34 ภาพ ผลจึงยังไม่ครอบคลุมรายวิชาและลักษณะคำตอบอื่น อีกทั้งยังไม่ได้ประเมินระยะเวลาการตรวจ ต้นทุน และความพึงพอใจของผู้ใช้อย่างเป็นระบบ</li>
+</ol>
+<h2>5.3 ข้อเสนอแนะ</h2>
+<ol>
+<li>เพิ่มจำนวนและความหลากหลายของโจทย์ คำตอบ และลายมือ รวมถึงข้อมูลจากรายวิชาอื่น เพื่อประเมินการทำงานของระบบในสถานการณ์ที่กว้างขึ้น</li>
+<li>จัดทำเกณฑ์และตัวอย่างคำตอบแต่ละระดับคะแนนร่วมกับผู้สอน โดยกำหนดเงื่อนไขการให้คะแนนบางส่วนและการพิจารณาคำตอบที่มีเพียงคำสำคัญให้ชัดเจน จากนั้นประเมินด้วยชุดคำตอบที่แยกจากชุดที่ใช้ปรับเกณฑ์</li>
+<li>ตรวจยืนยันข้อความอ้างอิงและผลการจัดกลุ่มการอ่านลายมือ โดยอาจให้ผู้ตรวจมากกว่าหนึ่งคนพิจารณากรณีที่ไม่ตรงกัน เพื่อเพิ่มความชัดเจนของข้อมูลที่ใช้ประเมิน</li>
+<li>ประเมินกลไกแจ้งทบทวนด้วยภาพเพิ่มเติม โดยพิจารณาทั้งกรณีที่ระบบไม่แจ้งเตือนเมื่อเกิดข้อผิดพลาดและกรณีที่แจ้งเตือนเกินจำเป็น ควบคู่กับเวลาที่ผู้สอนใช้ตรวจทาน</li>
+<li>ทดสอบความคงที่ของคะแนนจากการประเมินซ้ำ และให้ผู้สอนทดลองใช้งานในกระบวนการตรวจจริง โดยเก็บข้อมูลระยะเวลา ต้นทุนการเรียกใช้ API และความพึงพอใจ เพื่อประเมินประโยชน์ของระบบในด้านการใช้งานเพิ่มเติม</li>
+</ol>
+</section>
+
+<section id="thesis-references" class="chapter-start">
+<h1>เอกสารอ้างอิง</h1>
+<ol class="thesis-references">
+  <li>Gronlund, N. E., &amp; Linn, R. L. (1990). Measurement and evaluation in teaching (6th ed.). New York: Macmillan.</li>
+  <li>Sadler, D. R. (1989). Formative assessment and the design of instructional systems. Instructional Science, 18(2), 119-144.</li>
+  <li>OpenAI. (2023). GPT-4 Technical Report. arXiv preprint arXiv:2303.08774 from https://arxiv.org/abs/2303.08774</li>
+  <li>Gemini Team, Google. (2023). Gemini: A Family of Highly Capable Multimodal Models. Google DeepMind Technical Report from https://arxiv.org/abs/2312.11805</li>
+  <li>Meta Open Source. (n.d.). React – The library for web and native user interfaces. Retrieved from https://react.dev/</li>
+  <li>Ramírez, S. (n.d.). FastAPI. Retrieved from https://fastapi.tiangolo.com/</li>
+  <li>Oracle. (n.d.). MySQL 8.0 Reference Manual: The InnoDB Storage Engine. Retrieved from https://dev.mysql.com/doc/refman/8.0/en/</li>
+  <li>Google for Education. (n.d.). Google Classroom. Retrieved from https://edu.google.com/workspace-for-education/classroom/</li>
+  <li>Singh, A., Karayev, S., Gutman, D., &amp; Abbeel, P. (2017). Gradescope: A System for Fast, Fair, and Flexible Grading. Proceedings of the Fourth (2017) ACM Conference on Learning @ Scale, 177–180.</li>
+  <li>Microsoft. (n.d.). Microsoft 365 (Office) app for Android and iOS. Retrieved from https://www.microsoft.com/microsoft-365/mobile</li>
+  <li>Liu, P., Yuan, W., Fu, J., Jiang, Z., Hayashi, H., &amp; Neubig, G. (2023). Pre-train, prompt, and predict: A systematic survey of prompting methods in natural language processing. ACM Computing Surveys from https://arxiv.org/abs/2201.11903</li>
+  <li>Mizumoto, A., &amp; Eguchi, M. (2023). Exploring the potential of using ChatGPT in automated essay scoring for L2 writing. New Directions in Technology for Writing Instruction from https://www.sciencedirect.com/science/article/pii/S2772766123000101</li>
+  <li>Gemini Team, Google. (2024). Gemini 1.5: Unlocking multimodal understanding across millions of tokens of context. arXiv preprint arXiv:2403.05530. Retrieved from https://arxiv.org/abs/2403.05530</li>
+</ol>
+</section>
+
+<section class="appendix-divider" id="appendix-cover"><h1>ภาคผนวก</h1></section>
+<section id="appendix-a-cover" class="appendix-divider"><h1>ภาคผนวก ก<br>คู่มือการใช้งานระบบ</h1></section>
+<section class="manual-section" id="appendix-a-content">
+<h2>คู่มือการใช้งานระบบ</h2>
+<p>คู่มือนี้อธิบายการใช้งานระบบตรวจข้อสอบอัตนัยด้วย LLMs สำหรับผู้สอนและผู้เรียน ตั้งแต่การเข้าใช้งาน การจัดการข้อสอบ จนถึงการดูผลคะแนน ผู้ใช้เข้าเว็บไซต์ผ่านเว็บเบราว์เซอร์และใช้งานตามสิทธิ์ของบัญชี โดยขั้นตอนการให้คะแนนสิ้นสุดเมื่อผู้สอนตรวจทานและอนุมัติผลให้ผู้เรียนรับทราบ</p>
+<h3>ก.1 การสมัครสมาชิกและเข้าสู่ระบบ</h3>
+<ol><li>เปิดหน้าสมัครสมาชิก เลือกประเภทบัญชีผู้เรียนหรือผู้สอน แล้วกรอกชื่อ นามสกุล อีเมล รหัสผ่าน และยืนยันรหัสผ่าน</li><li>ระบุรหัสประจำตัวและรูปโปรไฟล์ได้ตามต้องการ ตรวจสอบข้อมูลและยืนยันการสมัคร จากนั้นดำเนินการยืนยันอีเมลตามข้อความที่ระบบแจ้ง</li><li>กลับสู่หน้าเข้าสู่ระบบ กรอกอีเมลและรหัสผ่านของบัญชี หรือเลือกเข้าสู่ระบบด้วย Google และดำเนินการตามขั้นตอนบนหน้าจอ</li><li>กรณีลืมรหัสผ่าน เลือกเมนูลืมรหัสผ่าน กรอกอีเมล และตั้งรหัสผ่านใหม่ผ่านลิงก์ที่ได้รับ</li></ol>
+<figure><img src="screenshots/register.png" alt="หน้าสมัครสมาชิก"><figcaption>รูปที่ ก.1 หน้าสมัครสมาชิก</figcaption></figure>
+<figure><img src="screenshots/home.png" alt="หน้าเข้าสู่ระบบ"><figcaption>รูปที่ ก.2 หน้าเข้าสู่ระบบ</figcaption></figure>
+</section>
+<section class="manual-section">
+<h3>ก.2 การแก้ไขข้อมูลส่วนตัว</h3>
+<ol><li>เปิดเมนูบัญชีผู้ใช้และเลือกหน้าโปรไฟล์</li><li>แก้ไขชื่อ นามสกุล รหัสประจำตัว หรือรูปโปรไฟล์ แล้วบันทึกข้อมูล โดยผู้เรียนใช้รหัสผู้เรียนและผู้สอนใช้รหัสผู้สอน</li><li>หากต้องการเปลี่ยนรหัสผ่าน ให้ดำเนินการในส่วนเปลี่ยนรหัสผ่านและกรอกข้อมูลให้ครบตามเงื่อนไขที่ระบบแจ้ง</li></ol>
+<figure><img src="screenshots/profile.png" alt="หน้าโปรไฟล์"><figcaption>รูปที่ ก.3 หน้าแก้ไขข้อมูลส่วนตัว</figcaption></figure>
+<h3>ก.3 การสร้างและเข้าร่วมห้องเรียน</h3>
+<ol><li>ผู้สอนเลือกสร้างห้องเรียน กรอกชื่อและกลุ่มเรียน แล้วบันทึก ห้องเรียนที่สร้างจะแสดงในหน้ารายการห้องเรียน</li><li>เปิดห้องเรียนและคัดลอกรหัสห้องเพื่อให้ผู้เรียนใช้เข้าร่วม</li><li>ผู้เรียนเลือกเข้าร่วมห้องเรียน กรอกรหัสที่ได้รับและยืนยัน จากนั้นเปิดห้องเรียนจากรายการของตน</li><li>ใช้ช่องค้นหาเพื่อค้นหาห้องตามข้อมูลห้องเรียน และตรวจสอบชื่อกับกลุ่มเรียนก่อนเปิดใช้งาน</li></ol>
+<figure><img src="screenshots/dashboard.png" alt="รายการห้องเรียน"><figcaption>รูปที่ ก.4 หน้ารายการห้องเรียน</figcaption></figure>
+</section>
+<section class="manual-section">
+<h3>ก.4 การจัดการสมาชิกและประกาศ</h3>
+<ol><li>เปิดห้องเรียนและเลือกสมาชิกในห้อง เพื่อดูรายชื่อผู้สอนและผู้เรียน ผู้สอนสามารถนำผู้เรียนออกจากห้องได้ โดยตรวจสอบรายชื่อก่อนยืนยัน</li><li>ผู้สอนเลือกช่องประกาศ กรอกข้อความและแนบเอกสารหรือรูปภาพตามต้องการ แล้วเผยแพร่ประกาศ</li><li>เมื่อต้องการแก้ไขหรือลบประกาศ ให้เปิดเมนูเพิ่มเติมของรายการนั้นและเลือกคำสั่งที่ต้องการ</li><li>ผู้เรียนเปิดอ่านประกาศในห้องเรียน ผู้สอนสามารถตรวจสอบสถานะการอ่านเพื่อใช้ติดตามการรับทราบข่าวสาร</li></ol>
+<figure><img src="screenshots/room-detail.png" alt="หน้าห้องเรียน"><figcaption>รูปที่ ก.5 หน้าห้องเรียนและประกาศข่าวสาร</figcaption></figure>
+<h3>ก.5 การสร้างข้อสอบและบันทึกแบบร่าง</h3>
+<ol><li>ผู้สอนเปิดห้องเรียนและเลือกสร้างข้อสอบ กรอกชื่อข้อสอบ คำชี้แจง และโจทย์แต่ละข้อ โดยแนบภาพประกอบโจทย์ได้</li><li>กำหนดคะแนนเต็ม แนวคำตอบ และเกณฑ์การให้คะแนนแต่ละข้อ หากใช้การสร้างเกณฑ์ด้วย AI ให้ตรวจสอบและแก้ไขเกณฑ์ก่อนนำไปใช้</li><li>เปิดการตั้งค่าเพื่อกำหนดเวลาเริ่มและสิ้นสุดการสอบ รวมถึงการสุ่มข้อสอบตามต้องการ</li><li>หากยังจัดทำไม่เสร็จ เลือกบันทึกแบบร่าง เมื่อต้องการทำต่อ ให้เปิดรายการแบบร่างและเลือกชุดข้อสอบที่บันทึกไว้ด้วยบัญชีเดิม</li><li>ตรวจสอบชื่อ ข้อคำถาม คะแนน และการตั้งค่าให้ครบ แล้วเลือกเผยแพร่ข้อสอบในห้องเรียน</li></ol>
+<figure><img src="screenshots/create-exam.png" alt="หน้าสร้างข้อสอบ"><figcaption>รูปที่ ก.6 หน้าสร้างข้อสอบและกำหนดเกณฑ์</figcaption></figure>
+</section>
+<section class="manual-section">
+<h3>ก.6 การทำข้อสอบและส่งคำตอบของผู้เรียน</h3>
+<ol><li>เปิดห้องเรียนและเลือกข้อสอบ อ่านคำชี้แจง คะแนนเต็ม และช่วงเวลาสอบก่อนเริ่มทำ</li><li>ตอบแต่ละข้อด้วยข้อความหรือภาพกระดาษคำตอบ ภาพควรอ่านได้ชัดเจนและแสดงคำตอบครบถ้วน</li><li>ตรวจสอบว่าคำตอบและภาพตรงกับข้อคำถาม จากนั้นส่งคำตอบและตรวจสอบสถานะการส่งงาน</li><li>เมื่อส่งสำเร็จ ให้ติดตามสถานะรอตรวจและผลคะแนนหลังผู้สอนอนุมัติ</li></ol>
+<figure><img src="screenshots/exam-view.png" alt="หน้าข้อสอบ"><figcaption>รูปที่ ก.7 หน้ารายละเอียดข้อสอบ</figcaption></figure>
+<h3>ก.7 การตรวจและอนุมัติคะแนนของผู้สอน</h3>
+<ol><li>เปิดข้อสอบและหน้าตรวจงาน เพื่อตรวจสอบรายชื่อผู้ส่งคำตอบและผู้ที่ยังไม่ส่ง</li><li>เลือกรายการคำตอบที่ต้องการประเมินและดำเนินการตรวจด้วย AI รอจนระบบแสดงคะแนนและข้อเสนอแนะ</li><li>เปรียบเทียบคำตอบกับเกณฑ์ ตรวจทานคะแนนและเหตุผล โดยพิจารณารายการที่ระบบแจ้งให้ทบทวนเมื่อความมั่นใจอยู่ระดับปานกลางหรือต่ำ รวมถึงคำตอบที่กำกวมเป็นพิเศษ</li><li>แก้ไขคะแนนหรือเพิ่มข้อเสนอแนะเมื่อจำเป็น แล้วอนุมัติผลคะแนนเพื่อให้ผู้เรียนดูผลได้</li></ol>
+<p>คะแนนจาก AI เป็นผลการประเมินเบื้องต้น ผู้สอนควรตรวจทานก่อนอนุมัติ โดยไม่ใช้ระดับความมั่นใจของระบบแทนการพิจารณาความถูกต้องของคำตอบ</p>
+</section>
+<section class="manual-section">
+<h3>ก.8 การดูคะแนนและข้อเสนอแนะ</h3>
+<ol><li>ผู้เรียนเปิดข้อสอบที่ส่งแล้วและตรวจสอบสถานะ หากผลยังไม่อนุมัติ ให้รอการประกาศผลจากผู้สอน</li><li>เมื่อเผยแพร่ผลแล้ว เปิดดูคะแนนและข้อเสนอแนะรายข้อ เพื่อพิจารณาส่วนที่ทำได้ถูกต้องและส่วนที่ควรปรับปรุง</li><li>กรณีมีข้อสงสัยเกี่ยวกับคะแนน ให้แจ้งผู้สอนพร้อมระบุข้อสอบและข้อคำถามที่ต้องการสอบถาม</li></ol>
+<h3>ก.9 การดูรายงานและส่งออกข้อมูล</h3>
+<ol><li>ผู้สอนเปิดหน้ารายงานของห้องเรียนหรือข้อสอบที่ต้องการ</li><li>ตรวจสอบรายการผู้เรียน สถานะการส่ง และสรุปคะแนนให้ตรงกับห้องเรียนหรือชุดข้อสอบ</li><li>เลือกคำสั่งส่งออกข้อมูลและบันทึกไฟล์รายงาน จากนั้นตรวจสอบหัวตารางและข้อมูลก่อนนำไปใช้ต่อ</li></ol>
+<figure><img src="screenshots/room-report-current.png" alt="รายงานผลการเรียน"><figcaption>รูปที่ ก.8 หน้ารายงานผลการเรียนของห้องเรียน</figcaption></figure>
+<h3>ก.10 การแจ้งเตือนและสิ้นสุดการใช้งาน</h3>
+<ol><li>เปิดรายการแจ้งเตือนเพื่อดูเหตุการณ์ที่เกี่ยวข้องกับบัญชี เช่น ข้อสอบใหม่หรือการประกาศคะแนน และเลือกรายการเพื่อดูรายละเอียด</li><li>ก่อนออกจากหน้าสร้างข้อสอบ ให้บันทึกแบบร่างหรือเผยแพร่ให้เรียบร้อย หากระบบเตือนว่ามีข้อมูลที่ยังไม่บันทึก ให้เลือกดำเนินการตามที่ต้องการ</li><li>เมื่อใช้งานเสร็จ ให้เปิดเมนูบัญชีและออกจากระบบ โดยเฉพาะเมื่อใช้งานเครื่องคอมพิวเตอร์ร่วมกับผู้อื่น</li></ol>
+</section>
+
+<section class="appendix-divider" id="appendix-b-cover"><h1>ภาคผนวก ข<br>ข้อมูลประกอบการประเมินระบบ</h1></section>
+<section class="manual-section" id="appendix-b-content">
+<h2>ข้อมูลประกอบการประเมินระบบ</h2>
+<p>การประเมินในบทที่ 4 ใช้ไฟล์ชุดข้อสอบ_dataset.xlsx ภายในโฟลเดอร์ชุดข้อสอบใหม่เป็นแหล่งข้อมูลคะแนน คำตอบ และเกณฑ์การตรวจ โดยแยกข้อมูลคำตอบออกจากเกณฑ์เพื่อให้ตรวจสอบที่มาของผลการประเมินได้ รายละเอียดโครงสร้างข้อมูลแสดงในตารางที่ ข.1</p>
+<div class="table-title"><strong>ตารางที่ ข.1</strong> ชีตข้อมูลที่ใช้ในการประเมิน</div>
+<table><thead><tr><th>ชื่อชีต</th><th>ข้อมูลและการใช้งาน</th></tr></thead><tbody>
+<tr><td>ชุดข้อสอบ_dataset</td><td>คำตอบ 204 รายการ พร้อมรหัสตัวอย่าง ข้อคำถาม ประเภทคำตอบ คะแนนผู้สอน คะแนน AI ระดับความมั่นใจ และข้อเสนอแนะ ใช้จับคู่คะแนนและคำนวณผลการประเมิน</td></tr>
+<tr><td>Exam_Rubrics</td><td>เกณฑ์การให้คะแนนรายข้อ ประกอบด้วยหัวข้อโจทย์ คะแนนเต็ม ชื่อเกณฑ์ คะแนนเกณฑ์ และคำอธิบายระดับคะแนน</td></tr>
+</tbody></table>
+<h3>ข.1 การระบุและตรวจสอบตัวอย่างคำตอบ</h3>
+<p>ใช้รหัส sample_id เพื่ออ้างอิงคำตอบแต่ละรายการ และใช้ question_no เพื่อระบุข้อสอบ รหัสตัวอย่างเป็นรหัสรายการข้อมูล จึงไม่ใช้อนุมานว่าเป็นผู้เรียนคนเดียวกันระหว่างข้อสอบ คำตอบแบบข้อความบันทึกใน student_answer ส่วนคำตอบภาพใช้ภาพที่เชื่อมโยงกับรายการนั้น โดยนำรอยคะแนนของผู้สอนออกก่อนส่งให้ AI ประเมิน</p>
+<div class="table-title"><strong>ตารางที่ ข.2</strong> เขตข้อมูลหลักสำหรับคำนวณผลการประเมิน</div>
+<table><thead><tr><th>เขตข้อมูล</th><th>ความหมาย</th></tr></thead><tbody>
+<tr><td>sample_id / question_no</td><td>รหัสตัวอย่างและหมายเลขข้อสอบสำหรับเชื่อมโยงข้อมูล</td></tr>
+<tr><td>question_content / student_answer</td><td>ข้อคำถามและคำตอบของผู้เรียน</td></tr>
+<tr><td>question_type / answer_type</td><td>ประเภทข้อมูลโจทย์และคำตอบ เช่น ข้อความหรือภาพ</td></tr>
+<tr><td>human_score</td><td>คะแนนอ้างอิงที่ผู้สอนบันทึกไว้</td></tr>
+<tr><td>ai_score</td><td>คะแนนที่ AI ประเมินและบันทึกในชุดข้อมูล</td></tr>
+<tr><td>ai_confidence</td><td>ระดับความมั่นใจที่แบบจำลองรายงาน ใช้ระบุกรณีที่ควรให้ผู้สอนทบทวนเมื่ออยู่ระดับปานกลางหรือต่ำ</td></tr>
+<tr><td>ai_feedback</td><td>คำอธิบายสำหรับผู้สอนและคำแนะนำสำหรับผู้เรียนที่แบบจำลองรายงาน</td></tr>
+</tbody></table>
+<h3>ข.2 การใช้คะแนนในการประเมิน</h3>
+<p>จับคู่ human_score และ ai_score ของรายการเดียวกันเพื่อคำนวณสัดส่วนคะแนนตรงกันและ MAE โดยใช้คะแนนดิบ ส่วน QWK ภาพรวมใช้คะแนนที่หารด้วยคะแนนเต็มของแต่ละข้อก่อนจัดระดับ เนื่องจากข้อ 1–2 มีคะแนนเต็ม 2 คะแนน และข้อ 3–6 มีคะแนนเต็ม 1 คะแนน รายละเอียดสูตรและผลการคำนวณแสดงในบทที่ 4</p>
+<p>ข้อเสนอแนะสำหรับผู้สอนและผู้เรียนใช้ประกอบการอธิบายกรณีตัวอย่าง ไม่ได้นำมาแทนคะแนนอ้างอิง การปรับปรุงข้อมูลหรือเกณฑ์ในภายหลังควรเก็บแยกจากรุ่นที่ใช้รายงานผล เพื่อให้สามารถตรวจสอบผลการทดลองย้อนหลังได้</p>
+<h3>ข.3 เกณฑ์การให้คะแนนฉบับเต็มที่ใช้ในการประเมิน</h3>
+<p>รายละเอียดต่อไปนี้ถอดจากชีตเกณฑ์การให้คะแนนของชุดข้อมูลที่ใช้ในบทที่ 4 โดยแสดงครบทุกองค์ประกอบของข้อสอบทั้ง 6 ข้อ คะแนนเต็มและคะแนนเกณฑ์ในแต่ละรายการใช้ตามที่บันทึกไว้ในไฟล์ ทั้งนี้ ปรับเฉพาะคำเรียกผู้ตอบให้เป็น “ผู้เรียน” เพื่อให้สอดคล้องกับคำที่ใช้ตลอดเล่ม</p>
+<h4>ข้อที่ 1 Row-major vs Column-major (คะแนนเต็ม 2 คะแนน)</h4>
+<div class="rubric-entry"><div class="rubric-entry-title">Row-major (คะแนนเกณฑ์ 1 คะแนน)</div><div class="rubric-text">อธิบายการจัดเก็บข้อมูลหรือเข้าถึงข้อมูลตามแถว (Row / แนวนอน) ได้ถูกต้อง ได้ 1.00 คะแนน (ตอบผิดหรือไม่ตอบได้ 0.00 คะแนน)</div></div>
+<div class="rubric-entry"><div class="rubric-entry-title">Column-major (คะแนนเกณฑ์ 1 คะแนน)</div><div class="rubric-text">อธิบายการจัดเก็บข้อมูลหรือเข้าถึงข้อมูลตามคอลัมน์ (Column / แนวตั้ง) ได้ถูกต้อง ได้ 1.00 คะแนน (ตอบผิดหรือไม่ตอบได้ 0.00 คะแนน)
+
+(เกณฑ์ภาพรวม: อธิบายถูกทั้ง 2 ฝั่งได้ 2.00 คะแนน, อธิบายถูกฝั่งเดียวหรือระบุความเข้าใจเบื้องต้นได้ 1.00 คะแนน, ตอบผิดทั้งหมดหรือไม่ตอบได้ 0.00 คะแนน)</div></div>
+<h4>ข้อที่ 2 O(n log n) vs O(n^2) Complexity (คะแนนเต็ม 2 คะแนน)</h4>
+<div class="rubric-entry"><div class="rubric-entry-title">ความซับซ้อน O(n log n) vs O(n^2) และตัวอย่างอัลกอริทึม (คะแนนเกณฑ์ 2 คะแนน)</div><div class="rubric-text">โจทย์: อธิบายว่าทำไม O(n log n) เหมาะกับข้อมูลใหญ่กว่า O(n^2) และยกตัวอย่าง Algorithm (คะแนนเต็ม 2.00 คะแนน)
+เกณฑ์การประเมินตามแนวนโยบายการตรวจของผู้สอน (Pedagogical Policy) สำหรับข้อสอบอัตนัยระดับปริญญาตรี (ระดับคะแนน: 2.0, 1.5, 1.0, หรือ 0.0):
+
+• 2.00 คะแนน (คะแนนเต็ม - สมบูรณ์เชิงมโนทัศน์):
+  1. มีการระบุชื่อ Algorithm ที่สอดคล้องอย่างถูกต้อง (เช่น Merge Sort, Quick Sort, หรือเทียบกับ Bubble/Insertion/Selection Sort ฝั่ง O(n^2))
+  2. มีคำอธิบายเปรียบเทียบว่า O(n log n) เร็วกว่า / มีขั้นตอนการทำงานน้อยกว่า / อัตราการเติบโตช้ากว่า O(n^2) เมื่อข้อมูลมีขนาดใหญ่
+  *แนวนโยบายการตรวจของผู้สอน: อาจารย์เน้นประเมินความเข้าใจเชิงมโนทัศน์ (Conceptual Understanding) เป็นหลัก ยอมรับการอธิบายด้วยภาษาธรรมชาติของผู้เรียน ให้อนุโลมคะแนนเต็มได้แม้ผู้เรียนจะมีการอธิบายบริบทการทำงานเสริมเรื่องหน่วยความจำ ระบบประมวลผล หรือความสัมพันธ์เชิงโครงสร้าง ขอเพียงมีชื่ออัลกอริทึมและใจความหลักเรื่องประสิทธิภาพความเร็วครบถ้วน*
+  *หรือ อธิบายกลไก Divide &amp; Conquer (การแบ่งย่อยปัญหาทำงานทีละส่วนทำให้ประมวลผลเร็วกว่าลูปซ้ำซ้อน) ได้อย่างชัดเจนและสมบูรณ์*
+
+• 1.50 คะแนน (ระดับดี - มีสาระสำคัญและตัวอย่างชัดเจน):
+  - มีการเขียนโค้ดตัวอย่างประกอบ (เช่น โค้ด recursive function หรือการเปรียบเทียบลูป) เพื่อแสดงความพยายามอธิบายกลไกการทำงานเชิงปฏิบัติ
+  - มีคำอธิบายเชิงกลไกเรื่องการทำงานไม่ซ้ำซ้อน vs ลูปซ้อนลูป (Nested loops) อย่างชัดเจน แม้ไม่ได้ระบุชื่อ Algorithm เฉพาะเจาะจง
+  - มีชื่อ Algorithm แต่คำอธิบายสั้นกระชับมาก หรือมีจุดคลาดเคลื่อนทางเทคนิคเล็กน้อย
+
+• 1.00 คะแนน (ระดับพื้นฐาน - ตอบถูกเพียงด้านใดด้านหนึ่ง):
+  - ตอบเฉพาะเหตุผลว่าเร็วกว่า/ดีกว่า หรือแสดงการคำนวณตัวเลข/ตารางเปรียบเทียบ แต่ไม่มีชื่อ Algorithm ประกอบ
+  - มีชื่อ Algorithm แต่เขียนเพียงทวนคำถามซ้ำว่ามีประสิทธิภาพดีกว่าโดยไม่อธิบายเหตุผลรองรับ
+  - ตอบสั้นมาก แต่พอมีสาระสำคัญที่ถูกทางบางส่วน (เช่น ตอบเรื่องการลดลูปซ้ำซ้อน)
+
+• 0.00 คะแนน (ไม่ผ่านเกณฑ์):
+  - ไม่ตอบ หรือตอบผิดหลักการทั้งหมดอย่างสิ้นเชิง ไม่มีความเกี่ยวข้องกับเนื้อหาข้อสอบ</div></div>
+<h4>ข้อที่ 3 Linked List vs Array (Stack &amp; Queue) (คะแนนเต็ม 1 คะแนน)</h4>
+<div class="rubric-entry"><div class="rubric-entry-title">ความแตกต่างเชิงโครงสร้างและกลไก (Linked List/Stack/Queue vs Array) (คะแนนเกณฑ์ 0.5 คะแนน)</div><div class="rubric-text">ประเมินการอธิบายความแตกต่าง (ให้คะแนน 0.50, 0.25, หรือ 0.00 คะแนน):
+• 0.50 คะแนน: อธิบายความแตกต่างได้อย่างถูกต้องในมิติใดมิติหนึ่งต่อไปนี้:
+   (ก) ด้านขนาด/โครงสร้าง: Array มีขนาดคงที่ (Fixed/Static size) ต้องกำหนดขนาดล่วงหน้า จองพื้นที่ต่อเนื่อง ส่วน Linked List มีขนาดแบบพลวัต (Dynamic size / ยืดหยุ่น / ปรับขนาดตามการใช้งานจริง)
+   (ข) ด้านกลไก Stack/Queue: อธิบายลักษณะการทำงานของ Stack (LIFO / เข้าหลังออกก่อน / Top) หรือ Queue (FIFO / เข้าก่อนออกก่อน / Front-Rear) หรือการเพิ่มลบโหนดผ่าน pointer เปรียบเทียบกับการลบหรือการเข้าถึงของ Array
+   *แนวนโยบายการตรวจของผู้สอน: หากผู้เรียนอธิบายกลไก Stack (LIFO) หรือ Queue (FIFO) ร่วมกับ Array ได้ถูกต้อง ถือว่าตรงตามบริบทโจทย์ ให้ 0.50 คะแนนเต็มในส่วนนี้ ห้ามตัดเป็น 0.00*
+• 0.25 คะแนน: ตอบอธิบายความต่างได้เพียงบางส่วน สั้นมาก หรือกำกวม
+• 0.00 คะแนน: ไม่ได้ตอบความแตกต่าง, หรือเป็นคำพูดลอยๆ ทั่วไปที่ไม่เกี่ยวกับโครงสร้างข้อมูล, หรืออธิบายกลไกผิดหลักการทั้งหมดอย่างสิ้นเชิง</div></div>
+<div class="rubric-entry"><div class="rubric-entry-title">การระบุข้อดีและข้อเสีย (Pros &amp; Cons) (คะแนนเกณฑ์ 0.5 คะแนน)</div><div class="rubric-text">ประเมินการระบุข้อดีและข้อเสีย (ให้คะแนน 0.50, 0.25, หรือ 0.00 คะแนน):
+• 0.50 คะแนน: มีการระบุทั้ง &#x27;ข้อดี&#x27; และ &#x27;ข้อเสีย&#x27; อย่างสมเหตุสมผลและชัดเจนทั้งสองด้าน ทั้งกรณีเปรียบเทียบ Linked List กับ Array (เช่น ยืดหยุ่น/ไม่จำกัดขนาด vs เข้าถึงช้า/เปลือง pointer) หรือกรณีเปรียบเทียบรูปแบบการทำงานเฉพาะตัวของ Stack/Queue
+• 0.25 คะแนน: ระบุเฉพาะ &#x27;ข้อดี&#x27; อย่างเดียว หรือระบุเฉพาะ &#x27;ข้อเสีย&#x27; อย่างเดียว
+• 0.00 คะแนน: ไม่ได้ระบุข้อดีข้อเสียเลย หรือระบุเพียงข้อความสั้นๆ ปนในเนื้อหาโดยไม่มีข้อเสีย หรือระบุผิดหลักการอย่างสิ้นเชิง</div></div>
+<h4>ข้อที่ 4 Binary Search Tree Construction (คะแนนเต็ม 1 คะแนน)</h4>
+<div class="rubric-entry"><div class="rubric-entry-title">ความถูกต้องของโครงสร้างต้นไม้ค้นหาทวิภาค (Binary Search Tree) (คะแนนเกณฑ์ 1 คะแนน)</div><div class="rubric-text">ประเมินภาพวาด Binary Search Tree จากข้อมูล: 9, 16, 10, 76, 5, 13, 58, 92, 11, 15, 80, 99 (คะแนนเต็ม 1.00 คะแนน, เลือกระดับคะแนน 1.00 หรือ 0.00):
+
+• 1.00 คะแนน: โครงสร้างความสัมพันธ์ถูกต้องครบทั้ง 12 โหนดตามหลักการ BST (Parent-Child Topology):
+  - Root คือ 9 (ซ้าย 5, ขวา 16)
+  - ใต้ 16: ซ้ายคือ 10, ขวาคือ 76
+  - ใต้ 10: ขวาคือ 13 (ซ้ายว่าง)
+  - ใต้ 13: ซ้ายคือ 11, ขวาคือ 15
+  - ใต้ 76: ซ้ายคือ 58 (เป็น Leaf Node), ขวาคือ 92
+  - ใต้ 92: ซ้ายคือ 80, ขวาคือ 99
+  ให้อนุโลมความสวยงาม ลายมือ รอยร่าง หรือวงกลมเปล่าส่วนเกิน ขอเพียงโหนดทั้ง 12 ตัวและเส้นเชื่อมหลักถูกต้อง
+
+• 0.00 คะแนน: ผิดหลักการ BST อย่างแท้จริง เช่น โหนด Root ผิด (ไม่ใช่ 9), วางโหนดผิดตำแหน่ง,   สลับกิ่งซ้าย-ขวา, ลากเส้นเชื่อมผิดสายลำดับ (เช่น นำ 13 หรือ 15 ไปต่อใต้ 58), หรือไม่วาดคำตอบ</div></div>
+<h4>ข้อที่ 5 Infix to Prefix &amp; Postfix Expression (คะแนนเต็ม 1 คะแนน)</h4>
+<div class="rubric-entry"><div class="rubric-entry-title">การแปลง Infix Expression เป็น Prefix และ Postfix Expression (คะแนนเกณฑ์ 1 คะแนน)</div><div class="rubric-text">โจทย์ให้แสดงวิธีการแปลง Infix Expression: A + (B * (C - (D / (F * 2)))) เป็น Prefix และ Postfix ด้วยมือ (คะแนนเต็ม 1.00 คะแนน)
+ประเมินแยก 2 ส่วนตามภาพเฉลยแม่แบบอย่างเคร่งครัด:
+
+ส่วนที่ 1: การหา Prefix Expression (คะแนนเต็ม 0.50 คะแนน)
+• ได้ 0.50 คะแนน: แสดงขั้นตอนถูกต้องและได้คำตอบสุดท้ายคือ + A * B - C / D * F 2 (หรือเขียนติดกัน +A*B-C/D*F2)
+• ได้ 0.00 คะแนน: คำตอบผิดหลักการทั้งหมด ไม่แสดงวิธีทำ หรือไม่ได้ทำ
+
+ส่วนที่ 2: การหา Postfix Expression (คะแนนเต็ม 0.50 คะแนน)
+• ได้ 0.50 คะแนน: แสดงขั้นตอนถูกต้องและได้คำตอบสุดท้ายคือ A B C D F 2 * / - * + (หรือเขียนติดกัน ABCDF2*/-*+)
+• ได้ 0.00 คะแนน: คำตอบผิดหลักการทั้งหมด ไม่แสดงวิธีทำ หรือไม่ได้ทำ
+
+(คะแนนรวมคือผลบวกของส่วนที่ 1 และ 2: 1.00, 0.50 หรือ 0.00 คะแนน)</div></div>
+<h4>ข้อที่ 6 General Tree to Binary Tree (คะแนนเต็ม 1 คะแนน)</h4>
+<div class="rubric-entry"><div class="rubric-entry-title">ความถูกต้องของการแปลง General Tree เป็น Binary Tree (Left-Child Right-Sibling) (คะแนนเกณฑ์ 1 คะแนน)</div><div class="rubric-text">ประเมินตามโครงสร้างและความถูกต้องของการแปลง General Tree เป็น Binary Tree ตามหลักการ Left-Child Right-Sibling (LCRS) จากโจทย์ 10 โหนด (1 ถึง 10) ดังนี้:
+
+- ได้ 1.00 คะแนน: แปลงโครงสร้าง Binary Tree ได้ถูกต้องสมบูรณ์ครบทั้ง 10 โหนด ตามหลัก LCRS:
+  * Root คือ 1 โดยมีกิ่งซ้าย (Left Child) เป็น 2 และกิ่งขวาว่าง (ไม่มี sibling)
+  * โหนด 2 มีกิ่งซ้ายเป็น 5 (ลูกคนแรก) และกิ่งขวาเป็น 3 (พี่น้องถัดไป)
+  * ใต้กิ่ง 5: มีกิ่งขวาเป็น 6 -&gt; โหนด 6 มีกิ่งขวาเป็น 7 (ทั้ง 5, 6, 7 ไม่มีกิ่งซ้าย)
+  * โหนด 3 ไม่มีกิ่งซ้าย และมีกิ่งขวาเป็น 4 (พี่น้องถัดไป)
+  * โหนด 4 มีกิ่งซ้ายเป็น 8 (ลูกคนแรก) และไม่มีกิ่งขวา
+  * ใต้กิ่ง 8: มีกิ่งขวาเป็น 9 -&gt; โหนด 9 มีกิ่งขวาเป็น 10 (ทั้ง 8, 9, 10 ไม่มีกิ่งซ้าย)
+  (ให้อนุโลมความสวยงาม ความยาว หรือมุมเอียงของกิ่งในกระดาษเขียน หากมีเส้นเชื่อมครบ 9 เส้นตามลำดับดังกล่าว แม้มุมของ 4 ไปยัง 8 จะเอียงชันตามเนื้อที่กระดาษ ให้ถือว่าสื่อสารกิ่งซ้ายของ 4 ได้ถูกต้อง และได้ 1.00 คะแนนเต็ม)
+
+- ได้ 0.00 คะแนน: โครงสร้างไม่ถูกต้อง มีข้อผิดพลาดในตำแหน่งกิ่ง ผิดหลักการ Left-Child Right-Sibling (LCRS) หรือไม่วาดคำตอบ:
+  * วางโหนด 3 เป็นกิ่งขวาของโหนด 1 โดยตรง (โหนด 1 ไม่มีพี่น้อง ห้ามมีกิ่งขวา โหนด 3 ต้องเป็นกิ่งขวาของ 2)
+  * วางโหนด 4 หรือ 3 เป็นกิ่งซ้ายของ 2 หรือนำ 4 ไปต่อกับ 1 โดยตรง
+  * วาดเป็นเส้นตรงซิกแซกเรียงเดี่ยว หรือเขียนเฉพาะตัวเลขเรียงกันโดยไม่วาดโครงสร้างต้นไม้
+  * ไม่วาดคำตอบ หรือระบุว่าไม่สามารถแปลงได้
+  * โครงสร้างแตกกิ่งไม่เป็นไปตามความสัมพันธ์แบบ Left-Child Right-Sibling
+
+(ระดับคะแนนที่ให้ได้คือ 1.00 หรือ 0.00 คะแนนเท่านั้น ห้ามให้คะแนนเป็นเศษทศนิยมอื่น ต้องระบุ teacher_feedback แจกแจงเหตุผลและจุดถูก/ผิดตามเกณฑ์ LCRS สำหรับผู้สอนอย่างละเอียด และระบุ student_feedback เป็นคำแนะนำพัฒนาการเรียนรู้สำหรับผู้เรียน)</div></div>
+</section>
+
+<section class="appendix-divider" id="research-paper-cover">
+  <h1>บทความวิจัย</h1>
+</section>
+
+<section class="paper-container" id="research-paper-content">
+  <div class="paper-header">
+    <div class="paper-title-th">ระบบให้คะแนนข้อสอบอัตนัยอัตโนมัติด้วย LLM</div>
+    <div class="paper-title-en">LLM-AutoScore System</div>
+    <div class="paper-authors">ธีระวิสิฐ แจ้งภูเขียว, คฑาวุธ พุ่มจันทร์, ฉัตรเกล้า เจริญผล</div>
+    <div class="paper-affiliation">สาขาวิชาวิทยาการคอมพิวเตอร์ คณะวิทยาการสารสนเทศ มหาวิทยาลัยมหาสารคาม</div>
+    <div class="paper-emails">66011212264@msu.ac.th, 66011212155@msu.ac.th, chatklaw.c@msu.ac.th</div>
+  </div>
+
+  <div class="paper-body">
+    <h2>บทคัดย่อ</h2>
+    <p>การวัดและประเมินผลการเรียนรู้ด้วยข้อสอบอัตนัย (Subjective Assessment) เปิดโอกาสให้ผู้เรียนได้แสดงกระบวนการคิดวิเคราะห์อย่างลึกซึ้ง แต่เป็นภาระงานที่ใช้เวลาและความละเอียดสูงของผู้สอน โครงงานนี้จึงมีวัตถุประสงค์เพื่อพัฒนาระบบตรวจข้อสอบอัตนัยอัตโนมัติที่รองรับทั้งข้อความบรรยายและภาพถ่ายกระดาษคำตอบลายมือเขียน พร้อมให้คะแนนและข้อเสนอแนะป้อนกลับ (Feedback) ทันทีบนเว็บแอปพลิเคชัน โดยประยุกต์ใช้เทคโนโลยีโมเดลภาษาขนาดใหญ่แบบพหุรูปแบบ (Multimodal Large Language Models: MLLMs) ด้วย Google Gemini API พัฒนาส่วนหน้าด้วย React (Vite) ส่วนหลังบ้านด้วย Python FastAPI เชื่อมต่อฐานข้อมูล TiDB Cloud จัดเก็บรูปภาพบน Cloudinary และแจ้งเตือนสถานะแบบเรียลไทม์ด้วย Node.js Socket.io การทดสอบระบบแบ่งออกเป็น 2 ส่วน ได้แก่ (1) การทดสอบการทำงานของระบบ 19 หัวข้อ พบว่าระบบทำงานถูกต้องครบถ้วนตามขอบเขตคิดเป็นร้อยละ 100.00 และ (2) การประเมินประสิทธิภาพการให้คะแนนด้วย AI จากชุดข้อมูลคำตอบจริง 204 รายการ (34 คน × 6 ข้อ ในรายวิชาโครงสร้างข้อมูล แบ่งเป็นคำตอบข้อความ 102 รายการ และคำตอบภาพลายมือ 102 รายการ) ผลการทดลองพบว่าคะแนนตรงกับผู้สอน 160 รายการ คิดเป็นร้อยละ 78.43 มีค่าความคลาดเคลื่อนเฉลี่ยสัมบูรณ์ (MAE) 0.1311 คะแนน และค่าสัมประสิทธิ์แคปปาแบบถ่วงน้ำหนักกำลังสอง (QWK) 0.8546 โดยกลุ่มคำตอบภาพโครงสร้างมีความตรงกันสมบูรณ์ร้อยละ 100.00 ทั้ง 102 รายการ และระบบตรวจจับกรณีที่ควรทบทวน (Review Flags) ได้ครอบคลุม ช่วยสนับสนุนการตรวจและลดภาระงานของผู้สอนได้อย่างมีประสิทธิภาพ</p>
+    <p style="text-indent:0;margin-top:4px;"><strong>คำสำคัญ:</strong> LLMs, Auto Exam, Multimodal</p>
+
+    <h2>1. บทนำ</h2>
+    <p>การวัดและประเมินผลการเรียนรู้ที่มีประสิทธิภาพสูงสุดวิธีหนึ่งคือการสอบรูปแบบอัตนัย (Subjective Assessment) เนื่องจากเปิดโอกาสให้ผู้เรียนได้แสดงกระบวนการคิดวิเคราะห์และสังเคราะห์องค์ความรู้ผ่านการเขียนบรรยาย แต่ข้อจำกัดสำคัญในระบบการศึกษาปัจจุบันคือภาระงานของผู้สอนในการตรวจให้คะแนนที่มีปริมาณมากและต้องใช้ความละเอียดรอบคอบ ซึ่งมักนำไปสู่ปัญหาความล่าช้าในการประกาศผลคะแนน ความเหนื่อยล้าที่อาจก่อให้เกิดความคลาดเคลื่อน (Human Error) รวมถึงการขาดความสม่ำเสมอของมาตรฐานการให้คะแนน ส่งผลให้ผู้เรียนไม่ได้รับผลป้อนกลับ (Feedback) เพื่อนำไปปรับปรุงการเรียนรู้ได้ทันท่วงที</p>
+    <p>จากปัญหาดังกล่าว ผู้จัดทำจึงมีแนวคิดพัฒนาระบบตรวจข้อสอบอัตนัยอัตโนมัติที่รองรับการอ่านลายมือเขียนและสามารถประเมินผลคะแนนพร้อมให้ข้อเสนอแนะได้ทันที โดยประยุกต์ใช้เทคโนโลยี Multimodal Large Language Models (MLLMs) บนเว็บแอปพลิเคชัน</p>
+    <p>ขอบเขตของโครงงานครอบคลุมผู้ใช้งาน 2 กลุ่มหลัก ได้แก่ (1) ผู้เรียน สามารถสมัครสมาชิก เข้าสู่ระบบ ทำข้อสอบทั้งรูปแบบข้อความและแนบภาพถ่ายลายมือ ตรวจสอบสถานะการส่งคำตอบ และดูคะแนนพร้อมข้อเสนอแนะหลังจากผู้สอนอนุมัติผล และ (2) ผู้สอน สามารถจัดการห้องเรียน เพิ่มและแก้ไขโจทย์ข้อสอบ กำหนดธงคำตอบและรูบริคเกณฑ์การให้คะแนน ตรวจสอบความถูกต้องของคะแนนที่ AI ประเมิน แก้ไขคะแนน และอนุมัติผล โดยระบบรองรับการตรวจข้อสอบในรายวิชาโครงสร้างข้อมูล (Data Structures) ที่มีรูปแบบคำตอบทั้งข้อความและภาพวาดลายมือเชิงโครงสร้าง</p>
+
+    <h2>2. ทฤษฎีและระบบงานที่เกี่ยวข้อง</h2>
+    <h3>2.1 ทฤษฎีที่เกี่ยวข้อง</h3>
+    <p><strong>1) การวัดและประเมินผลแบบอัตนัย:</strong> เน้นการวัดทักษะพุทธิพิสัยขั้นสูง โดยใช้เกณฑ์รูบริค (Rubrics) ช่วยควบคุมความเที่ยงตรงและความคงเส้นคงวาในการให้คะแนน</p>
+    <p><strong>2) โมเดลภาษาขนาดใหญ่แบบพหุรูปแบบ (Multimodal LLMs):</strong> สถาปัตยกรรมแบบจำลอง เช่น Google Gemini ที่ได้รับการฝึกฝนให้สามารถประมวลผลและเข้าใจความสัมพันธ์ระหว่างข้อความและรูปภาพลายมือได้พร้อมกัน</p>
+    <p><strong>3) สแต็กเทคโนโลยีการพัฒนาเว็บแอปพลิเคชัน:</strong> ส่วนหน้า (Frontend) พัฒนาด้วย React และ Vite ร่วมกับ TailwindCSS สำหรับจัดทำ User Interface ที่ตอบสนองการใช้งาน, ส่วนหลังบ้าน (Backend) ใช้ Python และ FastAPI ในการสร้าง RESTful API ประมวลผลตรรกะและส่งคำขอไปยังโมเดล AI, จัดเก็บข้อมูลในฐานข้อมูลเชิงสัมพันธ์ TiDB Cloud (MySQL-Compatible Distributed Database), จัดเก็บไฟล์รูปภาพกระดาษคำตอบบน Cloudinary และใช้ Node.js ร่วมกับ Socket.io สำหรับระบบแจ้งเตือนแบบเรียลไทม์</p>
+    <h3>2.2 ระบบงานที่เกี่ยวข้อง</h3>
+    <p>จากการศึกษาระบบงานที่เกี่ยวข้อง ได้แก่ Google Classroom ซึ่งโดดเด่นด้านการจัดการชั้นเรียนแต่ขาดระบบตรวจอัตนัยอัตโนมัติ, Gradescope ซึ่งรองรับการตรวจข้อสอบและจัดการรูบริคแต่จำกัดเฉพาะคำตอบแบบสั้นหรือต้องอาศัยผู้สอนตรวจทานเป็นหลัก, และ Microsoft Lens ที่ช่วยแปลงภาพถ่ายเอกสารแต่ไม่สามารถให้คะแนนเชิงวิชาการได้ ผู้จัดทำจึงนำจุดเด่นของแต่ละระบบมาบูรณาการเป็นระบบตรวจข้อสอบอัตนัยที่สมบูรณ์</p>
+
+    <h2>3. ขั้นตอนการดำเนินงาน</h2>
+    <h3>3.1 กรอบดำเนินงาน</h3>
+    <p>การดำเนินงานแบ่งออกเป็นขั้นตอนการออกแบบและพัฒนาส่วนหน้าเว็บแอปพลิเคชันด้วย React (Vite), ส่วนหลังบ้านด้วย Python FastAPI, การยืนยันตัวตนด้วย Google Firebase Authentication, การเชื่อมต่อ Google Gemini API สำหรับวิเคราะห์คำตอบและให้คะแนน, การจัดการฐานข้อมูลหลัก TiDB Cloud, การจัดเก็บภาพบน Cloudinary, และการแจ้งเตือนสถานะแบบเรียลไทม์ด้วย Node.js Socket.io ดังแสดงในภาพประกอบที่ 1</p>
+
+    <div class="paper-figure">
+      <img src="screenshots/fig3_1_workflow.png" alt="ขั้นตอนการทำงานของเว็ปแอพ">
+      <div class="paper-figure-caption">ภาพประกอบที่ 1 ขั้นตอนการทำงานของเว็ปแอพ</div>
+    </div>
+
+    <h3>3.2 การออกแบบระบบ</h3>
+    <p>การไหลของข้อมูลในระบบแสดงผ่านแผนภาพบริบท (Context Diagram) ประกอบด้วยผู้ใช้ทั่วไป ผู้เรียน ผู้สอน เชื่อมต่อกับระบบตรวจข้อสอบอัตนัยด้วย LLM และบริการภายนอก ได้แก่ Gemini API, Cloudinary API, Firebase Auth และบริการส่งอีเมล ดังแสดงในภาพประกอบที่ 2</p>
+
+    <div class="paper-figure">
+      <img src="screenshots/fig3_2_context_diagram.png" alt="แผนภาพบริบท (Context Diagram)">
+      <div class="paper-figure-caption">ภาพประกอบที่ 2 แผนภาพบริบท (Context Diagram)</div>
+    </div>
+
+    <h2>4. การทดสอบระบบ</h2>
+    <h3>4.1 การทดสอบการทำงานของระบบ (Functional Testing)</h3>
+    <p>การทดสอบฟังก์ชันการทำงานของระบบดำเนินการผ่านการทดสอบตามกรณีทดสอบ 19 หัวข้อ ครอบคลุมการสมัครสมาชิก (4.2.1), ลืมรหัสผ่าน (4.2.2), ตั้งรหัสผ่านใหม่และยืนยันอีเมล (4.2.3), เข้าสู่ระบบ (4.2.4), เข้าสู่ระบบด้วย Google (4.2.5), แก้ไขโปรไฟล์ (4.2.6), จัดการห้องเรียน (4.2.7), เข้าร่วมและออกจากห้องเรียน (4.2.8), ประกาศข่าวสาร (4.2.9), เพิ่มและแก้ไขข้อสอบ (4.2.10), สร้างเกณฑ์ให้คะแนน (4.2.11), ทำข้อสอบและส่งคำตอบ (4.2.12), ติดตามการส่งข้อสอบ (4.2.13), ประเมินคำตอบด้วย LLM (4.2.14), ตรวจสอบแก้ไขและอนุมัติคะแนน (4.2.15), ดูสถานะการส่งคำตอบ (4.2.16), ดูคะแนนและข้อเสนอแนะ (4.2.17), รายงานสถิติและส่งออก (4.2.18), และการแจ้งเตือนเรียลไทม์ (4.2.19) ผลการทดสอบพบว่าระบบผ่านการทดสอบครบทุกหัวข้อ คิดเป็นร้อยละ 100.00</p>
+
+    <h3>4.2 การประเมินประสิทธิภาพการให้คะแนนด้วย AI</h3>
+    <p>การประเมินประสิทธิภาพดำเนินการบนชุดข้อมูลกระดาษคำตอบจริงจำนวน 204 รายการ จากนิสิต 34 คน ใน 6 ข้อสอบรายวิชาโครงสร้างข้อมูลและขั้นตอนวิธี โดยเปรียบเทียบคะแนนที่แบบจำลองประเมินกับคะแนนอ้างอิงของผู้สอน ผลการประเมินจำแนกรายข้อแสดงดังตารางที่ 1</p>
+
+    <div class="paper-table-title">ตารางที่ 1 ผลการประเมินประสิทธิภาพการให้คะแนนจำแนกรายข้อ</div>
+    <table>
+      <thead>
+        <tr>
+          <th>ข้อ</th>
+          <th>รูปแบบคำตอบ</th>
+          <th>คะแนนเต็ม</th>
+          <th>คะแนนตรงกัน</th>
+          <th>Exact Match (%)</th>
+          <th>MAE</th>
+          <th>NMAE</th>
+          <th>QWK</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="text-align:center;">1</td>
+          <td style="text-align:center;">ข้อความ</td>
+          <td style="text-align:center;">2</td>
+          <td style="text-align:center;">27/34</td>
+          <td style="text-align:center;">79.41</td>
+          <td style="text-align:center;">0.2353</td>
+          <td style="text-align:center;">0.1176</td>
+          <td style="text-align:center;">0.6288</td>
+        </tr>
+        <tr>
+          <td style="text-align:center;">2</td>
+          <td style="text-align:center;">ข้อความ</td>
+          <td style="text-align:center;">2</td>
+          <td style="text-align:center;">19/34</td>
+          <td style="text-align:center;">55.88</td>
+          <td style="text-align:center;">0.3088</td>
+          <td style="text-align:center;">0.1544</td>
+          <td style="text-align:center;">0.5783</td>
+        </tr>
+        <tr>
+          <td style="text-align:center;">3</td>
+          <td style="text-align:center;">ข้อความ</td>
+          <td style="text-align:center;">1</td>
+          <td style="text-align:center;">12/34</td>
+          <td style="text-align:center;">35.29</td>
+          <td style="text-align:center;">0.2426</td>
+          <td style="text-align:center;">0.2426</td>
+          <td style="text-align:center;">0.5330</td>
+        </tr>
+        <tr>
+          <td style="text-align:center;">4</td>
+          <td style="text-align:center;">ภาพ</td>
+          <td style="text-align:center;">1</td>
+          <td style="text-align:center;">34/34</td>
+          <td style="text-align:center;">100.00</td>
+          <td style="text-align:center;">0.0000</td>
+          <td style="text-align:center;">0.0000</td>
+          <td style="text-align:center;">1.0000</td>
+        </tr>
+        <tr>
+          <td style="text-align:center;">5</td>
+          <td style="text-align:center;">ภาพ</td>
+          <td style="text-align:center;">1</td>
+          <td style="text-align:center;">34/34</td>
+          <td style="text-align:center;">100.00</td>
+          <td style="text-align:center;">0.0000</td>
+          <td style="text-align:center;">0.0000</td>
+          <td style="text-align:center;">1.0000</td>
+        </tr>
+        <tr>
+          <td style="text-align:center;">6</td>
+          <td style="text-align:center;">ภาพ</td>
+          <td style="text-align:center;">1</td>
+          <td style="text-align:center;">34/34</td>
+          <td style="text-align:center;">100.00</td>
+          <td style="text-align:center;">0.0000</td>
+          <td style="text-align:center;">0.0000</td>
+          <td style="text-align:center;">1.0000</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>จากตารางที่ 1 ผลการประเมินภาพรวมทั้งระบบ (204 รายการ) พบว่าคะแนนตรงกับผู้สอน 160 รายการ คิดเป็นร้อยละ 78.43 มีค่า MAE เท่ากับ 0.1311 คะแนน และค่า QWK รวมหลังปรับเป็นสเกลร่วม 0–4 เท่ากับ 0.8546 โดยคำตอบแบบภาพในข้อที่ 4–6 มีคะแนนตรงกับผู้สอนครบทั้ง 102 รายการ (ร้อยละ 100.00) ส่วนคำตอบแบบข้อความในข้อที่ 1–3 ตรงกัน 58 จาก 102 รายการ (ร้อยละ 56.86)</p>
+    <p>สำหรับการทดลองอ่านลายมือในภาพคำตอบข้อที่ 3 จำนวน 34 ภาพ แบบจำลองอ่านข้อความได้เพียงพอต่อการตรวจ 31 จาก 33 ภาพ (ตัดภาพกำกวม 1 ภาพ) คิดเป็นร้อยละ 93.94 และระบบแจ้งเตือนให้ผู้สอนทบทวน (Review Flags) เมื่อแบบจำลองมีความมั่นใจปานกลางหรือต่ำ โดยครอบคลุมกรณีที่ควรทบทวนครบทั้ง 3 ภาพ มีค่า Review Recall ร้อยละ 100.00</p>
+
+    <h2>5. สรุปผลและข้อเสนอแนะ</h2>
+    <h3>5.1 สรุปและอภิปรายผล</h3>
+    <p>โครงงานนี้พัฒนาระบบตรวจข้อสอบอัตนัยด้วยแบบจำลองภาษาขนาดใหญ่ในรูปแบบเว็บแอปพลิเคชัน โดยใช้ Gemini 3.8 Flash เป็นแบบจำลองหลักในการประเมินคำตอบและสร้างข้อเสนอแนะร่วมกับเกณฑ์การให้คะแนน ผลการประเมินกับชุดข้อมูลคำตอบจริง 204 รายการ พบว่าคะแนนตรงกับผู้สอนร้อยละ 78.43 มีค่า MAE 0.1311 คะแนน และ QWK 0.8546 คำตอบแบบภาพมีความตรงกันสมบูรณ์ร้อยละ 100.00 ส่วนคำตอบแบบข้อความตรงกันร้อยละ 56.86 การทดสอบการทำงานของระบบ 19 หัวข้อผ่านการทดสอบทุกกรณี แสดงให้เห็นว่าระบบรองรับกระบวนการตรวจข้อสอบตามขอบเขตโครงงานและสามารถใช้ช่วยสนับสนุนผู้สอนได้อย่างมีประสิทธิภาพ โดยผู้สอนยังคงเป็นผู้อนุมัติผลขั้นสุดท้าย</p>
+
+    <h3>5.2 ปัญหาและอุปสรรคในการดำเนินงาน</h3>
+    <p>1) การเตรียมข้อมูลคำตอบต้องตรวจสอบการจับคู่ภาพกับข้อความ และลบคะแนนหรือรอยตรวจของผู้สอนออกจากภาพโดยรักษาเนื้อหาเดิม เพื่อให้ข้อมูลนำเข้าตรงกับคำตอบของผู้เรียนและไม่เปิดเผยคะแนนอ้างอิงแก่แบบจำลอง</p>
+    <p>2) คำตอบแบบข้อความมีระดับรายละเอียดต่างกัน โดยเฉพาะคำตอบสั้นและคำตอบที่ถูกบางส่วน ทำให้การพิจารณาความครบถ้วนและการให้คะแนนตามเกณฑ์แตกต่างจากผู้สอนได้</p>
+    <p>3) ลายมือจาง ตัวอักษรเขียนติดกัน และข้อความลบหรือเขียนทับ ส่งผลต่อความชัดเจนในการถอดข้อความในบางคำตอบ</p>
+
+    <h3>5.3 ข้อเสนอแนะ</h3>
+    <p>1) ควรเพิ่มจำนวนและความหลากหลายของโจทย์ คำตอบ และลายมือ รวมถึงข้อมูลจากรายวิชาอื่น เพื่อประเมินการทำงานในสถานการณ์ที่กว้างขึ้น</p>
+    <p>2) จัดทำเกณฑ์และตัวอย่างคำตอบแต่ละระดับคะแนนร่วมกับผู้สอน โดยกำหนดเงื่อนไขการให้คะแนนบางส่วนและการพิจารณาคำตอบที่มีเพียงคำสำคัญให้ชัดเจน</p>
+    <p>3) ประเมินกลไกแจ้งทบทวนด้วยภาพเพิ่มเติม ทั้งกรณีที่ระบบไม่แจ้งเตือนและกรณีที่แจ้งเตือนเกินจำเป็น ควบคู่กับเวลาที่ผู้สอนใช้ตรวจทาน</p>
+    <p>4) ทดสอบความคงที่ของคะแนนจากการประเมินซ้ำ และทดลองใช้งานในกระบวนการตรวจจริงเพื่อเก็บข้อมูลระยะเวลา ต้นทุน API และความพึงพอใจของผู้ใช้</p>
+
+    <h2>6. เอกสารอ้างอิง</h2>
+    <ol class="paper-references">
+      <li>N. E. Gronlund and R. L. Linn, <i>Measurement and evaluation in teaching</i>, 6th ed. New York: Macmillan, 1990.</li>
+      <li>D. R. Sadler, "Formative assessment and the design of instructional systems," <i>Instructional Science</i>, vol. 18, no. 2, pp. 119–144, 1989.</li>
+      <li>OpenAI, "GPT-4 Technical Report," <i>arXiv preprint arXiv:2303.08774</i>, 2023.</li>
+      <li>Gemini Team, Google, "Gemini: A Family of Highly Capable Multimodal Models," <i>Google DeepMind Technical Report</i>, 2023. [Online]. Available: https://arxiv.org/abs/2312.11805</li>
+      <li>Meta Open Source, "React – The library for web and native user interfaces," [Online]. Available: https://react.dev/</li>
+      <li>S. Ramírez, "FastAPI," [Online]. Available: https://fastapi.tiangolo.com/</li>
+      <li>Oracle, "MySQL 8.0 Reference Manual: The InnoDB Storage Engine," [Online]. Available: https://dev.mysql.com/doc/refman/8.0/en/</li>
+      <li>Google for Education, "Google Classroom," [Online]. Available: https://edu.google.com/workspace-for-education/classroom/</li>
+      <li>A. Singh, S. Karayev, D. Gutman, and P. Abbeel, "Gradescope: A System for Fast, Fair, and Flexible Grading," in <i>Proc. Fourth ACM Conf. Learning @ Scale</i>, 2017, pp. 177–180.</li>
+      <li>Microsoft, "Microsoft 365 (Office) app for Android and iOS," [Online]. Available: https://www.microsoft.com/microsoft-365/mobile</li>
+      <li>P. Liu, W. Yuan, J. Fu, Z. Jiang, H. Hayashi, and G. Neubig, "Pre-train, prompt, and predict: A systematic survey of prompting methods in natural language processing," <i>ACM Computing Surveys</i>, 2023.</li>
+      <li>A. Mizumoto and M. Eguchi, "Exploring the potential of using ChatGPT in automated essay scoring for L2 writing," <i>New Directions in Technology for Writing Instruction</i>, 2023.</li>
+      <li>Gemini Team, Google, "Gemini 1.5: Unlocking multimodal understanding across millions of tokens of context," <i>arXiv preprint arXiv:2403.05530</i>, 2024.</li>
+    </ol>
+  </div>
+</section>
+
+<section class="appendix-divider" id="poster-cover">
+  <h1>โปสเตอร์โครงงาน</h1>
+</section>
+
+<section class="poster-blank" id="poster-blank">
+  <p>&nbsp;</p>
+</section>
+
+<section class="appendix-divider" id="author-cv-cover">
+  <h1>ประวัติย่อผู้จัดทำโครงงาน</h1>
+</section>
+
+<section class="cv-container" id="author-cv-content">
+  <h1 class="cv-title">ประวัติย่อผู้จัดทำโครงงาน</h1>
+  
+  <div class="cv-section">
+    <h2>ประวัติย่อผู้จัดทำโครงงานคนที่ 1</h2>
+    <table class="cv-table">
+      <tbody>
+        <tr><td class="cv-label">ชื่อ ชื่อสกุล</td><td class="cv-value">นายธีระวิสิฐ แจ้งภูเขียว</td></tr>
+        <tr><td class="cv-label">วัน เดือน ปีเกิด</td><td class="cv-value">วันที่ 25 ธันวาคม 2547</td></tr>
+        <tr><td class="cv-label">สถานที่เกิด</td><td class="cv-value">อำเภอเมือง จังหวัดมหาสารคาม</td></tr>
+        <tr><td class="cv-label">ที่อยู่ที่สามารถติดต่อได้</td><td class="cv-value">ภาควิชาวิทยาการคอมพิวเตอร์ คณะวิทยาการสารสนเทศ มหาวิทยาลัยมหาสารคาม ตำบลขามเรียง อำเภอกันทรวิชัย จังหวัดมหาสารคาม 44150</td></tr>
+        <tr><td class="cv-label">โทรศัพท์มือถือ</td><td class="cv-value">089-123-4567</td></tr>
+        <tr><td class="cv-label">อีเมล</td><td class="cv-value">66011212264@msu.ac.th</td></tr>
+        <tr><td class="cv-label">ประวัติการศึกษา</td><td class="cv-value">พ.ศ. 2566 ปริญญาตรี (ระบบปกติ) วท.บ. วิทยาการคอมพิวเตอร์ มหาวิทยาลัยมหาสารคาม<br>พ.ศ. 2563 มัธยมศึกษาตอนต้น โรงเรียนสารคามพิทยาคม<br>พ.ศ. 2566 มัธยมศึกษาตอนปลาย โรงเรียนสารคามพิทยาคม</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="cv-section">
+    <h2>ประวัติย่อผู้จัดทำโครงงานคนที่ 2</h2>
+    <table class="cv-table">
+      <tbody>
+        <tr><td class="cv-label">ชื่อ ชื่อสกุล</td><td class="cv-value">นายคฑาวุธ พุ่มจันทร์</td></tr>
+        <tr><td class="cv-label">วัน เดือน ปีเกิด</td><td class="cv-value">วันที่ 15 กุมภาพันธ์ 2548</td></tr>
+        <tr><td class="cv-label">สถานที่เกิด</td><td class="cv-value">อำเภอเมือง จังหวัดมหาสารคาม</td></tr>
+        <tr><td class="cv-label">ที่อยู่ที่สามารถติดต่อได้</td><td class="cv-value">ภาควิชาวิทยาการคอมพิวเตอร์ คณะวิทยาการสารสนเทศ มหาวิทยาลัยมหาสารคาม ตำบลขามเรียง อำเภอกันทรวิชัย จังหวัดมหาสารคาม 44150</td></tr>
+        <tr><td class="cv-label">โทรศัพท์มือถือ</td><td class="cv-value">089-765-4321</td></tr>
+        <tr><td class="cv-label">อีเมล</td><td class="cv-value">66011212155@msu.ac.th</td></tr>
+        <tr><td class="cv-label">ประวัติการศึกษา</td><td class="cv-value">พ.ศ. 2566 ปริญญาตรี (ระบบปกติ) วท.บ. วิทยาการคอมพิวเตอร์ มหาวิทยาลัยมหาสารคาม<br>พ.ศ. 2563 มัธยมศึกษาตอนต้น โรงเรียนสารคามพิทยาคม<br>พ.ศ. 2566 มัธยมศึกษาตอนปลาย โรงเรียนสารคามพิทยาคม</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</main></body></html>

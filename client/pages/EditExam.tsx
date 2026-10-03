@@ -224,7 +224,7 @@ export default function EditExam() {
                     name: `ภาพเฉลย ${idx + 1}`,
                     dataUrl: p,
                   })),
-                  hideRubricFromStudents: Boolean(q.hide_rubric_from_students),
+                  hideRubricFromStudents: q.hide_rubric_from_students !== undefined ? Boolean(q.hide_rubric_from_students) : true,
                 };
               })
             : [
@@ -237,7 +237,7 @@ export default function EditExam() {
                     { id: Date.now() + 1, name: "", description: "", score: "5" },
                   ],
                   images: [],
-                  hideRubricFromStudents: false,
+                  hideRubricFromStudents: true,
                 },
               ];
 
@@ -1266,7 +1266,7 @@ export default function EditExam() {
                       { id: newId + 1, name: "", description: "", score: "5" },
                     ],
                     images: [],
-                    hideRubricFromStudents: false,
+                    hideRubricFromStudents: true,
                   },
                 ]);
                 setShowDetails((prev) => ({ ...prev, [newId]: false }));

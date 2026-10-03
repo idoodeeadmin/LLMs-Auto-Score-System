@@ -1,4 +1,7 @@
 import asyncio
+from unittest.mock import AsyncMock
+
+import pytest
 
 from server.services import openai_grading
 
@@ -60,3 +63,19 @@ def test_grading_falls_back_to_manual_review_without_key(monkeypatch):
     assert result["score"] == 0
     assert result["confidence"] == "low"
     assert "อาจารย์ผู้สอน" in result["feedback"]
+
+
+@pytest.mark.parametrize("confidence,requires_review", [
+    ("high", False), ("medium", True), ("low", True),
+])
+def test_grading_review_flag_includes_medium_confidence(confidence, requires_review):
+    transport = AsyncMock(return_value={
+        "score": 1, "confidence": confidence,
+        "teacher_feedback": "ตรวจคำตอบแล้ว", "student_feedback": "คำแนะนำ",
+        "transcription": "",
+    })
+    result = asyncio.run(openai_grading.score_with_openai(
+        question_text="อธิบาย Stack", answer_text="LIFO", max_score=1,
+        _api_key_available=True, _transport=transport,
+    ))
+    assert result["metrics"]["manual_review_required"] is requires_review

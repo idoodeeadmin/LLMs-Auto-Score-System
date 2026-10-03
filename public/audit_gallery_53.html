@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Visual Audit Gallery - ตรวจสอบภาพคะแนนดิบ 53 ข้อ (LLM Auto-Score)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-base: #0f172a;
+      --bg-surface: #1e293b;
+      --bg-card: #1e293b;
+      --border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #38bdf8;
+      --primary-dark: #0284c7;
+      --accent: #818cf8;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Prompt', 'Sarabun', sans-serif;
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      line-height: 1.5;
+      min-height: 100vh;
+      padding-bottom: 60px;
+    }
+
+    /* Header */
+    header {
+      background: linear-gradient(180deg, #1e293b 0%, rgba(30, 41, 59, 0.8) 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 24px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      backdrop-filter: blur(12px);
+    }
+    .header-inner {
+      max-width: 1360px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .title-group h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .title-group p {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .badge-total {
+      background: #0369a1;
+      color: #e0f2fe;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    /* Stat Cards */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    .stat-card {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+    }
+    .stat-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+    .stat-value { font-size: 22px; font-weight: 700; color: #fff; margin-top: 2px; }
+    .stat-desc { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+
+    /* Controls */
+    .controls-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .filter-pills {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .pill {
+      background: rgba(51, 65, 85, 0.5);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 13.5px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .pill:hover { background: #334155; color: #fff; }
+    .pill.active {
+      background: var(--primary);
+      color: #0f172a;
+      border-color: var(--primary);
+      font-weight: 600;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+    .search-box {
+      margin-left: auto;
+      position: relative;
+    }
+    .search-box input {
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 14px 7px 32px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 13.5px;
+      outline: none;
+      width: 240px;
+      transition: border-color 0.2s;
+    }
+    .search-box input:focus { border-color: var(--primary); }
+    .search-box svg {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 14px;
+      height: 14px;
+      fill: var(--text-muted);
+    }
+
+    /* Container */
+    .main-container {
+      max-width: 1360px;
+      margin: 24px auto 0;
+      padding: 0 20px;
+    }
+
+    .gallery-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Card */
+    .audit-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .audit-card:hover {
+      border-color: #475569;
+    }
+    .card-header {
+      background: rgba(15, 23, 42, 0.7);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .card-title-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .sid-badge {
+      font-size: 15px;
+      font-weight: 700;
+      background: #0369a1;
+      color: #fff;
+      padding: 3px 10px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+    .qno-badge {
+      font-size: 13px;
+      color: #cbd5e1;
+      font-weight: 600;
+    }
+    .anomaly-tag {
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      font-weight: 600;
+      border: 1px solid transparent;
+    }
+    .tag-error {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+    .tag-leniency {
+      background: rgba(245, 158, 11, 0.2);
+      border-color: rgba(245, 158, 11, 0.4);
+      color: #fde68a;
+    }
+    .tag-neutral {
+      background: rgba(129, 140, 248, 0.2);
+      border-color: rgba(129, 140, 248, 0.4);
+      color: #c7d2fe;
+    }
+
+    /* Card Content Grid */
+    .card-body {
+      display: grid;
+      grid-template-columns: 1.2fr 0.9fr 1.3fr;
+      gap: 18px;
+      padding: 18px;
+    }
+    @media (max-width: 1080px) {
+      .card-body { grid-template-columns: 1fr; }
+    }
+
+    /* Sub-panels */
+    .panel-block {
+      background: rgba(15, 23, 42, 0.45);
+      border: 1px solid rgba(51, 65, 85, 0.7);
+      border-radius: 10px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+    }
+    .panel-title {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .ans-box {
+      font-family: 'Sarabun', sans-serif;
+      font-size: 15px;
+      color: #e2e8f0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.6;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid #334155;
+      padding: 10px 12px;
+      border-radius: 8px;
+      max-height: 190px;
+      overflow-y: auto;
+    }
+
+    /* Score Comparison Panel */
+    .score-compare-box {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .score-item {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+    }
+    .score-item.human { border-color: #f59e0b; }
+    .score-item.ai { border-color: #38bdf8; }
+    .score-header-txt { font-size: 11.5px; color: var(--text-muted); font-weight: 600; }
+    .score-number { font-size: 26px; font-weight: 700; margin-top: 2px; }
+    .score-item.human .score-number { color: #fbbf24; }
+    .score-item.ai .score-number { color: #38bdf8; }
+    
+    .diff-badge-row {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    .diff-badge {
+      display: inline-block;
+      padding: 4px 14px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .diff-plus { background: rgba(56, 189, 248, 0.2); color: #7dd3fc; border: 1px solid #38bdf8; }
+    .diff-minus { background: rgba(248, 113, 113, 0.2); color: #fca5a5; border: 1px solid #f87171; }
+
+    /* Interactive Audit Radios */
+    .audit-verdict-box {
+      margin-top: auto;
+      border-top: 1px solid #334155;
+      padding-top: 10px;
+    }
+    .audit-verdict-title { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 600; }
+    .verdict-options {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-size: 13px;
+    }
+    .verdict-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      color: #cbd5e1;
+    }
+    .verdict-label input { cursor: pointer; }
+
+    /* Image Panel */
+    .img-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .img-preview-wrap {
+      position: relative;
+      background: #000;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      height: 210px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .img-preview-wrap img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      transition: transform 0.2s;
+    }
+    .img-preview-wrap:hover img {
+      transform: scale(1.03);
+    }
+    .img-hint-badge {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(4px);
+      color: #e2e8f0;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .btn-view-full {
+      background: #334155;
+      color: #f1f5f9;
+      border: 1px solid #475569;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.2s;
+    }
+    .btn-view-full:hover { background: #475569; }
+
+    /* Modal / Lightbox */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.88);
+      backdrop-filter: blur(8px);
+      z-index: 999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-content {
+      max-width: 90vw;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+    }
+    .modal-img {
+      max-width: 88vw;
+      max-height: 82vh;
+      border-radius: 8px;
+      border: 1px solid #475569;
+      object-fit: contain;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.7);
+    }
+    .modal-bar {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      color: #cbd5e1;
+      font-size: 14px;
+    }
+    .btn-close-modal {
+      background: #ef4444;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 5px 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <div class="header-top">
+        <div class="title-group">
+          <h1>
+            <span>Visual Score Audit Gallery</span>
+            <span class="badge-total">53 คำตอบที่ไม่ตรงกัน</span>
+          </h1>
+          <p>ระบบตรวจสอบความถูกต้องเทียบกระดาษคำตอบดิบจริง (Ground Truth Audit) ระหว่างคะแนนใน Excel กับคะแนนระบบ AI</p>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <a href="audit_q4_mismatches.html" style="background:#2563eb; color:#fff; text-decoration:none; padding:8px 16px; border-radius:8px; font-size:13.5px; font-weight:600; border:1px solid #3b82f6; display:inline-flex; align-items:center; gap:6px;">🌳 เจาะลึกข้อ 4 (BST 7 ข้อ)</a>
+          <a href="chapter4_testcases.html" style="background:#334155; color:#fff; text-decoration:none; padding:8px 16px; border-radius:8px; font-size:13.5px; font-weight:600; border:1px solid #475569;">&larr; กลับหน้าบทที่ 4</a>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <span class="stat-label">ข้อที่ไม่ตรงทั้งหมด</span>
+          <span class="stat-value">55 <span style="font-size:14px; color:var(--text-muted);">/ 204</span></span>
+          <span class="stat-desc">คิดเป็น 26.96% ของข้อสอบทั้งหมด</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">ยืนยัน Data Entry Error</span>
+          <span class="stat-value" style="color:#f87171;">ตรวจพบ 1 ข้อ</span>
+          <span class="stat-desc">DS-031 (บนกระดาษแก้เป็น 2 ตรงกับ AI)</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">AI สูงกว่า Excel</span>
+          <span class="stat-value" style="color:#38bdf8;" id="cnt-ai-higher">35 ข้อ</span>
+          <span class="stat-desc">AI ให้คะแนนเต็มตาม Rubric</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">AI ต่ำกว่า Excel</span>
+          <span class="stat-value" style="color:#fbbf24;" id="cnt-ai-lower">20 ข้อ</span>
+          <span class="stat-desc">ผู้สอนให้คะแนนความพยายาม (Leniency)</span>
+        </div>
+      </div>
+
+      <div class="controls-row">
+        <div class="filter-pills" id="filter-pills">
+          <button class="pill active" data-q="all">ทั้งหมด (55)</button>
+          <button class="pill" data-q="1">ข้อ 1 (11)</button>
+          <button class="pill" data-q="2">ข้อ 2 (16)</button>
+          <button class="pill" data-q="3">ข้อ 3 (18)</button>
+          <button class="pill" data-q="4">ข้อ 4 (7)</button>
+          <button class="pill" data-q="5">ข้อ 5 (3)</button>
+          <button class="pill" data-special="typo" style="border-color:#f87171; color:#fca5a5;">🎯 เคสพิสูจน์คีย์ผิด</button>
+        </div>
+        <div class="search-box">
+          <svg viewBox="0 0 24 24"><path d="M10 18a7.952 7.952 0 0 0 4.897-1.688l4.396 4.396 1.414-1.414-4.396-4.396A7.952 7.952 0 0 0 18 10c0-4.411-3.589-8-8-8s-8 3.589-8 8 3.589 8 8 8zm0-14c3.309 0 6 2.691 6 6s-2.691 6-6 6-6-2.691-6-6 2.691-6 6-6z"/></svg>
+          <input type="text" id="search-input" placeholder="ค้นหารหัส (เช่น DS-031)..." />
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-container">
+    <div class="gallery-grid" id="gallery-grid">
+      <!-- Cards rendered via JS -->
+      <div style="text-align:center; padding:40px; color:var(--text-muted);">กำลังโหลดข้อมูลคำตอบทั้ง 53 รายการ...</div>
+    </div>
+  </main>
+
+  <!-- Modal Lightbox -->
+  <div class="modal-overlay" id="modal-lightbox" onclick="closeModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-bar">
+        <span id="modal-title" style="font-weight:600;">ภาพถ่ายกระดาษคำตอบต้นฉบับ</span>
+        <button class="btn-close-modal" onclick="closeModal()">ปิด (Esc)</button>
+      </div>
+      <img id="modal-img" class="modal-img" src="" alt="Full exam sheet" />
+    </div>
+  </div>
+
+  <script>
+    const EMBEDDED_RECORDS = [{"sid": "DS-002", "qno": 1, "topic": "Row-major vs Column-major Order in 2D Array", "excel_human_score": 2.0, "ai_score": 1.0, "score_diff": -1.0, "confidence": "high", "ans_text": "การเรียงข้อมูลโดยการเก็บข้อมูลแบบแถว vs แบบคอลัมน์", "feedback": "[สำหรับผู้สอน]
+นักเรียนระบุความแตกต่างหลักได้ถูกต้องว่า Row-major เป็นการเก็บข้อมูลแบบแถว และ Column-major เป็นการเก็บข้อมูลแบบคอลัมน์ สอดคล้องกับแนวคำตอบ แต่คำตอบยังสั้นและไม่ได้อธิบายลักษณะการจัดเก็บหรือเข้าถึงข้อมูลเพิ่มเติมให้ครบถ้วน จึงให้ 1.00 คะแนนตามเกณฑ์ระดับความเข้าใจเบื้องต้น
+
+[สำหรับนักเรียน]
+เข้าใจความแตกต่างพื้นฐานได้ถูกต้องแล้ว โดย Row-major จะจัดเก็บหรือเข้าถึงข้อมูลทีละแถว ส่วน Column-major จะจัดเก็บหรือเข้าถึงข้อมูลทีละคอลัมน์ หากต้องการได้คะแนนเต็ม ควรอธิบายให้ชัดเจนขึ้นว่าแถวมีทิศทางแนวนอน และคอลัมน์มีทิศทางแนวตั้ง รวมถึงยกตัวอย่างลำดับการเก็บข้อมูลในเมทริกซ์", "anomaly_tag": "AI ให้คะแนนต่ำกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-002.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-002.jpg", "raw_file_source": "IMG_2793.HEIC"}, {"sid": "DS-006", "qno": 1, "topic": "Row-major vs Column-major Order in 2D Array", "excel_human_score": 0.0, "ai_score": 1.0, "score_diff": 1.0, "confidence": "high", "ans_text": "คำนวณตำแหน่ง แนวตั้ง แนวนอน", "feedback": "[สำหรับผู้สอน]
+คำตอบระบุคำสำคัญที่เกี่ยวข้องกับการคำนวณตำแหน่งและทิศทางแนวตั้ง/แนวนอน ซึ่งสื่อถึงความแตกต่างเบื้องต้นของ Column-major และ Row-major ได้บางส่วน แต่ไม่ได้ระบุให้ชัดเจนว่า Row-major จัดเก็บหรือเข้าถึงข้อมูลตามแถว/แนวนอน และ Column-major ตามคอลัมน์/แนวตั้ง จึงยังไม่ครบทั้งสองฝั่งตามแนวคำตอบ เหมาะสมกับคะแนน 1.00 คะแนน
+
+[สำหรับนักเรียน]
+คำตอบมีแนวคิดเรื่องแนวตั้งและแนวนอนถูกต้องบางส่วน แต่ควรเขียนให้ชัดเจนว่า Row-major คือการจัดเก็บหรือเข้าถึงข้อมูลตามแถว (แนวนอน) ส่วน Column-major คือการจัดเก็บหรือเข้าถึงข้อมูลตามคอลัมน์ (แนวตั้ง) เพื่อให้แสดงความแตกต่างได้ครบถ้วน", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-006.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-006.jpg", "raw_file_source": "IMG_2798.HEIC"}, {"sid": "DS-008", "qno": 1, "topic": "Row-major vs Column-major Order in 2D Array", "excel_human_score": 1.0, "ai_score": 2.0, "score_diff": 1.0, "confidence": "high", "ans_text": "Row-major = เริ่มเรียงจากฝั่งแถว
+Column-major = เริ่มเรียงจากฝั่งคอลัมน์", "feedback": "[สำหรับผู้สอน]
+นักเรียนอธิบายความแตกต่างของทั้งสองแบบได้ถูกต้อง: Row-major คือการเรียงหรือจัดเก็บข้อมูลตามแถว และ Column-major คือการเรียงหรือจัดเก็บข้อมูลตามคอลัมน์ ซึ่งตรงกับแก่นของแนวคำตอบครบทั้งสองฝั่ง จึงได้ 2.00 คะแนน ไม่พบปัญหาด้านความชัดเจนของคำตอบ
+
+[สำหรับนักเรียน]
+ตอบได้ถูกต้องครบทั้ง Row-major และ Column-major จึงได้รับคะแนนเต็ม หากต้องการให้ละเอียดขึ้น อาจระบุเพิ่มเติมว่า Row-major จะจัดเก็บสมาชิกในแถวเดียวกันต่อเนื่องก่อนเปลี่ยนไปแถวถัดไป ส่วน Column-major จะจัดเก็บสมาชิกในคอลัมน์เดียวกันต่อเนื่องก่อนเปลี่ยนไปคอลัมน์ถัดไป", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-008.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-008.jpg", "raw_file_source": "IMG_2800.HEIC"}, {"sid": "DS-009", "qno": 1, "topic": "Row-major vs Column-major Order in 2D Array", "excel_human_score": 1.0, "ai_score": 2.0, "score_diff": 1.0, "confidence": "high", "ans_text": "Row จะไปทางซ้ายไปขวา Column จะไปทางบนลงล่าง สูตรที่ใช้ต่างกันเล็กน้อย หากใช้ Array 2D จะเกี่ยวเนื่อง Index 2 ตัว เพื่อให้ Row, Column ทำงานควบคู่กัน", "feedback": "[สำหรับผู้สอน]
+นักเรียนอธิบายความแตกต่างของทั้งสองรูปแบบได้ถูกต้อง: Row-major จัดเรียงหรือเข้าถึงข้อมูลไปตามแถวในแนวนอนจากซ้ายไปขวา และ Column-major จัดเรียงหรือเข้าถึงข้อมูลไปตามคอลัมน์ในแนวตั้งจากบนลงล่าง นอกจากนี้ยังระบุได้ถูกต้องว่าสูตรการคำนวณตำแหน่งหรือ address แตกต่างกัน และยกตัวอย่างความเกี่ยวข้องกับอาร์เรย์ 2 มิติที่ใช้ดัชนี Row และ Column ร่วมกัน จึงครบถ้วนตามแนวคำตอบ ได้ 2.00 คะแนน
+
+[สำหรับนักเรียน]
+คำตอบถูกต้องและครอบคลุมทั้ง Row-major และ Column-major โดยอธิบายทิศทางการจัดเก็บได้ชัดเจนแล้ว หากต้องการให้สมบูรณ์ยิ่งขึ้น อาจระบุเพิ่มเติมว่า Row-major จะเก็บสมาชิกของแถวเดียวกันต่อเนื่องกันก่อน แล้วจึงไปแถวถัดไป ส่วน Column-major จะเก็บสมาชิกของคอลัมน์เดียวกันต่อเนื่องกันก่อน แล้วจึงไปคอลัมน์ถัดไป", "anomaly_tag": "อาจารย์มีเกณฑ์ในใจ (AI ให้เต็ม 2)", "full_img_url": "screenshots/audit_gallery/full_DS-009.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-009.jpg", "raw_file_source": "IMG_2801.HEIC"}, {"sid": "DS-013", "qno": 1, "topic": "Row-major vs Column-major Order in 2D Array", "excel_human_score": 0.0, "ai_score": 2.0, "score_diff": 2.0, "confidence": "high", "ans_text": "Row-major จะใช้แถวเป็นตัวตั้งในโครงสร้าง array
+Column-major จะใช้คอลัมน์เป็นตัวตั้งในโครงสร้าง array", "feedback": "[สำหรับผู้สอน]
+คำตอบอธิบายความแตกต่างได้ถูกต้องครบทั้งสองฝั่ง โดยระบุว่า Row-major ใช้แถวเป็นตัวตั้ง และ Column-major ใช้คอลัมน์เป็นตัวตั้งในโครงสร้าง array ซึ่งสอดคล้องกับแนวคำตอบเรื่องการจัดเก็บหรือเข้าถึงข้อมูลตามแถวและตามคอลัมน์ จึงได้ 2.00 คะแนน
+
+[สำหรับนักเรียน]
+ตอบได้ถูกต้องครบถ้วนทั้ง Row-major และ Column-major แล้ว หากต้องการให้ชัดเจนยิ่งขึ้น อาจระบุเพิ่มเติมว่า Row-major จัดเก็บข้อมูลเรียงสมาชิกในแถวเดียวกันก่อน ส่วน Column-major จัดเก็บข้อมูลเรียงสมาชิกในคอลัมน์เดียวกันก่อน", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-013.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-013.jpg", "raw_file_source": "IMG_2805.HEIC"}, {"sid": "DS-015", "qno": 1, "topic": "Row-major vs Column-major Order in 2D Array", "excel_human_score": 1.0, "ai_score": 0.0, "score_diff": -1.0, "confidence": "high", "ans_text": "Row vs Column ถ้ามองในมุม Row ส่วนมากภาษาที่ใช้ใน loop มักจะเป็น Java, C ส่วน Column จะใช้ในอีกภาษาอื่น (ความต่างที่ 1 ภาษา) (ความต่างที่ 2) Array ที่เลือกมาทำจะเลือกต่างกัน Row จะเอา U2-L2 มาก่อน loop ส่วนเลือกค่าหลัก L1 L1 i, j ก่อน", "feedback": "[สำหรับผู้สอน]
+คำตอบยังไม่อธิบายแก่นความแตกต่างของ Row-major และ Column-major ได้ถูกต้องชัดเจนตามแนวคำตอบ โดยไม่ได้ระบุว่า Row-major จัดเก็บหรือเข้าถึงข้อมูลเรียงตามแถว และ Column-major จัดเก็บหรือเข้าถึงข้อมูลเรียงตามคอลัมน์ การกล่าวถึงภาษา Java, C หรือภาษาอื่นไม่ใช่หลักเกณฑ์ที่ใช้แบ่ง Row-major กับ Column-major และข้อความเกี่ยวกับ U2-L2, L1 รวมถึงลำดับ i, j ไม่ชัดเจนและไม่สามารถยืนยันได้ว่าเป็นการอธิบายลำดับการจัดเก็บหรือการคำนวณ address ที่ถูกต้อง จึงไม่เข้าเกณฑ์การตอบถูกทั้งสองฝั่งหรือการแสดงความเข้าใจเบื้องต้นที่เพียงพอ
+
+[สำหรับนักเรียน]
+คำตอบควรเน้นหลักการจัดเก็บข้อมูล ไม่ใช่ชนิดของภาษาโปรแกรม โดย Row-major คือการจัดเก็บหรือเข้าถึงสมาชิกในแต่ละแถวให้ครบก่อน แล้วจึงไปแถวถัดไป ส่วน Column-major คือการจัดเก็บหรือเข้าถึงสมาชิกในแต่ละคอลัมน์ให้ครบก่อน แล้วจึงไปคอลัมน์ถัดไป หากกล่าวถึงลูป ควรยกตัวอย่างลำดับการวน เช่น Row-major มักวนแถวก่อนคอลัมน์ ส่วน Column-major มักวนคอลัมน์ก่อนแถว", "anomaly_tag": "อาจารย์ให้คะแนนความพยายาม (AI ตรวจ 0)", "full_img_url": "screenshots/audit_gallery/full_DS-015.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-015.jpg", "raw_file_source": "IMG_2807.HEIC"}, {"sid": "DS-022", "qno": 1, "topic": "Row-major vs Column-major Order in 2D Array", "excel_human_score": 2.0, "ai_score": 1.0, "score_diff": -1.0, "confidence": "high", "ans_text": "Arr[3][4]
+Row จะเรียงแถวก่อน: 1 2 3 4, 5 6 7 8, 9 10 11 12
+Column จะเรียงหลักก่อน: 1 4 7 10, 2 5 8 11, 3 6 9 12", "feedback": "[สำหรับผู้สอน]
+นักเรียนเข้าใจหลักการของ Row-major ได้ถูกต้อง โดยแสดงการเรียงข้อมูลตามแถวเป็น 1 2 3 4, 5 6 7 8, 9 10 11 12 ซึ่งสอดคล้องกับการจัดเก็บตามแถว ส่วน Column-major ระบุแนวคิดว่าเรียงหลักก่อน ซึ่งเป็นแนวคิดที่ถูกต้อง แต่ลำดับตัวอย่างที่ให้คือ 1 4 7 10, 2 5 8 11, 3 6 9 12 ซึ่งไม่ใช่การไล่ข้อมูลตามคอลัมน์ของอาร์เรย์ Arr[3][4] หากจัดเป็น 3 แถว 4 คอลัมน์ ลำดับ Column-major ที่ถูกต้องควรเป็น 1 5 9, 2 6 10, 3 7 11, 4 8 12 ดังนั้นให้ 1.00 คะแนน เนื่องจากเข้าใจความแตกต่างในระดับแนวคิด แต่ตัวอย่างของ Column-major ยังไม่ถูกต้อง
+
+[สำหรับนักเรียน]
+อธิบาย Row-major ได้ถูกต้องแล้ว คืออ่านหรือจัดเก็บข้อมูลให้ครบทีละแถว สำหรับ Column-major ให้ไล่ข้อมูลให้ครบทีละคอลัมน์จากบนลงล่าง แล้วจึงไปคอลัมน์ถัดไป เช่นเมทริกซ์ 3 แถว 4 คอลัมน์ที่มีข้อมูลเรียงแบบ Row-major เป็น 1 2 3 4 / 5 6 7 8 / 9 10 11 12 จะได้ Column-major เป็น 1 5 9 / 2 6 10 / 3 7 11 / 4 8 12 ควรตรวจสอบจำนวนแถวและคอลัมน์ รวมถึงทิศทางการไล่ข้อมูลให้ชัดเจน", "anomaly_tag": "AI ให้คะแนนต่ำกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-022.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-022.jpg", "raw_file_source": "IMG_2815.HEIC"}, {"sid": "DS-025", "qno": 1, "topic": "Row-major vs Column-major Order in 2D Array", "excel_human_score": 1.0, "ai_score": 2.0, "score_diff": 1.0, "confidence": "high", "ans_text": "Row-major เป็นแนวนอน column-major เป็นแนวตั้ง ทั้งคู่คำนวณไม่เหมือนกัน", "feedback": "[สำหรับผู้สอน]
+นักเรียนอธิบายความแตกต่างของทั้งสองรูปแบบได้ถูกต้อง: Row-major คือการจัดเรียงหรือเข้าถึงข้อมูลตามแนวนอน/แถว และ Column-major คือการจัดเรียงหรือเข้าถึงข้อมูลตามแนวตั้ง/คอลัมน์ คำตอบที่ระบุว่า “ทั้งคู่คำนวณไม่เหมือนกัน” สอดคล้องกับความแตกต่างด้านลำดับการจัดเก็บหรือการคำนวณ address แม้จะอธิบายไม่ละเอียดมาก แต่แก่นสาระถูกต้องครบทั้งสองฝั่ง จึงได้ 2.00 คะแนน
+
+[สำหรับนักเรียน]
+คำตอบถูกต้องครบประเด็นหลักแล้ว โดย Row-major จะพิจารณาข้อมูลทีละแถว ส่วน Column-major จะพิจารณาข้อมูลทีละคอลัมน์ หากต้องการให้ชัดเจนยิ่งขึ้น ควรระบุเพิ่มเติมว่าเป็นลำดับการจัดเก็บข้อมูลในหน่วยความจำหรือการคำนวณตำแหน่ง address ที่แตกต่างกัน", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-025.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-025.jpg", "raw_file_source": "IMG_2819.HEIC"}, {"sid": "DS-030", "qno": 1, "topic": "Row-major vs Column-major Order in 2D Array", "excel_human_score": 0.0, "ai_score": 1.0, "score_diff": 1.0, "confidence": "high", "ans_text": "Row major เริ่มการจัดเก็บ Array แบบแถว แถวแรก Array 3D
+Column major เริ่มการจัดเก็บ Array ร่วมกับ Row คือ Array 2D", "feedback": "[สำหรับผู้สอน]
+นักเรียนอธิบาย Row-major ได้บางส่วนว่าเป็นการจัดเก็บ Array แบบแถว ซึ่งสอดคล้องกับหลักการที่ Row-major จัดเก็บข้อมูลตามแถวก่อน อย่างไรก็ตาม ข้อความที่ว่า “แถวแรก Array 3D” ไม่ชัดเจนและไม่ใช่สาระสำคัญของ Row-major ส่วนคำอธิบาย Column-major ที่ว่า “เริ่มการจัดเก็บ Array ร่วมกับ Row คือ Array 2D” ไม่ถูกต้องและไม่ได้กล่าวถึงการจัดเก็บตามคอลัมน์ ดังนั้นตอบถูกเพียงฝั่ง Row-major จึงให้ 1.00 คะแนนตามเกณฑ์
+
+[สำหรับนักเรียน]
+เข้าใจ Row-major ได้ถูกต้องในประเด็นการจัดเก็บข้อมูลตามแถวแล้ว ควรปรับปรุงโดยอธิบายให้ชัดว่า Column-major คือการจัดเก็บข้อมูลตามคอลัมน์ โดยอ่านสมาชิกในคอลัมน์เดียวกันก่อนแล้วจึงเลื่อนไปคอลัมน์ถัดไป นอกจากนี้ Array 2D หรือ 3D ไม่ใช่ความแตกต่างหลักของ Row-major และ Column-major ความแตกต่างสำคัญคือ “ลำดับการจัดเก็บข้อมูลตามแถวหรือตามคอลัมน์”", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-030.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-030.jpg", "raw_file_source": "IMG_2824.HEIC"}, {"sid": "DS-031", "qno": 1, "topic": "Row-major vs Column-major Order in 2D Array", "excel_human_score": 1.0, "ai_score": 2.0, "score_diff": 1.0, "confidence": "high", "ans_text": "Row-major จะเก็บจากแนวนอน เช่น [0][0],[0][1],[0][2],[1][0]
+Column-major จะเก็บจากหลัก เช่น [0][0],[1][0],[2][0],[0][1]", "feedback": "[สำหรับผู้สอน]
+นักเรียนอธิบายได้ถูกต้องครบทั้งสองแนวทาง Row-major ระบุการเก็บข้อมูลตามแนวนอน โดยยกตัวอย่างลำดับ [0][0], [0][1], [0][2], [1][0] ซึ่งเป็นการไล่สมาชิกในแถวเดียวกันก่อนแล้วจึงไปแถวถัดไป ส่วน Column-major ระบุการเก็บข้อมูลตามหลัก/คอลัมน์ โดยยกตัวอย่าง [0][0], [1][0], [2][0], [0][1] ซึ่งเป็นการไล่สมาชิกในคอลัมน์เดียวกันก่อนแล้วจึงไปคอลัมน์ถัดไป ตรงตามแนวคำตอบทั้งสองฝั่ง จึงได้ 2.00 คะแนน
+
+[สำหรับนักเรียน]
+คำตอบถูกต้องครบถ้วน ได้อธิบายความแตกต่างของทั้ง Row-major และ Column-major พร้อมลำดับดัชนีตัวอย่างที่สอดคล้องกัน หากต้องการให้ชัดเจนยิ่งขึ้น อาจระบุเพิ่มเติมว่า Row-major เปลี่ยนคอลัมน์ก่อน ส่วน Column-major เปลี่ยนแถวก่อนเมื่อจัดเก็บข้อมูลในหน่วยความจำ", "anomaly_tag": "ตรวจพบ Excel บันทึกผิด (บนกระดาษแก้เป็น 2)", "full_img_url": "screenshots/audit_gallery/full_DS-031.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-031.jpg", "raw_file_source": "IMG_2825.HEIC"}, {"sid": "DS-034", "qno": 1, "topic": "Row-major vs Column-major Order in 2D Array", "excel_human_score": 1.0, "ai_score": 2.0, "score_diff": 1.0, "confidence": "high", "ans_text": "Row-major จะคิดที่ Arr แนวนอนก่อน จะคำนวณตามแนวนอน
+Column จะคิดที่ Arr แนวตั้งก่อน", "feedback": "[สำหรับผู้สอน]
+คำตอบอธิบายความแตกต่างได้ถูกต้องครบทั้งสองฝั่ง: Row-major คือพิจารณาหรือจัดเก็บข้อมูลตามแนวนอน/แถวก่อน และ Column-major คือพิจารณาหรือจัดเก็บข้อมูลตามแนวตั้ง/คอลัมน์ก่อน จึงสอดคล้องกับแนวคำตอบและเกณฑ์ข้อ 2.00 คะแนน
+
+[สำหรับนักเรียน]
+ตอบได้ถูกต้องครบถ้วนทั้ง Row-major และ Column-major โดยแยกแนวนอนกับแนวตั้งได้ชัดเจน หากต้องการให้สมบูรณ์ยิ่งขึ้น อาจระบุเพิ่มเติมว่า Row-major จะเก็บสมาชิกในแต่ละแถวต่อเนื่องก่อนเปลี่ยนไปแถวถัดไป ส่วน Column-major จะเก็บสมาชิกในแต่ละคอลัมน์ต่อเนื่องก่อนเปลี่ยนไปคอลัมน์ถัดไป", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-034.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-034.jpg", "raw_file_source": "IMG_2828.HEIC"}, {"sid": "DS-036", "qno": 2, "topic": "Time Complexity: O(n log n) vs O(n²)", "excel_human_score": 2.0, "ai_score": 1.5, "score_diff": -0.5, "confidence": "high", "ans_text": "เพราะว่า ข้อมูลมีขนาดใหญ่ถ้าใช้เวลานาน การที่จะลดพื้นที่ย่อมประหยัดเวลาการทำงานไปด้วย ดังนั้น O(n log n) จึงทำให้เร็วกว่า อัลกอริทึม Merge", "feedback": "[สำหรับผู้สอน]
+นักเรียนระบุอัลกอริทึมที่เกี่ยวข้องคือ Merge ซึ่งน่าจะหมายถึง Merge Sort และระบุว่า O(n log n) เร็วกว่าเมื่อข้อมูลมีขนาดใหญ่ อย่างไรก็ตาม เหตุผลที่อธิบายว่า “ลดพื้นที่จึงประหยัดเวลาการทำงาน” ไม่ใช่หลักการเปรียบเทียบความซับซ้อนด้านเวลาโดยตรง และไม่ได้อธิบายว่า O(n log n) มีจำนวนการทำงานเพิ่มช้ากว่า O(n^2) หรือมีการแบ่งข้อมูลเป็นส่วนย่อยอย่างไร ตาม rubric กรณีมีชื่อ Algorithm แต่เหตุผลสั้นมากเพียง 1 ประโยค ให้ 1.50 คะแนน ทั้งนี้คำว่า “Merge” ควรระบุให้ชัดเจนเป็น “Merge Sort”
+
+[สำหรับนักเรียน]
+ทำได้ดีที่ยกตัวอย่างอัลกอริทึมและสรุปว่า O(n log n) เหมาะกับข้อมูลขนาดใหญ่กว่า O(n^2) เพราะทำงานเร็วกว่า ควรแก้เหตุผลจากเรื่อง “ลดพื้นที่” เป็นการเปรียบเทียบจำนวนขั้นตอน เช่น เมื่อ n เพิ่มขึ้น O(n^2) จะเพิ่มจำนวนการทำงานเร็วกว่า O(n log n) มาก และ Merge Sort ใช้วิธีแบ่งข้อมูลเป็นส่วนย่อยแล้วรวมผล ทำให้มีความซับซ้อน O(n log n) หากอธิบายกลไกนี้เพิ่มเติมจะได้คะแนนเต็ม", "anomaly_tag": "AI ให้คะแนนต่ำกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-036.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-036.jpg", "raw_file_source": "IMG_2794.HEIC"}, {"sid": "DS-040", "qno": 2, "topic": "Time Complexity: O(n log n) vs O(n²)", "excel_human_score": 1.0, "ai_score": 1.5, "score_diff": 0.5, "confidence": "high", "ans_text": "เพราะ O(n log n) ตัดข้อมูลให้เล็กลงก่อนแล้วค่อยใช้ loop จะทำให้ประหยัดเวลาการ loop ให้เร็วขึ้น", "feedback": "[สำหรับผู้สอน]
+คำตอบอธิบายได้ถูกต้องในหลักการว่า O(n log n) แบ่งข้อมูลให้เล็กลงก่อน แล้วช่วยลดเวลาในการวนลูปเมื่อเทียบกับ O(n^2) จึงเหมาะกับข้อมูลขนาดใหญ่ อย่างไรก็ตาม ไม่ได้ระบุชื่ออัลกอริทึมตัวอย่าง เช่น Merge Sort, Quick Sort หรือ Heap Sort ตามที่โจทย์กำหนด จึงไม่ครบองค์ประกอบของคะแนนเต็ม ตาม rubric ควรได้ 1.00 คะแนน ไม่ใช่ 1.50 คะแนน เนื่องจากมีเหตุผลเปรียบเทียบแต่ไม่มีตัวอย่าง Algorithm
+
+[สำหรับนักเรียน]
+อธิบายเหตุผลเรื่องการลดเวลาได้ถูกต้องแล้ว แต่ยังขาดการยกตัวอย่างอัลกอริทึม จึงควรเพิ่มชื่อ เช่น “Merge Sort มีความซับซ้อน O(n log n) เพราะแบ่งข้อมูลเป็นส่วนย่อยและรวมกลับ ขณะที่อัลกอริทึม O(n^2) เช่น Bubble Sort ใช้การวนซ้ำมากกว่า จึงช้ากว่าเมื่อข้อมูลมีขนาดใหญ่”", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-040.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-040.jpg", "raw_file_source": "IMG_2847.HEIC"}, {"sid": "DS-042", "qno": 2, "topic": "Time Complexity: O(n log n) vs O(n²)", "excel_human_score": 1.0, "ai_score": 1.5, "score_diff": 0.5, "confidence": "high", "ans_text": "สมมติว่า n = 10
+O(10 log 10) = O(10)
+O(10^2) = O(100) ซึ่ง O(10) น้อยกว่า
+เช่น Quick Sort", "feedback": "[สำหรับผู้สอน]
+นักเรียนระบุชื่ออัลกอริทึมที่เกี่ยวข้องได้ถูกต้อง คือ Quick Sort และพยายามเปรียบเทียบว่า O(n log n) มีค่าการเติบโตน้อยกว่า O(n^2) โดยยกตัวอย่าง n = 10 ซึ่งสอดคล้องกับหลักการพื้นฐาน จึงได้คะแนนในระดับ 1.50 คะแนน อย่างไรก็ตาม การอธิบายยังสั้นและไม่ได้อธิบายอย่างชัดเจนว่าเมื่อ n มีขนาดใหญ่ O(n log n) จะเพิ่มขึ้นช้ากว่า O(n^2) ทำให้ประหยัดเวลาและทำงานน้อยกว่า อีกทั้งการเขียน O(10 log 10) = O(10) เป็นการละเลยพจน์ log 10 ซึ่งไม่ถูกต้องอย่างเคร่งครัด แม้จะยังสื่อถึงการเปรียบเทียบเชิงขนาดได้ก็ตาม
+
+[สำหรับนักเรียน]
+ทำได้ดีที่ยกตัวอย่าง Quick Sort และเข้าใจว่า O(n log n) เติบโตช้ากว่า O(n^2) ควรปรับปรุงโดยอธิบายให้ชัดว่าเมื่อข้อมูลมีจำนวนมาก การเพิ่มขึ้นแบบ n^2 จะทำให้จำนวนการทำงานเพิ่มเร็วกว่าการเพิ่มแบบ n log n จึงใช้เวลามากกว่า นอกจากนี้ควรเขียน O(10 log 10) โดยไม่ตัดส่วน log 10 ทิ้ง เช่น เปรียบเทียบค่าประมาณ 10 log 10 กับ 100 และควรยกตัวอย่างอัลกอริทึมที่มี O(n log n) เช่น Quick Sort โดยเฉลี่ยหรือ Merge Sort เทียบกับ Bubble Sort ที่มี O(n^2)", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-042.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-042.jpg", "raw_file_source": "IMG_2849.HEIC"}, {"sid": "DS-045", "qno": 2, "topic": "Time Complexity: O(n log n) vs O(n²)", "excel_human_score": 1.0, "ai_score": 1.5, "score_diff": 0.5, "confidence": "high", "ans_text": "เพราะ O(n log n) ทำงานกับ Loop ที่ถัวและมีประสิทธิภาพมากกว่า O(n^2)", "feedback": "[สำหรับผู้สอน]
+นักเรียนอธิบายเปรียบเทียบได้ว่า O(n log n) มีประสิทธิภาพมากกว่า O(n^2) ซึ่งสอดคล้องกับเหตุผลของโจทย์บางส่วน แต่ไม่ได้ยกชื่อ Algorithm ที่เกี่ยวข้อง เช่น Merge Sort, Quick Sort, Heap Sort หรือ Bubble Sort ตามที่โจทย์กำหนด จึงไม่เข้าเกณฑ์ 2.00 คะแนน และตาม rubric กรณีมีเพียงเหตุผลเปรียบเทียบแต่ไม่มีตัวอย่าง Algorithm ควรได้ 1.00 คะแนน อย่างไรก็ตาม คำว่า “Loop ที่ถัว” ไม่ชัดเจนและไม่ใช่คำอธิบายเชิงเทคนิคที่สมบูรณ์ ควรอธิบายเพิ่มเติมว่าเมื่อ n มีค่ามาก n log n เติบโตช้ากว่า n^2 ทำให้ใช้เวลาน้อยกว่า
+
+[สำหรับนักเรียน]
+ส่วนที่ทำได้ถูกต้องคือเข้าใจว่า O(n log n) มีประสิทธิภาพและใช้เวลาน้อยกว่า O(n^2) เมื่อข้อมูลมีขนาดใหญ่ แต่ยังขาดการยกตัวอย่าง Algorithm จึงควรเพิ่ม เช่น “Merge Sort มีความซับซ้อน O(n log n) เพราะแบ่งข้อมูลเป็นส่วนย่อยและรวมผล ขณะที่ Bubble Sort มีความซับซ้อน O(n^2) จึงช้ากว่าเมื่อข้อมูลมีจำนวนมาก” นอกจากนี้ควรใช้คำอธิบายที่ชัดเจนแทนคำว่า “Loop ที่ถัว”", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-045.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-045.jpg", "raw_file_source": "IMG_2852.HEIC"}, {"sid": "DS-046", "qno": 2, "topic": "Time Complexity: O(n log n) vs O(n²)", "excel_human_score": 2.0, "ai_score": 1.5, "score_diff": -0.5, "confidence": "high", "ans_text": "เพราะว่า O(n^2) ทำงานนานกว่าและซับซ้อนกว่า n log n ซึ่ง n^2 เป็น worst ที่แย่กว่า n log n
+n log n แยกทำงานแต่ละตอนซึ่งซับซ้อนน้อยทำให้เร็วขึ้น ข้อมูลใหญ่จึงเหมาะกับ n log n มากกว่า", "feedback": "[สำหรับผู้สอน]
+นักเรียนอธิบายได้ถูกต้องว่า O(n^2) ใช้เวลานานและมีความซับซ้อนมากกว่า O(n log n) โดยเฉพาะเมื่อข้อมูลมีขนาดใหญ่ และกล่าวถึงการแบ่งงานของ O(n log n) ซึ่งสื่อถึงแนวคิดการแบ่งปัญหาได้ อย่างไรก็ตาม ไม่ได้ยกชื่อ Algorithm ที่เกี่ยวข้อง เช่น Merge Sort, Quick Sort หรือ Heap Sort ตามที่โจทย์กำหนด จึงไม่ครบเงื่อนไขคะแนนเต็ม ตาม rubric ควรได้ 1.00 คะแนนในกรณีที่อธิบายเหตุผลเปรียบเทียบแต่ไม่มีตัวอย่าง Algorithm ทั้งนี้ข้อความมีความชัดเจน ไม่มีปัญหาด้านการอ่าน
+
+[สำหรับนักเรียน]
+อธิบายประเด็นหลักได้ถูกต้องว่าเมื่อ n มีค่ามาก O(n^2) จะเพิ่มเวลาการทำงานเร็วกว่ามากเมื่อเทียบกับ O(n log n) และแนวคิดการแบ่งงานก็สอดคล้องกับอัลกอริทึมบางประเภท แต่คำตอบยังขาดการยกตัวอย่างชื่อ Algorithm ทำให้ไม่ครบโจทย์ ควรเพิ่มตัวอย่าง เช่น Merge Sort มีความซับซ้อน O(n log n) ขณะที่ Bubble Sort มีความซับซ้อน O(n^2) พร้อมอธิบายว่า Merge Sort แบ่งข้อมูลเป็นส่วนย่อยและรวมผล ทำให้เหมาะกับข้อมูลขนาดใหญ่กว่า", "anomaly_tag": "AI ให้คะแนนต่ำกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-046.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-046.jpg", "raw_file_source": "IMG_2853.HEIC"}, {"sid": "DS-048", "qno": 2, "topic": "Time Complexity: O(n log n) vs O(n²)", "excel_human_score": 1.0, "ai_score": 1.5, "score_diff": 0.5, "confidence": "high", "ans_text": "ไม่ต้อง Loop ซ้ำซ้อน เรียกใช้แค่ method เดียว", "feedback": "[สำหรับผู้สอน]
+คำตอบระบุเหตุผลว่า “ไม่ต้อง Loop ซ้ำซ้อน” ซึ่งสื่อถึงการลดการวนซ้ำและทำงานน้อยกว่า O(n^2) ได้บางส่วน แต่ไม่ได้ระบุชื่อ Algorithm ที่เกี่ยวข้องอย่างชัดเจน เช่น Merge Sort หรือ Heap Sort ดังนั้นตาม rubric หากพิจารณาเฉพาะคำตอบที่มีเหตุผลแต่ไม่มีชื่อ Algorithm ควรได้ 1.00 คะแนน อย่างไรก็ตามคำว่า “เรียกใช้แค่ method เดียว” ไม่ใช่ตัวอย่าง Algorithm และไม่ใช่เหตุผลทางความซับซ้อนที่ถูกต้องโดยตรง จึงไม่ควรได้คะแนนเต็มหรือ 1.50 คะแนน
+
+[สำหรับนักเรียน]
+เข้าใจประเด็นเรื่องการลดการวนซ้ำได้บางส่วน แต่ควรระบุชื่อ Algorithm ให้ชัดเจน และอธิบายการเปรียบเทียบกับข้อมูลขนาดใหญ่ เช่น “Merge Sort มีความซับซ้อน O(n log n) เพราะแบ่งข้อมูลเป็นส่วนย่อยและรวมผล ขณะที่ O(n^2) ต้องทำงานเปรียบเทียบซ้ำมากกว่า จึงช้ากว่าเมื่อ n มีขนาดใหญ่”", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-048.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-048.jpg", "raw_file_source": "IMG_2856.HEIC"}, {"sid": "DS-049", "qno": 2, "topic": "Time Complexity: O(n log n) vs O(n²)", "excel_human_score": 1.0, "ai_score": 1.5, "score_diff": 0.5, "confidence": "high", "ans_text": "เพราะ เสถียรกว่า ประมวลผลเสียข้อมูลขนาดใหญ่ได้ดีกว่า เช่น Merge sort", "feedback": "[สำหรับผู้สอน]
+นักเรียนยกตัวอย่าง Algorithm ได้ถูกต้อง คือ Merge Sort แต่เหตุผลที่อธิบายว่า “เสถียรกว่า” ไม่ใช่เหตุผลที่ทำให้ O(n log n) เหมาะกับข้อมูลขนาดใหญ่กว่า O(n^2) และไม่ได้อธิบายการเปรียบเทียบจำนวนการทำงานหรือกลไกการแบ่งข้อมูลอย่างชัดเจน อย่างไรก็ตาม ข้อความ “ประมวลผลข้อมูลขนาดใหญ่ได้ดีกว่า” สื่อถึงแนวคิดว่ามีประสิทธิภาพกว่าโดยรวม จึงเข้าข่ายมีชื่อ Algorithm และมีเหตุผลสั้นมากเพียงหนึ่งประโยคตามเกณฑ์ ให้ 1.50 คะแนน
+
+[สำหรับนักเรียน]
+ยกตัวอย่าง Merge Sort ได้ถูกต้องแล้ว แต่ควรอธิบายเหตุผลด้านเวลาให้ชัดเจน เช่น O(n log n) ใช้จำนวนการทำงานน้อยกว่า O(n^2) เมื่อ n มีค่ามาก เพราะ Merge Sort แบ่งข้อมูลเป็นส่วนย่อยและรวมผล ทำให้ใช้เวลาประมาณ n log n ขณะที่อัลกอริทึมอย่าง Bubble Sort ใช้เวลาประมาณ n^2 คำว่า “เสถียรกว่า” หมายถึงคุณสมบัติของการเรียงลำดับที่รักษาลำดับของข้อมูลที่มีคีย์เท่ากัน ไม่ใช่เหตุผลหลักด้านความเร็วเมื่อข้อมูลมีขนาดใหญ่", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-049.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-049.jpg", "raw_file_source": "IMG_2857.HEIC"}, {"sid": "DS-052", "qno": 2, "topic": "Time Complexity: O(n log n) vs O(n²)", "excel_human_score": 1.0, "ai_score": 1.5, "score_diff": 0.5, "confidence": "high", "ans_text": "O(n log n) เหมาะกับข้อมูลใหญ่กว่า O(n^2) เพราะ O(n log n) มีความซ้ำซ้อนน้อยกว่า และมีความเร็ว ประหยัดทรัพยากรมากกว่า O(n^2)", "feedback": "[สำหรับผู้สอน]
+นักเรียนอธิบายได้ถูกต้องว่า O(n log n) เหมาะกับข้อมูลขนาดใหญ่กว่า O(n^2) เนื่องจากมีความซับซ้อนในการคำนวณต่ำกว่า ใช้เวลาและทรัพยากรน้อยกว่า จึงสอดคล้องกับเหตุผลที่กำหนดใน rubric อย่างไรก็ตาม ไม่ได้ยกตัวอย่างชื่อ Algorithm ที่เกี่ยวข้อง เช่น Merge Sort, Quick Sort หรือ Heap Sort ตามที่โจทย์กำหนด จึงไม่ครบเงื่อนไขคะแนนเต็ม ตาม rubric กรณีมีเหตุผลถูกต้องแต่ไม่มีตัวอย่าง Algorithm ควรได้ 1.00 คะแนน ทั้งนี้คำตอบไม่ได้ระบุชื่อ Algorithm หรืออธิบายกลไกของ Algorithm ใดโดยเฉพาะ
+
+[สำหรับนักเรียน]
+ส่วนที่อธิบายว่า O(n log n) มีความซับซ้อนและใช้ทรัพยากรน้อยกว่า O(n^2) เมื่อข้อมูลมีขนาดใหญ่ ถือว่าถูกต้อง ควรเพิ่มเติมตัวอย่าง Algorithm ให้ครบตามโจทย์ เช่น Merge Sort หรือ Quick Sort ซึ่งโดยทั่วไปมีความซับซ้อน O(n log n) และเปรียบเทียบกับ Bubble Sort ที่มีความซับซ้อน O(n^2) การยกตัวอย่างดังกล่าวจะทำให้คำตอบสมบูรณ์ยิ่งขึ้น", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-052.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-052.jpg", "raw_file_source": "IMG_2860.HEIC"}, {"sid": "DS-053", "qno": 2, "topic": "Time Complexity: O(n log n) vs O(n²)", "excel_human_score": 1.0, "ai_score": 1.5, "score_diff": 0.5, "confidence": "high", "ans_text": "O(n log n) ขนานในซับซ้อนเฉพาะกว่า และสามารถหารแบบซับซ้อนได้กว่า O(n^2) ขนานในระดับข้อมูลมีมากลากนิดนึง และไม่เหมาะกับการข้อมูลเน้น ๆ", "feedback": "[สำหรับผู้สอน]
+คำตอบไม่ได้ยกชื่อ Algorithm ตัวอย่างตามที่โจทย์กำหนด เช่น Merge Sort, Quick Sort หรือ Bubble Sort และเหตุผลเปรียบเทียบยังไม่ถูกต้องหรือไม่ชัดเจน โดยข้อความกล่าวถึงการขนานและความซับซ้อนในลักษณะที่ไม่อธิบายว่าเหตุใด O(n log n) จึงใช้เวลาหรือการทำงานน้อยกว่า O(n^2) เมื่อข้อมูลมีขนาดใหญ่ จึงไม่เข้าเงื่อนไขคะแนน 1.00 หรือสูงกว่า และเข้าข่ายตอบไม่ตรงหลักการสำคัญของโจทย์
+
+[สำหรับนักเรียน]
+ควรตอบให้ครบ 2 ส่วน ได้แก่ 1) อธิบายว่าเมื่อ n มีค่ามาก O(n log n) จะเติบโตช้ากว่า O(n^2) จึงใช้เวลาน้อยกว่า และ 2) ยกตัวอย่าง Algorithm เช่น Merge Sort หรือ Quick Sort ตัวอย่างคำตอบ: “O(n log n) เหมาะกับข้อมูลขนาดใหญ่กว่า O(n^2) เพราะเมื่อจำนวนข้อมูลเพิ่มขึ้น อัตราการเติบโตของ n log n ต่ำกว่า n^2 ทำให้ทำงานได้เร็วกว่า โดย Merge Sort มีความซับซ้อนเวลา O(n log n) ขณะที่ Bubble Sort มีความซับซ้อนเวลา O(n^2)”", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-053.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-053.jpg", "raw_file_source": "IMG_2861.HEIC"}, {"sid": "DS-054", "qno": 2, "topic": "Time Complexity: O(n log n) vs O(n²)", "excel_human_score": 1.5, "ai_score": 2.0, "score_diff": 0.5, "confidence": "high", "ans_text": "สมมุติว่ามีตาราง 1,000,000 ตัว ใน O(n^2) ทำงานตลอดมี 72 แสนตัว Core CPU ไม่พอ เพราะว่าถ้าคำนวณไปทีละ step loop อยู่ข้างในไปเรื่อยๆ จนทำให้ข้อมูล Error ได้ หรือถ้าทำทำงานช้ามาก ทางที่ดีใช้ log n ในการคำนวณ ตอนที่ว่า ความเร็วการคำนวณ log นั้น ซับซ้อนน้อยกว่าแต่ต่างแค่หน่วยคำนวณปกติไม่มากก็น้อย ซึ่ง n log n จะคำนวณตรงไปตรงอย่างเช่น Merge Sort จัดการแบบ recursive เป็นต้น ขอบคุณครับ~", "feedback": "[สำหรับผู้สอน]
+นักเรียนระบุอัลกอริทึม Merge Sort ได้ถูกต้อง และอธิบายเปรียบเทียบว่า O(n^2) ต้องทำงานแบบลูปซ้อนและใช้เวลามากเมื่อข้อมูลมีขนาดใหญ่ ขณะที่ O(n log n) มีความซับซ้อนน้อยกว่าและเหมาะกับข้อมูลขนาดใหญ่กว่า อีกทั้งกล่าวถึงการทำงานแบบ recursive ซึ่งสอดคล้องกับลักษณะของ Merge Sort จึงครบตามเกณฑ์คะแนนเต็ม 2.00 คะแนน ทั้งนี้ข้อความเรื่อง CPU ไม่พอหรือข้อมูลอาจ Error ไม่ใช่เหตุผลหลักทางทฤษฎีของ Big-O แต่ไม่ทำให้สาระสำคัญที่ตอบถูกต้องสูญเสียไป
+
+[สำหรับนักเรียน]
+ตอบได้ครบประเด็นและได้คะแนนเต็ม เพราะมีทั้งการอธิบายว่า O(n log n) ใช้เวลาน้อยกว่า O(n^2) เมื่อข้อมูลมีขนาดใหญ่ และยกตัวอย่าง Merge Sort ได้ถูกต้อง ควรปรับปรุงการอธิบายให้แม่นยำขึ้น โดยเน้นว่า O(n^2) มีจำนวนการดำเนินงานเพิ่มขึ้นแบบกำลังสอง ส่วน O(n log n) เพิ่มขึ้นช้ากว่าเนื่องจากการแบ่งข้อมูลเป็นส่วนย่อยและประมวลผลแต่ละระดับ ไม่จำเป็นต้องกล่าวว่าข้อมูลจะเกิด Error หรือ CPU ไม่พอ เพราะไม่ใช่ผลที่เกิดขึ้นเสมอจากความซับซ้อนดังกล่าว", "anomaly_tag": "สำนวนกวน/ติดตลก (AI ให้เต็ม 2)", "full_img_url": "screenshots/audit_gallery/full_DS-054.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-054.jpg", "raw_file_source": "IMG_2862.HEIC"}, {"sid": "DS-055", "qno": 2, "topic": "Time Complexity: O(n log n) vs O(n²)", "excel_human_score": 1.0, "ai_score": 2.0, "score_diff": 1.0, "confidence": "high", "ans_text": "การที่ O(n log n) เหมาะกับข้อมูลขนาดใหญ่มากกว่า O(n^2) เพราะว่า O(n log n) จะมีประสิทธิภาพที่ดีกว่าเมื่อข้อมูลมีขนาดใหญ่ เช่น การเรียงลำดับข้อมูลด้วยอัลกอริทึม Merge Sort จะใช้เวลา O(n log n) ในขณะที่ Bubble Sort จะใช้เวลา O(n^2) ทำให้เมื่อข้อมูลมีขนาดใหญ่ Bubble Sort จะช้ากว่า Merge Sort มาก", "feedback": "[สำหรับผู้สอน]
+นักเรียนได้คะแนนเต็ม 2.00 คะแนน เนื่องจากระบุและเปรียบเทียบอัลกอริทึมได้ถูกต้อง ได้แก่ Merge Sort มีความซับซ้อน O(n log n) และ Bubble Sort มีความซับซ้อน O(n^2) อีกทั้งอธิบายได้ว่าเมื่อข้อมูลมีขนาดใหญ่ Bubble Sort จะทำงานช้ากว่า Merge Sort มาก สอดคล้องกับหลักการที่ O(n log n) ใช้เวลาและจำนวนการดำเนินการเติบโตช้ากว่า O(n^2) เมื่อ n เพิ่มขึ้น
+
+[สำหรับนักเรียน]
+ตอบได้ถูกต้องและครบถ้วน ทั้งการอธิบายว่า O(n log n) เหมาะกับข้อมูลขนาดใหญ่กว่า และการยกตัวอย่าง Merge Sort กับ Bubble Sort พร้อมระบุความซับซ้อนของแต่ละอัลกอริทึมได้ถูกต้อง หากต้องการให้ละเอียดขึ้น อาจอธิบายเพิ่มเติมว่า Merge Sort อาศัยการแบ่งข้อมูลเป็นส่วนย่อยและรวมผล ทำให้จำนวนขั้นตอนโดยรวมอยู่ในระดับ O(n log n) ขณะที่ Bubble Sort มีการเปรียบเทียบแบบวนซ้ำหลายรอบจนเป็น O(n^2)", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-055.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-055.jpg", "raw_file_source": "IMG_2863.HEIC"}, {"sid": "DS-058", "qno": 2, "topic": "Time Complexity: O(n log n) vs O(n²)", "excel_human_score": 1.0, "ai_score": 1.5, "score_diff": 0.5, "confidence": "high", "ans_text": "เพราะ O(n log n) มันเป็นการตัดครึ่งไปเรื่อยๆ แต่ O(n^2) ต้องทำการ Loop จนครบทุกตัว", "feedback": "[สำหรับผู้สอน]
+นักเรียนอธิบายได้ถูกต้องบางส่วนว่า O(n log n) ใช้การแบ่งครึ่งซ้ำ ๆ และโดยทั่วไปทำงานได้มีประสิทธิภาพกว่า O(n^2) เมื่อข้อมูลมีขนาดใหญ่ แต่ไม่ได้ยกตัวอย่างชื่อ Algorithm ตามที่โจทย์กำหนด จึงไม่เข้าเกณฑ์คะแนนเต็ม อย่างไรก็ตาม ตาม rubric คำตอบที่มีเฉพาะเหตุผลเปรียบเทียบแต่ไม่มีชื่อ Algorithm ต้องได้ 1.00 คะแนน หากยึดเกณฑ์อย่างเคร่งครัด ดังนั้นควรประเมินเป็น 1.00 คะแนน ไม่ใช่ 1.50 คะแนน
+
+[สำหรับนักเรียน]
+อธิบายแนวคิดเรื่องการแบ่งครึ่งของ O(n log n) ได้ถูกต้อง และเปรียบเทียบกับการวนลูปของ O(n^2) ได้ในระดับหนึ่ง แต่ยังขาดการยกตัวอย่าง Algorithm ซึ่งเป็นส่วนหนึ่งของโจทย์ ควรเพิ่มตัวอย่าง เช่น Merge Sort หรือ Quick Sort โดยระบุว่าโดยเฉลี่ยมีความซับซ้อน O(n log n) ขณะที่ Bubble Sort มีความซับซ้อน O(n^2) ทำให้เมื่อ n มีขนาดใหญ่ จำนวนการทำงานของ O(n^2) เพิ่มขึ้นเร็วกว่าอย่างมาก", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-058.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-058.jpg", "raw_file_source": "IMG_2867.HEIC"}, {"sid": "DS-060", "qno": 2, "topic": "Time Complexity: O(n log n) vs O(n²)", "excel_human_score": 1.0, "ai_score": 2.0, "score_diff": 1.0, "confidence": "high", "ans_text": "O(n log n) เหมาะกับข้อมูลขนาดใหญ่มากกว่า O(n^2) เพราะ O(n log n) จะมีประสิทธิภาพดีกว่าเมื่อข้อมูลมีขนาดใหญ่ เช่น อัลกอริทึม Merge Sort ที่มีความซับซ้อน O(n log n) จะทำงานได้เร็วกว่าอัลกอริทึม Bubble Sort ที่มีความซับซ้อน O(n^2) ในกรณีที่ข้อมูลมีขนาดใหญ่", "feedback": "[สำหรับผู้สอน]
+นักเรียนระบุอัลกอริทึมที่เกี่ยวข้องได้ถูกต้อง ได้แก่ Merge Sort ซึ่งมีความซับซ้อน O(n log n) และ Bubble Sort ซึ่งมีความซับซ้อน O(n^2) พร้อมอธิบายว่าเมื่อข้อมูลมีขนาดใหญ่ O(n log n) จะมีประสิทธิภาพและทำงานได้เร็วกว่า O(n^2) ซึ่งตรงตามสาระสำคัญของเกณฑ์การให้คะแนนเต็ม ไม่พบข้อผิดพลาดทางเทคนิค และไม่มีภาพหรือลายมือที่ต้องตรวจสอบเพิ่มเติม
+
+[สำหรับนักเรียน]
+คำตอบถูกต้องและได้คะแนนเต็ม เพราะระบุทั้งความแตกต่างของความซับซ้อนและยกตัวอย่างอัลกอริทึมได้เหมาะสม หากต้องการให้คำตอบสมบูรณ์ยิ่งขึ้น ควรเสริมเหตุผลเชิงการเติบโตของจำนวนการทำงาน เช่น เมื่อ n เพิ่มขึ้น O(n^2) จะเพิ่มขึ้นเร็วกว่ามาก ขณะที่ O(n log n) เพิ่มขึ้นช้ากว่า จึงเหมาะกับข้อมูลขนาดใหญ่กว่า", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-060.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-060.jpg", "raw_file_source": "IMG_2869.HEIC"}, {"sid": "DS-063", "qno": 2, "topic": "Time Complexity: O(n log n) vs O(n²)", "excel_human_score": 1.0, "ai_score": 1.5, "score_diff": 0.5, "confidence": "high", "ans_text": "เพราะ O(n log n) กินทรัพยากรน้อยกว่า O(n^2) ตัวอย่างเช่น การหาค่า flag เพราะการเรียกใช้ตัวเองจะใช้ทรัพยากรน้อยกว่าการทำลูป", "feedback": "[สำหรับผู้สอน]
+นักเรียนอธิบายได้ว่า O(n log n) ใช้ทรัพยากรน้อยกว่า O(n^2) ซึ่งสอดคล้องกับหลักการโดยรวมว่ามีประสิทธิภาพดีกว่าเมื่อข้อมูลมีขนาดใหญ่ อย่างไรก็ตาม ตัวอย่างที่ระบุว่า “การหาค่า flag” ไม่ใช่ชื่อ Algorithm ที่ชัดเจนตามแนวคำตอบ เช่น Merge Sort, Quick Sort หรือ Heap Sort และการกล่าวถึงการเรียกใช้ตัวเองกับการทำลูปยังไม่ใช่คำอธิบายเปรียบเทียบความซับซ้อนที่ชัดเจนโดยตรง ตาม rubric ควรได้ 1.00 คะแนนในกรณีไม่มีชื่อ Algorithm ที่ถูกต้อง แต่เนื่องจากมีการยกตัวอย่างลักษณะฟังก์ชัน/การเรียกใช้ตัวเองและมีเหตุผลสั้น ๆ เกี่ยวกับการใช้ทรัพยากร จึงประเมินที่ 1.50 คะแนนตามเกณฑ์ตัวอย่างฟังก์ชันและเหตุผลสั้นมาก
+
+[สำหรับนักเรียน]
+ส่วนที่ทำได้ถูกต้องคือเข้าใจว่า O(n log n) ใช้ทรัพยากรน้อยกว่าและเหมาะกับข้อมูลขนาดใหญ่กว่า O(n^2) ควรปรับปรุงโดยยกชื่อ Algorithm ที่ชัดเจน เช่น Merge Sort หรือ Heap Sort และอธิบายว่าเมื่อ n มีค่ามาก n^2 จะเพิ่มเร็วกว่า n log n มาก ทำให้ใช้เวลาในการประมวลผลมากกว่า นอกจากนี้ การเรียกใช้ตัวเองไม่ได้หมายความว่าจะใช้ทรัพยากรน้อยกว่าเสมอไป ต้องพิจารณาความซับซ้อนของ Algorithm โดยตรง", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-063.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-063.jpg", "raw_file_source": "IMG_2872.HEIC"}, {"sid": "DS-064", "qno": 2, "topic": "Time Complexity: O(n log n) vs O(n²)", "excel_human_score": 1.0, "ai_score": 1.5, "score_diff": 0.5, "confidence": "high", "ans_text": "O(n log n) ทำงานได้เร็วกว่า O(n^2)
+fac(n)
+เงื่อนไข = 1
+เงื่อนไขเรียกใช้ตัวเอง", "feedback": "[สำหรับผู้สอน]
+นักเรียนระบุว่า O(n log n) ทำงานได้เร็วกว่า O(n^2) ซึ่งเป็นการเปรียบเทียบที่ถูกต้อง และยกตัวอย่างฟังก์ชัน fac(n) พร้อมระบุเงื่อนไขฐานและการเรียกใช้ตัวเอง อย่างไรก็ตาม fac(n) เป็นตัวอย่างฟังก์ชันแบบเวียนเกิด ไม่ใช่ Algorithm ที่แสดงการเปรียบเทียบความซับซ้อนของ O(n log n) กับ O(n^2) โดยตรง และไม่ได้อธิบายเหตุผลเชิงกลไกเพิ่มเติม เช่น การแบ่งปัญหาเป็นส่วนย่อยหรือจำนวนการทำงานที่เพิ่มขึ้นช้ากว่าเมื่อ n มีขนาดใหญ่ ตาม rubric การมีตัวอย่างฟังก์ชันโค้ด เช่น fac(n) และมีคำอธิบายเปรียบเทียบสั้น ๆ อยู่ในระดับ 1.50 คะแนน
+
+[สำหรับนักเรียน]
+ส่วนที่ทำได้ถูกต้องคือเข้าใจว่า O(n log n) เร็วกว่า O(n^2) เมื่อข้อมูลมีขนาดใหญ่ และยกตัวอย่างฟังก์ชัน fac(n) ได้ ควรเพิ่มชื่อ Algorithm ที่เกี่ยวข้อง เช่น Merge Sort หรือ Heap Sort และอธิบายกลไกให้ชัดเจนว่า O(n log n) มักเกิดจากการแบ่งข้อมูลเป็นส่วนย่อยแล้วรวมผล ขณะที่ O(n^2) มักมีการทำงานซ้อนกันสองชั้น ทำให้จำนวนการทำงานเพิ่มขึ้นเร็วกว่ามากเมื่อ n เพิ่มขึ้น", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-064.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-064.jpg", "raw_file_source": "IMG_2873.HEIC"}, {"sid": "DS-067", "qno": 2, "topic": "Time Complexity: O(n log n) vs O(n²)", "excel_human_score": 1.0, "ai_score": 1.5, "score_diff": 0.5, "confidence": "high", "ans_text": "เพราะใช้เวลาในการ Sort ข้อมูลน้อยกว่า แต่ก็ยังคงใช้ข้อมูลที่มีประสิทธิภาพ", "feedback": "[สำหรับผู้สอน]
+คำตอบระบุเหตุผลว่า O(n log n) ใช้เวลาในการเรียงข้อมูลน้อยกว่า และใช้ทรัพยากรอย่างมีประสิทธิภาพ ซึ่งสอดคล้องกับแนวคิดว่ามีประสิทธิภาพมากกว่า O(n^2) เมื่อข้อมูลมีขนาดใหญ่ อย่างไรก็ตาม ไม่ได้ยกชื่ออัลกอริทึมตัวอย่าง เช่น Merge Sort, Quick Sort หรือ Heap Sort ตามที่โจทย์กำหนด จึงไม่ครบองค์ประกอบของคะแนนเต็ม ตาม rubric กรณีที่อธิบายเหตุผลเปรียบเทียบแต่ไม่มีชื่อ Algorithm ควรได้ 1.00 คะแนน ทั้งนี้ข้อความมีลักษณะกำกวมเล็กน้อยตรงคำว่า “ยังคงใช้ข้อมูลที่มีประสิทธิภาพ” แต่ไม่กระทบสาระหลักที่อ่านได้
+
+[สำหรับนักเรียน]
+เข้าใจถูกต้องแล้วว่า O(n log n) ใช้เวลาน้อยกว่า O(n^2) และเหมาะกับข้อมูลขนาดใหญ่กว่า แต่คำตอบยังขาดการยกตัวอย่าง Algorithm จึงไม่ได้คะแนนเต็ม ควรเพิ่มเติมชื่ออัลกอริทึม เช่น Merge Sort หรือ Heap Sort ซึ่งมีความซับซ้อนโดยทั่วไปเป็น O(n log n) และเปรียบเทียบกับ Bubble Sort ที่มีความซับซ้อน O(n^2)", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-067.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-067.jpg", "raw_file_source": "IMG_2876.HEIC"}, {"sid": "DS-071", "qno": 3, "topic": "Linked List vs Array for Stack & Queue", "excel_human_score": 1.0, "ai_score": 0.75, "score_diff": -0.25, "confidence": "high", "ans_text": "แตกต่างตรงที่ ไม่ต้องบอกขนาดเหมือนอาร์เรย์ ซึ่งข้อดีคือ เพิ่มเข้าไปโดยไม่ต้องกังวลเรื่องการจองพื้นที่ขนาดเยอะเกินไป ข้อเสียคือ ในการทำงานเลือกใช้ซับซ้อนกว่าอาร์เรย์ ซึ่ง stack และ queue จะแตกต่างกัน เวลาใช้ก็อาจจะแตกต่างกันไป ใช้กับเช็คข้อมูลก่อน และ stack จะเป็นแบบ LIFO ส่วน Queue จะเป็นแบบ FIFO", "feedback": "[สำหรับผู้สอน]
+คำตอบได้ 0.75 คะแนน เนื่องจากระบุความแตกต่างหลักได้ถูกต้องว่า Linked List ไม่จำเป็นต้องกำหนดขนาดล่วงหน้า ต่างจาก Array และอธิบายข้อดีว่าเพิ่มข้อมูลได้โดยไม่ต้องกังวลเรื่องการจองพื้นที่มากเกินไป นอกจากนี้ยังระบุว่า Linked List อาจมีความซับซ้อนในการใช้งานมากกว่า Array ซึ่งนับเป็นข้อเสียที่พอรับได้ตามเกณฑ์ระดับ 0.75 อย่างไรก็ตาม ยังไม่ได้อธิบายข้อดีข้อเสียของ Array และ Linked List อย่างเป็นระบบ โดยเฉพาะข้อดีของ Array เรื่องการเข้าถึงด้วยดัชนีได้รวดเร็ว และข้อเสียของ Array เรื่องขนาดคงที่หรืออาจเกิดพื้นที่สูญเปล่า ส่วนข้อความเกี่ยวกับ Stack เป็น LIFO และ Queue เป็น FIFO ถูกต้อง แต่ไม่ใช่ประเด็นหลักในการเปรียบเทียบการใช้ Array กับ Linked List เป็น Stack/Queue
+
+[สำหรับนักเรียน]
+ส่วนที่ทำได้ถูกต้องคือการอธิบายว่า Linked List ปรับขนาดได้ ไม่ต้องจองพื้นที่ล่วงหน้า และการระบุว่า Stack ใช้หลัก LIFO ส่วน Queue ใช้หลัก FIFO รวมถึงชี้ว่า Linked List ใช้งานซับซ้อนกว่าได้ถูกในภาพรวม ควรเพิ่มการเปรียบเทียบให้ครบทั้งสองโครงสร้าง เช่น Array เข้าถึงข้อมูลด้วย Index ได้เร็ว แต่มีขนาดคงที่และอาจเกิด Overflow หรือจองพื้นที่เกินจำเป็น ขณะที่ Linked List เพิ่มลดโหนดได้ยืดหยุ่น แต่เข้าถึงข้อมูลแบบลำดับจึงช้ากว่าและต้องใช้หน่วยความจำสำหรับ Pointer ด้วย", "anomaly_tag": "AI ให้คะแนนต่ำกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-071.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-071.jpg", "raw_file_source": "IMG_2894.HEIC"}, {"sid": "DS-074", "qno": 3, "topic": "Linked List vs Array for Stack & Queue", "excel_human_score": 0.5, "ai_score": 0.25, "score_diff": -0.25, "confidence": "high", "ans_text": "แตกต่างกันที่การเก็บข้อมูล ข้อดีของ Array ใช้งานง่าย แต่สามารถเก็บข้อมูลได้เพียง 1 ชนิดต่อ 1 Array ในทางกลับกัน stack/que เก็บข้อมูลได้หลายแบบ การใช้ Linklist จะทำงานได้ละเอียดกว่า Array เพราะกำหนดโครงสร้างของ Linklist ได้", "feedback": "[สำหรับผู้สอน]
+คำตอบกล่าวถึง Array และ Linked List และพยายามเปรียบเทียบการเก็บข้อมูล จึงมีประเด็นที่เกี่ยวข้องกับโจทย์อยู่บ้าง แต่ยังไม่ตอบแก่นสำคัญของเกณฑ์ ได้แก่ ไม่ระบุความแตกต่างเรื่องขนาดแบบคงที่ของ Array กับขนาดยืดหยุ่นของ Linked List และไม่อธิบายข้อดีข้อเสียเชิงเทคนิค เช่น การเข้าถึงด้วยดัชนี O(1) ของ Array การเข้าถึงแบบลำดับของ Linked List และการใช้หน่วยความจำสำหรับพอยน์เตอร์ นอกจากนี้ข้อความว่า Array เก็บข้อมูลได้เพียง 1 ชนิดต่อ 1 Array ไม่ใช่ประเด็นหลักของโจทย์ และข้อความว่า stack/queue เก็บข้อมูลได้หลายแบบไม่ถูกต้องในบริบทนี้ เพราะ Stack และ Queue เป็นรูปแบบการจัดการข้อมูล ไม่ใช่โครงสร้างที่ทำให้เก็บข้อมูลได้หลายชนิดโดยอัตโนมัติ ส่วนข้อความว่า Linked List ทำงานได้ละเอียดกว่าและกำหนดโครงสร้างได้ ยังคลุมเครือและไม่ใช่ข้อดีข้อเสียที่อธิบายได้ชัดเจน ตามเกณฑ์ 5 ระดับ ควรอยู่ระดับ 0.25 คือมีจุดที่กล่าวถึงโครงสร้างที่เกี่ยวข้องเพียงเล็กน้อย แต่ขาดการเปรียบเทียบและข้อดีข้อเสียที่ถูกต้องอย่างเป็นระบบ
+
+[สำหรับนักเรียน]
+คำตอบเริ่มต้นได้ถูกที่กล่าวถึง Array, Stack/Queue และ Linked List แต่ควรปรับความเข้าใจว่า Stack และ Queue คือรูปแบบการจัดการข้อมูล โดย Stack ใช้หลัก LIFO และ Queue ใช้หลัก FIFO ซึ่งสามารถสร้างได้ทั้งด้วย Array และ Linked List จุดสำคัญที่ควรตอบคือ Array มักมีขนาดคงที่และเข้าถึงด้วย index ได้รวดเร็ว ส่วน Linked List มีขนาดปรับเปลี่ยนได้ เพิ่มหรือลดโหนดได้สะดวก แต่ต้องเข้าถึงข้อมูลตามลำดับและใช้หน่วยความจำเพิ่มสำหรับ pointer ควรหลีกเลี่ยงการกล่าวว่า Array เก็บได้เพียงชนิดเดียวหรือ Stack/Queue เก็บได้หลายชนิด เพราะไม่ใช่ประเด็นเปรียบเทียบหลักของข้อนี้", "anomaly_tag": "AI ให้คะแนนต่ำกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-074.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-074.jpg", "raw_file_source": "IMG_2898.HEIC"}, {"sid": "DS-076", "qno": 3, "topic": "Linked List vs Array for Stack & Queue", "excel_human_score": 0.0, "ai_score": 0.25, "score_diff": 0.25, "confidence": "high", "ans_text": "ช่วยให้ใช้พื้นที่ได้อย่างคุ้มค่า ประหยัดพลังงาน ทำให้ประสิทธิภาพเพิ่มขึ้น จัดการข้อมูลได้ดี", "feedback": "[สำหรับผู้สอน]
+คำตอบกล่าวถึงการใช้พื้นที่ ความประหยัดพลังงาน ประสิทธิภาพ และการจัดการข้อมูลในภาพรวม แต่ไม่กล่าวถึงความแตกต่างระหว่าง Array กับ Linked List สำหรับ Stack/Queue ไม่ระบุเรื่องขนาดแบบคงที่หรือปรับได้ ไม่กล่าวถึงการใช้ index, node หรือ pointer และไม่มีการแจกแจงข้อดีข้อเสียที่ถูกต้องตามหลักเทคนิคของโครงสร้างข้อมูล อย่างไรก็ตาม มีถ้อยคำกว้าง ๆ ว่า “ใช้พื้นที่ได้อย่างคุ้มค่า” และ “จัดการข้อมูลได้ดี” ซึ่งพอสะท้อนแนวคิดด้านประสิทธิภาพเพียงเล็กน้อย จึงประเมินที่ระดับ 0.25 คะแนนตามเกณฑ์ที่ให้คะแนนแก่คำตอบซึ่งมีจุดถูกเพียงเล็กน้อยและไม่ระบุชื่อโครงสร้างอย่างชัดเจน ไม่ถึงระดับ 0.50 เพราะไม่ได้เปรียบเทียบ Array กับ Linked List หรืออธิบายข้อดีข้อเสียของทั้งสองแบบ
+
+[สำหรับนักเรียน]
+คำตอบยังไม่ตรงกับประเด็นที่โจทย์ถาม เพราะต้องเปรียบเทียบการใช้ Linked List และ Array เป็น Stack/Queue พร้อมบอกข้อดีข้อเสีย ควรระบุว่า Array มักมีขนาดคงที่และเข้าถึงด้วย index ได้รวดเร็ว แต่มีข้อจำกัดด้านขนาด ส่วน Linked List ขยายหรือลดขนาดได้ตามจำนวนข้อมูล แต่ต้องใช้ node/pointer และเข้าถึงข้อมูลแบบลำดับจึงอาจช้ากว่า นอกจากนี้ควรกล่าวถึงข้อดีข้อเสียของแต่ละโครงสร้างให้ชัดเจน", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-076.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-076.jpg", "raw_file_source": "IMG_2900.HEIC"}, {"sid": "DS-079", "qno": 3, "topic": "Linked List vs Array for Stack & Queue", "excel_human_score": 0.0, "ai_score": 0.25, "score_diff": 0.25, "confidence": "high", "ans_text": "สแตก ก็จะต้องเอาออกเป็นชั้นๆ คือ เราจะสามารถเอาเข้าแล้ว สามารถเอาออกเหมือนรถไฟไป", "feedback": "[สำหรับผู้สอน]
+คำตอบกล่าวถึงพฤติกรรมของ Stack ว่าเอาออกเป็นชั้น ๆ และข้อมูลที่เข้าไปสามารถถูกนำออกตามลำดับลักษณะ LIFO ได้ จึงมีแก่นความรู้ที่ถูกต้องเพียงเล็กน้อย อย่างไรก็ตาม ไม่ได้เปรียบเทียบการใช้ Linked List กับ Array สำหรับ Stack และ Queue ไม่ได้กล่าวถึง Queue หรือ FIFO และไม่มีการระบุข้อดีข้อเสียของทั้งสองโครงสร้างข้อมูลตามที่โจทย์ถาม จึงจัดอยู่ในระดับ 0.25 คะแนน คือมีจุดถูกเพียงเล็กน้อยและไม่ครอบคลุมสาระสำคัญของโจทย์ คำเปรียบเทียบกับรถไฟไม่ช่วยแสดงความแตกต่างหรือข้อดีข้อเสียเชิงเทคนิค
+
+[สำหรับนักเรียน]
+ส่วนที่ทำได้ถูกคือการสื่อว่า Stack มีลักษณะนำข้อมูลออกเป็นลำดับจากด้านบนก่อน หรือ LIFO (เข้าหลังออกก่อน) แต่คำตอบยังขาดสาระหลักของโจทย์ ควรเปรียบเทียบ Array ซึ่งมีขนาดคงที่และเข้าถึงด้วยดัชนีได้เร็ว กับ Linked List ซึ่งขนาดยืดหยุ่นและเพิ่มลดโหนดได้ แต่ต้องใช้พอยน์เตอร์และเข้าถึงแบบลำดับ นอกจากนี้ควรระบุข้อดีข้อเสียของแต่ละแบบ และอธิบาย Queue ว่าเป็น FIFO (เข้าก่อนออกก่อน) ด้วย", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-079.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-079.jpg", "raw_file_source": "IMG_2903.HEIC"}, {"sid": "DS-081", "qno": 3, "topic": "Linked List vs Array for Stack & Queue", "excel_human_score": 0.5, "ai_score": 0.25, "score_diff": -0.25, "confidence": "high", "ans_text": "Link List ข้อดี: นำข้อมูลเข้าได้เร็วกว่า, ลบข้อมูลได้เร็วกว่า ข้อเสีย: ค้นหาได้ช้า
+Queue ข้อดี: ค้นหาข้อมูลได้เร็ว ข้อเสีย: นำข้อมูลเข้าได้ช้า, ลบข้อมูลได้ช้า", "feedback": "[สำหรับผู้สอน]
+คำตอบกล่าวถึง Linked List และมีประเด็นที่พอถูกต้องบางส่วน ได้แก่ การค้นหาข้อมูลในลิงก์ลิสต์มักช้ากว่าอาร์เรย์เนื่องจากต้องเข้าถึงแบบลำดับ และการแทรก/ลบอาจทำได้รวดเร็วเมื่อมีตำแหน่งหรือพอยน์เตอร์ที่เหมาะสม อย่างไรก็ตาม ไม่ได้เปรียบเทียบกับ Array ในประเด็นขนาดคงที่/ขนาดปรับเปลี่ยนได้ การใช้ index กับ node/pointer หรือข้อดีข้อเสียของ Array ตามที่โจทย์ถาม นอกจากนี้ การระบุว่า Queue ค้นหาเร็ว และการนำเข้า/ลบช้า ไม่ใช่หลักการทั่วไปของ Queue และไม่ได้อธิบายการทำงานแบบ FIFO หรือความสัมพันธ์ระหว่างโครงสร้างกับการดำเนินการ enqueue/dequeue อย่างถูกต้อง จึงเข้าข่ายระดับ 0.25 คือมีจุดถูกเพียงเล็กน้อยและตอบไม่ครบประเด็นหลัก ไม่ถึงระดับ 0.50 ซึ่งต้องมีการเปรียบเทียบหรือข้อดีข้อเสียที่ครอบคลุมและสอดคล้องกับหลักเทคนิคมากกว่านี้
+
+[สำหรับนักเรียน]
+ส่วนที่ทำได้ถูกคือมองเห็นว่า Linked List ค้นหาข้อมูลได้ช้ากว่าในกรณีทั่วไป และการแทรกหรือลบอาจทำได้เร็วเมื่อทราบตำแหน่งของโหนดแล้ว แต่ควรตอบให้ตรงกับโจทย์มากขึ้น โดยเปรียบเทียบกับ Array อย่างชัดเจน: Array มีขนาดคงที่และเข้าถึงด้วย index ได้เร็ว ส่วน Linked List มีขนาดยืดหยุ่นแต่ต้องเข้าถึงแบบลำดับและใช้หน่วยความจำสำหรับ pointer เพิ่มเติม สำหรับ Stack และ Queue ควรอธิบายการดำเนินการหลัก เช่น Stack ใช้ push/pop และ Queue ใช้ enqueue/dequeue โดยพิจารณาว่าการดำเนินการเหล่านี้ทำที่ตำแหน่งใดและมีประสิทธิภาพอย่างไร ไม่ควรสรุปว่า Queue ค้นหาเร็วหรือนำเข้า/ลบช้าโดยไม่มีเงื่อนไข", "anomaly_tag": "AI ให้คะแนนต่ำกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-081.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-081.jpg", "raw_file_source": "IMG_2905.HEIC"}, {"sid": "DS-082", "qno": 3, "topic": "Linked List vs Array for Stack & Queue", "excel_human_score": 1.0, "ai_score": 0.5, "score_diff": -0.5, "confidence": "high", "ans_text": "ข้อแตกต่าง link list จะ insert delete ได้ดีกว่า stack แตกต่างจาก stack เพิ่ม ลบได้แค่ top
+ข้อดี สิ่งที่ดีกว่า ถ้าเป็น Double linklist จะเดินหน้าถอยหลังได้ ยืดหยุ่น ไดนามิก
+ข้อดี stack push() pop() ได้เร็วกว่า เป็นแบบ LIFO
+ข้อเสีย เปลืองพื้นที่ใน memory เยอะ
+ข้อเสีย push() pop() ได้แค่ top", "feedback": "[สำหรับผู้สอน]
+คำตอบได้คะแนน 0.50 ตามเกณฑ์ระดับมาตรฐาน เนื่องจากผู้เรียนกล่าวถึงประเด็นที่ถูกต้องบางส่วน ได้แก่ linked list สามารถ insert/delete ได้ยืดหยุ่นและเป็นโครงสร้างแบบไดนามิก อีกทั้งระบุว่า stack ใช้การเพิ่มและลบข้อมูลที่ top และมีพฤติกรรมแบบ LIFO ได้ถูกต้อง รวมถึงกล่าวถึงข้อเสียเรื่องการใช้หน่วยความจำจาก pointer ได้ในภาพรวม อย่างไรก็ตาม คำตอบยังสับสนระหว่าง linked list กับ stack โดยเปรียบเทียบ linked list กับ stack แทนที่จะเปรียบเทียบ linked list กับ array สำหรับการนำไปสร้าง stack และ queue อีกทั้งไม่ได้กล่าวถึง array อย่างชัดเจน ไม่ได้อธิบายข้อดีข้อเสียของ array เช่น การเข้าถึงด้วย index ได้รวดเร็วและมีขนาดคงที่ และข้อเสียของ linked list เรื่องการเข้าถึงแบบลำดับที่ช้ากว่า นอกจากนี้ข้อความว่า push/pop ได้แค่ top เป็นคุณสมบัติของ stack ไม่ใช่ข้อเสียของการใช้ linked list เทียบกับ array โดยตรง จึงยังไม่ครบทั้งสองส่วนของโจทย์และมีความคลาดเคลื่อนในการจัดหมวดหมู่ประเด็น แต่มีแก่นความรู้บางส่วน จึงไม่ใช่ระดับ 0.25 หรือ 0.00
+
+[สำหรับนักเรียน]
+ส่วนที่ทำได้ถูกต้องคือเข้าใจว่า stack ทำงานแบบ LIFO และ push/pop ที่ตำแหน่ง top รวมถึงเข้าใจว่า linked list มีความยืดหยุ่นและปรับขนาดได้ อย่างไรก็ตาม โจทย์ต้องการเปรียบเทียบการใช้ linked list กับ array เพื่อสร้าง stack และ queue ไม่ใช่เปรียบเทียบ linked list กับ stack โดยตรง ควรเขียนให้ชัดเจนว่า array มีขนาดคงที่ เข้าถึงด้วย index ได้เร็ว แต่เสี่ยงพื้นที่ไม่พอหรือเหลือพื้นที่ ส่วน linked list มีขนาดยืดหยุ่น เพิ่มหรือลบโหนดได้สะดวก แต่ต้องใช้ pointer เพิ่มและเข้าถึงข้อมูลแบบลำดับจึงช้ากว่า ควรแยกข้อดีข้อเสียของทั้งสองโครงสร้าง และระบุว่า stack ใช้ LIFO ส่วน queue ใช้ FIFO เพื่อให้ตอบครบตามโจทย์", "anomaly_tag": "AI ให้คะแนนต่ำกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-082.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-082.jpg", "raw_file_source": "IMG_2906.HEIC"}, {"sid": "DS-083", "qno": 3, "topic": "Linked List vs Array for Stack & Queue", "excel_human_score": 0.0, "ai_score": 0.25, "score_diff": 0.25, "confidence": "medium", "ans_text": "เวลาเพิ่ม ทั้งสองเหมือนกันคือ ต่อท้าย pop ออกไม่เหมือนกัน สแตก จะ pop จากท้าย ส่วน คิว จะ pop ออกจากต้นลิสต์... ข้อเสีย หายืมลูมทาน push, to", "feedback": "[สำหรับผู้สอน]
+คำตอบมีส่วนที่ถูกเล็กน้อย คือระบุได้ว่า Stack นำข้อมูลออกจากท้าย และ Queue นำข้อมูลออกจากต้นลิสต์ ซึ่งสอดคล้องกับการกำหนดตำแหน่ง pop ของโครงสร้างทั้งสอง อย่างไรก็ตาม ไม่ได้เปรียบเทียบการใช้ Linked List กับ Array ในประเด็นสำคัญ เช่น ขนาดแบบ Dynamic กับ Fixed-size การจัดการ index หรือ node/pointer และไม่ได้แจกแจงข้อดีข้อเสียของ Linked List และ Array อย่างชัดเจน ข้อความช่วงท้ายมีความกำกวมและไม่สามารถยืนยันสาระทางเทคนิคได้ จึงอยู่ในระดับ 0.25 คะแนนตามเกณฑ์ มีคีย์เวิร์ดหรือแนวคิดถูกเพียงบางจุด แต่ยังขาดสาระหลักของโจทย์
+
+[สำหรับนักเรียน]
+ส่วนที่ตอบเรื่องตำแหน่งการนำข้อมูลออกถือว่าถูก: Stack มัก pop จากด้านบน/ท้าย และ Queue นำข้อมูลออกจากด้านหน้า/ต้น ตามหลัก LIFO และ FIFO แต่โจทย์ต้องการเปรียบเทียบ Linked List กับ Array ด้วย ควรเพิ่มเติมว่า Array มักมีขนาดคงที่และเข้าถึงด้วย index ได้เร็ว ส่วน Linked List ปรับขนาดได้ยืดหยุ่นแต่ต้องใช้ node/pointer และเข้าถึงข้อมูลแบบลำดับจึงช้ากว่า นอกจากนี้ควรระบุข้อดีข้อเสียของแต่ละแบบให้ครบและชัดเจน", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-083.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-083.jpg", "raw_file_source": "IMG_2908.HEIC"}, {"sid": "DS-084", "qno": 3, "topic": "Linked List vs Array for Stack & Queue", "excel_human_score": 0.5, "ai_score": 0.75, "score_diff": 0.25, "confidence": "high", "ans_text": "การใช้ Link list แทน Array นั้น
+ข้อดี คือ
+- สามารถเพิ่ม ลบ ได้เรื่อยๆ เพราะขนาดของ Link list จะไม่จำกัดเหมือน Array
+- การเพิ่ม ลบ ที่รวดเร็วกว่า Array
+ข้อเสีย คือ การเข้าถึงข้อมูล และการค้นหาข้อมูล ทำได้ยากกว่า Array", "feedback": "[สำหรับผู้สอน]
+คำตอบได้ 0.75 คะแนน อยู่ในระดับดีมากแต่ยังไม่ครบถ้วนตามเกณฑ์เต็ม 1.00 คะแนน นักเรียนเปรียบเทียบได้ถูกต้องว่า Linked List มีขนาดยืดหยุ่น เพิ่มและลบข้อมูลได้เรื่อย ๆ ต่างจาก Array ที่มีขนาดจำกัด และระบุข้อดีของ Linked List คือการเพิ่ม/ลบข้อมูลสะดวกหรือรวดเร็วกว่า Array รวมทั้งระบุข้อเสียด้านการเข้าถึงและค้นหาข้อมูลที่ทำได้ยากกว่าหรือช้ากว่า Array ได้ถูกหลักโดยรวม อย่างไรก็ตาม ยังไม่ได้แจกแจงข้อดีและข้อเสียของ Array อย่างชัดเจน เช่น Array เข้าถึงข้อมูลด้วยดัชนีได้รวดเร็ว แต่มีขนาดคงที่และอาจเกิดพื้นที่ไม่พอหรือเหลือทิ้ง นอกจากนี้ไม่ได้เชื่อมโยงการนำโครงสร้างทั้งสองไปใช้กับ Stack และ Queue โดยตรง แต่ไม่ถือเป็นข้อผิดร้ายแรง เนื่องจากแก่นการเปรียบเทียบโครงสร้างข้อมูลถูกต้องแล้ว
+
+[สำหรับนักเรียน]
+จุดที่ทำได้ดีคืออธิบายว่า Linked List ยืดหยุ่น เพิ่มและลบข้อมูลได้สะดวก และเข้าถึงหรือค้นหาข้อมูลได้ยากกว่า Array ซึ่งเป็นหลักการที่ถูกต้อง ควรปรับคำว่า “ไม่จำกัด” เป็น “ปรับขนาดได้ตามต้องการภายใต้หน่วยความจำที่มี” เพื่อความแม่นยำมากขึ้น และควรเพิ่มข้อดีข้อเสียของ Array ให้ครบ เช่น Array เข้าถึงข้อมูลด้วย index ได้เร็ว แต่มีขนาดคงที่ อาจเกิด Overflow หากพื้นที่ไม่พอ หรือสิ้นเปลืองพื้นที่หากจองมากเกินไป หากกล่าวถึง Stack และ Queue ควรระบุด้วยว่า Linked List ใช้ head/tail จัดการข้อมูลได้ยืดหยุ่น ส่วน Array ต้องควบคุมตำแหน่ง top, front และ rear", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-084.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-084.jpg", "raw_file_source": "IMG_2909.HEIC"}, {"sid": "DS-086", "qno": 3, "topic": "Linked List vs Array for Stack & Queue", "excel_human_score": 1.0, "ai_score": 0.5, "score_diff": -0.5, "confidence": "high", "ans_text": "แตกต่างเพราะการทำงานไม่เหมือนกัน Stack คือ LIFO (Last In First Out)... Queue คือ FIFO (First In First Out)... จากที่กล่าวการ Insert และ delete ของทั้ง 2 จึงทำงานต่างกัน โดยที่ Array จะลบสลับที่กันได้ ต่างจากทั้ง 2 คือสามารถลบโหนดที่ต้องการได้เลยโดยไม่มีกฎตายตัว
+ข้อดี - มีรูปแบบการทำงานที่อิสระมากขึ้น
+ข้อเสีย - มีรูปแบบการทำงานที่ซับซ้อนทำให้สับสน", "feedback": "[สำหรับผู้สอน]
+คำตอบได้ 0.50 คะแนน ตามระดับมาตรฐานในเกณฑ์ เนื่องจากผู้เรียนกล่าวถึงพฤติกรรมของ Stack แบบ LIFO และ Queue แบบ FIFO ได้ถูกต้องบางส่วน และพยายามเปรียบเทียบการ insert/delete ของ Array กับ Linked List อย่างไรก็ตาม ยังไม่ได้อธิบายความแตกต่างหลักด้านขนาดและการจัดสรรพื้นที่ เช่น Array มักมีขนาดคงที่ ส่วน Linked List มีขนาดปรับเปลี่ยนได้ตามจำนวนโหนด อีกทั้งข้อดี–ข้อเสียที่ระบุว่า “อิสระมากขึ้น” และ “ซับซ้อนทำให้สับสน” เป็นข้อความกว้างและไม่ใช่ข้อดี–ข้อเสียเชิงเทคนิคที่ชัดเจน เช่น การเข้าถึงด้วย index, การใช้พื้นที่เก็บ pointer หรือความยืดหยุ่นในการเพิ่มลดข้อมูล นอกจากนี้ ข้อความที่ระบุว่า Array สามารถลบสลับที่กันได้ และ Linked List สามารถลบโหนดที่ต้องการได้โดยไม่มีกฎตายตัว มีความคลาดเคลื่อนและไม่สอดคล้องกับหลักการของ Stack/Queue ซึ่งต้องรักษากฎ LIFO/FIFO ไม่ว่าจะใช้ Array หรือ Linked List ก็ตาม จึงยังไม่ถึงระดับ 0.75 หรือ 1.00 ที่ต้องระบุข้อดีข้อเสียอย่างถูกต้องและครบถ้วน
+
+[สำหรับนักเรียน]
+ส่วนที่ทำได้ถูกต้องคือการระบุว่า Stack ใช้หลัก LIFO และ Queue ใช้หลัก FIFO แต่การเลือกใช้ Array หรือ Linked List ไม่ได้ทำให้กฎของ Stack และ Queue เปลี่ยนไป ทั้งสองโครงสร้างยังต้องรักษาลำดับการนำข้อมูลเข้าและออกเหมือนเดิม ควรแก้ความเข้าใจเรื่องการลบข้อมูล โดย Stack ลบจากด้านบนสุด และ Queue ลบจากด้านหน้า ไม่สามารถลบตำแหน่งใดก็ได้ตามอิสระ ควรเปรียบเทียบเพิ่มเติมว่า Array มีขนาดคงที่และเข้าถึงด้วย index ได้รวดเร็ว ส่วน Linked List มีขนาดยืดหยุ่น เพิ่มหรือลดโหนดได้สะดวก แต่เข้าถึงข้อมูลต้องไล่ตามลำดับและใช้หน่วยความจำสำหรับ pointer ตัวอย่างคำตอบที่ครบขึ้นคือ: “Array มีขนาดคงที่และเข้าถึงด้วย index ได้เร็ว แต่เสี่ยงพื้นที่ไม่พอหรือเหลือใช้ ส่วน Linked List ขยายและลดขนาดได้ยืดหยุ่น แต่เข้าถึงข้อมูลช้ากว่าและต้องเก็บ pointer ทั้งนี้ Stack ยังเป็น LIFO และ Queue ยังเป็น FIFO เหมือนเดิม”", "anomaly_tag": "AI ให้คะแนนต่ำกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-086.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-086.jpg", "raw_file_source": "IMG_2911.HEIC"}, {"sid": "DS-088", "qno": 3, "topic": "Linked List vs Array for Stack & Queue", "excel_human_score": 1.0, "ai_score": 0.75, "score_diff": -0.25, "confidence": "high", "ans_text": "อาเรย์จะจำกัดขนาด แต่ลิ้งค์ลิสต์จะสามารถเพิ่มหรือลบก็ได้ตราบเท่าที่ประมวลผลไหว
+ข้อดีของลิ้งค์ลิสต์คือ ยืดหยุ่น จะเพิ่มหรือลบก็สะดวก และไม่จำกัดขนาด
+ข้อเสียคือ ช้ากว่า Array ประมวลผลช้า", "feedback": "[สำหรับผู้สอน]
+นักเรียนตอบความแตกต่างได้ถูกต้องว่า Array มีขนาดจำกัด ขณะที่ Linked List สามารถเพิ่มหรือลบข้อมูลได้ตามการใช้งาน และระบุข้อดีของ Linked List ได้ถูกต้อง ได้แก่ ความยืดหยุ่น เพิ่มหรือลบได้สะดวก และไม่ต้องกำหนดขนาดตายตัว นอกจากนี้ยังระบุข้อเสียว่าเข้าถึงหรือประมวลผลช้ากว่า Array ซึ่งสอดคล้องกับแนวคิด Sequential Access ของ Linked List อย่างไรก็ตาม ยังไม่ได้ระบุข้อดีและข้อเสียของ Array อย่างชัดเจน เช่น ข้อดีคือเข้าถึงข้อมูลด้วยดัชนีได้รวดเร็ว และข้อเสียคือขนาดจำกัด อาจเกิดพื้นที่ไม่พอหรือจองเกินความจำเป็น จึงจัดอยู่ในระดับ 0.75 คะแนนตามเกณฑ์ที่ตอบความแตกต่างและข้อดีข้อเสียได้บางส่วน แต่ยังขาดการเปรียบเทียบข้อดีข้อเสียของทั้งสองโครงสร้างอย่างครบถ้วน
+
+[สำหรับนักเรียน]
+ส่วนที่ตอบได้ถูกต้องคือ Array มีขนาดจำกัด ส่วน Linked List ยืดหยุ่นและเพิ่มหรือลบข้อมูลได้สะดวก รวมถึงการระบุว่า Linked List เข้าถึงข้อมูลช้ากว่า Array ควรเพิ่มเติมข้อดีข้อเสียของ Array ด้วย เช่น Array เข้าถึงข้อมูลด้วย Index ได้รวดเร็ว แต่มีขนาดจำกัดและอาจเกิด Overflow หรือสิ้นเปลืองพื้นที่ได้ หากเขียนเปรียบเทียบข้อดีและข้อเสียของทั้ง Array และ Linked List ให้ครบ จะได้คำตอบสมบูรณ์ยิ่งขึ้น", "anomaly_tag": "AI ให้คะแนนต่ำกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-088.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-088.jpg", "raw_file_source": "IMG_2913.HEIC"}, {"sid": "DS-089", "qno": 3, "topic": "Linked List vs Array for Stack & Queue", "excel_human_score": 1.0, "ai_score": 0.75, "score_diff": -0.25, "confidence": "high", "ans_text": "การใช้ลิ้งค์ลิสต์เป็นสแตกและคิวจะแตกต่างจากการใช้อาร์เรย์อย่างไร ลิ้งค์ลิสต์สามารถเพิ่มหรือลบข้อมูลได้ง่ายกว่าอาร์เรย์ เพราะไม่ต้องย้ายข้อมูล แต่การเข้าถึงข้อมูลในลิ้งค์ลิสต์จะช้ากว่าอาร์เรย์ เนื่องจากต้องเดินทางผ่านโหนดต่างๆ ข้อดีของลิ้งค์ลิสต์คือไม่ต้องกำหนดขนาดล่วงหน้า ข้อเสียคือใช้หน่วยความจำมากกว่าอาร์เรย์", "feedback": "[สำหรับผู้สอน]
+คำตอบอยู่ในระดับ 0.75 คะแนนตามเกณฑ์ เนื่องจากเปรียบเทียบได้ถูกต้องว่า Linked List เพิ่มหรือลบข้อมูลได้ง่ายกว่าเพราะไม่ต้องย้ายข้อมูล และไม่ต้องกำหนดขนาดล่วงหน้า ซึ่งสอดคล้องกับลักษณะ Dynamic รวมทั้งระบุข้อเสียได้ถูกต้องว่าการเข้าถึงช้ากว่า Array เพราะต้องเดินผ่านโหนด และใช้หน่วยความจำมากกว่าเพื่อเก็บข้อมูล/พอยน์เตอร์ อย่างไรก็ตาม ยังไม่ได้ระบุข้อดีและข้อเสียของ Array อย่างชัดเจนครบถ้วน โดยเฉพาะข้อดีเรื่องการเข้าถึงด้วย Index ได้รวดเร็ว และข้อเสียเรื่องขนาดคงที่หรืออาจต้องจองพื้นที่ล่วงหน้า จึงยังไม่สมบูรณ์ตามระดับ 1.00 คะแนน ทั้งนี้ไม่ได้มีภาพหรือลายมือที่ทำให้อ่านคำตอบได้ไม่ชัดเจน
+
+[สำหรับนักเรียน]
+ส่วนที่ตอบได้ถูกต้องคือ Linked List มีความยืดหยุ่น ไม่ต้องกำหนดขนาดล่วงหน้า เพิ่มหรือลบข้อมูลได้สะดวก และเข้าถึงข้อมูลช้ากว่า Array เพราะต้องไล่ผ่านโหนด รวมถึงใช้หน่วยความจำมากกว่า ควรเติมการเปรียบเทียบฝั่ง Array ให้ครบ โดยระบุว่า Array เข้าถึงข้อมูลด้วย Index ได้รวดเร็ว แต่ต้องกำหนดหรือจองขนาดล่วงหน้า หากจองน้อยไปอาจไม่พอ และหากจองมากไปอาจสิ้นเปลืองพื้นที่ นอกจากนี้ควรกล่าวเชื่อมโยงว่า Stack และ Queue สามารถใช้โครงสร้างทั้งสองแบบได้ โดยต้องควบคุมตำแหน่ง เช่น top, front และ rear ในกรณี Array หรือใช้ head/tail และ pointer ในกรณี Linked List", "anomaly_tag": "AI ให้คะแนนต่ำกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-089.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-089.jpg", "raw_file_source": "IMG_2914.HEIC"}, {"sid": "DS-093", "qno": 3, "topic": "Linked List vs Array for Stack & Queue", "excel_human_score": 0.5, "ai_score": 1.0, "score_diff": 0.5, "confidence": "high", "ans_text": "การใช้ ลิ้งค์ลิสต์เป็น สแตก และ คิวนั้นจะทำให้การเข้าถึงตำแหน่ง ช้ากว่าอาร์เรย์ แต่จะ insert และ Delete ได้เร็วกว่าอาร์เรย์ และการใช้ ลิ้งค์ลิสต์ จะสามารถเพิ่มขนาดพื้นที่เก็บข้อมูลได้ (Dynamic) ต่างจากอาร์เรย์ที่เป็นแบบ Fixed Sized", "feedback": "[สำหรับผู้สอน]
+คำตอบได้ 1.00 คะแนน เนื่องจากตอบครบทั้งสองส่วนตามเกณฑ์: (1) เปรียบเทียบขนาดของโครงสร้างได้ถูกต้อง โดยระบุว่า Linked List มีขนาดแบบ Dynamic และ Array มีขนาดแบบ Fixed-size และ (2) ระบุข้อดีข้อเสียเชิงเทคนิคได้ชัดเจน ได้แก่ Linked List เข้าถึงตำแหน่งช้ากว่า Array แต่เพิ่ม/ลบข้อมูลได้เร็วกว่า และสามารถเพิ่มขนาดพื้นที่จัดเก็บได้ ส่วน Array มีข้อได้เปรียบด้านการเข้าถึงข้อมูลที่เร็วกว่า แต่มีขนาดคงที่ ทั้งนี้ แม้ไม่ได้แยกหัวข้อ Stack และ Queue เป็นรายกรณี แต่เนื้อหาที่ตอบเป็นหลักการเปรียบเทียบโครงสร้างที่ใช้รองรับทั้งสองแบบ และเพียงพอตามแนวเกณฑ์การให้คะแนนเต็ม
+
+[สำหรับนักเรียน]
+ตอบได้ถูกต้องและครอบคลุมประเด็นสำคัญ ได้แก่ Linked List มีขนาดยืดหยุ่น เพิ่มหรือลบข้อมูลได้สะดวก ขณะที่ Array มีขนาดคงที่และเข้าถึงข้อมูลได้เร็วกว่า หากต้องการให้คำตอบสมบูรณ์ยิ่งขึ้น ควรกล่าวเพิ่มเติมว่า Stack ใช้หลัก LIFO และ Queue ใช้หลัก FIFO รวมทั้งระบุข้อเสียของ Linked List เรื่องการใช้หน่วยความจำสำหรับ pointer และการเข้าถึงแบบลำดับ (Sequential access)", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-093.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-093.jpg", "raw_file_source": "IMG_2918.HEIC"}, {"sid": "DS-095", "qno": 3, "topic": "Linked List vs Array for Stack & Queue", "excel_human_score": 0.5, "ai_score": 0.25, "score_diff": -0.25, "confidence": "high", "ans_text": "ตอบ แตกต่างตรงที่ลิ้งค์ลิสต์ มีการแยก key ออกมาและเชื่อมต่อกัน พร้อมจัดเรียงข้อมูลเสร็จสรรพ ข้อดีคือ เร็ว ข้อเสีย เสียทรัพยากรโดยเปล่าประโยชน์", "feedback": "[สำหรับผู้สอน]
+คำตอบกล่าวถึงการที่ลิงก์ลิสต์มีการเชื่อมต่อข้อมูล/โหนด ซึ่งเป็นประเด็นที่ถูกต้องบางส่วน แต่ไม่ได้เปรียบเทียบกับอาร์เรย์ในประเด็นสำคัญ เช่น อาร์เรย์มีขนาดคงที่ ส่วนลิงก์ลิสต์มีขนาดปรับเปลี่ยนได้ และไม่ได้เชื่อมโยงการนำไปใช้กับ Stack หรือ Queue อย่างชัดเจน นอกจากนี้ การระบุว่าลิงก์ลิสต์จัดเรียงข้อมูลเสร็จสรรพไม่ใช่คุณสมบัติเฉพาะของลิงก์ลิสต์ ส่วนข้อดีว่า “เร็ว” ไม่ถูกต้องในภาพรวม เพราะลิงก์ลิสต์เข้าถึงข้อมูลตามลำดับและมักช้ากว่าอาร์เรย์เมื่อเข้าถึงสมาชิกโดยตำแหน่ง ข้อเสียว่า “เสียทรัพยากรโดยเปล่าประโยชน์” ยังคลุมเครือและควรอธิบายว่าใช้หน่วยความจำเพิ่มสำหรับพอยน์เตอร์ จึงเข้าข่ายระดับ 0.25 คือมีจุดถูกเพียงเล็กน้อยและยังไม่ครอบคลุมความแตกต่าง รวมถึงข้อดีข้อเสียตามเกณฑ์
+
+[สำหรับนักเรียน]
+จุดที่ตอบถูกคือ ลิงก์ลิสต์มีโหนดที่เชื่อมต่อกัน แต่ควรเปรียบเทียบกับอาร์เรย์ให้ตรงประเด็นมากขึ้น โดยระบุว่าอาร์เรย์มักมีขนาดคงที่และเข้าถึงด้วย index ได้เร็ว ส่วนลิงก์ลิสต์มีขนาดยืดหยุ่น เพิ่มหรือลดโหนดได้ แต่ต้องเข้าถึงแบบลำดับและใช้หน่วยความจำเพิ่มสำหรับพอยน์เตอร์ สำหรับ Stack และ Queue ควรกล่าวถึงการใช้ head/tail หรือ pointer เพื่อควบคุมการเพิ่มและลบข้อมูลด้วย ตัวอย่างคำตอบ: “อาร์เรย์มีขนาดคงที่และเข้าถึงด้วย index ได้เร็ว แต่ถ้าพื้นที่ไม่พอจะเกิด overflow ได้ ส่วนลิงก์ลิสต์มีขนาดยืดหยุ่น เพิ่มลดโหนดได้สะดวก แต่เข้าถึงข้อมูลช้ากว่าและใช้หน่วยความจำเก็บพอยน์เตอร์เพิ่ม”", "anomaly_tag": "AI ให้คะแนนต่ำกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-095.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-095.jpg", "raw_file_source": "IMG_2920.HEIC"}, {"sid": "DS-097", "qno": 3, "topic": "Linked List vs Array for Stack & Queue", "excel_human_score": 0.5, "ai_score": 1.0, "score_diff": 0.5, "confidence": "high", "ans_text": "อาเรย์จะต้องเก็บข้อมูลพื้นที่แน่นอน ลิ้งค์ลิสต์สามารถเพิ่ม-ลดได้ทุกเมื่อ
+ข้อดี - อาเรย์ ประหยัดพื้นที่ หรือตัวความจำ ข้อเสีย ต้องกำหนดค่าให้แน่ชัดก่อน
+ข้อดี - ลิ้งค์ลิสต์ ได้ข้อมูลได้ตามที่ต้องการ ข้อเสีย ใช้พื้นที่เยอะ", "feedback": "[สำหรับผู้สอน]
+คำตอบได้ 1.00 คะแนน เนื่องจากตอบครบทั้ง 2 ส่วนตามเกณฑ์ ได้แก่ (1) ความแตกต่างด้านขนาด: ระบุว่าอาร์เรย์ต้องกำหนดพื้นที่แน่นอนล่วงหน้า ขณะที่ลิงก์ลิสต์สามารถเพิ่มหรือลดได้ และ (2) ข้อดีข้อเสียของทั้งสองโครงสร้าง: ระบุว่าอาร์เรย์ใช้พื้นที่/หน่วยความจำคุ้มกว่าในกรณีที่กำหนดขนาดพอดี แต่มีข้อเสียคือต้องกำหนดขนาดล่วงหน้า ส่วนลิงก์ลิสต์มีความยืดหยุ่นในการเพิ่มข้อมูล แต่ใช้พื้นที่มากกว่าเนื่องจากต้องจัดเก็บข้อมูลโหนดและพอยน์เตอร์ แม้ไม่ได้กล่าวถึงการเข้าถึงด้วยดัชนีหรือระบุคำว่า Stack/Queue ซ้ำโดยตรง แต่เป็นการเปรียบเทียบโครงสร้างพื้นฐานที่ใช้สร้าง Stack และ Queue ได้ตรงประเด็น และสอดคล้องกับเกณฑ์ที่อนุโลมให้คะแนนเต็มเมื่อระบุ dynamic/fixed พร้อมข้อดีข้อเสียของทั้งสองแบบ
+
+[สำหรับนักเรียน]
+ทำได้ดี โดยระบุประเด็นสำคัญได้ครบว่าอาร์เรย์มีขนาดคงที่ ส่วนลิงก์ลิสต์สามารถเพิ่มหรือลดข้อมูลได้ รวมทั้งบอกข้อดีข้อเสียของทั้งสองแบบได้ถูกต้อง ควรเพิ่มเติมว่าอาร์เรย์เข้าถึงข้อมูลด้วย index ได้รวดเร็ว ขณะที่ลิงก์ลิสต์ต้องเข้าถึงตามลำดับและมีค่าใช้จ่ายพื้นที่สำหรับ pointer อีกทั้งควรเชื่อมโยงให้ชัดเจนว่าเมื่อนำไปใช้เป็น Stack หรือ Queue จะจัดการตำแหน่ง เช่น top, front และ rear แตกต่างกันอย่างไร", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-097.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-097.jpg", "raw_file_source": "IMG_2922.HEIC"}, {"sid": "DS-099", "qno": 3, "topic": "Linked List vs Array for Stack & Queue", "excel_human_score": 0.0, "ai_score": 0.25, "score_diff": 0.25, "confidence": "high", "ans_text": "อาร์เรย์ มันต้องกำหนด Size ของ Array Linked List สามารถเลื่อน Size ระหว่างการทำงานได้", "feedback": "[สำหรับผู้สอน]
+คำตอบระบุความแตกต่างได้ถูกต้องบางส่วนว่า Array ต้องกำหนดขนาด และ Linked List สามารถปรับขนาดระหว่างทำงานได้ อย่างไรก็ตาม ไม่ได้กล่าวถึงข้อดีและข้อเสียของทั้งสองโครงสร้าง ซึ่งเป็นส่วนสำคัญของโจทย์ ตามเกณฑ์มาตรฐาน กรณีตอบเพียงความแตกต่างเรื่องขนาดโดยไม่มีข้อดีข้อเสียควรได้ 0.00 คะแนน (ลักษณะเดียวกับตัวอย่าง DS-099) แต่เนื่องจากมีสาระทางเทคนิคที่ถูกต้องบางส่วน จึงประเมินให้ 0.25 คะแนนตามการให้คะแนนแบบพิจารณาแก่นคำตอบ
+
+[สำหรับนักเรียน]
+ส่วนที่ตอบว่า Array ต้องกำหนดขนาด และ Linked List ปรับขนาดได้ เป็นแนวคิดที่ถูกต้องแล้ว แต่คำตอบยังขาดข้อดีข้อเสีย เช่น Linked List ยืดหยุ่นและเพิ่มลดโหนดได้สะดวก แต่เข้าถึงข้อมูลช้ากว่าและใช้หน่วยความจำเก็บพอยน์เตอร์ ส่วน Array เข้าถึงด้วยดัชนีได้รวดเร็ว แต่มีขนาดจำกัดหรืออาจเปลืองพื้นที่หากจองมากเกินไป ควรกล่าวให้ครบทั้งความแตกต่าง ข้อดี และข้อเสีย รวมถึงเชื่อมโยงกับการใช้เป็น Stack และ Queue", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-099.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-099.jpg", "raw_file_source": "IMG_2924.HEIC"}, {"sid": "DS-100", "qno": 3, "topic": "Linked List vs Array for Stack & Queue", "excel_human_score": 0.5, "ai_score": 1.0, "score_diff": 0.5, "confidence": "high", "ans_text": "การใช้ลิสต์ ไม่แตกต่างมากเท่าไหร่ เพียงแต่การใช้สแตกและคิวร่วมด้วยทำให้การจัดการและการทำงานยืดหยุ่นมากขึ้น ข้อดีคือ สามารถปรับแต่งและเพิ่มขนาดของข้อมูลได้ตลอดเวลา แต่ข้อเสียคือ จัดการยาก/เข้าถึงยาก ข้อดีของแรย์คือ สามารถเข้าถึงข้อมูลได้ง่าย ส่วนข้อเสีย ข้อมูลไม่ยืดหยุ่นและจำกัดข้อมูล จึงยากต่อการเพิ่มข้อมูล", "feedback": "[สำหรับผู้สอน]
+คำตอบได้ 1.00 คะแนนตามระดับสมบูรณ์แบบ เนื่องจากเปรียบเทียบประเด็นสำคัญได้ครบ ได้แก่ ลิสต์มีความยืดหยุ่นและสามารถเพิ่มขนาดข้อมูลได้ ขณะที่อาร์เรย์มีความไม่ยืดหยุ่นและจำกัดขนาด นอกจากนี้ยังระบุข้อดีของลิสต์ว่าเพิ่มข้อมูลได้ และข้อเสียว่าเข้าถึงได้ยากกว่า รวมถึงข้อดีของอาร์เรย์ว่าเข้าถึงข้อมูลได้ง่าย และข้อเสียว่าจำกัดการเพิ่มข้อมูล ซึ่งสอดคล้องกับแนวคำตอบเรื่อง Dynamic/Static และการเข้าถึงแบบ Sequential/Index แม้ข้อความว่า “ไม่แตกต่างมากเท่าไหร่” จะไม่แม่นยำเท่าที่ควร และไม่ได้ระบุโดยตรงเรื่องการใช้ head/tail หรือ top/front/rear แต่ไม่กระทบแก่นคำตอบหลัก ทั้งข้อแตกต่างและข้อดีข้อเสียถูกกล่าวถึงอย่างชัดเจน จึงเข้าหลักเกณฑ์ 1.00 คะแนน
+
+[สำหรับนักเรียน]
+ตอบได้ถูกต้องและครอบคลุมประเด็นหลักแล้ว โดยแยกข้อดีข้อเสียของลิสต์และอาร์เรย์ได้ชัดเจน ควรปรับถ้อยคำว่า “ไม่แตกต่างมากเท่าไหร่” เพราะจริง ๆ แล้วการใช้ลิสต์กับอาร์เรย์มีความแตกต่างด้านการจัดการหน่วยความจำ ขนาด และการเข้าถึงข้อมูลอย่างมีนัยสำคัญ ควรเสริมว่า Stack และ Queue ที่ใช้ลิสต์จะจัดการโหนดผ่าน pointer เช่น head/tail ส่วนที่ใช้อาร์เรย์จะควบคุมตำแหน่งด้วย index เช่น top, front และ rear เพื่อให้คำตอบทางเทคนิคสมบูรณ์ยิ่งขึ้น", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-100.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-100.jpg", "raw_file_source": "IMG_2925.HEIC"}, {"sid": "DS-101", "qno": 3, "topic": "Linked List vs Array for Stack & Queue", "excel_human_score": 1.0, "ai_score": 0.75, "score_diff": -0.25, "confidence": "high", "ans_text": "การใช้ลิ้งค์ลิสต์เป็นสแตกและคิวจะแตกต่างจากการใช้อาร์เรย์อย่างไร ลิ้งค์ลิสต์สามารถเพิ่มและลบข้อมูลได้ง่ายกว่าอาร์เรย์ เพราะไม่ต้องย้ายข้อมูล แต่การเข้าถึงข้อมูลในลิ้งค์ลิสต์จะช้ากว่าอาร์เรย์ เนื่องจากต้องเดินทางผ่านโหนดต่างๆ ข้อดีของลิ้งค์ลิสต์คือสามารถจัดการกับขนาดข้อมูลที่ไม่แน่นอนได้ดี ข้อเสียคือใช้หน่วยความจำมากกว่าอาร์เรย์ เพราะต้องเก็บข้อมูลของโหนดเพิ่มเติม", "feedback": "[สำหรับผู้สอน]
+นักเรียนอธิบายหลักการของ Linked List ได้ถูกต้องหลายประเด็น ได้แก่ เพิ่มและลบข้อมูลได้สะดวกโดยไม่ต้องย้ายข้อมูล เข้าถึงข้อมูลช้ากว่า Array เนื่องจากต้องเดินผ่านโหนด และรองรับขนาดข้อมูลที่ไม่แน่นอนได้ดี รวมทั้งระบุข้อเสียเรื่องการใช้หน่วยความจำเพิ่มเติมสำหรับข้อมูลของโหนดได้ถูกต้อง จึงแสดงให้เห็นความเข้าใจเรื่องข้อดีข้อเสียของ Linked List และความแตกต่างด้านการเข้าถึงข้อมูลได้ดี อย่างไรก็ตาม ยังไม่ได้ระบุอย่างชัดเจนว่า Array มีขนาดคงที่หรือต้องจองพื้นที่ล่วงหน้า และไม่ได้แจกแจงข้อดีข้อเสียของ Array โดยตรง เช่น การเข้าถึงด้วย Index ได้รวดเร็ว O(1) หรือความเสี่ยงพื้นที่ไม่พอ/เหลือทิ้ง อีกทั้งไม่ได้เชื่อมโยงรายละเอียดกับการจัดการตำแหน่งของ Stack และ Queue เช่น top, front หรือ rear โดยตรง ตามเกณฑ์จึงอยู่ในระดับ 0.75 คะแนน ซึ่งเป็นคำตอบที่ถูกต้องเป็นส่วนใหญ่แต่ยังไม่ครบถ้วนทั้งสองโครงสร้าง
+
+[สำหรับนักเรียน]
+คำตอบของคุณถูกต้องในส่วนของ Linked List โดยเฉพาะเรื่องการเพิ่ม-ลบข้อมูล การเข้าถึงแบบต้องเดินผ่านโหนด และการใช้หน่วยความจำสำหรับ Pointer/ข้อมูลโหนด ควรเพิ่มเติมการเปรียบเทียบกับ Array ให้ครบถ้วน ได้แก่ Array มีขนาดคงที่หรือต้องกำหนดพื้นที่ล่วงหน้า แต่เข้าถึงข้อมูลด้วย Index ได้รวดเร็ว ส่วนข้อเสียคืออาจเกิดพื้นที่ไม่พอหรือสูญเสียพื้นที่หากจองมากเกินไป นอกจากนี้ควรกล่าวว่าเมื่อนำไปใช้เป็น Stack และ Queue จะต้องจัดการตำแหน่ง top, front และ rear ตามลักษณะการทำงานของโครงสร้างนั้น ๆ", "anomaly_tag": "AI ให้คะแนนต่ำกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-101.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-101.jpg", "raw_file_source": "IMG_2926.HEIC"}, {"sid": "DS-102", "qno": 3, "topic": "Linked List vs Array for Stack & Queue", "excel_human_score": 0.0, "ai_score": 0.25, "score_diff": 0.25, "confidence": "high", "ans_text": "แตกต่างกันที่ การใช้อาร์เรย์ปกติเสี่ยงที่จะเกิด Error ง่ายกว่าการใช้ลิ้งค์ลิสต์ เพราะการที่มีลิ้งค์ลิสต์จะไม่จำกัดข้อมูล... ข้อดี ทำให้เป็นระเบียบ ข้อมูลลง Array ข้อเสีย ช้า", "feedback": "[สำหรับผู้สอน]
+คำตอบมีจุดถูกเล็กน้อย คือกล่าวว่าลิงค์ลิสต์ไม่จำกัดข้อมูล ซึ่งพอสื่อถึงคุณสมบัติด้านขนาดที่ยืดหยุ่นของลิงค์ลิสต์ได้ อย่างไรก็ตาม คำตอบไม่เปรียบเทียบการใช้ลิงค์ลิสต์กับอาร์เรย์สำหรับสแตกและคิวอย่างเป็นระบบ ไม่ระบุข้อดีข้อเสียของทั้งสองโครงสร้างให้ชัดเจน และระบุคลาดเคลื่อนว่าอาร์เรย์ปกติเสี่ยงเกิด Error ง่ายกว่าลิงค์ลิสต์ ซึ่งเป็นข้อความผิดหลักการและสอดคล้องกับเกณฑ์กรณีที่มีจุดถูกเพียงเล็กน้อยแต่ไม่ครอบคลุมประเด็นหลัก จึงให้ 0.25 คะแนน ไม่ให้ 0.50 เพราะไม่มีการแจกแจงข้อดีข้อเสียที่เพียงพอ และไม่ให้ 0.00 เนื่องจากยังมีแนวคิดเรื่องลิงค์ลิสต์ที่ไม่จำกัดขนาดพอถูกต้อง
+
+[สำหรับนักเรียน]
+ส่วนที่ทำได้ถูกคือเข้าใจว่าลิงค์ลิสต์มีขนาดยืดหยุ่นและไม่จำเป็นต้องกำหนดพื้นที่ล่วงหน้า แต่ควรแก้ความเข้าใจว่าอาร์เรย์ไม่ได้เกิด Error ง่ายกว่าเสมอไป จุดสำคัญคืออาร์เรย์มีขนาดคงที่ เข้าถึงข้อมูลด้วย index ได้เร็ว แต่เสี่ยงเต็มพื้นที่หรือเปลืองพื้นที่ ส่วนลิงค์ลิสต์เพิ่มหรือลดโหนดได้ยืดหยุ่น แต่เข้าถึงข้อมูลต้องไล่ตามลำดับและใช้หน่วยความจำเก็บ pointer เพิ่ม ควรระบุข้อดีและข้อเสียของทั้งอาร์เรย์และลิงค์ลิสต์ให้ชัดเจน และเชื่อมโยงว่าทั้งสองแบบสามารถนำไปใช้สร้าง Stack และ Queue ได้", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-102.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-102.jpg", "raw_file_source": "IMG_2927.HEIC"}, {"sid": "DS-107", "qno": 4, "topic": "Binary Search Tree (BST) Construction (12 Nodes)", "excel_human_score": 0.0, "ai_score": 1.0, "score_diff": 1.0, "confidence": "medium", "ans_text": "", "feedback": "[สำหรับผู้สอน]
+นักเรียนสร้าง BST ได้ถูกต้องครบทั้ง 12 โหนดตามลำดับการแทรก: ราก 9 มีซ้ายเป็น 5 และขวาเป็น 16; ใต้ 16 มี 10 ทางซ้ายและ 76 ทางขวา; ใต้ 10 มี 11 ทางซ้ายและ 13 ทางขวา; ใต้ 13 มี 15 ทางขวา; ใต้ 76 มี 58 ทางซ้ายและ 92 ทางขวา; ใต้ 92 มี 80 ทางซ้ายและ 99 ทางขวา ทุกโหนดเป็นไปตามเงื่อนไขค่าทางซ้ายน้อยกว่าและค่าทางขวามากกว่า จึงได้ 1.00 คะแนน ภาพมีรอยเขียนจางหรือเส้นร่างบางส่วน แต่โครงสร้างและตัวเลขหลักอ่านได้เพียงพอสำหรับการประเมิน
+
+[สำหรับนักเรียน]
+คำตอบถูกต้องครบถ้วน โครงสร้างและตำแหน่งของโหนดทั้ง 12 ตัวเป็นไปตามหลัก Binary Search Tree โดยเฉพาะการวาง 11 และ 15 ใต้ 13 และการวาง 80 กับ 99 ใต้ 92 ควรเขียนเส้นเชื่อมและตัวเลขให้เข้มและชัดเจนขึ้น เพื่อให้ตรวจสอบโครงสร้างได้ง่ายขึ้น", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-107.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-107.jpg", "raw_file_source": "LINE_ALBUM_Photo1_260917_5.jpg"}, {"sid": "DS-111", "qno": 4, "topic": "Binary Search Tree (BST) Construction (12 Nodes)", "excel_human_score": 1.0, "ai_score": 0.0, "score_diff": -1.0, "confidence": "medium", "ans_text": "", "feedback": "[สำหรับผู้สอน]
+ภาพโดยรวมอ่านได้พอสมควร แต่บางเส้นและตัวเลขเขียนจาง/ทับกัน จึงควรให้อาจารย์ผู้สอนตรวจสอบภาพต้นฉบับซ้ำด้วยตนเองตามความเหมาะสม จากภาพที่เห็น โครงสร้างไม่ได้เป็น BST ที่ถูกต้องตามโจทย์ โดยโหนดรากที่เห็นเป็น 5 ไม่ใช่ 9 และตำแหน่งของโหนดหลายตัวไม่สอดคล้องกับการแทรกข้อมูลตามลำดับที่กำหนด อีกทั้งมีโหนดหรือตัวเลขส่วนเกิน/อ่านไม่ชัดหลายตำแหน่ง ทำให้ไม่สามารถยืนยันโครงสร้าง BST ครบทั้ง 12 โหนดได้ เกณฑ์กำหนดให้ได้ 1.00 คะแนนเฉพาะเมื่อโครงสร้างถูกต้องครบถ้วน ดังนั้นให้ 0.00 คะแนน
+
+[สำหรับนักเรียน]
+ควรเริ่มสร้างต้นไม้จากข้อมูลตัวแรกเป็นราก คือ 9 แล้วนำค่าถัดไปใส่ทีละตัวโดยเปรียบเทียบกับโหนดปัจจุบัน: ค่าน้อยกว่าไปทางซ้าย ค่ามากกว่าไปทางขวา ผลที่ถูกต้องคือ 9 มีซ้ายเป็น 5 และขวาเป็น 16; ใต้ 16 มี 10 ทางซ้ายและ 76 ทางขวา; ใต้ 10 มี 13 ทางขวา; ใต้ 13 มี 11 ทางซ้ายและ 15 ทางขวา; ใต้ 76 มี 58 ทางซ้ายและ 92 ทางขวา; ใต้ 92 มี 80 ทางซ้ายและ 99 ทางขวา ควรตรวจให้แน่ใจว่ามีครบทั้ง 12 โหนดและแต่ละโหนดมีลูกซ้าย/ขวาไม่เกินอย่างละหนึ่งกิ่ง", "anomaly_tag": "AI ให้คะแนนต่ำกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-111.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-111.jpg", "raw_file_source": "LINE_ALBUM_Photo1_260917_9.jpg"}, {"sid": "DS-113", "qno": 4, "topic": "Binary Search Tree (BST) Construction (12 Nodes)", "excel_human_score": 1.0, "ai_score": 0.0, "score_diff": -1.0, "confidence": "high", "ans_text": "", "feedback": "[สำหรับผู้สอน]
+นักเรียนวาดโครงสร้างได้ครบ 12 โหนด และส่วนใหญ่ถูกต้อง ได้แก่ root คือ 9, ลูกซ้ายคือ 5, ลูกขวาคือ 16, ใต้ 16 มี 10 และ 76, ใต้ 76 มี 58 และ 92, ใต้ 92 มี 80 และ 99 อย่างไรก็ตาม โครงสร้างผิดที่โหนด 11: นักเรียนวาง 11 เป็นลูกซ้ายของ 10 แต่ตามลำดับการแทรกและหลัก BST ที่ถูกต้อง 11 ต้องเป็นลูกซ้ายของ 13 โดย 13 เป็นลูกขวาของ 10 นอกจากนี้ 15 ควรเป็นลูกขวาของ 13 ซึ่งนักเรียนวางได้ถูกต้องแล้ว ดังนั้น BST ไม่ถูกต้องครบถ้วนตามเกณฑ์ที่กำหนด จึงให้ 0.00 คะแนน ภาพและลายมืออ่านได้ชัดเจนเพียงพอสำหรับการประเมิน
+
+[สำหรับนักเรียน]
+วาดได้ถูกต้องเกือบทั้งต้น โดยเฉพาะตำแหน่งของ 9, 5, 16, 10, 76, 58, 92, 80 และ 99 จุดที่ต้องแก้คือเส้นทางของ 11: จาก 10 ให้ไปทางขวาเป็น 13 ก่อน แล้วจึงให้ 11 เป็นลูกซ้ายของ 13 ส่วน 15 เป็นลูกขวาของ 13 ดังนั้นช่วงนี้ควรเป็น 10 → ขวา 13 → ซ้าย 11 และขวา 15 ควรทบทวนการเปรียบเทียบค่ากับโหนดแต่ละระดับก่อนวางตำแหน่ง", "anomaly_tag": "AI ให้คะแนนต่ำกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-113.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-113.jpg", "raw_file_source": "LINE_ALBUM_Photo1_260917_11.jpg"}, {"sid": "DS-114", "qno": 4, "topic": "Binary Search Tree (BST) Construction (12 Nodes)", "excel_human_score": 0.0, "ai_score": 1.0, "score_diff": 1.0, "confidence": "high", "ans_text": "", "feedback": "[สำหรับผู้สอน]
+คำตอบถูกต้องครบถ้วนตามหลัก Binary Search Tree และมีโหนดครบทั้ง 12 โหนด ได้แก่ root 9, ลูกซ้าย 5 และลูกขวา 16; ใต้ 16 มี 10 ทางซ้ายและ 76 ทางขวา; ใต้ 10 มี 13 ทางขวา; ใต้ 13 มี 11 ทางซ้ายและ 15 ทางขวา; ใต้ 76 มี 58 ทางซ้ายและ 92 ทางขวา; ใต้ 92 มี 80 ทางซ้ายและ 99 ทางขวา ทุกกิ่งสอดคล้องกับเงื่อนไขค่าด้านซ้ายน้อยกว่าโหนดแม่และค่าด้านขวามากกว่าโหนดแม่ จึงได้ 1.00 คะแนน
+
+[สำหรับนักเรียน]
+วาดโครงสร้าง BST ได้ถูกต้องครบทั้ง 12 โหนด และจัดตำแหน่งกิ่งซ้าย-ขวาได้ตรงตามลำดับข้อมูลและหลักการ BST เป็นอย่างดี", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-114.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-114.jpg", "raw_file_source": "LINE_ALBUM_Photo1_260917_12.jpg"}, {"sid": "DS-116", "qno": 4, "topic": "Binary Search Tree (BST) Construction (12 Nodes)", "excel_human_score": 1.0, "ai_score": 0.0, "score_diff": -1.0, "confidence": "high", "ans_text": "", "feedback": "[สำหรับผู้สอน]
+นักเรียนวาดโหนดครบทั้ง 12 โหนด และโครงสร้างส่วนใหญ่ถูกต้อง ได้แก่ root = 9, 9 มีซ้ายเป็น 5 และขวาเป็น 16, ใต้ 16 มี 10 ทางซ้ายและ 76 ทางขวา, รวมถึงส่วนของ 76 ที่มี 58 ทางซ้าย, 92 ทางขวา และ 92 มี 80 ทางซ้ายกับ 99 ทางขวา อย่างไรก็ตาม ตำแหน่งของโหนด 11 ผิด โดยภาพแสดงว่า 11 เป็นลูกซ้ายของ 10 ขณะที่โครงสร้างที่ถูกต้องต้องให้ 10 ไม่มีลูกซ้าย และให้ 11 เป็นลูกซ้ายของ 13 (โดย 13 เป็นลูกขวาของ 10) เนื่องจากเกณฑ์กำหนดให้โครงสร้างต้องถูกต้องครบถ้วนทั้งต้น และให้คะแนนได้เฉพาะ 0.00 หรือ 1.00 จึงให้ 0.00 คะแนน
+
+[สำหรับนักเรียน]
+วาดโหนดครบและจัดโครงสร้างส่วนใหญ่ได้ถูกต้องแล้ว จุดที่ต้องแก้คือเส้นทางของ 11: ให้ใส่ 11 เป็นลูกซ้ายของ 13 ไม่ใช่ลูกซ้ายของ 10 ดังนั้นส่วนนี้ควรเป็น 10 ทางขวาไป 13 และ 13 มี 11 ทางซ้ายกับ 15 ทางขวา เมื่อแก้จุดนี้แล้วจะได้ BST ตามข้อมูลที่กำหนด", "anomaly_tag": "AI ให้คะแนนต่ำกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-116.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-116.jpg", "raw_file_source": "LINE_ALBUM_Photo1_260917_14.jpg"}, {"sid": "DS-121", "qno": 4, "topic": "Binary Search Tree (BST) Construction (12 Nodes)", "excel_human_score": 0.25, "ai_score": 1.0, "score_diff": 0.75, "confidence": "medium", "ans_text": "", "feedback": "[สำหรับผู้สอน]
+ให้ 1.00 คะแนน เนื่องจากโครงสร้างหลักที่สื่อสารได้ตรงกับ BST ที่ถูกต้องครบทั้ง 12 โหนด: ราก 9, ซ้ายเป็น 5 และขวาเป็น 16; ใต้ 16 มี 10 ทางซ้ายและ 76 ทางขวา; ใต้ 10 มี 13 ทางขวา โดย 13 มี 11 ทางซ้ายและ 15 ทางขวา; ใต้ 76 มี 58 ทางซ้ายและ 92 ทางขวา; ใต้ 92 มี 80 ทางซ้ายและ 99 ทางขวา ทุกค่าจัดอยู่ในตำแหน่งที่สอดคล้องกับหลักโหนดซ้าย < แม่ < โหนดขวา วงกลม/เส้นร่างจาง ๆ ที่ไม่มีตัวเลขบริเวณด้านล่างพิจารณาเป็นรอยร่างส่วนเกิน ไม่ใช่โหนดคำตอบ เนื่องจากโครงสร้างและค่าของโหนดทั้ง 12 สื่อสารได้ถูกต้อง ภาพมีรอยร่างและเส้นจางบางส่วน จึงกำหนด confidence เป็น medium
+
+[สำหรับนักเรียน]
+โครงสร้าง BST และตำแหน่งของตัวเลขทั้ง 12 ค่าโดยรวมถูกต้อง จึงได้คะแนนเต็ม ควรตรวจให้แน่ใจว่าโหนดที่ต้องการมีครบ ได้แก่ 9, 16, 10, 76, 5, 13, 58, 92, 11, 15, 80 และ 99 และลบรอยร่างหรือวงกลมที่ไม่มีตัวเลขออก เพื่อไม่ให้ดูเหมือนมีโหนดเกิน นอกจากนี้ควรวาดเส้นเชื่อมและตำแหน่งซ้าย-ขวาให้ชัดเจนขึ้น", "anomaly_tag": "อาจารย์หักกิ่ง BST ผิด (กระดาษให้ 0.25, AI ให้ 1.00)", "full_img_url": "screenshots/audit_gallery/full_DS-121.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-121.jpg", "raw_file_source": "LINE_ALBUM_Photo1_260917_19.jpg"}, {"sid": "DS-122", "qno": 4, "topic": "Binary Search Tree (BST) Construction (12 Nodes)", "excel_human_score": 1.0, "ai_score": 0.0, "score_diff": -1.0, "confidence": "high", "ans_text": "", "feedback": "[สำหรับผู้สอน]
+จากภาพอ่านโครงสร้างได้ชัดเจนว่า Root คือ 9 โดยมี 5 ทางซ้ายและ 16 ทางขวา และส่วนของ 16 ที่มี 10 ทางซ้ายกับ 76 ทางขวาถูกต้อง รวมถึง 76–92–80/99 ถูกต้อง อย่างไรก็ตามโหนด 58 ถูกวางเป็นโหนดทางขวาของ 13 และมี 15 ต่ออยู่ใต้ 58 ซึ่งไม่ตรงกับ BST ที่ถูกต้อง โหนด 58 ต้องเป็นลูกทางซ้ายของ 76 และโหนด 15 ต้องเป็นลูกทางขวาของ 13 ดังนั้นโครงสร้างไม่ถูกต้องครบทั้ง 12 โหนดตามเกณฑ์ จึงให้ 0.00 คะแนน
+
+[สำหรับนักเรียน]
+ส่วนที่ทำได้ถูกต้องคือการวาง Root เป็น 9, วาง 5 ทางซ้าย, 16 ทางขวา, รวมถึงโครงสร้างของ 76, 92, 80 และ 99 โดยหลักการสร้าง BST ให้เปรียบเทียบกับโหนดแม่และโหนดก่อนหน้าในเส้นทางเสมอ ในข้อนี้ 58 ต้องอยู่ใต้ 76 ทางซ้าย เพราะ 58 มากกว่า 16 แต่ น้อยกว่า 76 ส่วน 15 ต้องอยู่ใต้ 13 ทางขวา ไม่ใช่อยู่ใต้ 58 ลองตรวจเส้นทางการแทรกทีละค่าเพื่อป้องกันการวางโหนดผิดตำแหน่ง", "anomaly_tag": "โครงสร้าง BST ซับซ้อน (กระดาษให้ 1.00, AI ให้ 0.00)", "full_img_url": "screenshots/audit_gallery/full_DS-122.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-122.jpg", "raw_file_source": "LINE_ALBUM_Photo1_260917_20.jpg"}, {"sid": "DS-138", "qno": 5, "topic": "Infix to Prefix and Postfix Expression Conversion", "excel_human_score": 1.0, "ai_score": 0.5, "score_diff": -0.5, "confidence": "medium", "ans_text": "", "feedback": "[สำหรับผู้สอน]
+ให้คะแนน 0.50/1.00 คะแนน แยกเป็น Prefix 0.00 และ Postfix 0.50 ตาม rubric. ฝั่ง Postfix คำตอบสุดท้ายอ่านได้เป็น `ABCDF2*/-*+` ซึ่งถูกต้องตรงกับ `A B C D F 2 * / - * +` จึงได้ 0.50 คะแนน. ฝั่ง Prefix คำตอบสุดท้ายอ่านได้ประมาณ `+ A + B - C / D * F 2` โดยสัญลักษณ์ระหว่าง A กับ B ปรากฏเป็น `+` ไม่ใช่ `*`; คำตอบที่ถูกต้องต้องเป็น `+ A * B - C / D * F 2` จึงไม่ผ่านเงื่อนไขของส่วน Prefix. ลายมือหรือรูปภาพมีความชัดเจนน้อยเกินไป ขอให้อาจารย์ผู้สอนตรวจสอบและประเมินคะแนนซ้ำด้วยตนเอง โดยเฉพาะสัญลักษณ์ระหว่าง A กับ B ในคำตอบ Prefix หากตรวจสอบแล้วเป็น `*` จริง อาจพิจารณาแก้คะแนนส่วน Prefix เป็น 0.50 ได้
+
+[สำหรับนักเรียน]
+ส่วน Postfix ทำได้ถูกต้อง: `A B C D F 2 * / - * +`. สำหรับ Prefix ให้ตรวจลำดับตัวดำเนินการอีกครั้ง โดยนิพจน์ `A + (B * ...)` ต้องเริ่มเป็น `+ A * B ...` ดังนั้นตัวดำเนินการระหว่าง A กับ B ต้องเป็น `*` ไม่ใช่ `+`. คำตอบ Prefix ที่ถูกต้องคือ `+ A * B - C / D * F 2`", "anomaly_tag": "AI ให้คะแนนต่ำกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-138.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-138.jpg", "raw_file_source": "LINE_ALBUM_Photo2.1_260918_2.jpg"}, {"sid": "DS-159", "qno": 5, "topic": "Infix to Prefix and Postfix Expression Conversion", "excel_human_score": 1.0, "ai_score": 0.5, "score_diff": -0.5, "confidence": "medium", "ans_text": "", "feedback": "[สำหรับผู้สอน]
+ให้ 0.50 คะแนนจาก 1.00 คะแนน โดยส่วน Postfix ถูกต้อง: คำตอบสุดท้ายอ่านได้เป็น ABCDF2*/-*+ ซึ่งตรงกับเฉลยมาตรฐาน A B C D F 2 * / - * + จึงได้ 0.50 คะแนนในส่วนนี้ ส่วน Prefix ไม่ถูกต้อง คำตอบสุดท้ายที่เขียนอ่านได้ประมาณว่า *A*B-C/D*F2 โดยมีเครื่องหมาย * นำหน้า A และไม่มีเครื่องหมาย + นำหน้า นิพจน์ทั้งหมด ขณะที่คำตอบที่ถูกต้องคือ +A*B-C/D*F2 จึงได้ 0.00 คะแนนในส่วน Prefix ภาพและลายมือบางตำแหน่งมีความไม่ชัดเจนและมีการขีดแก้หลายจุด แต่คำตอบสุดท้ายของทั้งสองส่วนยังพออ่านได้ ขอให้อาจารย์ผู้สอนตรวจสอบและประเมินคะแนนซ้ำด้วยตนเองหากการอ่านสัญลักษณ์ Prefix แตกต่างจากที่ถอดความนี้
+
+[สำหรับนักเรียน]
+ส่วน Postfix ทำได้ถูกต้อง คำตอบ ABCDF2*/-*+ ตรงกับคำตอบมาตรฐาน แสดงว่าลำดับการนำตัวถูกดำเนินการและตัวดำเนินการออกจากนิพจน์ทำได้ดี สำหรับ Prefix ให้ตรวจโครงสร้างจากโหนดรากของนิพจน์ก่อน: นิพจน์ทั้งหมดเป็น A + (B * (...)) ดังนั้นเครื่องหมายตัวแรกต้องเป็น + ไม่ใช่ * จากนั้นจึงตามด้วย A และนิพจน์ด้านขวา คำตอบที่ถูกต้องคือ +A*B-C/D*F2 ควรระวังไม่เลื่อนเครื่องหมายคูณจากส่วนย่อย (F*2) ไปไว้หน้าตัวแปร A", "anomaly_tag": "AI ให้คะแนนต่ำกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-159.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-159.jpg", "raw_file_source": "LINE_ALBUM_Photo2.1_260918_23.jpg"}, {"sid": "DS-166", "qno": 5, "topic": "Infix to Prefix and Postfix Expression Conversion", "excel_human_score": 0.25, "ai_score": 1.0, "score_diff": 0.75, "confidence": "medium", "ans_text": "", "feedback": "[สำหรับผู้สอน]
+นักเรียนแสดงขั้นตอนการแปลงทั้งสองแบบ และคำตอบสุดท้ายตรงตามเฉลย: Prefix คือ + A * B - C / D * F 2 และ Postfix คือ A B C D F 2 * / - * + จึงได้ Prefix 0.50 คะแนน และ Postfix 0.50 คะแนน รวม 1.00 คะแนน ลายมือบางช่วงและสัญลักษณ์คูณในคำตอบ Postfix มีรอยแก้/เขียนทับเล็กน้อย แต่โดยรวมยังอ่านและตรวจสอบได้จากลำดับขั้นตอนและคำตอบสุดท้าย หากต้องการความมั่นใจสูงสุด ควรให้อาจารย์ผู้สอนตรวจสอบรอยแก้ดังกล่าวซ้ำด้วยตนเอง
+
+[สำหรับนักเรียน]
+ทำได้ถูกต้องทั้ง Prefix และ Postfix รวมถึงลำดับการคำนวณจากวงเล็บชั้นในออกมาด้านนอก คำตอบ Prefix คือ +A*B-C/D*F2 และ Postfix คือ ABCDF2*/-*+ ควรรักษาการแสดงขั้นตอนแบบนี้ไว้ และพยายามเขียนสัญลักษณ์คูณกับเครื่องหมายต่าง ๆ ให้ชัดเจนเพื่อหลีกเลี่ยงความกำกวมจากรอยแก้", "anomaly_tag": "AI ให้คะแนนสูงกว่า Excel", "full_img_url": "screenshots/audit_gallery/full_DS-166.jpg", "crop_img_url": "screenshots/audit_gallery/crop_DS-166.jpg", "raw_file_source": "LINE_ALBUM_Photo2.1_260918_30.jpg"}];
+    let allRecords = EMBEDDED_RECORDS;
+
+    async function loadData() {
+      if (window.location.protocol.startsWith('http')) {
+        try {
+          const res = await fetch('audit_53_mismatches.json');
+          if (res.ok) {
+            allRecords = await res.json();
+          }
+        } catch (e) {
+          console.log('Using embedded records fallback');
+        }
+      }
+      renderGallery(allRecords);
+    }
+
+    function renderGallery(records) {
+      const container = document.getElementById('gallery-grid');
+      if (records.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:50px; color:var(--text-muted); font-size:16px;">ไม่พบรายการที่ตรงกับเงื่อนไขการค้นหา</div>';
+        return;
+      }
+
+      container.innerHTML = records.map((item, idx) => {
+        const diff = item.score_diff;
+        const diffClass = diff > 0 ? 'diff-plus' : 'diff-minus';
+        const diffSign = diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2);
+        
+        let tagClass = 'tag-neutral';
+        if (item.anomaly_tag.includes('Excel บันทึกผิด')) tagClass = 'tag-error';
+        else if (item.anomaly_tag.includes('ความพยายาม')) tagClass = 'tag-leniency';
+
+        const rawFileName = item.raw_file_source || '';
+
+        return `
+          <div class="audit-card" data-sid="${item.sid}" data-qno="${item.qno}" data-tag="${item.anomaly_tag}">
+            <div class="card-header">
+              <div class="card-title-group">
+                <span class="sid-badge">${item.sid}</span>
+                <span class="qno-badge">ข้อที่ ${item.qno}: ${item.topic}</span>
+                <span class="anomaly-tag ${tagClass}">${item.anomaly_tag}</span>
+              </div>
+              <span style="font-size:12px; color:var(--text-muted); font-family:monospace;">ไฟล์ดิบ: ${rawFileName}</span>
+            </div>
+
+            <div class="card-body">
+              <!-- Column 1: Student Submission -->
+              <div class="panel-block">
+                <div class="panel-title">
+                  <span>คำตอบของนิสิต</span>
+                  <span style="font-size:11px; color:#38bdf8;">ความมั่นใจ AI: ${item.confidence}</span>
+                </div>
+                <div class="ans-box">${escapeHtml(item.ans_text || '(ไม่พบข้อความคำตอบ หรือเป็นข้อสอบวาดรูป)')}</div>
+                
+                <details style="margin-top:10px; font-size:12px;">
+                  <summary style="cursor:pointer; color:var(--text-muted); font-weight:600;">ดูเหตุผลการให้คะแนนของ AI (AI Feedback)</summary>
+                  <div style="margin-top:6px; padding:8px; background:rgba(0,0,0,0.3); border-radius:6px; color:#cbd5e1; white-space:pre-wrap; font-size:12px; max-height:140px; overflow-y:auto;">
+                    ${escapeHtml(item.feedback || 'ไม่มีข้อเสนอแนะ')}
+                  </div>
+                </details>
+              </div>
+
+              <!-- Column 2: Score Comparison -->
+              <div class="panel-block">
+                <div class="panel-title">เปรียบเทียบคะแนน</div>
+                <div class="score-compare-box">
+                  <div class="score-item human">
+                    <div class="score-header-txt">Excel บันทึกไว้</div>
+                    <div class="score-number">${item.excel_human_score.toFixed(2)}</div>
+                  </div>
+                  <div class="score-item ai">
+                    <div class="score-header-txt">คะแนนระบบ AI</div>
+                    <div class="score-number">${item.ai_score.toFixed(2)}</div>
+                  </div>
+                </div>
+
+                <div class="diff-badge-row">
+                  <span class="diff-badge ${diffClass}">ผลต่าง: ${diffSign} คะแนน</span>
+                </div>
+
+                <div class="audit-verdict-box">
+                  <div class="audit-verdict-title">บันทึกผลการตรวจสอบภาพดิบ:</div>
+                  <div class="verdict-options">
+                    <label class="verdict-label">
+                      <input type="radio" name="verdict_${item.sid}" value="paper_is_ai" onchange="saveVerdict('${item.sid}', 'paper_is_ai')" ${item.sid === 'DS-031' || item.sid === 'DS-121' ? 'checked' : ''}>
+                      <span>ภาพบนกระดาษตรงกับ <strong>AI</strong> (Excel พิมพ์ผิด)</span>
+                    </label>
+                    <label class="verdict-label">
+                      <input type="radio" name="verdict_${item.sid}" value="paper_is_excel" onchange="saveVerdict('${item.sid}', 'paper_is_excel')">
+                      <span>ภาพบนกระดาษตรงกับ <strong>Excel</strong> (อาจารย์ให้ตามนี้จริง)</span>
+                    </label>
+                    <label class="verdict-label">
+                      <input type="radio" name="verdict_${item.sid}" value="other" onchange="saveVerdict('${item.sid}', 'other')">
+                      <span>ลายมือไม่ชัด / ต้องตรวจซ้ำ</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Column 3: Raw Image with Score -->
+              <div class="panel-block img-panel">
+                <div class="panel-title">
+                  <span>ภาพคะแนนจริงบนกระดาษ</span>
+                  <span style="font-size:11px; color:#38bdf8;">คลิกที่ภาพเพื่อขยายใหญ่</span>
+                </div>
+                <div class="img-preview-wrap" onclick="openModal('${item.full_img_url}', '${item.sid} (ข้อ ${item.qno})')">
+                  <img src="${item.crop_img_url}" alt="รอยคะแนนอาจารย์ ${item.sid}" onerror="this.src='${item.full_img_url}'" />
+                  <div class="img-hint-badge">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                    <span>คลิกดูภาพเต็ม</span>
+                  </div>
+                </div>
+                <button class="btn-view-full" onclick="openModal('${item.full_img_url}', '${item.sid} (ข้อ ${item.qno})')">
+                  เปิดภาพถ่ายเต็มหน้ากระดาษ
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    // Filter handling
+    let currentQ = 'all';
+    let currentSpecial = null;
+    let currentSearch = '';
+
+    document.getElementById('filter-pills').addEventListener('click', (e) => {
+      const btn = e.target.closest('.pill');
+      if (!btn) return;
+      document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+
+      currentQ = btn.dataset.q || null;
+      currentSpecial = btn.dataset.special || null;
+      applyFilters();
+    });
+
+    document.getElementById('search-input').addEventListener('input', (e) => {
+      currentSearch = e.target.value.trim().toLowerCase();
+      applyFilters();
+    });
+
+    function applyFilters() {
+      let filtered = allRecords.filter(item => {
+        if (currentQ && currentQ !== 'all') {
+          if (item.qno !== parseInt(currentQ)) return false;
+        }
+        if (currentSpecial === 'typo') {
+          if (!item.anomaly_tag.includes('Excel บันทึกผิด')) return false;
+        }
+        if (currentSearch) {
+          const matchSid = item.sid.toLowerCase().includes(currentSearch);
+          const matchAns = item.ans_text.toLowerCase().includes(currentSearch);
+          const matchTag = item.anomaly_tag.toLowerCase().includes(currentSearch);
+          if (!matchSid && !matchAns && !matchTag) return false;
+        }
+        return true;
+      });
+      renderGallery(filtered);
+    }
+
+    // Modal
+    function openModal(imgUrl, title) {
+      document.getElementById('modal-img').src = imgUrl;
+      document.getElementById('modal-title').innerText = title + ' - ภาพถ่ายกระดาษคำตอบต้นฉบับ';
+      document.getElementById('modal-lightbox').classList.add('active');
+    }
+
+    function closeModal(e) {
+      if (e && e.target && e.target.tagName === 'IMG') return;
+      document.getElementById('modal-lightbox').classList.remove('active');
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeModal();
+    });
+
+    function saveVerdict(sid, val) {
+      console.log(`Saved verdict for ${sid}: ${val}`);
+      localStorage.setItem(`audit_verdict_${sid}`, val);
+    }
+
+    window.addEventListener('DOMContentLoaded', loadData);
+  </script>
+</body>
+</html>

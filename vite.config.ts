@@ -7,6 +7,7 @@ const projectRoot = fileURLToPath(new URL(".", import.meta.url));
 
 export default defineConfig(({ mode }) => ({
   root: path.resolve(projectRoot, "client"),
+  publicDir: path.resolve(projectRoot, "public"),
   envDir: "../",
 
   server: {

@@ -387,7 +387,7 @@ export default function StudentGrading() {
                   <div className="review-assistance space-y-3">
                     <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                       <span className="font-bold text-xs text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                        ผลการประเมินจาก GPT-5.6 Luna:
+                        ผลการประเมินจาก Gemini:
                       </span>
 
                       <div className="flex items-center gap-2 flex-wrap">

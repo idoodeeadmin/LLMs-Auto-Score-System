@@ -19,6 +19,15 @@ Q2_RUBRIC_TEXT = (
     "(ระดับคะแนนที่ให้ได้คือ 2.0, 1.5, 1.0, 0.5 หรือ 0.0 คะแนนเท่านั้น)"
 )
 
+Q1_RUBRIC_TEXT = (
+    "ข้อ 1 (2 คะแนน):\n"
+    "ประเมินความเข้าใจความต่างของ Row-major และ Column-major (คะแนนเต็ม 2.00 คะแนน):\n"
+    "• 2.00 คะแนน: อธิบายความต่างได้ถูกต้องครบทั้ง 2 ฝั่ง (Row-major อิงตามแถว/แนวนอน และ Column-major อิงตามคอลัมน์/แนวตั้ง)\n"
+    "• 1.00 คะแนน: อธิบายถูกต้องเพียงฝั่งเดียว หรือตอบสั้นเฉพาะความเข้าใจเบื้องต้น\n"
+    "• 0.00 คะแนน: ตอบผิดทั้งหมด หรือไม่ตอบ\n"
+    "(ระดับคะแนนที่ให้ได้คือ 2.0, 1.0 หรือ 0.0 คะแนนเท่านั้น)"
+)
+
 def update_ai_rubric_file():
     if not EXCEL_AI_RUBRICS.exists():
         print(f"File not found: {EXCEL_AI_RUBRICS}")
@@ -27,15 +36,19 @@ def update_ai_rubric_file():
     wb = openpyxl.load_workbook(EXCEL_AI_RUBRICS)
     ws = wb['ข้อมูลสำหรับ API']
     
-    updated = 0
+    updated_q2 = 0
+    updated_q1 = 0
     for r in range(2, ws.max_row + 1):
         q_val = str(ws.cell(row=r, column=1).value or '')
         if 'O(n log n)' in q_val:
             ws.cell(row=r, column=2, value=Q2_RUBRIC_TEXT)
-            updated += 1
+            updated_q2 += 1
+        elif 'Row-major' in q_val:
+            ws.cell(row=r, column=2, value=Q1_RUBRIC_TEXT)
+            updated_q1 += 1
             
     wb.save(EXCEL_AI_RUBRICS)
-    print(f"1. Updated {updated} rows in '{EXCEL_AI_RUBRICS.name}' (Sheet: ข้อมูลสำหรับ API)")
+    print(f"1. Updated {updated_q1} Q1 rows and {updated_q2} Q2 rows in '{EXCEL_AI_RUBRICS.name}' (Sheet: ข้อมูลสำหรับ API)")
 
 def update_dataset_exam_rubrics_sheet():
     if not EXCEL_DATASET.exists():
@@ -87,9 +100,9 @@ def update_dataset_exam_rubrics_sheet():
     rubric_rows = [
         # ข้อ 1
         (1, "Row-major vs Column-major", 2.0, "Row-major", 1.0, 
-         "อธิบาย Row-major ว่าเป็นการจัดเก็บข้อมูล ลำดับการเรียง หรือการหาตำแหน่ง address ตามแนวแถว (Row/แนวนอน/แกน X) ให้ 1.0 คะแนน (แนวคิดเบื้องต้นได้ 0.5 คะแนน)"),
+         "อธิบายการจัดเก็บข้อมูลหรือเข้าถึงข้อมูลตามแถว (Row / แนวนอน) ได้ถูกต้อง ได้ 1.00 คะแนน (ตอบผิดหรือไม่ตอบได้ 0.00 คะแนน)"),
         (1, "Row-major vs Column-major", 2.0, "Column-major", 1.0, 
-         "อธิบาย Column-major ว่าเป็นการจัดเก็บข้อมูล ลำดับการเรียง หรือการหาตำแหน่ง address ตามแนวคอลัมน์ (Column/แนวตั้ง/แกน Y) ให้ 1.0 คะแนน (แนวคิดเบื้องต้นได้ 0.5 คะแนน)"),
+         "อธิบายการจัดเก็บข้อมูลหรือเข้าถึงข้อมูลตามคอลัมน์ (Column / แนวตั้ง) ได้ถูกต้อง ได้ 1.00 คะแนน (ตอบผิดหรือไม่ตอบได้ 0.00 คะแนน)\n(เกณฑ์ภาพรวม: อธิบายถูกทั้ง 2 ฝั่งได้ 2.00 คะแนน, อธิบายถูกฝั่งเดียวหรือระบุความเข้าใจเบื้องต้นได้ 1.00 คะแนน, ตอบผิดทั้งหมดหรือไม่ตอบได้ 0.00 คะแนน)"),
         
         # ข้อ 2 (เกณฑ์ 4 ระดับใหม่ล่าสุด)
         (2, "O(n log n) vs O(n^2) Complexity", 2.0, "การเปรียบเทียบความซับซ้อนและตัวอย่าง", 2.0,

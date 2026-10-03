@@ -140,9 +140,9 @@ def test_get_exams(mock_db):
     assert response.json()[0]["title"] == "Midterm Exam"
     clear_overrides()
 
-# --- OpenAI rubric route (provider call mocked, transport tested separately) ---
-@patch("server.routes.ai_routes._get_openai_api_key", return_value="test-only")
-@patch("server.routes.ai_routes.generate_rubric_with_openai")
+# --- Gemini rubric route (provider call mocked, transport tested separately) ---
+@patch("server.routes.ai_routes._get_gemini_api_key", return_value="test-only")
+@patch("server.routes.ai_routes.generate_rubric_with_gemini")
 def test_generate_rubric_mock(mock_generate, mock_key):
     override_get_current_user({"id": 1, "role": "teacher"})
     mock_generate.return_value = {

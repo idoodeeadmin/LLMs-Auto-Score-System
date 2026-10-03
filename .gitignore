@@ -106,3 +106,6 @@ tmp/
 
 # Local recovery archives and reconstruction evidence (not application source)
 /recovery/
+*.docx
+qa_docx_*/
+ชุดข้อสอบเก่า/

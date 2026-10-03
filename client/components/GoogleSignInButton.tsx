@@ -31,9 +31,11 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
       const firebaseToken = await firebaseUser.getIdToken(true);
 
       // Send Firebase token to our backend to verify and create/get user
-      await loginWithFirebase(firebaseToken);
+      const loggedUser = await loginWithFirebase(firebaseToken);
       
-      if (onSuccess) {
+      if (loggedUser && (!loggedUser.role || loggedUser.role === "unassigned")) {
+        navigate("/select-role");
+      } else if (onSuccess) {
         onSuccess();
       } else {
         navigate("/home");

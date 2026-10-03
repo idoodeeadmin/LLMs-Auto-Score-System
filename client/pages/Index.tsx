@@ -193,7 +193,6 @@ export default function Index() {
 
           <GoogleSignInButton
             text="เข้าสู่ระบบด้วย Google"
-            onSuccess={() => navigate("/home")}
             className="h-11 w-full rounded-md"
           />
 

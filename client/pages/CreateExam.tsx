@@ -107,7 +107,7 @@ const fromCloudDraft = (value: CloudExamDraft): ExamDraft => ({
     })) : [{ id: Date.now() + 1000 + questionIndex, name: "", description: "", score: String(question.score) }],
     images: (question.question_images_base64 ?? []).map((url, imageIndex) => ({ name: `รูปประกอบ ${imageIndex + 1}`, dataUrl: url })),
     answerKeyImages: (question.answer_key_images_base64 ?? []).map((url, imageIndex) => ({ name: `ภาพเฉลย ${imageIndex + 1}`, dataUrl: url })),
-    hideRubricFromStudents: Boolean(question.hide_rubric_from_students),
+    hideRubricFromStudents: question.hide_rubric_from_students !== undefined ? Boolean(question.hide_rubric_from_students) : true,
   })),
 });
 
@@ -166,6 +166,7 @@ export default function CreateExam() {
       score: "5",
       answerKey: "",
       rubrics: [{ id: 101, name: "", description: "", score: "5" }],
+      hideRubricFromStudents: true,
     },
   ]);
 
@@ -242,7 +243,10 @@ export default function CreateExam() {
     setStartDateTime(draft.startDateTime ?? "");
     setEndDateTime(draft.endDateTime ?? "");
     setIsRandomized(draft.isRandomized ?? false);
-    setQuestions(draft.questions);
+    setQuestions((draft.questions ?? []).map((q) => ({
+      ...q,
+      hideRubricFromStudents: q.hideRubricFromStudents !== undefined ? Boolean(q.hideRubricFromStudents) : true,
+    })));
     setSavedSnapshot(JSON.stringify({ examTitle: draft.examTitle, examDescription: draft.examDescription, questions: draft.questions,
       startDateTime: draft.startDateTime ?? "", endDateTime: draft.endDateTime ?? "", isRandomized: draft.isRandomized ?? false }));
     setDraftPickerOpen(false);
@@ -257,7 +261,7 @@ export default function CreateExam() {
     setStartDateTime("");
     setEndDateTime("");
     setIsRandomized(false);
-    const blank: Question[] = [{ id: Date.now(), text: "", score: "5", answerKey: "", rubrics: [{ id: Date.now() + 1, name: "", description: "", score: "5" }], hideRubricFromStudents: false }];
+    const blank: Question[] = [{ id: Date.now(), text: "", score: "5", answerKey: "", rubrics: [{ id: Date.now() + 1, name: "", description: "", score: "5" }], hideRubricFromStudents: true }];
     setQuestions(blank);
     setSavedSnapshot(JSON.stringify({ examTitle: "", examDescription: "", questions: blank,
       startDateTime: "", endDateTime: "", isRandomized: false }));
@@ -1017,7 +1021,7 @@ export default function CreateExam() {
                     rubrics: [
                       { id: newId + 1, name: "", description: "", score: "5" },
                     ],
-                    hideRubricFromStudents: false,
+                    hideRubricFromStudents: true,
                   },
                 ]);
                 setShowDetails((prev) => ({ ...prev, [newId]: false }));

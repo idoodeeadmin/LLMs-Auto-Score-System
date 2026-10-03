@@ -1,6 +1,20 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Info, ChevronDown, ChevronUp, CheckCircle2, EyeOff, Edit3, FileCheck, BarChart3, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  Info,
+  ChevronDown,
+  ChevronUp,
+  CheckCircle2,
+  EyeOff,
+  Edit3,
+  FileCheck,
+  BarChart3,
+  Users,
+  Lock,
+  Unlock,
+  AlertCircle,
+} from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -22,6 +36,7 @@ interface Exam {
   total_score: number; start_date?: string; end_date?: string;
   created_at: string; questions: Question[];
   server_time?: string; submission_deadline?: string;
+  is_closed?: boolean | number;
 }
 
 export default function ExamView() {
@@ -42,6 +57,7 @@ export default function ExamView() {
   const [extNote, setExtNote] = useState("");
   const [isGranting, setIsGranting] = useState(false);
   const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
+  const [togglingClose, setTogglingClose] = useState(false);
 
   useEffect(() => { if (!isLoading && !user) navigate("/"); }, [user, isLoading, navigate]);
 
@@ -66,8 +82,48 @@ export default function ExamView() {
       return () => clearInterval(id);
     }
   }, [token, roomId, examId, user?.role, navigate]);
+
+  const handleToggleClose = async () => {
+    if (!exam) return;
+    const willClose = !exam.is_closed;
+    const confirmMessage = willClose
+      ? "ต้องการปิดรับข้อสอบชุดนี้ทันทีหรือไม่? (นักเรียนจะไม่สามารถส่งคำตอบได้อีก)"
+      : "ต้องการเปิดรับข้อสอบชุดนี้อีกครั้งหรือไม่? (นักเรียนจะสามารถส่งคำตอบได้ตามช่วงเวลาที่กำหนด)";
+    if (!window.confirm(confirmMessage)) return;
+
+    setTogglingClose(true);
+    try {
+      const res = await fetch(`/api/rooms/${roomId}/exams/${examId}/toggle-close`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setExam((prev) => (prev ? { ...prev, is_closed: data.is_closed } : null));
+        toast.success(
+          data.is_closed
+            ? "ปิดรับการส่งข้อสอบเรียบร้อยแล้ว"
+            : "เปิดรับการส่งข้อสอบอีกครั้งเรียบร้อยแล้ว",
+        );
+      } else {
+        const err = await res.json().catch(() => null);
+        toast.error(err?.detail || "ไม่สามารถเปลี่ยนสถานะการปิดรับข้อสอบได้");
+      }
+    } catch {
+      toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    } finally {
+      setTogglingClose(false);
+    }
+  };
+
   const getExamStatus = () => {
     if (!exam) return null;
+    if (exam.is_closed) {
+      return {
+        label: "ปิดรับข้อสอบแล้ว (โดยผู้สอน)",
+        color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800",
+      };
+    }
     const now = new Date(clock + clockOffset);
     const start = exam.start_date ? new Date(exam.start_date) : null;
     const end = exam.end_date ? new Date(exam.end_date) : null;
@@ -125,8 +181,14 @@ export default function ExamView() {
             <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-8 transition-colors duration-200">
                <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-2">
                 <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
+                  <div className="flex items-center gap-3 mb-2 flex-wrap">
                     <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{exam?.title}</h1>
+                    {Boolean(exam?.is_closed) && (
+                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 border border-red-200 dark:border-red-800 flex items-center gap-1">
+                        <Lock size={12} />
+                        ปิดรับข้อสอบแล้ว (โดยผู้สอน)
+                      </span>
+                    )}
                   </div>
                   {exam?.description && <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{exam.description}</p>}
                 </div>
@@ -380,9 +442,35 @@ export default function ExamView() {
                     <BarChart3 size={16} />
                     <span>สถิติการสอบ (Analytics)</span>
                   </Button>
+
+                  <Button
+                    variant="outline"
+                    onClick={handleToggleClose}
+                    disabled={togglingClose}
+                    className={`w-full h-10 rounded-xl flex items-center justify-center gap-2 font-medium transition-colors ${
+                      exam?.is_closed
+                        ? "border-emerald-300 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
+                        : "border-red-200 bg-red-50/50 hover:bg-red-100 text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300"
+                    }`}
+                  >
+                    {exam?.is_closed ? <Unlock size={16} /> : <Lock size={16} />}
+                    <span>
+                      {togglingClose
+                        ? "กำลังบันทึก…"
+                        : exam?.is_closed
+                        ? "เปิดรับคำตอบอีกครั้ง (Re-open)"
+                        : "ปิดรับข้อสอบทันที (Close Exam)"}
+                    </span>
+                  </Button>
                 </div>
 
                 <div className="pt-3 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400 space-y-1.5">
+                  <div className="flex justify-between">
+                    <span>สถานะการรับคำตอบ:</span>
+                    <span className={`font-semibold ${exam?.is_closed ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                      {exam?.is_closed ? "ปิดรับคำตอบแล้ว" : "เปิดรับตามกำหนดเวลา"}
+                    </span>
+                  </div>
                   <div className="flex justify-between">
                     <span>จำนวนคำถาม:</span>
                     <span className="font-medium text-gray-700 dark:text-gray-300">{exam?.questions.length} ข้อ</span>
@@ -400,9 +488,27 @@ export default function ExamView() {
             {/* Action Panel */}
             <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 space-y-4">
                 <>
+                  {Boolean(exam?.is_closed) && (
+                    <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 rounded-xl text-red-700 dark:text-red-300 text-xs flex items-center gap-2">
+                      <AlertCircle size={16} className="shrink-0 text-red-600" />
+                      <span>อาจารย์ผู้สอนได้ทำการปิดรับการส่งคำตอบสำหรับแบบทดสอบนี้แล้ว</span>
+                    </div>
+                  )}
                   {(!mySubmission || mySubmission.status === "missing") && (
-                    <Button disabled={!submissionChecked || beforeStart || afterDeadline} onClick={() => navigate(`/room/${roomId}/exam/${examId}/submit`)} className="w-full h-12 bg-emerald-800 hover:bg-emerald-900 dark:bg-emerald-300 dark:hover:bg-emerald-200 dark:text-emerald-950 text-white text-base font-medium rounded-xl transition-all shadow-sm">
-                      {beforeStart ? "ยังไม่ถึงเวลาเริ่มสอบ" : afterDeadline ? "ปิดรับคำตอบแล้ว" : !submissionChecked ? "กำลังตรวจสอบสถานะการส่ง" : "เริ่มต้นทำข้อสอบ"}
+                    <Button
+                      disabled={!submissionChecked || beforeStart || afterDeadline || Boolean(exam?.is_closed)}
+                      onClick={() => navigate(`/room/${roomId}/exam/${examId}/submit`)}
+                      className="w-full h-12 bg-emerald-800 hover:bg-emerald-900 dark:bg-emerald-300 dark:hover:bg-emerald-200 dark:text-emerald-950 text-white text-base font-medium rounded-xl transition-all shadow-sm disabled:opacity-60"
+                    >
+                      {exam?.is_closed
+                        ? "ปิดรับคำตอบแล้ว (โดยผู้สอน)"
+                        : beforeStart
+                        ? "ยังไม่ถึงเวลาเริ่มสอบ"
+                        : afterDeadline
+                        ? "ปิดรับคำตอบแล้ว"
+                        : !submissionChecked
+                        ? "กำลังตรวจสอบสถานะการส่ง"
+                        : "เริ่มต้นทำข้อสอบ"}
                     </Button>
                   )}
                   {submissionError && <p role="alert" className="text-sm text-destructive">ตรวจสอบสถานะการส่งไม่สำเร็จ ระบบจะลองใหม่อัตโนมัติ</p>}

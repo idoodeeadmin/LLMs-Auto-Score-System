@@ -21,7 +21,9 @@ def safe_print(*args, **kwargs):
         except Exception:
             pass
 
-from server.services.openai_grading import OPENAI_MODEL as _OPENAI_MODEL, score_with_openai, _fallback_score
+from server.services.gemini_grading import GEMINI_MODEL, score_with_gemini
+from server.services.openai_grading import _fallback_score
+from server.services.review_policy import submission_requires_review
 
 from server.database import get_db_connection
 from server.utils import get_image_bytes, trigger_socket_notify, grading_queue
@@ -127,22 +129,23 @@ async def grading_worker():
                 safe_print(f"Max Score: {q['score']} Points")
 
                 if missing_image:
-                    ai_result = _fallback_score(q['score'])
+                    ai_result = _fallback_score(q['score'], "gemini", GEMINI_MODEL)
                     ai_result['feedback'] = 'ไม่สามารถอ่านภาพแนบได้ครบ กรุณาให้ผู้สอนตรวจภาพต้นฉบับและประเมินด้วยตนเอง'
                 else:
-                    ai_result = await score_with_openai(question_text=q.get('text') or '', answer_text=answer_text, max_score=q['score'], answer_key=q.get('answer_key'), rubrics=rubrics_data, image_bytes_list=img_list, image_mime_list=img_mime_list, q_image_bytes_list=q_img_list, q_image_mime_list=q_img_mime_list, answer_key_image_bytes_list=answer_key_img_list, answer_key_image_mime_list=answer_key_img_mime_list)
+                    ai_result = await score_with_gemini(question_text=q.get('text') or '', answer_text=answer_text, max_score=q['score'], answer_key=q.get('answer_key'), rubrics=rubrics_data, image_bytes_list=img_list, image_mime_list=img_mime_list, q_image_bytes_list=q_img_list, q_image_mime_list=q_img_mime_list, answer_key_image_bytes_list=answer_key_img_list, answer_key_image_mime_list=answer_key_img_mime_list)
                 total_ai_score += ai_result['score']
                 confidences.append(ai_result['confidence'])
                 q_metrics = json.dumps({**ai_result.get('metrics', {}), 'transcription': ai_result.get('transcription', '')}, ensure_ascii=False)
                 cursor.execute('UPDATE submission_answers SET ai_score = ?, ai_feedback = ?, ai_confidence = ?, quality_metrics = ? WHERE id = ?', (ai_result['score'], ai_result['feedback'], ai_result['confidence'], q_metrics, ans['id']))
 
-                safe_print(f"AI Result ({_OPENAI_MODEL}): Score = {ai_result['score']} / {q['score']} | Confidence = {ai_result['confidence']}")
+                safe_print(f"AI Result ({GEMINI_MODEL}): Score = {ai_result['score']} / {q['score']} | Confidence = {ai_result['confidence']}")
                 safe_print(f"AI Feedback: {ai_result['feedback']}")
                 safe_print("----------------------------------------------------------------------")
 
             cursor.execute('SELECT ai_confidence FROM submission_answers WHERE submission_id = ?', (submission_id,))
             all_confidences = [row['ai_confidence'] for row in cursor.fetchall()]
-            new_status = 'needs_review' if not all_confidences or 'low' in all_confidences else 'ready'
+            needs_review = submission_requires_review(all_confidences)
+            new_status = 'needs_review' if needs_review else 'ready'
             cursor.execute('SELECT SUM(COALESCE(teacher_score, ai_score, 0)) as total FROM submission_answers WHERE submission_id = ?', (submission_id,))
             total_score_row = cursor.fetchone()
             new_total_score = total_score_row['total'] if total_score_row and total_score_row['total'] else 0.0
@@ -156,7 +159,7 @@ async def grading_worker():
                 teacher_id = teacher_row['teacher_id']
                 room_name = teacher_row['room_name']
                 
-                # 2. เมื่อ AI ไม่มั่นใจ (Notify for low confidence)
+                # 2. แจ้งผู้สอนเมื่อ AI รายงานความมั่นใจระดับปานกลางหรือต่ำ
                 if new_status == 'needs_review':
                     await trigger_socket_notify(
                         user_id=teacher_id,
@@ -210,5 +213,4 @@ async def grading_worker():
             grading_queue.task_done()
 
 # Backward-compatible import for existing Chapter 3 endpoint names.
-score_with_gemini = score_with_openai
 

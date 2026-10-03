@@ -21,6 +21,7 @@ import {
   Clock,
   AlertCircle,
   FileCheck,
+  ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -113,6 +114,7 @@ export default function RoomDetail() {
   const [announcementAttachments, setAnnouncementAttachments] = useState<AnnouncementAttachment[]>([]);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [leaveConfirmed, setLeaveConfirmed] = useState(false);
   const [studentSubmissions, setStudentSubmissions] = useState<{ exam_id: number; status: string; submission_score?: number }[]>([]);
 
   const handleLeaveRoom = async () => {
@@ -402,16 +404,28 @@ export default function RoomDetail() {
             </div>
 
             {user?.role === "student" && (
-              <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-[#1E1E1E]">
-                <Button
-                  variant="outline"
-                  onClick={() => setLeaveDialogOpen(true)}
-                  className="w-full justify-center text-xs font-medium text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:border-red-900/40 dark:hover:bg-red-950/30"
-                >
-                  <LogOut size={15} className="mr-1.5" />
-                  ออกจากห้องเรียน
-                </Button>
-              </div>
+              <details className="group rounded-xl border border-slate-200/70 bg-white/60 p-3 text-xs text-slate-500 dark:border-slate-800/70 dark:bg-[#1E1E1E]/60">
+                <summary className="flex cursor-pointer items-center justify-between text-[11px] font-medium text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 select-none">
+                  <span>ตัวเลือกเพิ่มเติมของห้องเรียน</span>
+                  <ChevronDown size={13} className="transition-transform group-open:rotate-180" />
+                </summary>
+                <div className="mt-2.5 border-t border-slate-100 pt-2.5 dark:border-slate-800">
+                  <p className="text-[11px] text-slate-400 mb-2 leading-relaxed">
+                    หากคุณลงทะเบียนผิดห้อง หรือไม่ประสงค์จะอยู่ในชั้นเรียนนี้:
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLeaveConfirmed(false);
+                      setLeaveDialogOpen(true);
+                    }}
+                    className="text-[11px] text-red-500/80 hover:text-red-600 hover:underline flex items-center gap-1.5 transition-colors"
+                  >
+                    <LogOut size={12} />
+                    ออกจากห้องเรียนนี้...
+                  </button>
+                </div>
+              </details>
             )}
           </aside>
 
@@ -517,16 +531,32 @@ export default function RoomDetail() {
         </div>
       </main>
 
-      <AlertDialog open={leaveDialogOpen} onOpenChange={setLeaveDialogOpen}>
+      <AlertDialog
+        open={leaveDialogOpen}
+        onOpenChange={(open) => {
+          setLeaveDialogOpen(open);
+          if (!open) setLeaveConfirmed(false);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>ยืนยันการออกจากห้องเรียน</AlertDialogTitle>
-            <AlertDialogDescription>
-              คุณแน่ใจหรือไม่ว่าต้องการออกจากห้องเรียน <strong>&ldquo;{room?.name}&rdquo;</strong>?
-              <br />
-              <span className="text-xs text-muted-foreground mt-2 block">
+            <AlertDialogTitle className="text-red-600 dark:text-red-400">ยืนยันการออกจากห้องเรียน</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <span>
+                คุณแน่ใจหรือไม่ว่าต้องการออกจากห้องเรียน <strong>&ldquo;{room?.name}&rdquo;</strong>?
+              </span>
+              <span className="text-xs text-muted-foreground block">
                 ข้อมูลการส่งงานและคะแนนที่คุณเคยทำจะยังคงอยู่ในระบบของอาจารย์ผู้สอน แต่ห้องเรียนนี้จะถูกนำออกจากรายการของคุณ
               </span>
+              <label className="flex items-start gap-2.5 pt-2 cursor-pointer text-xs text-slate-700 dark:text-slate-300 select-none">
+                <input
+                  type="checkbox"
+                  checked={leaveConfirmed}
+                  onChange={(e) => setLeaveConfirmed(e.target.checked)}
+                  className="mt-0.5 rounded border-slate-300 text-red-600 focus:ring-red-500"
+                />
+                <span>ฉันเข้าใจผลกระทบและยืนยันที่จะออกจากห้องเรียนนี้</span>
+              </label>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -536,8 +566,8 @@ export default function RoomDetail() {
                 e.preventDefault();
                 handleLeaveRoom();
               }}
-              disabled={leaving}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={leaving || !leaveConfirmed}
+              className="bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {leaving ? "กำลังดำเนินการ…" : "ยืนยันออกจากห้องเรียน"}
             </AlertDialogAction>

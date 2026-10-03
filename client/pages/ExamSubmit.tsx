@@ -14,6 +14,8 @@ import {
   Image as ImageIcon,
   X,
   Upload,
+  Info,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,12 +48,14 @@ interface QuestionItem {
 interface ExamData {
   id: number;
   title: string;
+  description?: string | null;
   total_score: number;
   questions: QuestionItem[];
   start_date?: string | null;
   end_date?: string | null;
   submission_deadline?: string | null;
   server_time?: string | null;
+  is_closed?: boolean;
 }
 
 const MAX_WORDS = 300;
@@ -80,6 +84,12 @@ export default function ExamSubmit() {
   const [now, setNow] = useState<number>(Date.now());
   const [draftSaved, setDraftSaved] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+  const [submitSummary, setSubmitSummary] = useState<{
+    answered: number;
+    total: number;
+    unansweredList: number[];
+  }>({ answered: 0, total: 0, unansweredList: [] });
 
   const draftKey = `evaly_draft_${roomId}_${examId}`;
   const hasAnyAnswer = Object.values(answers).some(
@@ -244,40 +254,84 @@ export default function ExamSubmit() {
   const isGracePeriod = !isExpired && endDateMs !== null && syncedNow > endDateMs;
   const isWarningPeriod = !isExpired && !isGracePeriod && remainingSeconds !== null && remainingSeconds <= 300;
 
+  const executeSubmit = async () => {
+    setShowSubmitConfirm(false);
+    if (!exam || !exam.questions) return;
+    setIsSubmitting(true);
+    try {
+      const answersPayload = exam.questions.map((q) => ({
+        question_id: q.id,
+        answer_text: answers[q.id] || "",
+      }));
+
+      const formData = new FormData();
+      formData.append("answers", JSON.stringify(answersPayload));
+
+      // Append images per question: image_{q_id}_{index}
+      exam.questions.forEach((q) => {
+        const files = questionImages[q.id] || [];
+        files.forEach((file, idx) => {
+          formData.append(`image_${q.id}_${idx}`, file, file.name);
+        });
+      });
+
+      const res = await fetch(
+        `/api/rooms/${roomId}/exams/${examId}/submit-multipart`,
+        {
+          method: "POST",
+          headers: { Authorization: token ? `Bearer ${token}` : "" },
+          body: formData,
+        },
+      );
+
+      if (res.ok) {
+        toast.success("ส่งคำตอบสำเร็จ!");
+        setIsSubmitted(true);
+        try {
+          localStorage.removeItem(draftKey);
+          setDraftSaved(false);
+        } catch {
+          // ignore
+        }
+      } else {
+        const err = await res.json().catch(() => null);
+        toast.error(err?.detail || "เกิดข้อผิดพลาดในการส่งคำตอบ");
+      }
+    } catch {
+      toast.error("ไม่สามารถส่งได้ กรุณาตรวจสอบการเชื่อมต่อ");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleSubmit = useCallback(
-    async (e?: React.FormEvent) => {
+    (e?: React.FormEvent) => {
       if (e) e.preventDefault();
       if (!exam || !exam.questions || exam.questions.length === 0) {
         toast.error("ไม่มีคำถามในแบบทดสอบนี้");
         return;
       }
 
-      if (isExpired) {
-        toast.error("หมดเวลาส่งคำตอบสำหรับแบบทดสอบนี้แล้ว");
+      if (isExpired || exam.is_closed) {
+        toast.error("หมดเวลาหรือปิดรับการส่งคำตอบสำหรับแบบทดสอบนี้แล้ว");
         return;
       }
 
       // Check if completely blank (no text and no images in any question)
-      const hasAnyAnswer = exam.questions.some(q => (answers[q.id] || "").trim().length > 0 || (questionImages[q.id] && questionImages[q.id].length > 0));
+      const hasAnyAnswer = exam.questions.some(
+        (q) =>
+          (answers[q.id] || "").trim().length > 0 ||
+          (questionImages[q.id] && questionImages[q.id].length > 0),
+      );
       if (!hasAnyAnswer) {
         toast.error("กรุณาตอบคำถามก่อนกดส่ง (ยังไม่มีคำตอบในข้อใดเลย)");
         const firstQ = exam.questions[0];
         if (firstQ) {
-          document.getElementById(`question-${firstQ.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+          document
+            .getElementById(`question-${firstQ.id}`)
+            ?.scrollIntoView({ behavior: "smooth", block: "center" });
         }
         return;
-      }
-
-      // Check if some questions are unanswered and prompt confirmation
-      const unansweredQs = exam.questions.map((q, idx) => ({ q, idx: idx + 1 })).filter(({ q }) => !(answers[q.id] || "").trim() && !(questionImages[q.id]?.length));
-      if (unansweredQs.length > 0) {
-        const numbers = unansweredQs.map(u => u.idx).join(", ");
-        const confirmed = window.confirm(`คุณยังไม่ได้ตอบคำถามข้อที่: ${numbers}\nยืนยันที่จะส่งคำตอบหรือไม่?`);
-        if (!confirmed) {
-          const firstUnanswered = unansweredQs[0];
-          document.getElementById(`question-${firstUnanswered.q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-          return;
-        }
       }
 
       for (let i = 0; i < exam.questions.length; i++) {
@@ -285,64 +339,46 @@ export default function ExamSubmit() {
         const text = answers[q.id] || "";
         const count = countWords(text);
         if (count > MAX_WORDS) {
-          toast.error(`ข้อที่ ${i + 1} คำตอบยาวเกิน 300 คำ (ปัจจุบัน ${count} คำ) กรุณาย่อความยาวก่อนส่ง`);
-          document.getElementById(`question-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+          toast.error(
+            `ข้อที่ ${i + 1} คำตอบยาวเกิน 300 คำ (ปัจจุบัน ${count} คำ) กรุณาย่อความยาวก่อนส่ง`,
+          );
+          document
+            .getElementById(`question-${q.id}`)
+            ?.scrollIntoView({ behavior: "smooth", block: "center" });
           return;
         }
         if (text.length > 2500) {
-          toast.error(`ข้อที่ ${i + 1} คำตอบยาวเกินขนาดที่ระบบรองรับ กรุณาย่อความยาวก่อนส่ง`);
-          document.getElementById(`question-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+          toast.error(
+            `ข้อที่ ${i + 1} คำตอบยาวเกินขนาดที่ระบบรองรับ กรุณาย่อความยาวก่อนส่ง`,
+          );
+          document
+            .getElementById(`question-${q.id}`)
+            ?.scrollIntoView({ behavior: "smooth", block: "center" });
           return;
         }
       }
 
-      setIsSubmitting(true);
-      try {
-        const answersPayload = exam.questions.map((q) => ({
-          question_id: q.id,
-          answer_text: answers[q.id] || "",
-        }));
-
-        const formData = new FormData();
-        formData.append("answers", JSON.stringify(answersPayload));
-
-        // Append images per question: image_{q_id}_{index}
-        exam.questions.forEach((q) => {
-          const files = questionImages[q.id] || [];
-          files.forEach((file, idx) => {
-            formData.append(`image_${q.id}_${idx}`, file, file.name);
-          });
-        });
-
-        const res = await fetch(
-          `/api/rooms/${roomId}/exams/${examId}/submit-multipart`,
-          {
-            method: "POST",
-            headers: { Authorization: token ? `Bearer ${token}` : "" },
-            body: formData,
-          },
-        );
-
-        if (res.ok) {
-          toast.success("ส่งคำตอบสำเร็จ!");
-          setIsSubmitted(true);
-          try {
-            localStorage.removeItem(draftKey);
-            setDraftSaved(false);
-          } catch {
-            // ignore
-          }
+      const unansweredList: number[] = [];
+      let answeredCount = 0;
+      exam.questions.forEach((q, idx) => {
+        const isAnswered =
+          (answers[q.id] || "").trim().length > 0 ||
+          Boolean(questionImages[q.id]?.length);
+        if (isAnswered) {
+          answeredCount++;
         } else {
-          const err = await res.json().catch(() => null);
-          toast.error(err?.detail || "เกิดข้อผิดพลาดในการส่งคำตอบ");
+          unansweredList.push(idx + 1);
         }
-      } catch {
-        toast.error("ไม่สามารถส่งได้ กรุณาตรวจสอบการเชื่อมต่อ");
-      } finally {
-        setIsSubmitting(false);
-      }
+      });
+
+      setSubmitSummary({
+        answered: answeredCount,
+        total: exam.questions.length,
+        unansweredList,
+      });
+      setShowSubmitConfirm(true);
     },
-    [token, roomId, examId, exam, answers, questionImages, draftKey],
+    [exam, isExpired, answers, questionImages],
   );
 
   return (
@@ -452,7 +488,18 @@ export default function ExamSubmit() {
 
             {!isSubmitted ? (
               <form onSubmit={handleSubmit} className="exam-paper">
-                {isExpired && (
+                {exam.is_closed && (
+                  <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl p-4 text-red-800 dark:text-red-200 flex items-center gap-3 mb-4">
+                    <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+                    <div>
+                      <h4 className="font-bold text-xs">ผู้สอนปิดรับคำตอบแล้ว (Exam Closed by Teacher)</h4>
+                      <p className="text-xs text-red-600 dark:text-red-300 mt-0.5">
+                        อาจารย์ผู้สอนได้ทำการปิดรับการส่งคำตอบสำหรับแบบทดสอบนี้แล้ว คุณไม่สามารถส่งคำตอบได้ในขณะนี้
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {isExpired && !exam.is_closed && (
                   <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl p-4 text-red-800 dark:text-red-200 flex items-center gap-3">
                     <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
                     <div>
@@ -497,6 +544,19 @@ export default function ExamSubmit() {
                     / {exam.questions.length} ข้อ
                   </span>
                 </div>
+
+                {exam.description && (
+                  <div className="mb-4 rounded-xl border border-sky-200/80 bg-gradient-to-r from-sky-50/70 via-blue-50/40 to-indigo-50/50 dark:border-sky-800/60 dark:from-sky-950/30 dark:via-blue-950/20 dark:to-indigo-950/30 p-4 shadow-sm">
+                    <div className="flex items-center gap-2 mb-2 text-sky-800 dark:text-sky-300 font-semibold text-sm">
+                      <FileText className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                      <span>คำชี้แจงการทำแบบทดสอบ (Exam Instructions)</span>
+                    </div>
+                    <div className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed pl-6 border-l-2 border-sky-400 dark:border-sky-500">
+                      {exam.description}
+                    </div>
+                  </div>
+                )}
+
                 <nav className="question-navigation" aria-label="ไปยังคำถาม">
                   {exam.questions.map((q, i) => (
                     <a
@@ -684,24 +744,28 @@ export default function ExamSubmit() {
 
                 <div className="action-footer">
                   <p>
-                    {isExpired
+                    {exam.is_closed
+                      ? "ผู้สอนปิดรับคำตอบสำหรับแบบทดสอบนี้แล้ว ไม่สามารถส่งคำตอบได้"
+                      : isExpired
                       ? "หมดเวลาทำข้อสอบแล้ว ไม่สามารถส่งคำตอบได้"
-                      : "ตรวจสอบคำตอบและไฟล์แนบให้ครบก่อนส่ง คำตอบจะถูกส่งเมื่อกดปุ่มด้านล่าง"}
+                      : "ตรวจสอบคำตอบและไฟล์แนบให้ครบก่อนส่ง คำตอบจะถูกส่งเมื่อกดปุ่มยืนยัน"}
                   </p>
                   <Button
                     type="submit"
-                    disabled={isSubmitting || isExpired || isSubmitted}
+                    disabled={isSubmitting || isExpired || Boolean(exam.is_closed) || isSubmitted}
                     className="primary-action w-full"
                   >
                     {isSubmitting ? (
                       <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    ) : isExpired ? (
+                    ) : isExpired || exam.is_closed ? (
                       <AlertCircle className="w-4 h-4 mr-2" />
                     ) : (
                       <Send className="w-4 h-4 mr-2" />
                     )}
                     {isSubmitting
                       ? "กำลังส่งคำตอบ…"
+                      : exam.is_closed
+                      ? "ปิดรับการส่งคำตอบแล้ว (โดยผู้สอน)"
                       : isExpired
                       ? "หมดเวลาการส่งข้อสอบแล้ว"
                       : "ส่งคำตอบ"}
@@ -775,6 +839,62 @@ export default function ExamSubmit() {
               className="bg-red-600 hover:bg-red-700 text-white"
             >
               ออกจากหน้านี้
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Submit Confirmation Dialog (Requirement 1) */}
+      <AlertDialog open={showSubmitConfirm} onOpenChange={setShowSubmitConfirm}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
+              <Send className="w-5 h-5 text-[#245b50] dark:text-[#91c7b8]" />
+              ยืนยันการส่งคำตอบแบบทดสอบ
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3 text-sm text-slate-600 dark:text-slate-300 pt-2">
+              <p>
+                คุณต้องการยืนยันที่จะส่งข้อสอบชุดนี้หรือไม่? เมื่อส่งแล้วจะไม่สามารถกลับมาแก้ไขคำตอบได้อีก
+              </p>
+              <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 space-y-1.5 text-xs">
+                <div className="flex justify-between items-center text-slate-700 dark:text-slate-200">
+                  <span>ทำแล้ว:</span>
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                    {submitSummary.answered} / {submitSummary.total} ข้อ
+                  </span>
+                </div>
+                {submitSummary.unansweredList.length > 0 && (
+                  <div className="flex justify-between items-start text-amber-600 dark:text-amber-400">
+                    <span>ยังไม่ได้ตอบ:</span>
+                    <span className="font-medium text-right">
+                      ข้อ {submitSummary.unansweredList.join(", ")} ({submitSummary.unansweredList.length} ข้อ)
+                    </span>
+                  </div>
+                )}
+              </div>
+              {submitSummary.unansweredList.length > 0 && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                  ⚠️ คุณยังมีข้อที่ยังไม่ได้ตอบ ต้องการยืนยันส่งคำตอบทันทีเลยหรือไม่?
+                </p>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel disabled={isSubmitting}>กลับไปตรวจทาน</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                executeSubmit();
+              }}
+              disabled={isSubmitting}
+              className="bg-[#245b50] hover:bg-[#1a443c] text-white"
+            >
+              {isSubmitting ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <Send className="w-4 h-4 mr-2" />
+              )}
+              ยืนยันส่งข้อสอบ
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

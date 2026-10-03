@@ -1,4 +1,4 @@
-"""OpenAI endpoints. The old /api/gemini prefix remains as a compatibility alias."""
+"""Gemini-powered grading and rubric endpoints."""
 import base64
 import logging
 from typing import Optional
@@ -7,21 +7,21 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from server.models import GenerateRubricRequest
 from server.utils import get_current_user, get_image_bytes, validate_upload_file
-from server.exam_policy import count_answer_words, MAX_ANSWER_WORDS, MAX_ANSWER_CHARACTERS
-from server.services.openai_grading import (
-    generate_rubric_with_openai, score_with_openai, _get_openai_api_key, OPENAI_MODEL,
+from server.exam_policy import count_answer_words, count_multiple_answers, MAX_ANSWER_WORDS, MAX_ANSWER_CHARACTERS
+from server.services.gemini_grading import (
+    generate_rubric_with_gemini, score_with_gemini, _get_gemini_api_key, GEMINI_MODEL,
 )
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/ai", tags=["OpenAI"])
+router = APIRouter(prefix="/api/ai", tags=["Gemini"])
 
 
 @router.post('/generate-rubric')
 async def generate_rubric(req: GenerateRubricRequest, user: dict = Depends(get_current_user)):
     if user['role'] != 'teacher':
         raise HTTPException(403, 'Only teachers can generate rubrics')
-    if not _get_openai_api_key():
-        raise HTTPException(503, 'OpenAI AI is not configured or unavailable')
+    if not _get_gemini_api_key():
+        raise HTTPException(503, 'Gemini API is not configured or unavailable')
     if not req.question_text.strip() and not req.question_images_base64:
         raise HTTPException(422, 'กรุณาระบุโจทย์หรือแนบภาพโจทย์')
     images = []
@@ -48,10 +48,10 @@ async def generate_rubric(req: GenerateRubricRequest, user: dict = Depends(get_c
         validate_upload_file(raw, content_type=mime)
         images.append((raw, mime))
     try:
-        return await generate_rubric_with_openai(req.question_text, req.total_score, req.tone, images)
+        return await generate_rubric_with_gemini(req.question_text, req.total_score, req.tone, images)
     except Exception as error:
-        logger.warning('OpenAI rubric generation failed: %s', type(error).__name__)
-        raise HTTPException(502, 'สร้างเกณฑ์ด้วย OpenAI ไม่สำเร็จ กรุณาลองใหม่หรือกรอกเกณฑ์ด้วยตนเอง')
+        logger.warning('Gemini rubric generation failed: %s', type(error).__name__)
+        raise HTTPException(502, 'สร้างเกณฑ์ด้วย Gemini ไม่สำเร็จ กรุณาลองใหม่หรือกรอกเกณฑ์ด้วยตนเอง')
 
 
 class WordCountRequest(BaseModel):
@@ -62,7 +62,7 @@ class WordCountRequest(BaseModel):
 async def answer_word_count(req: WordCountRequest, user: dict = Depends(get_current_user)):
     if any(len(text) > MAX_ANSWER_CHARACTERS for text in req.answers.values()):
         raise HTTPException(422, 'คำตอบยาวเกินขนาดที่ระบบรองรับ')
-    return {'counts': {key: count_answer_words(text) for key, text in req.answers.items()}, 'limit': MAX_ANSWER_WORDS}
+    return {'counts': count_multiple_answers(req.answers), 'limit': MAX_ANSWER_WORDS}
 
 
 class LiveTestEvalRequest(BaseModel):
@@ -90,14 +90,14 @@ async def test_grade_endpoint(req: LiveTestEvalRequest, user: dict = Depends(get
             mime = Image.MIME[image.format]
         images.append(raw)
         mimes.append(mime)
-    return await score_with_openai(**req.model_dump(exclude={'image_urls'}), image_bytes_list=images, image_mime_list=mimes)
+    return await score_with_gemini(**req.model_dump(exclude={'image_urls'}), image_bytes_list=images, image_mime_list=mimes)
 
 
 @router.post('/live-test-eval')
 async def live_test_eval(req: LiveTestEvalRequest, user: dict = Depends(get_current_user)):
     result = await test_grade_endpoint(req, user)
     return {'success': not result.get('metrics', {}).get('manual_review_required', False),
-            'provider': 'openai', 'model': OPENAI_MODEL, 'result': result}
+            'provider': 'gemini', 'model': GEMINI_MODEL, 'result': result}
 
 
 legacy_router = APIRouter(prefix="/api/gemini", include_in_schema=False)

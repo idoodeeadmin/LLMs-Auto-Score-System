@@ -167,7 +167,7 @@ q_meta = {
     2: {"topic": "O(n log n) vs O(n^2) Complexity", "type": "Text (ข้อความ)", "type_badge": "type-text", "max_s": 2.0},
     3: {"topic": "Linked List vs Array (Stack/Queue)", "type": "Text (ข้อความ)", "type_badge": "type-text", "max_s": 1.0},
     4: {"topic": "Binary Search Tree Construction", "type": "Vision (ภาพลายมือ)", "type_badge": "type-img", "max_s": 1.0},
-    5: {"topic": "1D Array Representation of BST", "type": "Vision (ภาพลายมือ)", "type_badge": "type-img", "max_s": 1.0},
+    5: {"topic": "Infix to Prefix & Postfix Expression", "type": "Vision (ภาพลายมือ)", "type_badge": "type-img", "max_s": 1.0},
     6: {"topic": "General Tree to Binary Tree (LCRS)", "type": "Vision (ภาพลายมือ)", "type_badge": "type-img", "max_s": 1.0},
 }
 
@@ -1687,15 +1687,14 @@ html_content = f"""<!DOCTYPE html>
                         </div>
                     `;
                 }} else {{
-                    const shortAns = item.student_answer.length > 120 ? item.student_answer.substring(0, 120) + '...' : item.student_answer;
-                    answerHtml = `<div class="ans-preview">${{shortAns.replace(/\\n/g, '<br>')}}</div>`;
+                    answerHtml = `<div class="ans-preview">${{item.student_answer.replace(/\\n/g, '<br>')}}</div>`;
                 }}
 
                 // Feedback formatting
                 let feedbackHtml = '<span style="color:var(--text-muted);">-</span>';
                 if (item.ai_feedback) {{
                     const textSource = item.teacher_feedback || item.ai_feedback;
-                    const shortFb = textSource.length > 95 ? textSource.substring(0, 95) + '...' : textSource;
+                    const shortFb = textSource;
                     const hasStudentFb = Boolean(item.student_feedback);
                     feedbackHtml = `
                         <div class="feedback-cell">
@@ -1748,7 +1747,7 @@ html_content = f"""<!DOCTYPE html>
                 if (r.question_no === 6) {{
                     badgeHtml = '<span class="q-badge" style="background:#065f46;color:#6ee7b7;margin-left:6px;">🏆 ฉบับสมบูรณ์ (100.0% Exact Match)</span>';
                 }} else if (r.question_no === 5) {{
-                    badgeHtml = '<span class="q-badge" style="background:#065f46;color:#6ee7b7;margin-left:6px;">⭐ ฉบับปรับปรุง (80% Exact Match)</span>';
+                    badgeHtml = '<span class="q-badge" style="background:#065f46;color:#6ee7b7;margin-left:6px;">🏆 ฉบับสมบูรณ์ (100.0% Exact Match)</span>';
                 }} else if (r.question_no === 4) {{
                     badgeHtml = '<span class="q-badge" style="background:#1e3a8a;color:#93c5fd;margin-left:6px;">🌲 Binary BST (เกณฑ์ 0 หรือ 1 เท่านั้น)</span>';
                 }} else if (r.question_no === 3) {{

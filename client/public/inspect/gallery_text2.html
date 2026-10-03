@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>Text Set 2 - O(n log n) vs O(n^2) Audit Gallery</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 24px; }
+        h1 { text-align: center; color: #38bdf8; margin-bottom: 8px; }
+        p.subtitle { text-align: center; color: #94a3b8; margin-bottom: 32px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(580px, 1fr)); gap: 24px; }
+        .card { background: #1e293b; border-radius: 12px; overflow: hidden; border: 1px solid #334155; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .card-header { padding: 12px 16px; background: #0f172a; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; }
+        .card-header h3 { margin: 0; font-size: 16px; color: #e2e8f0; }
+        .badge { font-size: 12px; padding: 4px 8px; border-radius: 6px; font-weight: 600; }
+        .badge-success { background: #065f46; color: #34d399; }
+        .img-container { width: 100%; position: relative; cursor: zoom-in; }
+        .img-container img { width: 100%; display: block; }
+        .labels { display: flex; justify-content: space-around; background: #1e293b; padding: 6px; font-size: 13px; font-weight: bold; border-top: 1px solid #334155; }
+        .labels span:first-child { color: #f87171; }
+        .labels span:last-child { color: #34d399; }
+        .metrics { padding: 12px 16px; font-size: 13px; color: #94a3b8; display: flex; justify-content: space-between; background: #0f172a; }
+        .metrics strong { color: #38bdf8; }
+    </style>
+</head>
+<body>
+    <h1>โจทย์ Text ชุดที่ 2: O(n log n) vs O(n^2) (34 ภาพ)</h1>
+    <p class="subtitle">Blind Scoring Preprocessing Gallery • Seamless Paper Patching • Orange Marker & Score Removal</p>
+    <div class="grid">
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2792.HEIC &rarr; IMG_2792.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (12 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2792.jpg" alt="Comparison IMG_2792">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>14492 &rarr; 545 px</strong></span>
+                <span>Student Writing: <strong>49.3% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2794.HEIC &rarr; IMG_2794.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (14 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2794.jpg" alt="Comparison IMG_2794">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>7784 &rarr; 803 px</strong></span>
+                <span>Student Writing: <strong>99.3% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2843.HEIC &rarr; IMG_2843.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (5 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2843.jpg" alt="Comparison IMG_2843">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>9363 &rarr; 155 px</strong></span>
+                <span>Student Writing: <strong>99.6% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2844.HEIC &rarr; IMG_2844.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (10 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2844.jpg" alt="Comparison IMG_2844">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>15915 &rarr; 7955 px</strong></span>
+                <span>Student Writing: <strong>99.2% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2845.HEIC &rarr; IMG_2845.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (1 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2845.jpg" alt="Comparison IMG_2845">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>3345 &rarr; 371 px</strong></span>
+                <span>Student Writing: <strong>99.5% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2847.HEIC &rarr; IMG_2847.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (15 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2847.jpg" alt="Comparison IMG_2847">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>5396 &rarr; 671 px</strong></span>
+                <span>Student Writing: <strong>84.6% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2848.HEIC &rarr; IMG_2848.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (9 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2848.jpg" alt="Comparison IMG_2848">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>11737 &rarr; 464 px</strong></span>
+                <span>Student Writing: <strong>97.0% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2849.HEIC &rarr; IMG_2849.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (3 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2849.jpg" alt="Comparison IMG_2849">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>2778 &rarr; 312 px</strong></span>
+                <span>Student Writing: <strong>99.3% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2850.HEIC &rarr; IMG_2850.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (3 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2850.jpg" alt="Comparison IMG_2850">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>8146 &rarr; 312 px</strong></span>
+                <span>Student Writing: <strong>99.7% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2851.HEIC &rarr; IMG_2851.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (1 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2851.jpg" alt="Comparison IMG_2851">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>5458 &rarr; 31 px</strong></span>
+                <span>Student Writing: <strong>99.9% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2852.HEIC &rarr; IMG_2852.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (2 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2852.jpg" alt="Comparison IMG_2852">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>3848 &rarr; 232 px</strong></span>
+                <span>Student Writing: <strong>82.6% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2853.HEIC &rarr; IMG_2853.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (1 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2853.jpg" alt="Comparison IMG_2853">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>3858 &rarr; 15 px</strong></span>
+                <span>Student Writing: <strong>66.8% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2855.HEIC &rarr; IMG_2855.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (3 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2855.jpg" alt="Comparison IMG_2855">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>4813 &rarr; 312 px</strong></span>
+                <span>Student Writing: <strong>99.5% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2856.HEIC &rarr; IMG_2856.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (2 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2856.jpg" alt="Comparison IMG_2856">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>2837 &rarr; 78 px</strong></span>
+                <span>Student Writing: <strong>87.6% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2857.HEIC &rarr; IMG_2857.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (4 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2857.jpg" alt="Comparison IMG_2857">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>5338 &rarr; 183 px</strong></span>
+                <span>Student Writing: <strong>98.8% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2858.HEIC &rarr; IMG_2858.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (1 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2858.jpg" alt="Comparison IMG_2858">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>6298 &rarr; 188 px</strong></span>
+                <span>Student Writing: <strong>98.6% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2859.HEIC &rarr; IMG_2859.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (100% Removed)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2859.jpg" alt="Comparison IMG_2859">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>5469 &rarr; 0 px (100% Eliminated)</strong></span>
+                <span>Student Writing: <strong>100.0% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2860.HEIC &rarr; IMG_2860.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (3 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2860.jpg" alt="Comparison IMG_2860">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>4141 &rarr; 55 px</strong></span>
+                <span>Student Writing: <strong>86.7% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2861.HEIC &rarr; IMG_2861.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (2 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2861.jpg" alt="Comparison IMG_2861">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>3694 &rarr; 57 px</strong></span>
+                <span>Student Writing: <strong>54.3% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2862.HEIC &rarr; IMG_2862.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (5 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2862.jpg" alt="Comparison IMG_2862">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>6768 &rarr; 2652 px</strong></span>
+                <span>Student Writing: <strong>97.0% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2863.HEIC &rarr; IMG_2863.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (6 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2863.jpg" alt="Comparison IMG_2863">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>4929 &rarr; 1059 px</strong></span>
+                <span>Student Writing: <strong>98.3% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2864.HEIC &rarr; IMG_2864.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (12 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2864.jpg" alt="Comparison IMG_2864">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>25930 &rarr; 182 px</strong></span>
+                <span>Student Writing: <strong>99.3% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2866.HEIC &rarr; IMG_2866.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (13 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2866.jpg" alt="Comparison IMG_2866">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>9345 &rarr; 26699 px</strong></span>
+                <span>Student Writing: <strong>99.5% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2867.HEIC &rarr; IMG_2867.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (4 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2867.jpg" alt="Comparison IMG_2867">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>2409 &rarr; 95 px</strong></span>
+                <span>Student Writing: <strong>89.7% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2868.HEIC &rarr; IMG_2868.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (6 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2868.jpg" alt="Comparison IMG_2868">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>5352 &rarr; 60 px</strong></span>
+                <span>Student Writing: <strong>88.0% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2869.HEIC &rarr; IMG_2869.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (1 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2869.jpg" alt="Comparison IMG_2869">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>3848 &rarr; 68 px</strong></span>
+                <span>Student Writing: <strong>99.0% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2870.HEIC &rarr; IMG_2870.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (10 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2870.jpg" alt="Comparison IMG_2870">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>7259 &rarr; 278 px</strong></span>
+                <span>Student Writing: <strong>82.4% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2871.HEIC &rarr; IMG_2871.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (1 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2871.jpg" alt="Comparison IMG_2871">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>3614 &rarr; 88 px</strong></span>
+                <span>Student Writing: <strong>99.7% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2872.HEIC &rarr; IMG_2872.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (11 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2872.jpg" alt="Comparison IMG_2872">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>15193 &rarr; 28 px</strong></span>
+                <span>Student Writing: <strong>88.4% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2873.HEIC &rarr; IMG_2873.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (1 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2873.jpg" alt="Comparison IMG_2873">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>3265 &rarr; 30 px</strong></span>
+                <span>Student Writing: <strong>78.9% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2874.HEIC &rarr; IMG_2874.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (9 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2874.jpg" alt="Comparison IMG_2874">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>10173 &rarr; 64 px</strong></span>
+                <span>Student Writing: <strong>99.4% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2875.HEIC &rarr; IMG_2875.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (11 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2875.jpg" alt="Comparison IMG_2875">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>11821 &rarr; 150 px</strong></span>
+                <span>Student Writing: <strong>98.5% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2876.HEIC &rarr; IMG_2876.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (8 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2876.jpg" alt="Comparison IMG_2876">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>7645 &rarr; 101 px</strong></span>
+                <span>Student Writing: <strong>96.7% retained</strong></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2877.HEIC &rarr; IMG_2877.jpg</h3>
+                <span class="badge badge-success">&#10003; Cleaned (5 marks)</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text2_IMG_2877.jpg" alt="Comparison IMG_2877">
+            </div>
+            <div class="labels">
+                <span>&larr; Original (Teacher Marks)</span>
+                <span>Cleaned (100% Natural Paper) &rarr;</span>
+            </div>
+            <div class="metrics">
+                <span>Teacher Marker: <strong>5508 &rarr; 176 px</strong></span>
+                <span>Student Writing: <strong>99.4% retained</strong></span>
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>

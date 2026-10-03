@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>Text Set 1 - Row-major vs Column-major Audit Gallery</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 24px; }
+        h1 { text-align: center; color: #38bdf8; margin-bottom: 8px; }
+        p.subtitle { text-align: center; color: #94a3b8; margin-bottom: 32px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(580px, 1fr)); gap: 24px; }
+        .card { background: #1e293b; border-radius: 12px; overflow: hidden; border: 1px solid #334155; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .card-header { padding: 12px 16px; background: #0f172a; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; }
+        .card-header h3 { margin: 0; font-size: 16px; color: #e2e8f0; }
+        .badge { font-size: 12px; padding: 4px 8px; border-radius: 6px; font-weight: 600; }
+        .badge-success { background: #065f46; color: #34d399; }
+        .img-container { width: 100%; position: relative; cursor: zoom-in; }
+        .img-container img { width: 100%; display: block; }
+        .card-footer { padding: 10px 16px; font-size: 13px; color: #94a3b8; display: flex; justify-content: space-between; }
+        .nav-bar { display: flex; justify-content: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+        .nav-bar a { color: #38bdf8; text-decoration: none; padding: 8px 16px; background: #1e293b; border-radius: 8px; border: 1px solid #334155; font-size: 13px; font-weight: 500; }
+        .nav-bar a:hover { background: #334155; color: #fff; }
+        .nav-bar a.active { background: #38bdf8; color: #0f172a; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="nav-bar">
+        <a href="index.html">Master Dashboard</a>
+        <a href="gallery_text1.html" class="active">Text 1 (Row vs Col)</a>
+        <a href="gallery_text2.html">Text 2 (O(n log n))</a>
+        <a href="gallery_text3.html">Text 3 (Linked List)</a>
+        <a href="gallery_set1.html">Photo 1 (BST)</a>
+        <a href="gallery_set2.html">Photo 2 (1D Array)</a>
+        <a href="gallery_set3.html">Photo 3 (Tree Conv)</a>
+    </div>
+    <h1>Text Set 1 - Row-major vs Column-major Audit Gallery</h1>
+    <p class="subtitle">Complete Dataset of 34 Images | Hybrid Poisson & Navier-Stokes | 100% Student Work & Question 11 Preserved</p>
+    <div class="grid">
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2791.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2791.jpg" alt="IMG_2791.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 4819 px</span>
+                <span>Marks Handled: 24</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2793.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2793.jpg" alt="IMG_2793.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 4531 px</span>
+                <span>Marks Handled: 6</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2795.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2795.jpg" alt="IMG_2795.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 3947 px</span>
+                <span>Marks Handled: 11</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2796.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2796.jpg" alt="IMG_2796.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 4890 px</span>
+                <span>Marks Handled: 2</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2797.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2797.jpg" alt="IMG_2797.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 8568 px</span>
+                <span>Marks Handled: 14</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2798.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2798.jpg" alt="IMG_2798.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 3362 px</span>
+                <span>Marks Handled: 2</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2799.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2799.jpg" alt="IMG_2799.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 2737 px</span>
+                <span>Marks Handled: 2</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2800.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2800.jpg" alt="IMG_2800.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 3564 px</span>
+                <span>Marks Handled: 3</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2801.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2801.jpg" alt="IMG_2801.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 8426 px</span>
+                <span>Marks Handled: 8</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2802.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2802.jpg" alt="IMG_2802.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 3738 px</span>
+                <span>Marks Handled: 20</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2803.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2803.jpg" alt="IMG_2803.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 5725 px</span>
+                <span>Marks Handled: 3</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2804.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2804.jpg" alt="IMG_2804.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 3182 px</span>
+                <span>Marks Handled: 2</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2805.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2805.jpg" alt="IMG_2805.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 3511 px</span>
+                <span>Marks Handled: 7</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2806.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2806.jpg" alt="IMG_2806.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 3690 px</span>
+                <span>Marks Handled: 14</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2807.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2807.jpg" alt="IMG_2807.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 19151 px</span>
+                <span>Marks Handled: 42</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2808.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2808.jpg" alt="IMG_2808.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 4708 px</span>
+                <span>Marks Handled: 21</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2810.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2810.jpg" alt="IMG_2810.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 3138 px</span>
+                <span>Marks Handled: 17</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2811.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2811.jpg" alt="IMG_2811.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 4224 px</span>
+                <span>Marks Handled: 13</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2812.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2812.jpg" alt="IMG_2812.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 4206 px</span>
+                <span>Marks Handled: 16</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2813.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2813.jpg" alt="IMG_2813.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 2754 px</span>
+                <span>Marks Handled: 10</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2814.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2814.jpg" alt="IMG_2814.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 3932 px</span>
+                <span>Marks Handled: 12</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2815.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2815.jpg" alt="IMG_2815.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 2958 px</span>
+                <span>Marks Handled: 12</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2816.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2816.jpg" alt="IMG_2816.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 3924 px</span>
+                <span>Marks Handled: 8</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2818.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2818.jpg" alt="IMG_2818.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 30223 px</span>
+                <span>Marks Handled: 17</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2819.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2819.jpg" alt="IMG_2819.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 2483 px</span>
+                <span>Marks Handled: 12</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2820.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2820.jpg" alt="IMG_2820.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 12138 px</span>
+                <span>Marks Handled: 10</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2821.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2821.jpg" alt="IMG_2821.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 2808 px</span>
+                <span>Marks Handled: 2</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2822.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2822.jpg" alt="IMG_2822.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 14255 px</span>
+                <span>Marks Handled: 12</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2823.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2823.jpg" alt="IMG_2823.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 6994 px</span>
+                <span>Marks Handled: 9</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2824.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2824.jpg" alt="IMG_2824.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 3111 px</span>
+                <span>Marks Handled: 2</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2825.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2825.jpg" alt="IMG_2825.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 8009 px</span>
+                <span>Marks Handled: 12</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2826.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2826.jpg" alt="IMG_2826.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 4828 px</span>
+                <span>Marks Handled: 3</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2827.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2827.jpg" alt="IMG_2827.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 6071 px</span>
+                <span>Marks Handled: 4</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>IMG_2828.HEIC</h3>
+                <span class="badge badge-success">Retention: 100.0%</span>
+            </div>
+            <div class="img-container">
+                <img src="comp_text1_IMG_2828.jpg" alt="IMG_2828.HEIC Comparison (Left: Original, Right: Cleaned)">
+            </div>
+            <div class="card-footer">
+                <span>Teacher Ink Cleaned: 3904 px</span>
+                <span>Marks Handled: 2</span>
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>

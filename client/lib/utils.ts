@@ -7,26 +7,18 @@ export function cn(...inputs: ClassValue[]) {
 
 export function countWords(text: string): number {
   if (!text || !text.trim()) return 0;
+  // Normalize boundary between Thai script and Latin/numbers so they aren't merged
+  const normalized = text
+    .replace(/([\u0E00-\u0E7F])([a-zA-Z0-9])/g, "$1 $2")
+    .replace(/([a-zA-Z0-9])([\u0E00-\u0E7F])/g, "$1 $2");
+
   if (typeof Intl !== "undefined" && (Intl as any).Segmenter) {
     const segmenter = new (Intl as any).Segmenter("th", { granularity: "word" });
-    const segments = [...segmenter.segment(text)].filter((seg: any) => seg.isWordLike);
-    let count = 0;
-    for (let i = 0; i < segments.length; i++) {
-      const current = segments[i].segment;
-      // Merge Thai nominalizing prefixes "การ" and "ความ" with subsequent Thai word
-      if (
-        (current === "การ" || current === "ความ") &&
-        i + 1 < segments.length &&
-        /[\u0E00-\u0E7F]/.test(segments[i + 1].segment)
-      ) {
-        continue;
-      }
-      count++;
-    }
-    return count;
+    const segments = [...segmenter.segment(normalized)].filter((seg: any) => seg.isWordLike);
+    return segments.length;
   }
-  const thaiTokens = text.match(/[\u0E00-\u0E7F]+/g) || [];
-  const latinTokens = text.replace(/[\u0E00-\u0E7F]+/g, " ").trim().split(/\s+/).filter(Boolean);
+  const thaiTokens = normalized.match(/[\u0E00-\u0E7F]+/g) || [];
+  const latinTokens = normalized.replace(/[\u0E00-\u0E7F]+/g, " ").trim().split(/\s+/).filter(Boolean);
   return thaiTokens.length + latinTokens.length;
 }
 

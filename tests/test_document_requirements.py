@@ -66,8 +66,8 @@ def db(monkeypatch):
         CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, email TEXT, student_id TEXT);
         CREATE TABLE rooms (id INTEGER PRIMARY KEY, name TEXT, teacher_id INTEGER);
         CREATE TABLE enrollments (id INTEGER PRIMARY KEY, room_id INTEGER, user_id INTEGER);
-        CREATE TABLE exams (id INTEGER PRIMARY KEY, room_id INTEGER, title TEXT, description TEXT, total_score REAL, start_date TEXT, end_date TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, is_randomized INTEGER DEFAULT 0);
-        CREATE TABLE questions (id INTEGER PRIMARY KEY, exam_id INTEGER, text TEXT, score REAL, answer_key TEXT, rubrics TEXT, order_index INTEGER, image_paths TEXT, hide_rubric_from_students INTEGER DEFAULT 0);
+        CREATE TABLE exams (id INTEGER PRIMARY KEY, room_id INTEGER, title TEXT, description TEXT, total_score REAL, start_date TEXT, end_date TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, is_randomized INTEGER DEFAULT 0, is_closed INTEGER DEFAULT 0);
+        CREATE TABLE questions (id INTEGER PRIMARY KEY, exam_id INTEGER, text TEXT, score REAL, answer_key TEXT, rubrics TEXT, order_index INTEGER, image_paths TEXT, answer_key_image_paths TEXT, hide_rubric_from_students INTEGER DEFAULT 1);
         CREATE TABLE submissions (id INTEGER PRIMARY KEY, exam_id INTEGER, user_id INTEGER, status TEXT, total_score REAL DEFAULT 0, submitted_at TEXT, graded_by_ai INTEGER DEFAULT 0, UNIQUE(exam_id, user_id));
         CREATE TABLE submission_answers (id INTEGER PRIMARY KEY, submission_id INTEGER, question_id INTEGER, answer_text TEXT, ai_score REAL, ai_feedback TEXT, ai_confidence TEXT, teacher_score REAL, teacher_comment TEXT, image_paths TEXT, quality_metrics TEXT, UNIQUE(submission_id, question_id));
         CREATE TABLE notifications (id INTEGER PRIMARY KEY, user_id INTEGER, type TEXT, link TEXT, data TEXT);
@@ -75,7 +75,7 @@ def db(monkeypatch):
         INSERT INTO rooms VALUES (10,'Data Structures',1), (20,'Other Room',2);
         INSERT INTO enrollments VALUES (1,10,101), (2,20,102);
         INSERT INTO exams (id,room_id,title,total_score) VALUES (1,10,'Stack',5), (2,20,'Queue',5);
-        INSERT INTO questions VALUES (11,1,'Explain Stack',5,'LIFO','[]',0,NULL,0), (22,2,'Explain Queue',5,'FIFO','[]',0,NULL,0);
+        INSERT INTO questions VALUES (11,1,'Explain Stack',5,'LIFO','[]',0,NULL,NULL,0), (22,2,'Explain Queue',5,'FIFO','[]',0,NULL,NULL,0);
     """)
     for module in (exam_routes, room_routes, system_routes, notification_service):
         monkeypatch.setattr(module, 'get_db_connection', lambda: database)
@@ -96,12 +96,12 @@ def seed_submission(db, status='ready', exam_id=1, user_id=101, question_id=11):
     db.commit()
 
 
-@pytest.mark.parametrize('text,expected', [('hello world',2), ('Stack, Queue!',2), ('คำตอบ',1), ('',0), ('!!!',0)])
+@pytest.mark.parametrize('text,expected', [('hello world',2), ('Stack, Queue!',2), ('ตอบ',1), ('',0), ('!!!',0)])
 def test_word_count(text, expected):
     assert count_answer_words(text) == expected
 
 
-@pytest.mark.parametrize('word', ['word', 'คำตอบ'])
+@pytest.mark.parametrize('word', ['word', 'ตอบ'])
 def test_300_words_allowed_301_rejected(word):
     assert validate_answer_text(' '.join([word] * 300)) == 300
     with pytest.raises(HTTPException) as caught:
@@ -242,9 +242,9 @@ def test_rescore_rejects_question_from_other_exam(db):
     assert client_for('teacher',1).post('/api/rooms/10/exams/1/questions/22/rescore').status_code == 404
 
 
-def test_openai_rubric_failure_is_not_fake_success(monkeypatch):
-    monkeypatch.setattr(ai_routes,'_get_openai_api_key',lambda:'test')
-    monkeypatch.setattr(ai_routes,'generate_rubric_with_openai',AsyncMock(side_effect=ValueError('Bad total')))
+def test_gemini_rubric_failure_is_not_fake_success(monkeypatch):
+    monkeypatch.setattr(ai_routes,'_get_gemini_api_key',lambda:'test')
+    monkeypatch.setattr(ai_routes,'generate_rubric_with_gemini',AsyncMock(side_effect=ValueError('Bad total')))
     assert client_for('teacher',1).post('/api/ai/generate-rubric',json={'question_text':'Stack','total_score':5}).status_code == 502
 
 
@@ -257,7 +257,7 @@ def test_rubric_routes_require_teacher_and_key(monkeypatch):
     client=client_for()
     assert client.post('/api/ai/generate-rubric',json={'question_text':'Stack','total_score':5}).status_code == 403
     client=client_for('teacher',1)
-    monkeypatch.setattr(ai_routes,'_get_openai_api_key',lambda:None)
+    monkeypatch.setattr(ai_routes,'_get_gemini_api_key',lambda:None)
     assert client.post('/api/ai/generate-rubric',json={'question_text':'Stack','total_score':5}).status_code == 503
 
 
@@ -306,16 +306,18 @@ def test_deadline_warning_skips_submitted_and_deduplicates(db,monkeypatch):
 
 
 @pytest.mark.parametrize('missing_image', [False, True])
-def test_worker_reads_all_images_and_persists_transcription(db, monkeypatch, missing_image):
+@pytest.mark.parametrize('confidence', ['high', 'medium', 'low'])
+def test_worker_reads_all_images_and_persists_transcription(db, monkeypatch, missing_image, confidence):
     from server.services import ai_service
     seed_submission(db, 'submitted')
     paths = [f'/uploads/{index}.png' for index in range(10)]
     db.raw.execute('UPDATE submission_answers SET image_paths=?', (json.dumps(paths),)); db.commit()
     monkeypatch.setattr(ai_service, 'get_db_connection', lambda: db)
     monkeypatch.setattr(ai_service, 'get_image_bytes', AsyncMock(return_value=None if missing_image else png_bytes()))
-    score = AsyncMock(return_value={'score':4, 'feedback':'Good', 'confidence':'high', 'transcription':'LIFO', 'metrics':{'model':'fixture'}})
-    monkeypatch.setattr(ai_service, 'score_with_openai', score)
-    monkeypatch.setattr(ai_service, 'trigger_socket_notify', AsyncMock())
+    score = AsyncMock(return_value={'score':4, 'feedback':'Good', 'confidence':confidence, 'transcription':'LIFO', 'metrics':{'model':'fixture'}})
+    monkeypatch.setattr(ai_service, 'score_with_gemini', score)
+    notify = AsyncMock()
+    monkeypatch.setattr(ai_service, 'trigger_socket_notify', notify)
     async def run_one():
         queue=asyncio.Queue()
         monkeypatch.setattr(ai_service, 'grading_queue', queue)
@@ -333,7 +335,9 @@ def test_worker_reads_all_images_and_persists_transcription(db, monkeypatch, mis
         assert status == 'needs_review' and json.loads(row[0])['manual_review_required']
     else:
         assert len(score.await_args.kwargs['image_bytes_list']) == 10
-        assert json.loads(row[0])['transcription'] == 'LIFO' and status == 'ready'
+        assert json.loads(row[0])['transcription'] == 'LIFO'
+        assert status == ('ready' if confidence == 'high' else 'needs_review')
+    assert any(call.kwargs.get('notify_type') == 'ai_alert' for call in notify.await_args_list) == (missing_image or confidence != 'high')
 
 
 def test_edit_keeps_existing_question_images(db,monkeypatch):
@@ -387,3 +391,59 @@ def test_hide_rubric_from_students(db):
     assert student_exam['questions'][0]['rubrics'] == []
     assert 'answer_key' not in student_exam['questions'][0]
     assert student_exam['questions'][0]['hide_rubric_from_students'] is True
+
+
+def test_default_hide_rubric_is_true(db):
+    # When question is created without specifying hide_rubric_from_students, default is True
+    res = client_for('teacher', 1).post('/api/rooms/10/exams', json={
+        'title': 'Test Default Rubric Hidden',
+        'questions': [{
+            'text': 'What is Queue?',
+            'score': 5,
+            'answer_key': 'FIFO',
+            'rubrics': [{'name': 'FIFO', 'score': 5}]
+        }]
+    })
+    assert res.status_code == 200, res.text
+    exam_id = res.json()['id']
+
+    student_exam = client_for('student', 101).get(f'/api/rooms/10/exams/{exam_id}').json()
+    assert student_exam['questions'][0]['rubrics'] == []
+    assert student_exam['questions'][0]['hide_rubric_from_students'] is True
+
+
+def test_toggle_exam_closed(db):
+    # Teacher creates an exam
+    res = client_for('teacher', 1).post('/api/rooms/10/exams', json={
+        'title': 'Exam to Close',
+        'questions': [{'text': 'Question 1', 'score': 5}]
+    })
+    assert res.status_code == 200
+    exam_id = res.json()['id']
+
+    # Initial state is_closed = False
+    exam_data = client_for('teacher', 1).get(f'/api/rooms/10/exams/{exam_id}').json()
+    assert bool(exam_data.get('is_closed')) is False
+
+    # Teacher closes the exam
+    toggle_res = client_for('teacher', 1).post(f'/api/rooms/10/exams/{exam_id}/toggle-close')
+    assert toggle_res.status_code == 200
+    assert toggle_res.json()['is_closed'] is True
+
+    # Exam data now reflects is_closed = True
+    exam_data = client_for('student', 101).get(f'/api/rooms/10/exams/{exam_id}').json()
+    assert bool(exam_data.get('is_closed')) is True
+
+    # Student cannot submit when closed
+    sub_res = client_for('student', 101).post(
+        f'/api/rooms/10/exams/{exam_id}/submit',
+        json={'answers': [{'question_id': exam_data['questions'][0]['id'], 'answer_text': 'answer'}]}
+    )
+    assert sub_res.status_code == 403
+    assert 'ปิดรับคำตอบ' in sub_res.json()['detail']
+
+    # Teacher re-opens the exam
+    toggle_res = client_for('teacher', 1).post(f'/api/rooms/10/exams/{exam_id}/toggle-close')
+    assert toggle_res.status_code == 200
+    assert toggle_res.json()['is_closed'] is False
+

@@ -157,7 +157,8 @@ async def logout(response: Response):
 async def get_me(user: dict=Depends(get_current_user)):
     return {'id': user['id'], 'email': user['email'], 'name': user['name'], 'role': user['role'],
      'studentId': user['student_id'],
-     'avatarUrl': user.get('avatar_url', None), 'is_verified': user.get('is_verified', 0)}
+     'avatarUrl': user.get('avatar_url', None), 'is_verified': user.get('is_verified', 0),
+     'googleEmail': user.get('google_email', None), 'isGoogleLinked': bool(user.get('google_id'))}
 
 @router.put('/profile')
 async def update_profile(request: Request, name: str=Form(None), student_id: str=Form(None), password: str=Form(None), avatar: UploadFile=File(None), user: dict=Depends(get_current_user)):
@@ -417,19 +418,21 @@ async def resend_verification(req: ResendVerificationRequest):
 @router.post('/firebase-login', response_model=TokenResponse)
 async def firebase_login(request: FirebaseLoginRequest, req: Request, res: Response):
     """
-    Verify Firebase ID token and either:
-    - Find existing user by email and log them in
-    - Create new user account if email doesn't exist (default to 'student' role)
+    Verify Firebase ID token and:
+    - Rule: 1 Google Account -> Exactly 1 Web Account
+    - If user exists by google_id or google_email or email, log in directly.
+    - If brand new user, create user with role 'unassigned' so they select role.
     """
     firebase_auth = get_firebase_auth()
     if firebase_auth is None:
         raise HTTPException(status_code=503, detail='Firebase Admin SDK not configured')
     try:
         decoded_token = firebase_auth.verify_id_token(request.firebase_token)
+        google_uid = decoded_token.get('uid')
         email = decoded_token.get('email')
         display_name = decoded_token.get('name', decoded_token.get('display_name', 'User'))
         google_picture = decoded_token.get('picture', None)
-        if not email:
+        if not email or not google_uid:
             raise HTTPException(status_code=400, detail='Email not available from Google account')
     except firebase_auth.InvalidIdTokenError as e:
         print(f'[Firebase] Invalid token: {e}')
@@ -439,36 +442,86 @@ async def firebase_login(request: FirebaseLoginRequest, req: Request, res: Respo
     except Exception as e:
         print(f'[Firebase Verify Error] {e}')
         raise HTTPException(status_code=401, detail='Failed to verify Firebase token')
+
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT * FROM users WHERE email = ?', (email,))
+
+    # 1. Search for user already linked by google_id or google_email
+    cursor.execute('SELECT * FROM users WHERE google_id = ? OR google_email = ?', (google_uid, email))
     user = cursor.fetchone()
+
+    # 2. If not found by google_id/google_email, search by primary email
+    if not user:
+        cursor.execute('SELECT * FROM users WHERE email = ?', (email,))
+        user = cursor.fetchone()
+        if user:
+            user_dict = dict(user)
+            # If this existing user has a different google_id, block conflict
+            if user_dict.get('google_id') and user_dict.get('google_id') != google_uid:
+                conn.close()
+                raise HTTPException(status_code=400, detail='อีเมลนี้ถูกผูกไว้กับบัญชี Google อื่นอยู่แล้ว')
+            # Link this existing account to this Google account (1-to-1)
+            cursor.execute('UPDATE users SET google_id = ?, google_email = ?, is_verified = 1 WHERE id = ?',
+                           (google_uid, email, user_dict['id']))
+            conn.commit()
+
     if user:
         user_dict = dict(user)
+        # Ensure google_id/google_email is set on the user record if missing
+        if not user_dict.get('google_id') or not user_dict.get('google_email'):
+            cursor.execute('UPDATE users SET google_id = ?, google_email = ?, is_verified = 1 WHERE id = ?',
+                           (google_uid, email, user_dict['id']))
+            conn.commit()
+
         existing_avatar = user_dict.get('avatar_url')
         if google_picture and google_picture != existing_avatar:
             cursor.execute('UPDATE users SET avatar_url = ? WHERE id = ?', (google_picture, user_dict['id']))
             conn.commit()
         conn.close()
-        access_token = create_access_token(data={'sub': email, 'token_version': user.get('token_version', 0)})
+
+        access_token = create_access_token(data={'sub': user_dict['email'], 'token_version': user_dict.get('token_version', 0)})
         res.set_cookie(key="access_token", value=access_token, httponly=True, max_age=60*60*24*7, samesite="lax", path="/")
-        client_ip = getattr(req, 'client', None)
-        client_ip = client_ip.host if client_ip else 'unknown'
-        user_info = {'id': user_dict['id'], 'email': user_dict['email'], 'name': user_dict['name'], 'role': user_dict['role'], 'studentId': user_dict.get('student_id'), 'avatarUrl': google_picture or existing_avatar}
+        user_info = {
+            'id': user_dict['id'],
+            'email': user_dict['email'],
+            'name': user_dict['name'],
+            'role': user_dict['role'],
+            'studentId': user_dict.get('student_id'),
+            'avatarUrl': google_picture or existing_avatar,
+            'is_verified': user_dict.get('is_verified', 1),
+            'googleEmail': email,
+            'isGoogleLinked': True
+        }
         return {'access_token': access_token, 'token_type': 'bearer', 'user': user_info}
+
+    # 3. New user: Create new web account bound 1-to-1 with this Google account
     try:
-        cursor.execute('INSERT INTO users (email, password, name, role, student_id, avatar_url, is_verified) VALUES (?, ?, ?, ?, ?, ?, ?)', (email, f"firebase_{decoded_token.get('uid', '')}", display_name, 'unassigned', None, google_picture, 1))
+        cursor.execute(
+            'INSERT INTO users (email, password, name, role, student_id, avatar_url, is_verified, google_id, google_email) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            (email, f"firebase_{google_uid}", display_name, 'unassigned', None, google_picture, 1, google_uid, email)
+        )
         conn.commit()
         new_user_id = cursor.lastrowid
     except pymysql.err.IntegrityError:
         conn.close()
-        raise HTTPException(status_code=400, detail='Email already registered')
-    user_info = {'id': new_user_id, 'email': email, 'name': display_name, 'role': 'unassigned', 'studentId': None, 'avatarUrl': google_picture}
+        raise HTTPException(status_code=400, detail='อีเมลนี้มีผู้ใช้งานในระบบแล้ว')
+
+    user_info = {
+        'id': new_user_id,
+        'email': email,
+        'name': display_name,
+        'role': 'unassigned',
+        'studentId': None,
+        'avatarUrl': google_picture,
+        'is_verified': 1,
+        'googleEmail': email,
+        'isGoogleLinked': True
+    }
     access_token = create_access_token(data={'sub': email, 'token_version': 0})
     res.set_cookie(key="access_token", value=access_token, httponly=True, max_age=60*60*24*7, samesite="lax", path="/")
-    client_ip = req.client.host if getattr(req, 'client', None) else 'unknown'
     conn.close()
     return {'access_token': access_token, 'token_type': 'bearer', 'user': user_info}
+
 
 @router.post('/link-google')
 async def link_google(request: FirebaseLoginRequest, current_user: dict=Depends(get_current_user)):
@@ -477,15 +530,35 @@ async def link_google(request: FirebaseLoginRequest, current_user: dict=Depends(
         raise HTTPException(status_code=503, detail='Firebase SDK ไม่พร้อมใช้งาน')
     try:
         decoded_token = firebase_auth.verify_id_token(request.firebase_token)
+        google_uid = decoded_token.get('uid')
+        google_email = decoded_token.get('email')
         google_picture = decoded_token.get('picture', None)
+        if not google_uid or not google_email:
+            raise HTTPException(status_code=400, detail='ไม่พบบัญชีอีเมลจาก Google')
     except Exception as e:
         raise HTTPException(status_code=401, detail='ยืนยันบัญชี Google ไม่สำเร็จ')
+
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('UPDATE users SET is_verified = 1 WHERE id = ?', (current_user['id'],))
+
+    # Rule: Google 1 account -> Exactly 1 web account.
+    # Check if this Google account is already linked to ANY OTHER user
+    cursor.execute('SELECT id, email, name FROM users WHERE (google_id = ? OR google_email = ?) AND id != ?',
+                   (google_uid, google_email, current_user['id']))
+    existing_link = cursor.fetchone()
+    if existing_link:
+        conn.close()
+        raise HTTPException(status_code=400, detail='บัญชี Google นี้ถูกผูกกับบัญชีอื่นในระบบแล้ว (1 บัญชี Google ผูกได้ 1 บัญชีเว็บเท่านั้น)')
+
+    # Check if this current user is already bound to a different Google account
+    if current_user.get('google_id') and current_user.get('google_id') != google_uid:
+        conn.close()
+        raise HTTPException(status_code=400, detail='บัญชีของคุณได้ผูกกับ Google อื่นไปแล้ว ไม่สามารถเปลี่ยนได้')
+
+    cursor.execute('UPDATE users SET google_id = ?, google_email = ?, is_verified = 1 WHERE id = ?',
+                   (google_uid, google_email, current_user['id']))
     if google_picture and (not current_user.get('avatar_url')):
         cursor.execute('UPDATE users SET avatar_url = ? WHERE id = ?', (google_picture, current_user['id']))
     conn.commit()
     conn.close()
-    return {'message': 'เชื่อมโยงบัญชี Google สำเร็จ'}
-
+    return {'message': 'เชื่อมโยงบัญชี Google สำเร็จ', 'googleEmail': google_email}

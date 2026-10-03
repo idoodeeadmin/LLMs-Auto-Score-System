@@ -48,7 +48,7 @@ q_meta = {
     2: {"topic": "O(n log n) vs O(n^2) Complexity", "type": "Text (ข้อความ)", "max_s": 2.0},
     3: {"topic": "Linked List vs Array (Stack/Queue)", "type": "Text (ข้อความ)", "max_s": 1.0},
     4: {"topic": "Binary Search Tree Construction", "type": "Vision (ภาพลายมือ)", "max_s": 1.0},
-    5: {"topic": "1D Array Representation of BST", "type": "Vision (ภาพลายมือ)", "max_s": 1.0},
+    5: {"topic": "Infix to Prefix & Postfix Expression", "type": "Vision (ภาพลายมือ)", "max_s": 1.0},
     6: {"topic": "General Tree to Binary Tree (LCRS)", "type": "Vision (ภาพลายมือ)", "max_s": 1.0},
 }
 

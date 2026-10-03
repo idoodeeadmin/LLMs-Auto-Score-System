@@ -75,7 +75,7 @@ def insert_questions(cursor, exam, exam_id, allowed_existing=()):
             (exam_id, question.text, question.score, question.answer_key,
              json.dumps(question.rubrics, ensure_ascii=False) if question.rubrics else None,
              question.order_index, json.dumps(images) if images else None, json.dumps(answer_key_images) if answer_key_images else None,
-             1 if getattr(question, 'hide_rubric_from_students', False) else 0))
+             1 if getattr(question, 'hide_rubric_from_students', True) else 0))
 
 
 def get_draft_images(cursor, draft_id, room_id, teacher_id):
@@ -162,6 +162,29 @@ async def update_exam(room_id: int, exam_id: int, exam: ExamCreate, user: dict=D
         conn.close()
     return result
 
+@router.post('/{exam_id}/toggle-close')
+async def toggle_close_exam(room_id: int, exam_id: int, user: dict=Depends(get_current_user)):
+    if user['role'] != 'teacher':
+        raise HTTPException(status_code=403, detail='Only teachers can change exam status')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT e.id, e.is_closed, e.title FROM exams e JOIN rooms r ON r.id = e.room_id WHERE e.id = ? AND e.room_id = ? AND r.teacher_id = ?',
+                   (exam_id, room_id, user['id']))
+    exam = cursor.fetchone()
+    if not exam:
+        conn.close()
+        raise HTTPException(status_code=404, detail='Exam not found or unauthorized')
+    
+    current_status = exam.get('is_closed', 0) or 0
+    new_status = 0 if current_status else 1
+    cursor.execute('UPDATE exams SET is_closed = ? WHERE id = ?', (new_status, exam_id))
+    conn.commit()
+    conn.close()
+    return {
+        'is_closed': bool(new_status),
+        'message': 'ปิดรับการส่งคำตอบแล้ว' if new_status else 'เปิดรับการส่งคำตอบแล้ว'
+    }
+
 @router.delete('/{exam_id}')
 async def delete_exam(request: Request, room_id: int, exam_id: int, user: dict=Depends(get_current_user)):
     if user['role'] != 'teacher':
@@ -225,6 +248,7 @@ async def get_exam(room_id: int, exam_id: int, user: dict=Depends(get_current_us
     start = parse_exam_time(exam.get('start_date'))
     result['start_date'] = start.isoformat() if start else None
     result['end_date'] = end.isoformat() if end else None
+    result['is_closed'] = bool(result.get('is_closed', 0))
     if user['role'] != 'teacher' and start and now < start:
         return result
     for q in questions:

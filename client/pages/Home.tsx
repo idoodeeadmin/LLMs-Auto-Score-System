@@ -82,6 +82,7 @@ export default function Home() {
   const [editingRoom, setEditingRoom] = useState<ExamRoom | null>(null);
   const [roomToLeave, setRoomToLeave] = useState<ExamRoom | null>(null);
   const [leaving, setLeaving] = useState(false);
+  const [leaveConfirmed, setLeaveConfirmed] = useState(false);
   const [roomToDelete, setRoomToDelete] = useState<ExamRoom | null>(null);
   const [deleting, setDeleting] = useState(false);
   const visibleRooms = rooms.filter((room) =>
@@ -456,19 +457,36 @@ export default function Home() {
                   </Link>
                   <div className="flex items-center gap-1">
                     {user?.role === "student" && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setRoomToLeave(room);
-                        }}
-                        aria-label={`ออกจากห้องเรียน ${room.name}`}
-                        title="ออกจากห้องเรียน"
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                      >
-                        <LogOut size={15} />
-                      </button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                            aria-label="ตัวเลือกเพิ่มเติม"
+                            title="ตัวเลือกเพิ่มเติม"
+                          >
+                            <MoreVertical size={15} />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setLeaveConfirmed(false);
+                              setRoomToLeave(room);
+                            }}
+                            className="text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950/40 text-xs cursor-pointer"
+                          >
+                            <LogOut size={13} className="mr-2" />
+                            ออกจากห้องเรียน
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                     <Link to={`/room/${room.id}`} aria-label={`ไปยังห้องเรียน ${room.name}`} className="classroom-card-arrow">
                       <ArrowRight size={17} />
@@ -481,16 +499,34 @@ export default function Home() {
         )}
       </main>
 
-      <AlertDialog open={Boolean(roomToLeave)} onOpenChange={(open) => !open && setRoomToLeave(null)}>
+      <AlertDialog
+        open={Boolean(roomToLeave)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRoomToLeave(null);
+            setLeaveConfirmed(false);
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>ออกจากห้องเรียน</AlertDialogTitle>
-            <AlertDialogDescription>
-              คุณแน่ใจหรือไม่ว่าต้องการออกจากห้องเรียน <strong>&ldquo;{roomToLeave?.name}&rdquo;</strong>?
-              <br />
-              <span className="text-xs text-muted-foreground mt-2 block">
+            <AlertDialogTitle className="text-red-600 dark:text-red-400">ยืนยันออกจากห้องเรียน</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <span>
+                คุณแน่ใจหรือไม่ว่าต้องการออกจากห้องเรียน <strong>&ldquo;{roomToLeave?.name}&rdquo;</strong>?
+              </span>
+              <span className="text-xs text-muted-foreground block">
                 ข้อมูลการส่งงานและคะแนนที่คุณเคยทำจะยังคงอยู่ในระบบของอาจารย์ผู้สอน แต่ห้องเรียนนี้จะถูกนำออกจากรายการของคุณ
               </span>
+              <label className="flex items-start gap-2.5 pt-2 cursor-pointer text-xs text-slate-700 dark:text-slate-300 select-none">
+                <input
+                  type="checkbox"
+                  checked={leaveConfirmed}
+                  onChange={(e) => setLeaveConfirmed(e.target.checked)}
+                  className="mt-0.5 rounded border-slate-300 text-red-600 focus:ring-red-500"
+                />
+                <span>ฉันเข้าใจผลกระทบและยืนยันที่จะออกจากห้องเรียนนี้</span>
+              </label>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -500,8 +536,8 @@ export default function Home() {
                 e.preventDefault();
                 handleLeaveRoom();
               }}
-              disabled={leaving}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={leaving || !leaveConfirmed}
+              className="bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {leaving ? "กำลังดำเนินการ…" : "ยืนยันออกจากห้องเรียน"}
             </AlertDialogAction>

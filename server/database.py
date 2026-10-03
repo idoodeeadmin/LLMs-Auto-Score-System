@@ -93,7 +93,9 @@ def init_db():
         student_id VARCHAR(100),
         avatar_url TEXT,
         is_verified TINYINT DEFAULT 0,
-        token_version INTEGER DEFAULT 0
+        token_version INTEGER DEFAULT 0,
+        google_id VARCHAR(255) UNIQUE,
+        google_email VARCHAR(255)
     )
     ''')
     
@@ -133,6 +135,7 @@ def init_db():
         start_date VARCHAR(100),
         end_date VARCHAR(100),
         is_randomized TINYINT DEFAULT 0,
+        is_closed TINYINT DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (room_id) REFERENCES rooms (id) ON DELETE CASCADE
     )
@@ -150,7 +153,7 @@ def init_db():
         order_index INTEGER DEFAULT 0,
         image_paths TEXT,
         answer_key_image_paths TEXT,
-        hide_rubric_from_students TINYINT DEFAULT 0,
+        hide_rubric_from_students TINYINT DEFAULT 1,
         FOREIGN KEY (exam_id) REFERENCES exams (id) ON DELETE CASCADE
     )
     ''')
@@ -311,6 +314,9 @@ def init_db():
     add_column_if_not_exists("exam_drafts", "start_date VARCHAR(100)")
     add_column_if_not_exists("exam_drafts", "end_date VARCHAR(100)")
     add_column_if_not_exists("exam_drafts", "is_randomized TINYINT DEFAULT 0")
+    add_column_if_not_exists("users", "google_id VARCHAR(255)")
+    add_column_if_not_exists("users", "google_email VARCHAR(255)")
+    add_column_if_not_exists("exams", "is_closed TINYINT DEFAULT 0")
     
     try:
         cursor.execute("ALTER TABLE users ADD COLUMN is_verified TINYINT DEFAULT 0")

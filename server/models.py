@@ -70,7 +70,7 @@ class QuestionInput(BaseModel):
     order_index: int = 0
     question_images_base64: Optional[List[str]] = Field(default=None, max_length=10)
     answer_key_images_base64: Optional[List[str]] = Field(default=None, max_length=10)
-    hide_rubric_from_students: bool = False
+    hide_rubric_from_students: bool = True
 
 class ExamCreate(BaseModel):
     title: str = Field(min_length=1, max_length=255)
@@ -79,6 +79,7 @@ class ExamCreate(BaseModel):
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     is_randomized: int = 0
+    is_closed: int = 0
     questions: list[QuestionInput] = Field(min_length=1, max_length=100)
     draft_id: Optional[int] = None
 

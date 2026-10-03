@@ -15,6 +15,8 @@ interface User {
   teacherId?: string;
   avatarUrl?: string;
   is_verified?: number;
+  googleEmail?: string;
+  isGoogleLinked?: boolean;
 }
 
 interface AuthContextType {
@@ -24,7 +26,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (token: string, userData: User) => void;
   logout: () => void;
-  loginWithFirebase: (firebaseToken: string) => Promise<void>;
+  loginWithFirebase: (firebaseToken: string) => Promise<User>;
   updateUser: (userData: Partial<User>) => void;
 }
 
@@ -144,7 +146,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const loginWithFirebase = async (firebaseToken: string) => {
+  const loginWithFirebase = async (firebaseToken: string): Promise<User> => {
     try {
       const response = await fetch("/api/auth/firebase-login", {
         method: "POST",
@@ -156,6 +158,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (response.ok) {
         login(data.access_token, data.user);
+        return data.user;
       } else {
         throw new Error(data.detail || "Firebase login failed");
       }

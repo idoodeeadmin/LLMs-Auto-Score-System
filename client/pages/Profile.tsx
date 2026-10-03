@@ -126,8 +126,13 @@ export default function Profile() {
       });
 
       if (res.ok) {
-        toast.success("ผูกบัญชี Google สำเร็จ!");
-        updateUser({ is_verified: 1 });
+        const data = await res.json().catch(() => ({}));
+        toast.success("ผูกบัญชี Google สำเร็จ! สามารถใช้ Google บัญชีนี้เข้าสู่ระบบได้โดยตรง");
+        updateUser({
+          is_verified: 1,
+          isGoogleLinked: true,
+          googleEmail: data.googleEmail || result.user.email || undefined,
+        });
       } else {
         const err = await res.json();
         toast.error(err.detail || "การผูกบัญชีไม่สำเร็จ");
@@ -206,9 +211,29 @@ export default function Profile() {
           <div className="flex justify-end pb-8"><Button type="submit" disabled={isLoading} className="primary-action h-11 w-full sm:w-auto">{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}บันทึกการเปลี่ยนแปลง</Button></div>
         </form>
         <section className="grid gap-6 border-t border-[var(--work-line)] py-8 sm:grid-cols-[190px_1fr]" aria-labelledby="verification-title">
-          <h2 id="verification-title" className="font-semibold">การยืนยันบัญชี</h2>
-          {user.is_verified === 1 ? <p className="flex items-center gap-2 text-sm text-[var(--work-accent)]"><CheckCircle2 className="h-4 w-4" /> ยืนยันอีเมลแล้ว</p> :
-            <div><p className="mb-4 text-sm leading-6 text-[var(--work-muted)]">เชื่อมต่อบัญชี Google เพื่อยืนยันอีเมลของคุณ</p><Button onClick={handleLinkGoogle} type="button" variant="outline" disabled={isLoading}>เชื่อมต่อ Google</Button></div>}
+          <h2 id="verification-title" className="font-semibold">การเชื่อมต่อ Google</h2>
+          {user.isGoogleLinked || user.googleEmail ? (
+            <div className="space-y-1.5">
+              <p className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400 font-medium">
+                <CheckCircle2 className="h-4 w-4" /> เชื่อมต่อกับบัญชี Google แล้ว
+              </p>
+              <p className="text-xs text-[var(--work-muted)]">
+                {user.googleEmail ? `อีเมล Google: ${user.googleEmail}` : "สามารถเข้าสู่ระบบด้วย Google ได้โดยตรง"}
+              </p>
+              <p className="text-[11px] text-slate-400">
+                (ระบบกำหนด 1 บัญชี Google ผูกได้ 1 บัญชีเว็บเท่านั้น)
+              </p>
+            </div>
+          ) : (
+            <div>
+              <p className="mb-4 text-sm leading-6 text-[var(--work-muted)]">
+                เชื่อมต่อบัญชี Google เพื่อให้สามารถกดเข้าสู่ระบบด้วย Google ได้ทันที (1 บัญชี Google ผูกได้ 1 บัญชีเว็บเท่านั้น)
+              </p>
+              <Button onClick={handleLinkGoogle} type="button" variant="outline" disabled={isLoading}>
+                เชื่อมต่อ Google
+              </Button>
+            </div>
+          )}
         </section>
         <section className="grid gap-6 border-t border-[var(--work-line)] py-8 sm:grid-cols-[190px_1fr]" aria-labelledby="delete-title">
           <h2 id="delete-title" className="font-semibold">ลบบัญชี</h2>
