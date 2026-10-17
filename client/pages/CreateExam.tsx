@@ -1,10 +1,10 @@
+import { ExamEditorHeader, ExamScheduleSummary } from "@/components/ExamEditorHeader";
 import { WorkspaceBreadcrumb } from "@/components/WorkspaceHeader";
 import { useEffect, useRef, useState } from "react";
 import { useBlocker, useParams, useNavigate } from "react-router-dom";
 import { listDrafts, readDraft, writeDraft } from "@/lib/exam-drafts";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
-  ArrowLeft,
   Plus,
   X,
   Loader2,
@@ -15,11 +15,8 @@ import {
   ChevronRight,
   Files,
   Trash2,
-  Settings,
   Send,
   EyeOff,
-  Calendar,
-  Clock,
   AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,8 +25,6 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { UserProfileMenu } from "@/components/UserProfileMenu";
 import { toast } from "sonner";
 
 interface RubricItem {
@@ -529,95 +524,18 @@ export default function CreateExam() {
 
   return (
     <div className="workspace create-exam-page">
-      {/* Clean Top Navbar */}
-      <div className="task-header sticky top-0 z-40 flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 py-2.5 shadow-sm dark:border-slate-800 dark:bg-[#1E1E1E] sm:px-6">
-        <div className="flex items-center gap-3 min-w-0">
-          <button
-            aria-label="กลับห้องเรียน"
-            onClick={() => navigate(`/room/${roomId}`)}
-            className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition"
-          >
-            <ArrowLeft size={18} />
-          </button>
-          <div className="task-header-title flex min-w-0 flex-col sm:w-[min(34rem,42vw)]">
-            <input
-              type="text"
-              aria-label="ชื่อข้อสอบ"
-              disabled={!draftLoaded || savingDraft || isSaving}
-              value={examTitle}
-              onChange={(e) => setExamTitle(e.target.value)}
-              className="bg-transparent border-none focus:outline-none text-base font-bold text-slate-900 dark:text-white p-0"
-              placeholder="ชื่อข้อสอบ (เช่น แบบทดสอบกลางภาค)..."
-            />
-            <span className="text-xs text-[#245b50] dark:text-[#91c7b8] font-medium">
-              คะแนนเต็มรวม: {totalScore} คะแนน
-            </span>
-          </div>
-        </div>
-
-        <div className="task-header-actions flex shrink-0 items-center gap-1">
-          <div className="create-exam-utilities flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
-            <div className="hidden sm:block"><ThemeToggle /></div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              title="กำหนดเวลาและตั้งค่าข้อสอบ"
-              aria-label="เปิดการตั้งค่าข้อสอบ"
-              disabled={!draftLoaded || savingDraft || isSaving}
-              onClick={() => {
-                const el = document.getElementById("exam-schedule-toolbar");
-                if (el) {
-                  el.scrollIntoView({ behavior: "smooth", block: "center" });
-                  el.classList.add("ring-2", "ring-[#245b50]", "dark:ring-[#91c7b8]");
-                  setTimeout(() => el.classList.remove("ring-2", "ring-[#245b50]", "dark:ring-[#91c7b8]"), 2000);
-                } else {
-                  setSettingsOpen(true);
-                }
-              }}
-            >
-              <Settings size={16} />
-            </Button>
-            <Button variant="ghost" size="icon" className="relative h-8 w-8" title="แบบร่างข้อสอบ" aria-label="เปิดแบบร่างข้อสอบ"
-              disabled={!draftLoaded || savingDraft || isSaving}
-              onClick={() => {
-                if (dirty) { toast.info("บันทึกฉบับร่างปัจจุบันก่อนเปิดแบบร่างชุดอื่น"); return; }
-                setDraftPickerOpen(true);
-              }}>
-              <Files size={16} />
-              {draftChoices.length > 0 && (
-                <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-primary px-1 text-center text-[9px] font-semibold leading-4 text-primary-foreground">
-                  {draftChoices.length > 9 ? "9+" : draftChoices.length}
-                </span>
-              )}
-            </Button>
-          </div>
-          <span className="mx-1 hidden h-6 w-px bg-border sm:block" aria-hidden="true" />
-          <Button
-            variant="outline"
-            className="h-9 gap-1.5 rounded-lg px-3 text-xs"
-            title="บันทึกแบบร่าง"
-            disabled={!draftLoaded || savingDraft || isSaving || readingImages || generatingId !== null}
-            onClick={() => saveDraft()}
-          >
-            {savingDraft ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-            <span className="hidden md:inline">{savingDraft ? "กำลังบันทึก…" : "บันทึกร่าง"}</span>
+      <ExamEditorHeader mode="create" dirty={dirty} busy={!draftLoaded || savingDraft || isSaving} onBack={() => navigate(`/room/${roomId}`)} onSettings={() => setSettingsOpen(true)}>
+          <Button type="button" variant="ghost" aria-label="เปิดแบบร่างข้อสอบ" className="gap-2" disabled={!draftLoaded || savingDraft || isSaving}
+            onClick={() => { if (dirty) { toast.info("บันทึกฉบับร่างปัจจุบันก่อนเปิดแบบร่างชุดอื่น"); return; } setDraftPickerOpen(true); }}>
+            <Files size={16} /><span className="hidden sm:inline">แบบร่าง</span>
           </Button>
-          <Button
-            onClick={handleSave}
-            title="เผยแพร่ข้อสอบ"
-            aria-label="เผยแพร่ข้อสอบ"
-            disabled={!draftLoaded || isSaving || readingImages || savingDraft || generatingId !== null}
-            className="primary-action h-9 gap-1.5 rounded-lg px-3.5 text-xs"
-          >
-            {isSaving ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
-            <span className="hidden sm:inline">{isSaving ? "กำลังเผยแพร่…" : "เผยแพร่"}</span>
+          <Button type="button" variant="outline" className="gap-2" disabled={!draftLoaded || savingDraft || isSaving || readingImages || generatingId !== null} onClick={() => saveDraft()}>
+            {savingDraft ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}<span>บันทึกร่าง</span>
           </Button>
-        </div>
-          <ThemeToggle />
-          <UserProfileMenu />
-      </div>
+          <Button type="button" className="gap-2" disabled={!draftLoaded || isSaving || readingImages || savingDraft || generatingId !== null} onClick={handleSave}>
+            {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}<span>{isSaving ? "กำลังเผยแพร่…" : "เผยแพร่ข้อสอบ"}</span>
+          </Button>
+      </ExamEditorHeader>
 
       {/* Google Docs Paper Canvas */}
       <div className="document-page">
@@ -626,75 +544,17 @@ export default function CreateExam() {
         <p className="page-description mb-6">
           กำหนดคำถาม คะแนนเต็ม และเกณฑ์การให้คะแนนให้ครบก่อนบันทึก
         </p>
+        <label className="exam-title-field">
+          <span>ชื่อข้อสอบ</span>
+          <Input aria-label="ชื่อข้อสอบ" value={examTitle} onChange={event => setExamTitle(event.target.value)} placeholder="เช่น แบบทดสอบกลางภาค วิชาโครงสร้างข้อมูล" disabled={!draftLoaded || savingDraft || isSaving} />
+        </label>
         <div className="work-summary">
           <span>{questions.length} ข้อ</span>
           <span>คะแนนเต็ม {totalScore} คะแนน</span>
           <span>{isRandomized ? "สุ่มลำดับข้อ" : "เรียงข้อตามที่สร้าง"}</span>
         </div>
 
-        {/* Sleek Sub-header Toolbar (แถบเครื่องมือแนวนอนใต้หัวข้อ เหนือกระดาษข้อสอบ ไม่ขวางหน้ากระดาษ) */}
-        <div
-          id="exam-schedule-toolbar"
-          className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200/80 bg-slate-50/90 px-3.5 py-2 dark:border-slate-800 dark:bg-[#1a1f24] text-xs transition-all shadow-sm"
-        >
-          <div className="flex flex-wrap items-center gap-2.5 sm:gap-4">
-            <div className="flex items-center gap-1.5 font-semibold text-[#245b50] dark:text-[#91c7b8]">
-              <Calendar size={15} />
-              <span>กำหนดเวลา:</span>
-            </div>
-
-            {/* Start Date */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">เริ่ม:</span>
-              <Input
-                type="datetime-local"
-                aria-label="วันเวลาเริ่มสอบ"
-                value={startDateTime}
-                onChange={(e) => setStartDateTime(e.target.value)}
-                className="h-8 w-auto min-w-[170px] px-2 py-1 text-xs font-mono bg-white dark:bg-[#12161a] border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-md [color-scheme:light] dark:[color-scheme:dark]"
-              />
-            </div>
-
-            {/* End Date */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">สิ้นสุด:</span>
-              <Input
-                type="datetime-local"
-                aria-label="วันเวลาสิ้นสุดการสอบ"
-                value={endDateTime}
-                min={startDateTime || undefined}
-                onChange={(e) => setEndDateTime(e.target.value)}
-                className="h-8 w-auto min-w-[170px] px-2 py-1 text-xs font-mono bg-white dark:bg-[#12161a] border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-md [color-scheme:light] dark:[color-scheme:dark]"
-              />
-            </div>
-
-            {(startDateTime || endDateTime) && (
-              <button
-                type="button"
-                onClick={() => {
-                  setStartDateTime("");
-                  setEndDateTime("");
-                }}
-                className="text-[11px] text-slate-400 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 underline transition"
-                title="ล้างเวลาสอบ"
-              >
-                ล้างเวลา
-              </button>
-            )}
-          </div>
-
-          {/* Randomize Switch */}
-          <div className="flex items-center gap-2 pl-3 border-t sm:border-t-0 sm:border-l border-slate-200 dark:border-slate-800">
-            <label htmlFor="randomize-questions-toolbar" className="text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-300">
-              สุ่มลำดับข้อ
-            </label>
-            <Switch
-              id="randomize-questions-toolbar"
-              checked={isRandomized}
-              onCheckedChange={setIsRandomized}
-            />
-          </div>
-        </div>
+        <ExamScheduleSummary start={startDateTime} end={endDateTime} randomized={isRandomized} disabled={!draftLoaded || savingDraft || isSaving} onEdit={() => setSettingsOpen(true)} />
 
         {startDateTime && endDateTime && new Date(endDateTime) <= new Date(startDateTime) && (
           <p role="alert" className="mb-4 text-xs font-medium text-red-600 dark:text-red-400 flex items-center gap-1">
@@ -706,9 +566,7 @@ export default function CreateExam() {
         <fieldset disabled={!draftLoaded || isSaving || savingDraft || generatingId !== null} className="exam-paper min-w-0 space-y-8">
           {/* Header Description */}
           <div className="border-b border-slate-200 dark:border-slate-800 pb-4">
-            <input
-              type="text"
-              aria-label="คำชี้แจงข้อสอบ"
+            <Textarea rows={2} aria-label="คำชี้แจงข้อสอบ"
               value={examDescription}
               onChange={(e) => setExamDescription(e.target.value)}
               placeholder="คำชี้แจงข้อสอบ (เช่น ให้นิสิตตอบคำถามและยกตัวอย่างประกอบให้ครบถ้วน)..."
@@ -1035,10 +893,10 @@ export default function CreateExam() {
         </fieldset>
       </div>
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>การตั้งค่าข้อสอบ</DialogTitle>
-            <DialogDescription>กำหนดช่วงเวลาที่ผู้เรียนเข้าสอบได้และรูปแบบการเรียงคำถาม</DialogDescription>
+            <DialogDescription>กำหนดช่วงเวลาสอบ (เวลาเครื่องของคุณ) และลำดับคำถาม การเปลี่ยนแปลงจะบันทึกเมื่อกดบันทึกหรือเผยแพร่ข้อสอบ</DialogDescription>
           </DialogHeader>
           <div className="space-y-5 py-2">
             <div className="grid gap-4 sm:grid-cols-2">

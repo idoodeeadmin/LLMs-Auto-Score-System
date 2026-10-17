@@ -198,7 +198,12 @@ def test_history_and_own_result_hide_score_until_approved(db,status):
         assert history['submission_score'] == 4 and own['total_score'] == 4
     else:
         assert history['submission_score'] is None
-        assert 'total_score' not in own and 'answers' not in own
+        assert own['total_score'] is None
+        assert own['answers'][0]['answer_text'] == 'LIFO'
+        assert own['answers'][0]['ai_score'] is None
+        assert own['answers'][0]['ai_feedback'] is None
+        assert own['answers'][0]['teacher_score'] is None
+        assert own['answers'][0]['teacher_comment'] is None
 
 
 def test_leave_changes_only_own_membership_and_blocks_exam(db):
@@ -338,6 +343,36 @@ def test_worker_reads_all_images_and_persists_transcription(db, monkeypatch, mis
         assert json.loads(row[0])['transcription'] == 'LIFO'
         assert status == ('ready' if confidence == 'high' else 'needs_review')
     assert any(call.kwargs.get('notify_type') == 'ai_alert' for call in notify.await_args_list) == (missing_image or confidence != 'high')
+
+
+def test_worker_persists_text_only_submission(db, monkeypatch):
+    from server.services import ai_service
+    seed_submission(db, 'submitted')
+    monkeypatch.setattr(ai_service, 'get_db_connection', lambda: db)
+    monkeypatch.setattr(ai_service, 'score_with_gemini', AsyncMock(return_value={
+        'score': 4, 'feedback': 'Good', 'confidence': 'high',
+        'transcription': '', 'metrics': {'model': 'fixture'},
+    }))
+    monkeypatch.setattr(ai_service, 'trigger_socket_notify', AsyncMock())
+
+    async def run_one():
+        queue = asyncio.Queue()
+        monkeypatch.setattr(ai_service, 'grading_queue', queue)
+        await queue.put({'submission_id': 100, 'room_id': 10, 'exam_id': 1, 'user_id': 101})
+        task = asyncio.create_task(ai_service.grading_worker())
+        await asyncio.wait_for(queue.join(), 3)
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+
+    asyncio.run(run_one())
+    answer = db.raw.execute('SELECT ai_score, quality_metrics FROM submission_answers').fetchone()
+    status = db.raw.execute('SELECT status FROM submissions').fetchone()[0]
+    assert answer[0] == 4
+    assert json.loads(answer[1])['model'] == 'fixture'
+    assert status == 'ready'
 
 
 def test_edit_keeps_existing_question_images(db,monkeypatch):

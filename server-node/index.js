@@ -46,7 +46,7 @@ io.use((socket, next) => {
     }
     try {
         const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
-        if (!payload.user_id) {
+        if (!payload.user_id || payload.purpose !== 'notifications') {
             return next(new Error('Please sign in again to enable real-time notifications'));
         }
         socket.userId = String(payload.user_id);

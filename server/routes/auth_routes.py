@@ -153,6 +153,15 @@ async def logout(response: Response):
     response.delete_cookie(key="access_token", path="/")
     return {'message': 'Logged out successfully'}
 
+
+@router.post('/socket-token')
+async def create_socket_token(user: dict = Depends(get_current_user)):
+    """Issue a short-lived, signed identity for the notification socket handshake."""
+    return {'socket_token': create_access_token(
+        {'user_id': user['id'], 'purpose': 'notifications'},
+        expires_delta=timedelta(minutes=5),
+    )}
+
 @router.get('/me')
 async def get_me(user: dict=Depends(get_current_user)):
     return {'id': user['id'], 'email': user['email'], 'name': user['name'], 'role': user['role'],

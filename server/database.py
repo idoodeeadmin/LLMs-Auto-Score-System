@@ -275,6 +275,7 @@ def init_db():
         link VARCHAR(255),
         data JSON,
         is_read TINYINT(1) DEFAULT 0,
+        is_deleted TINYINT(1) DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
     )
@@ -317,6 +318,7 @@ def init_db():
     add_column_if_not_exists("users", "google_id VARCHAR(255)")
     add_column_if_not_exists("users", "google_email VARCHAR(255)")
     add_column_if_not_exists("exams", "is_closed TINYINT DEFAULT 0")
+    add_column_if_not_exists("notifications", "is_deleted TINYINT(1) DEFAULT 0")
     
     try:
         cursor.execute("ALTER TABLE users ADD COLUMN is_verified TINYINT DEFAULT 0")

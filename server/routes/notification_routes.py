@@ -33,7 +33,7 @@ async def get_notifications(user: dict = Depends(get_current_user)):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50",
+        "SELECT * FROM notifications WHERE user_id = ? AND is_deleted = 0 ORDER BY created_at DESC, id DESC LIMIT 50",
         (user["id"],),
     )
     rows = cursor.fetchall()
@@ -46,7 +46,7 @@ async def mark_notification_read(notification_id: int, user: dict = Depends(get_
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?",
+        "UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ? AND is_deleted = 0",
         (notification_id, user["id"]),
     )
     if cursor.rowcount == 0:
@@ -62,7 +62,7 @@ async def mark_all_notifications_read(user: dict = Depends(get_current_user)):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0",
+        "UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0 AND is_deleted = 0",
         (user["id"],),
     )
     updated = cursor.rowcount
@@ -71,12 +71,28 @@ async def mark_all_notifications_read(user: dict = Depends(get_current_user)):
     return {"updated": updated}
 
 
+@router.delete("/read")
+async def delete_read_notifications(user: dict = Depends(get_current_user)):
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE notifications SET is_deleted = 1 WHERE user_id = ? AND is_read = 1 AND is_deleted = 0",
+            (user["id"],),
+        )
+        deleted = cursor.rowcount
+        conn.commit()
+        return {"deleted": deleted}
+    finally:
+        conn.close()
+
+
 @router.delete("/{notification_id}")
 async def delete_notification(notification_id: int, user: dict = Depends(get_current_user)):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "DELETE FROM notifications WHERE id = ? AND user_id = ?",
+        "UPDATE notifications SET is_deleted = 1 WHERE id = ? AND user_id = ? AND is_deleted = 0",
         (notification_id, user["id"]),
     )
     if cursor.rowcount == 0:

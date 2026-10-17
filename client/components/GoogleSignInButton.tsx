@@ -48,6 +48,20 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
         // User closed the popup, do nothing
         return;
       }
+
+      if (error.code === "auth/unauthorized-domain") {
+        toast.error("โดเมนนี้ยังไม่ได้รับอนุญาตให้เข้าสู่ระบบด้วย Google ใน Firebase", {
+          description: "สำหรับเครื่องนี้ให้เปิดผ่าน localhost; หากยังไม่ได้ ให้เพิ่มโดเมนใน Firebase Authentication > Authorized domains",
+        });
+        return;
+      }
+
+      if (error.code === "auth/popup-blocked") {
+        toast.error("เบราว์เซอร์บล็อกหน้าต่างเข้าสู่ระบบ Google", {
+          description: "ลองเปิดเว็บนี้ใน Chrome หรือ Edge แล้วอนุญาตหน้าต่างป๊อปอัป",
+        });
+        return;
+      }
       
       toast.error(error.message || "เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Google");
     } finally {

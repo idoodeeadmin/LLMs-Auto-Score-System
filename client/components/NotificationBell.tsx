@@ -73,11 +73,19 @@ export function NotificationBell() {
 
   const remove = async (event: MouseEvent, item: NotificationItem) => {
     event.stopPropagation();
-    setItems((current) => current.filter((value) => value.id !== item.id));
-    await fetch(`/api/notifications/${item.id}`, {
+    const response = await fetch(`/api/notifications/${item.id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
     });
+    if (response.ok) setItems((current) => current.filter((value) => value.id !== item.id));
+  };
+
+  const removeRead = async () => {
+    const response = await fetch("/api/notifications/read", {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (response.ok) setItems((current) => current.filter((item) => !item.is_read));
   };
 
   const iconFor = (type: string) => {
@@ -107,11 +115,14 @@ export function NotificationBell() {
       <DropdownMenuContent align="end" className="w-[min(23rem,calc(100vw-1rem))] p-2">
         <div className="flex items-center justify-between px-2 py-1">
           <DropdownMenuLabel className="p-0">การแจ้งเตือน</DropdownMenuLabel>
-          {unread > 0 && (
-            <button onClick={markAllRead} className="text-xs font-medium text-emerald-800 hover:underline dark:text-emerald-300">
-              อ่านทั้งหมด
-            </button>
-          )}
+          <span className="flex gap-3">
+            {unread > 0 && (
+              <button onClick={markAllRead} className="text-xs font-medium text-emerald-800 hover:underline dark:text-emerald-300">อ่านทั้งหมด</button>
+            )}
+            {items.some((item) => item.is_read) && (
+              <button onClick={removeRead} className="text-xs font-medium text-red-600 hover:underline">ลบที่อ่านแล้ว</button>
+            )}
+          </span>
         </div>
         <DropdownMenuSeparator />
         {items.length === 0 ? (
@@ -139,7 +150,7 @@ export function NotificationBell() {
                 type="button"
                 aria-label="ลบการแจ้งเตือน"
                 onClick={(event) => remove(event, item)}
-                className="rounded p-1 text-slate-300 opacity-0 transition hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 focus:opacity-100"
+                className="rounded p-1 text-slate-500 transition hover:bg-red-50 hover:text-red-600 dark:text-slate-400"
               >
                 <Trash2 size={14} />
               </button>

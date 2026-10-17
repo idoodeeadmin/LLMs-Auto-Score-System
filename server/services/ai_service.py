@@ -44,6 +44,9 @@ async def grading_worker():
             conn = get_db_connection()
 
             cursor = conn.cursor()
+            # Expose the active phase to the review UI while the model runs.
+            cursor.execute("UPDATE submissions SET status = 'grading' WHERE id = ? AND status IN ('submitted', 'grading')", (submission_id,))
+            conn.commit()
             cursor.execute('SELECT * FROM submission_answers WHERE submission_id = ?', (submission_id,))
             answers = cursor.fetchall()
             cursor.execute('SELECT * FROM questions WHERE exam_id = ? ORDER BY order_index', (exam_id,))
@@ -63,7 +66,6 @@ async def grading_worker():
                 img_mime_list = []
                 image_paths_json = ans['image_paths']
                 if image_paths_json:
-                    import json
                     paths = json.loads(image_paths_json)
                     for path in paths:
                         raw_bytes = await get_image_bytes(path)

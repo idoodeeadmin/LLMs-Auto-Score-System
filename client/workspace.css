@@ -540,6 +540,40 @@
   margin: auto;
   padding: 36px 28px 80px;
 }
+
+/* Exam authoring: navigation, document content, and actions have distinct places. */
+.workspace:is(.create-exam-page, .edit-exam-page) .exam-editor-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 12px 24px;
+  background: var(--work-paper);
+  border-bottom: 1px solid var(--work-line);
+}
+.exam-editor-navigation { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.exam-editor-actions { display: flex; align-items: center; gap: 8px; }
+.exam-editor-account { display: flex; align-items: center; gap: 8px; order: 3; padding-left: 16px; border-left: 1px solid var(--work-line); }
+.workspace .exam-title-field { display: block; margin-top: 24px; }
+.workspace .exam-title-field > span { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 600; color: var(--work-muted); }
+.workspace .exam-title-field input { height: 52px; font-size: 18px; font-weight: 600; background: var(--work-paper); }
+.workspace .exam-schedule-summary { display: flex; align-items: center; gap: 14px; width: 100%; padding: 16px 18px; margin-bottom: 24px; border: 1px solid var(--work-line); border-radius: 12px; background: var(--work-paper); transition: border-color .15s, background .15s; }
+.workspace .exam-schedule-summary:hover { border-color: #5f9c8e; background: var(--work-canvas); }
+.workspace .exam-schedule-summary:focus-visible { outline: 2px solid #245b50; outline-offset: 3px; }
+@media (max-width: 900px) {
+  .workspace:is(.create-exam-page, .edit-exam-page) .exam-editor-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 12px 16px; }
+  .exam-editor-account { order: initial; border: 0; padding: 0; }
+  .exam-editor-actions { grid-column: 1 / -1; justify-content: flex-end; padding-top: 10px; border-top: 1px solid var(--work-line); }
+}
+@media (max-width: 640px) {
+  .workspace:is(.create-exam-page, .edit-exam-page) .exam-editor-header { position: sticky; }
+  .exam-editor-actions { gap: 4px; }
+  .exam-editor-actions > button { padding-left: 10px; padding-right: 10px; font-size: 12px; }
+  .workspace .exam-title-field { margin-left: 16px; margin-right: 16px; }
+  .workspace .exam-schedule-summary { width: calc(100% - 32px); margin-left: 16px; margin-right: 16px; }
+}
 .workspace .exam-paper {
   padding: 36px;
   background: var(--work-paper);

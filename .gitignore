@@ -92,6 +92,7 @@ capture.mjs
 capture_missing.mjs
 public/inspect/
 /artifacts/
+/project_support/working-files/
 /*.jpg
 /comp248_full.png
 /ชุดข้อสอบใหม่/
@@ -109,3 +110,21 @@ tmp/
 *.docx
 qa_docx_*/
 ชุดข้อสอบเก่า/
+
+# Local research material, generated reports, and temporary slide/chart output
+/project_support/
+/docs_and_tests/
+/scripts/
+/client/public/
+/public/answer-keys/
+/public/images/case_studies/
+/server/data/benchmark_dataset.json
+/client/assets/economics-classroom-hero.png
+/client/assets/economics-classroom-hero-v2.png
+/client/assets/economics-classroom-hero-v3.png
+/client/assets/economics-classroom-hero-v4.webp
+/output/
+/.chart-data-*/
+/.builder/
+/*.xlsx
+/*.png

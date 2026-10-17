@@ -20,6 +20,16 @@ import urllib.parse
 
 router = APIRouter(prefix="/api/rooms/{room_id}/exams", tags=["Exams"])
 
+
+def submitted_at_bangkok(value):
+    """Database CURRENT_TIMESTAMP is UTC; show report timestamps in Thai local time."""
+    if not value:
+        return None
+    parsed = value if isinstance(value, datetime) else datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone(timedelta(hours=7))).replace(tzinfo=None)
+
 def save_question_images(question, exam_id, allowed_existing=()):
     import base64
     paths = []
@@ -395,9 +405,9 @@ async def export_exam_csv(room_id: int, exam_id: int, user: dict=Depends(get_cur
     output = io.StringIO()
     output.write('\ufeff')
     writer = csv.writer(output)
-    writer.writerow(['Student ID', 'Name', 'Status', 'Score', 'Submitted At'])
+    writer.writerow(['Student ID', 'Name', 'Status', 'Score', 'Submitted At (Asia/Bangkok)'])
     for r in results:
-        writer.writerow([sanitize_csv_value(r['student_code'] or '-'), sanitize_csv_value(r['name']), r['status'], r['total_score'] if r['total_score'] is not None else '0', r['submitted_at'] or '-'])
+        writer.writerow([sanitize_csv_value(r['student_code'] or '-'), sanitize_csv_value(r['name']), r['status'], r['total_score'] if r['total_score'] is not None else '0', submitted_at_bangkok(r['submitted_at']) or '-'])
     content = output.getvalue()
     ascii_fn = f"scores_exam_{exam_id}.csv"
     utf8_fn = urllib.parse.quote(f"scores_{exam_title.replace(' ', '_')}.csv")
@@ -480,14 +490,14 @@ async def export_exam_scores(room_id: int, exam_id: int, user: dict=Depends(get_
     rows = cursor.fetchall()
     conn.close()
     safe_title = ''.join((ch if ch.isalnum() or ch in ('-', '_') else '_' for ch in exam['title']))
-    export_headers = ['รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'สถานะ', 'คะแนนที่ได้', 'คะแนนเต็ม', 'วันที่ส่ง']
+    export_headers = ['รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'สถานะ', 'คะแนนที่ได้', 'คะแนนเต็ม', 'วันที่ส่ง (เวลาไทย)']
     if export_fmt == 'csv':
         output = io.StringIO()
         output.write('\ufeff')
         writer = csv.writer(output)
         writer.writerow(export_headers)
         for r in rows:
-            writer.writerow([sanitize_csv_value(r['student_code']), sanitize_csv_value(r['name']), r['status'], r['total_score'], exam['total_score'], r['submitted_at']])
+            writer.writerow([sanitize_csv_value(r['student_code']), sanitize_csv_value(r['name']), r['status'], r['total_score'], exam['total_score'], submitted_at_bangkok(r['submitted_at'])])
         csv_content = output.getvalue()
         output.close()
         ascii_fn = f'exam_{exam_id}_scores.csv'
@@ -510,7 +520,7 @@ async def export_exam_scores(room_id: int, exam_id: int, user: dict=Depends(get_
         cell.fill = header_fill
         cell.alignment = Alignment(horizontal='center')
     for r in rows:
-        ws.append([sanitize_csv_value(r['student_code']), sanitize_csv_value(r['name']), r['status'], r['total_score'], exam['total_score'], r['submitted_at']])
+        ws.append([sanitize_csv_value(r['student_code']), sanitize_csv_value(r['name']), r['status'], r['total_score'], exam['total_score'], submitted_at_bangkok(r['submitted_at'])])
     ws.freeze_panes = 'A2'
     ws.auto_filter.ref = ws.dimensions
     bin_output = io.BytesIO()

@@ -14,3 +14,12 @@ __pycache__
 *.pyc
 uploads
 dev.db
+project_support
+docs_and_tests
+scripts
+output
+.chart-data-*
+client/public
+public/answer-keys
+public/images/case_studies
+server/data/benchmark_dataset.json
