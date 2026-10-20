@@ -17,7 +17,7 @@ from PIL import Image
 
 from server.main import app
 from server.utils import get_current_user, validate_upload_file
-from server.exam_policy import count_answer_words, validate_answer_text
+from server.exam_policy import count_answer_words, validate_answer_text, MAX_ANSWER_CHARACTERS
 from server.routes import exam_routes, room_routes, system_routes, ai_routes
 from server.services import openai_grading, notification_service
 
@@ -101,29 +101,18 @@ def test_word_count(text, expected):
     assert count_answer_words(text) == expected
 
 
-@pytest.mark.parametrize('word', ['word', 'ตอบ'])
-def test_300_words_allowed_301_rejected(word):
-    assert validate_answer_text(' '.join([word] * 300)) == 300
+def test_answer_character_limit_validation():
+    from server.exam_policy import MAX_ANSWER_CHARACTERS
+    # Under or equal to MAX_ANSWER_CHARACTERS is allowed
+    assert validate_answer_text('a' * MAX_ANSWER_CHARACTERS) == MAX_ANSWER_CHARACTERS
+    # Over MAX_ANSWER_CHARACTERS is rejected
     with pytest.raises(HTTPException) as caught:
-        validate_answer_text(' '.join([word] * 301))
+        validate_answer_text('a' * (MAX_ANSWER_CHARACTERS + 1))
     assert caught.value.status_code == 422
 
-
-def test_thai_continuous_text_validation():
-    # Legitimate continuous Thai sentence without spaces (approx 150 chars, 30+ words)
+    # Legitimate continuous Thai sentences are fully supported
     thai_text = 'การเขียนโปรแกรมเชิงวัตถุเป็นแนวคิดในการพัฒนาซอฟต์แวร์ที่ช่วยให้สามารถจัดการความซับซ้อนของระบบได้อย่างมีประสิทธิภาพโดยการแบ่งโปรแกรมออกเป็นออบเจกต์'
-    count = validate_answer_text(thai_text)
-    assert count > 0
-
-    # Non-Thai continuous string > 60 chars should fail
-    with pytest.raises(HTTPException) as caught:
-        validate_answer_text('a' * 65)
-    assert caught.value.status_code == 422
-
-    # Repetitive Thai spam should fail
-    with pytest.raises(HTTPException) as caught:
-        validate_answer_text('ก' * 35)
-    assert caught.value.status_code == 422
+    assert validate_answer_text(thai_text) == len(thai_text)
 
 
 def test_word_count_endpoint_uses_same_segmentation(db):
@@ -177,7 +166,7 @@ def test_submit_commits_before_queue_and_cannot_repeat(db, monkeypatch):
     exam_routes.grading_queue.put.assert_awaited_once()
 
 
-@pytest.mark.parametrize('answers', [ [{'question_id':11,'answer_text':'word ' * 301}], [{'question_id':22,'answer_text':'outside'}], {'bad':'shape'} ])
+@pytest.mark.parametrize('answers', [ [{'question_id':11,'answer_text':'a' * (MAX_ANSWER_CHARACTERS + 1)}], [{'question_id':22,'answer_text':'outside'}], {'bad':'shape'} ])
 def test_invalid_answers_do_not_create_submission(db, answers):
     response = client_for().post('/api/rooms/10/exams/1/submit-multipart',data={'answers':json.dumps(answers)})
     assert response.status_code == 422

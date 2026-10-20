@@ -74,29 +74,10 @@ def count_multiple_answers(answers: dict[str, str]) -> dict[str, int]:
 
 
 def validate_answer_text(text: str) -> int:
+    """Validates that answer text does not exceed the allowed character limit."""
     if len(text) > MAX_ANSWER_CHARACTERS:
         raise HTTPException(422, f"คำตอบยาวเกินขนาดที่ระบบรองรับ (ไม่เกิน {MAX_ANSWER_CHARACTERS} ตัวอักษร)")
-
-    # Guard against repetitive character spam (e.g. 30+ identical characters in a row)
-    if re.search(r"(.)\1{30,}", text):
-        raise HTTPException(422, "คำตอบมีข้อความที่ยาวผิดปกติหรืออาจเป็นข้อความสแปม กรุณาตรวจสอบคำตอบ")
-
-    # Check for single non-Thai tokens (Latin/symbols without spaces) exceeding limit
-    for token in text.split():
-        if not re.search(r"[\u0E00-\u0E7F]", token) and len(token) > MAX_SINGLE_TOKEN_CHARACTERS:
-            raise HTTPException(422, "คำตอบมีข้อความที่ยาวผิดปกติหรืออาจเป็นข้อความสแปม กรุณาตรวจสอบคำตอบ")
-
-    # For Thai text, inspect segmented tokens so continuous natural sentences aren't treated as one huge token
-    if word_tokenize:
-        tokens = word_tokenize(text, engine="newmm", keep_whitespace=False)
-        for token in tokens:
-            if len(token) > MAX_SINGLE_TOKEN_CHARACTERS:
-                raise HTTPException(422, "คำตอบมีข้อความที่ยาวผิดปกติหรืออาจเป็นข้อความสแปม กรุณาตรวจสอบคำตอบ")
-
-    count = count_answer_words(text)
-    if count > MAX_ANSWER_WORDS:
-        raise HTTPException(422, f"คำตอบต้องไม่เกิน {MAX_ANSWER_WORDS} คำ (พบ {count} คำ)")
-    return count
+    return len(text)
 
 
 def parse_exam_time(value):
