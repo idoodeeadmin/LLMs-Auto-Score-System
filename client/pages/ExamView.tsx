@@ -1,3 +1,4 @@
+import { confirmAction } from "@/components/ConfirmActionDialog";
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -89,7 +90,7 @@ export default function ExamView() {
     const confirmMessage = willClose
       ? "ต้องการปิดรับข้อสอบชุดนี้ทันทีหรือไม่? (นักเรียนจะไม่สามารถส่งคำตอบได้อีก)"
       : "ต้องการเปิดรับข้อสอบชุดนี้อีกครั้งหรือไม่? (นักเรียนจะสามารถส่งคำตอบได้ตามช่วงเวลาที่กำหนด)";
-    if (!window.confirm(confirmMessage)) return;
+    if (!await confirmAction(confirmMessage)) return;
 
     setTogglingClose(true);
     try {
@@ -149,7 +150,7 @@ export default function ExamView() {
       };
     }
 
-    return null;
+    return { label: "เปิดรับคำตอบ", color: "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300" };
   };
 
   const fmt = (d?: string) => d ? new Date(d).toLocaleString("th-TH", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
@@ -162,9 +163,9 @@ export default function ExamView() {
   const afterDeadline = !!deadline && clock + clockOffset > new Date(deadline).getTime();
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-16 transition-colors duration-200">
+    <div className="exam-detail-page min-h-screen bg-background pb-16 text-foreground transition-colors duration-200">
       <Navbar />
-      <div className={`${isTeacher ? "max-w-4xl" : "max-w-6xl"} mx-auto px-4 py-8`}>
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
 
         {/* Back */}
         <button onClick={() => navigate(`/room/${roomId}`)} className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-800 dark:hover:text-emerald-300 transition-colors mb-6">
@@ -172,30 +173,34 @@ export default function ExamView() {
         </button>
 
         {isTeacher && <ExamNavigation roomId={roomId} examId={examId} />}
-        <div className={isTeacher ? "space-y-6" : "grid grid-cols-1 lg:grid-cols-3 gap-6 items-start"}>
+        {isTeacher && <div className="mb-5 flex flex-wrap gap-2 lg:hidden">
+          <Button className="gap-2" onClick={() => navigate(`/room/${roomId}/exam/${examId}/review`)}><FileCheck size={16} /> ตรวจทานคะแนน</Button>
+          <Button variant="outline" className="gap-2" onClick={() => navigate(`/room/${roomId}/exam/${examId}/edit`)}><Edit3 size={16} /> แก้ไขข้อสอบ</Button>
+        </div>}
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] gap-6 items-start">
           
           {/* Left Column: Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="min-w-0 space-y-6">
             
             {/* Exam Header */}
-            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-8 transition-colors duration-200">
+            <div className="rounded-xl border border-border bg-card p-5 sm:p-7">
                <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-2">
                 <div className="flex-1">
+                  {exam?.description && <div className="mb-4"><p className="mb-1 text-xs font-medium text-muted-foreground">คำชี้แจง</p><p className="whitespace-pre-wrap break-words text-sm leading-7 text-foreground">{exam.description}</p></div>}
                   <div className="flex items-center gap-3 mb-2 flex-wrap">
-                    <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{exam?.title}</h1>
-                    {Boolean(exam?.is_closed) && (
-                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 border border-red-200 dark:border-red-800 flex items-center gap-1">
-                        <Lock size={12} />
-                        ปิดรับข้อสอบแล้ว (โดยผู้สอน)
+                    <h1 className="break-words text-2xl sm:text-3xl font-semibold text-foreground">{exam?.title}</h1>
+                    {getExamStatus() && (
+                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${getExamStatus()?.color}`}>
+                        {getExamStatus()?.label}
                       </span>
                     )}
                   </div>
-                  {exam?.description && <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{exam.description}</p>}
                 </div>
               </div>
-              <div className="flex flex-wrap gap-8 text-sm border-t border-gray-100 dark:border-gray-800 pt-5 mt-2">
-                <div><span className="text-xs text-gray-500 dark:text-gray-400 block mb-1">เริ่มสอบ</span><span className="font-medium text-gray-800 dark:text-gray-200">{fmt(exam?.start_date)}</span></div>
-                <div><span className="text-xs text-gray-500 dark:text-gray-400 block mb-1">สิ้นสุด</span><span className="font-medium text-gray-800 dark:text-gray-200">{fmt(exam?.end_date)}</span></div>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-5 text-sm border-t border-border pt-5 mt-5">
+                <div><span className="text-xs text-muted-foreground block mb-1">เริ่มรับคำตอบ</span><span className="font-medium">{exam?.start_date ? fmt(exam.start_date) : "ไม่จำกัดเวลาเริ่ม"}</span></div>
+                <div><span className="text-xs text-muted-foreground block mb-1">สิ้นสุดการรับคำตอบ</span><span className="font-medium">{exam?.end_date ? fmt(exam.end_date) : "ไม่กำหนดวันสิ้นสุด"}</span></div>
+                <div><span className="text-xs text-muted-foreground block mb-1">จำนวนคำถาม</span><span className="font-medium">{exam?.questions.length} ข้อ</span></div>
                 <div><span className="text-xs text-gray-500 dark:text-gray-400 block mb-1">คะแนนรวม</span><span className="font-medium text-emerald-800 dark:text-emerald-300">{exam?.total_score} คะแนน</span></div>
               </div>
             </div>
@@ -203,7 +208,7 @@ export default function ExamView() {
             {/* Questions List */}
             <div className="space-y-4">
               <div className="px-2">
-                <h2 className="text-sm font-medium text-gray-700 dark:text-gray-300">คำถามทั้งหมด ({exam?.questions.length} ข้อ)</h2>
+                <h2 className="text-lg font-semibold text-foreground">คำถาม <span className="ml-2 text-sm font-normal text-muted-foreground">{exam?.questions.length} ข้อ</span></h2>
               </div>
               
               <div className="space-y-4">
@@ -212,7 +217,7 @@ export default function ExamView() {
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex gap-4 flex-1">
                         <span className="text-sm font-medium text-gray-400 dark:text-gray-500 pt-0.5 shrink-0">{String(idx + 1).padStart(2, "0")}.</span>
-                        <p className="text-base text-gray-800 dark:text-gray-200 leading-relaxed">{q.text}</p>
+                        <p className="min-w-0 whitespace-pre-wrap break-words text-base text-gray-800 dark:text-gray-200 leading-relaxed">{q.text}</p>
                       </div>
                       <span className="shrink-0 text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700">{q.score} คะแนน</span>
                     </div>
@@ -232,10 +237,11 @@ export default function ExamView() {
                     {(isTeacher ? Boolean(q.answer_key || q.answer_key_image_paths?.length || q.rubrics?.length) : Boolean(!q.hide_rubric_from_students && q.rubrics?.length)) && (
                       <div className="pl-8 pt-2 border-t border-gray-50 dark:border-gray-800 mt-4">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <button onClick={() => setExpandedId(expandedId === q.id ? null : q.id)} className="text-xs text-emerald-800 dark:text-emerald-300 hover:text-emerald-950 dark:hover:text-emerald-200 font-medium transition-colors flex items-center gap-1.5">
+                          <button type="button" aria-expanded={expandedId === q.id} onClick={() => setExpandedId(expandedId === q.id ? null : q.id)} className="inline-flex min-h-10 items-center gap-2 border-0 bg-transparent py-2 text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                             {expandedId === q.id
-                              ? (isTeacher ? "ซ่อนเฉลยและเกณฑ์ ▲" : "ซ่อนเกณฑ์การให้คะแนน ▲")
-                              : (isTeacher ? "แสดงเฉลยและเกณฑ์ ▼" : "แสดงเกณฑ์การให้คะแนน ▼")}
+                              ? (isTeacher ? "ซ่อนแนวคำตอบและเกณฑ์" : "ซ่อนเกณฑ์การให้คะแนน")
+                              : (isTeacher ? "ดูแนวคำตอบและเกณฑ์" : "ดูเกณฑ์การให้คะแนน")}
+                            {expandedId === q.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                           </button>
                           {isTeacher && q.hide_rubric_from_students && (
                             <span className="text-[11px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 px-2 py-0.5 rounded-full inline-flex items-center gap-1 font-medium">
@@ -400,88 +406,29 @@ export default function ExamView() {
 
           {/* Right Column: Actions (Sticky) */}
           {isTeacher ? (
-            <div className="space-y-6 lg:sticky lg:top-24">
-              <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 space-y-4">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                  <Users size={16} className="text-emerald-600 dark:text-emerald-400" />
-                  การจัดการข้อสอบ
-                </h3>
-                
-                <div className="space-y-2.5 pt-1">
-                  <Button
-                    onClick={() => navigate(`/room/${roomId}/exam/${examId}/review`)}
-                    className="w-full h-11 bg-emerald-800 hover:bg-emerald-900 dark:bg-emerald-400 dark:hover:bg-emerald-300 dark:text-emerald-950 text-white font-medium rounded-xl flex items-center justify-center gap-2 shadow-sm"
-                  >
-                    <FileCheck size={18} />
-                    <span>ตรวจทานและอนุมัติคะแนน</span>
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    onClick={() => navigate(`/room/${roomId}/exam/${examId}/edit`)}
-                    className="w-full h-10 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl flex items-center justify-center gap-2"
-                  >
-                    <Edit3 size={16} />
-                    <span>แก้ไขเนื้อหาข้อสอบ</span>
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    onClick={() => navigate(`/room/${roomId}/exam/${examId}/scoreboard`)}
-                    className="w-full h-10 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl flex items-center justify-center gap-2"
-                  >
-                    <BarChart3 size={16} />
-                    <span>ตารางคะแนน (Scoreboard)</span>
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    onClick={() => navigate(`/room/${roomId}/exam/${examId}/analytics`)}
-                    className="w-full h-10 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl flex items-center justify-center gap-2"
-                  >
-                    <BarChart3 size={16} />
-                    <span>สถิติการสอบ (Analytics)</span>
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    onClick={handleToggleClose}
-                    disabled={togglingClose}
-                    className={`w-full h-10 rounded-xl flex items-center justify-center gap-2 font-medium transition-colors ${
-                      exam?.is_closed
-                        ? "border-emerald-300 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
-                        : "border-red-200 bg-red-50/50 hover:bg-red-100 text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300"
-                    }`}
-                  >
-                    {exam?.is_closed ? <Unlock size={16} /> : <Lock size={16} />}
-                    <span>
-                      {togglingClose
-                        ? "กำลังบันทึก…"
-                        : exam?.is_closed
-                        ? "เปิดรับคำตอบอีกครั้ง (Re-open)"
-                        : "ปิดรับข้อสอบทันที (Close Exam)"}
-                    </span>
-                  </Button>
+            <aside className="space-y-4 lg:sticky lg:top-20">
+              <section className="rounded-xl border border-border bg-card p-5">
+                <h2 className="text-base font-semibold">งานของผู้สอน</h2>
+                <p className="mt-1 mb-4 text-sm leading-6 text-muted-foreground">ตรวจคำตอบและยืนยันคะแนนก่อนเผยแพร่ให้ผู้เรียน</p>
+                <Button onClick={() => navigate(`/room/${roomId}/exam/${examId}/review`)} className="w-full gap-2">
+                  <FileCheck size={17} /> ตรวจทานและอนุมัติคะแนน
+                </Button>
+                <div className="mt-4 space-y-1 border-t border-border pt-3">
+                  <Button variant="ghost" onClick={() => navigate(`/room/${roomId}/exam/${examId}/edit`)} className="w-full justify-start gap-3"><Edit3 size={17} /> แก้ไขข้อสอบ</Button>
+                  <Button variant="ghost" onClick={() => navigate(`/room/${roomId}/exam/${examId}/scoreboard`)} className="w-full justify-start gap-3"><Users size={17} /> ตารางคะแนน</Button>
+                  <Button variant="ghost" onClick={() => navigate(`/room/${roomId}/exam/${examId}/analytics`)} className="w-full justify-start gap-3"><BarChart3 size={17} /> สถิติการสอบ</Button>
                 </div>
-
-                <div className="pt-3 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400 space-y-1.5">
-                  <div className="flex justify-between">
-                    <span>สถานะการรับคำตอบ:</span>
-                    <span className={`font-semibold ${exam?.is_closed ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`}>
-                      {exam?.is_closed ? "ปิดรับคำตอบแล้ว" : "เปิดรับตามกำหนดเวลา"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>จำนวนคำถาม:</span>
-                    <span className="font-medium text-gray-700 dark:text-gray-300">{exam?.questions.length} ข้อ</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>คะแนนเต็ม:</span>
-                    <span className="font-medium text-gray-700 dark:text-gray-300">{exam?.total_score} คะแนน</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+              </section>
+              <section className="rounded-xl border border-border bg-card p-5">
+                <h2 className="text-sm font-semibold">การรับคำตอบ</h2>
+                <p className="mt-2 mb-4 text-sm leading-6 text-muted-foreground">{exam?.is_closed ? "ผู้เรียนไม่สามารถส่งคำตอบได้จนกว่าจะเปิดรับอีกครั้ง" : "หากปิดรับทันที ผู้เรียนจะไม่สามารถส่งคำตอบเพิ่มได้"}</p>
+                <Button variant="outline" onClick={handleToggleClose} disabled={togglingClose}
+                  className={`w-full gap-2 ${exam?.is_closed ? "text-primary border-primary/30" : "text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:border-red-900 dark:hover:bg-red-950/40"}`}>
+                  {exam?.is_closed ? <Unlock size={16} /> : <Lock size={16} />}
+                  {togglingClose ? "กำลังบันทึก…" : exam?.is_closed ? "เปิดรับคำตอบอีกครั้ง" : "ปิดรับคำตอบทันที"}
+                </Button>
+              </section>
+            </aside>
           ) : (
           <div className="space-y-6 lg:sticky lg:top-24">
             

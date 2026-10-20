@@ -1,3 +1,4 @@
+import { confirmAction } from "@/components/ConfirmActionDialog";
 import { ContentSkeleton } from "@/components/RouteLoading";
 import { WorkspaceBreadcrumb } from "@/components/WorkspaceHeader";
 import { useState, useEffect, useCallback } from "react";
@@ -225,7 +226,8 @@ export default function ExamSubmit() {
     });
   };
 
-  const removeImage = (qId: number, imgIndex: number) => {
+  const removeImage = async (qId: number, imgIndex: number) => {
+    if (!await confirmAction("ลบรูปคำตอบนี้หรือไม่?")) return;
     setQuestionImages((prev) => {
       const updated = [...(prev[qId] || [])];
       updated.splice(imgIndex, 1);

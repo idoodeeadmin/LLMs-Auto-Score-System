@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { UserProfileMenu } from "@/components/UserProfileMenu";
 
-export function ExamEditorHeader({ mode, dirty, busy, onBack, onSettings, children }: {
+export function ExamEditorHeader({ mode, title, onTitleChange, dirty, busy, onBack, onSettings, children }: {
   mode: "create" | "edit"; dirty: boolean; busy: boolean;
+  title: string; onTitleChange: (title: string) => void;
   onBack: () => void; onSettings: () => void; children: ReactNode;
 }) {
   return (
@@ -14,8 +15,10 @@ export function ExamEditorHeader({ mode, dirty, busy, onBack, onSettings, childr
         <Button type="button" variant="ghost" size="icon" aria-label="กลับห้องเรียน" onClick={onBack}>
           <ArrowLeft size={19} />
         </Button>
-        <div className="min-w-0">
-          <p className="text-sm font-semibold">{mode === "create" ? "สร้างข้อสอบ" : "แก้ไขข้อสอบ"}</p>
+        <div className="min-w-0 flex-1">
+          <input className="exam-document-title" aria-label="ชื่อข้อสอบ" title="คลิกเพื่อเปลี่ยนชื่อข้อสอบ"
+            value={title} onChange={(event) => onTitleChange(event.target.value)}
+            placeholder="ข้อสอบไม่มีชื่อ" disabled={busy} />
           <p role="status" className="text-xs text-muted-foreground">
             {busy ? "กำลังดำเนินการ…" : dirty ? "มีการเปลี่ยนแปลงที่ยังไม่บันทึก" : mode === "create" ? "แบบร่างข้อสอบ" : "ไม่มีการเปลี่ยนแปลง"}
           </p>

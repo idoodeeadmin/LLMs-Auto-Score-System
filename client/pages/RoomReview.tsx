@@ -308,11 +308,11 @@ export default function RoomReview() {
         {/* Unified Header Section */}
         <header>
           <button
-            onClick={() => navigate(`/room/${roomId}`)}
+            onClick={() => navigate(`/room/${roomId}/exam/${examId}`)}
             className="group flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors text-sm font-medium mb-6"
           >
             <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-            กลับห้องเรียน
+            กลับหน้าข้อสอบ
           </button>
 
           <ExamNavigation roomId={roomId} examId={examId} />

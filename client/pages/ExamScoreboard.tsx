@@ -122,10 +122,10 @@ export default function ExamScoreboard() {
       <Navbar />
       <main className="max-w-5xl mx-auto px-4 md:px-8 py-8 space-y-6">
         <button
-          onClick={() => navigate(`/room/${roomId}`)}
+          onClick={() => navigate(`/room/${roomId}/exam/${examId}`)}
           className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:text-slate-200"
         >
-          <ArrowLeft size={16} /> กลับหน้าห้องเรียน
+          <ArrowLeft size={16} /> กลับหน้าข้อสอบ
         </button>
 
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">

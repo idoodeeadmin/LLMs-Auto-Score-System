@@ -1,3 +1,4 @@
+import { confirmAction } from "@/components/ConfirmActionDialog";
 import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { Bell, BookOpen, CheckCircle2, Megaphone, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -73,6 +74,7 @@ export function NotificationBell() {
 
   const remove = async (event: MouseEvent, item: NotificationItem) => {
     event.stopPropagation();
+    if (!await confirmAction("ลบการแจ้งเตือนนี้หรือไม่?")) return;
     const response = await fetch(`/api/notifications/${item.id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
@@ -81,6 +83,7 @@ export function NotificationBell() {
   };
 
   const removeRead = async () => {
+    if (!await confirmAction("ลบการแจ้งเตือนที่อ่านแล้วทั้งหมดหรือไม่?")) return;
     const response = await fetch("/api/notifications/read", {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },

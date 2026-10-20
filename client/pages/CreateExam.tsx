@@ -1,5 +1,9 @@
+import { confirmAction } from "@/components/ConfirmActionDialog";
 import { ExamEditorHeader, ExamScheduleSummary } from "@/components/ExamEditorHeader";
 import { WorkspaceBreadcrumb } from "@/components/WorkspaceHeader";
+import { AnswerKeyField } from "@/components/AnswerKeyField";
+import { QuestionTextField } from "@/components/QuestionTextField";
+import { DeleteQuestionButton } from "@/components/DeleteQuestionButton";
 import { useEffect, useRef, useState } from "react";
 import { useBlocker, useParams, useNavigate } from "react-router-dom";
 import { listDrafts, readDraft, writeDraft } from "@/lib/exam-drafts";
@@ -265,7 +269,7 @@ export default function CreateExam() {
   };
 
   const deleteDraft = async (id: string, title: string) => {
-    if (!window.confirm(`ลบแบบร่าง “${title || "ยังไม่ได้ตั้งชื่อ"}” ใช่หรือไม่`)) return;
+    if (!await confirmAction(`ลบแบบร่าง “${title || "ยังไม่ได้ตั้งชื่อ"}” ใช่หรือไม่`)) return;
     try {
       if (id.startsWith("cloud-")) {
         const response = await fetch(`/api/rooms/${roomId}/exam-drafts/${id.slice(6)}`, {
@@ -368,7 +372,7 @@ export default function CreateExam() {
     const score = Number(question.score);
     if (!Number.isFinite(score) || score <= 0) { toast.error("ระบุคะแนนเต็มมากกว่า 0"); return; }
     if ((question.answerKey.trim() || question.rubrics.some(r => r.name.trim() || r.description.trim())) &&
-      !window.confirm("สร้างเกณฑ์ใหม่แทนแนวคำตอบและเกณฑ์เดิมของข้อนี้หรือไม่?")) return;
+      !await confirmAction("สร้างเกณฑ์ใหม่แทนแนวคำตอบและเกณฑ์เดิมของข้อนี้หรือไม่?")) return;
     setGeneratingId(question.id);
     try {
       const response = await fetch("/api/ai/generate-rubric", {
@@ -427,7 +431,8 @@ export default function CreateExam() {
     );
   };
 
-  const removeRubric = (qId: number, rId: number) => {
+  const removeRubric = async (qId: number, rId: number) => {
+    if (!await confirmAction("ลบเกณฑ์การให้คะแนนนี้หรือไม่?")) return;
     setQuestions((prev) =>
       prev.map((q) =>
         q.id === qId
@@ -524,7 +529,7 @@ export default function CreateExam() {
 
   return (
     <div className="workspace create-exam-page">
-      <ExamEditorHeader mode="create" dirty={dirty} busy={!draftLoaded || savingDraft || isSaving} onBack={() => navigate(`/room/${roomId}`)} onSettings={() => setSettingsOpen(true)}>
+      <ExamEditorHeader mode="create" title={examTitle} onTitleChange={setExamTitle} dirty={dirty} busy={!draftLoaded || savingDraft || isSaving} onBack={() => navigate(`/room/${roomId}`)} onSettings={() => setSettingsOpen(true)}>
           <Button type="button" variant="ghost" aria-label="เปิดแบบร่างข้อสอบ" className="gap-2" disabled={!draftLoaded || savingDraft || isSaving}
             onClick={() => { if (dirty) { toast.info("บันทึกฉบับร่างปัจจุบันก่อนเปิดแบบร่างชุดอื่น"); return; } setDraftPickerOpen(true); }}>
             <Files size={16} /><span className="hidden sm:inline">แบบร่าง</span>
@@ -544,10 +549,6 @@ export default function CreateExam() {
         <p className="page-description mb-6">
           กำหนดคำถาม คะแนนเต็ม และเกณฑ์การให้คะแนนให้ครบก่อนบันทึก
         </p>
-        <label className="exam-title-field">
-          <span>ชื่อข้อสอบ</span>
-          <Input aria-label="ชื่อข้อสอบ" value={examTitle} onChange={event => setExamTitle(event.target.value)} placeholder="เช่น แบบทดสอบกลางภาค วิชาโครงสร้างข้อมูล" disabled={!draftLoaded || savingDraft || isSaving} />
-        </label>
         <div className="work-summary">
           <span>{questions.length} ข้อ</span>
           <span>คะแนนเต็ม {totalScore} คะแนน</span>
@@ -585,44 +586,28 @@ export default function CreateExam() {
                   className="space-y-4 pb-8 border-b border-slate-100 dark:border-slate-800"
                 >
                   {/* Question Header & Score */}
-                  <div className="question-editor flex gap-3 items-start">
-                    <span className="font-bold text-sm text-slate-900 dark:text-white pt-1">
-                      {index + 1}.
-                    </span>
-                    <textarea
-                      aria-label={`คำถามข้อที่ ${index + 1}`}
-                      value={q.text}
-                      onChange={(e) =>
-                        updateQuestion(q.id, { text: e.target.value })
-                      }
-                      placeholder="พิมพ์โจทย์คำถาม..."
-                      className="flex-1 text-sm text-slate-900 dark:text-white bg-transparent border-b border-slate-200 dark:border-slate-700 focus:border-[#1a73e8] focus:outline-none p-1 font-medium leading-relaxed resize-none"
-                      rows={2}
-                    />
-                    <div className="question-score flex items-center gap-1 shrink-0 pt-1">
-                      <input
-                        type="number"
-                        aria-label={`คะแนนเต็มข้อที่ ${index + 1}`}
-                        min="0"
-                        value={q.score}
-                        onChange={(e) =>
-                          updateQuestion(q.id, { score: e.target.value })
-                        }
-                        className="w-10 text-center text-xs font-bold bg-transparent border-b border-slate-200 dark:border-slate-700 focus:outline-none"
-                      />
-                      <span className="text-xs text-slate-400">คะแนน</span>
+                  <div className="question-editor space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-slate-900 dark:text-white">ข้อที่ {index + 1}</span>
+                      {questions.length > 1 && (
+                      <DeleteQuestionButton questionNumber={index + 1} onConfirm={() => deleteQuestion(q.id)} />
+                      )}
                     </div>
-                    {questions.length > 1 && (
-                      <button
-                        type="button"
-                        aria-label={`ลบข้อที่ ${index + 1}`}
-                        title="ลบข้อนี้"
-                        onClick={() => deleteQuestion(q.id)}
-                        className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition shrink-0 pt-1"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    )}
+                    <div className="grid items-start gap-4 grid-cols-[minmax(0,1fr)_112px]">
+                    <QuestionTextField questionNumber={index + 1} value={q.text}
+                      onChange={(text) => updateQuestion(q.id, { text })} />
+                    <div>
+                      <label className="block space-y-1.5 text-sm font-medium text-slate-700 dark:text-slate-200">
+                        <span>คะแนนเต็ม</span>
+                        <div className="mt-1.5 flex h-11 items-center overflow-hidden rounded-lg border border-input bg-card px-3 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
+                          <input type="number" aria-label={`คะแนนเต็มข้อที่ ${index + 1}`} min="0" value={q.score}
+                            onChange={(e) => updateQuestion(q.id, { score: e.target.value })}
+                            className="h-full !min-h-0 min-w-0 flex-1 border-0 !bg-transparent p-0 text-base font-semibold text-foreground !outline-none shadow-none focus:ring-0" />
+                          <span className="ml-2 shrink-0 whitespace-nowrap text-xs text-slate-500">คะแนน</span>
+                        </div>
+                      </label>
+                    </div>
+                    </div>
                   </div>
 
                   <div className="pl-6 space-y-3">
@@ -654,7 +639,7 @@ export default function CreateExam() {
                         <figcaption className="mt-1 truncate text-xs text-muted-foreground">{image.name}</figcaption>
                         <button type="button" disabled={isSaving || readingImages}
                           aria-label={`ลบรูปที่ ${imageIndex + 1} ของข้อ ${index + 1}`}
-                          onClick={() => updateQuestion(q.id, { images: q.images?.filter((_, i) => i !== imageIndex) })}
+                          onClick={async () => { if (await confirmAction("ลบรูปประกอบโจทย์นี้หรือไม่?")) updateQuestion(q.id, { images: q.images?.filter((_, i) => i !== imageIndex) }); }}
                           className="absolute right-1 top-1 rounded border bg-background p-2 hover:bg-muted">
                           <X size={16} />
                         </button>
@@ -688,19 +673,8 @@ export default function CreateExam() {
                     <div id={`criteria-${q.id}`} className="pl-6 space-y-5 pt-1">
                       {/* Model Answer Key */}
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-muted-foreground block">
-                          แนวคำตอบ
-                        </label>
-                        <Textarea
-                          aria-label={`แนวคำตอบข้อที่ ${index + 1}`}
-                          rows={3}
-                          value={q.answerKey}
-                          onChange={(e) =>
-                            updateQuestion(q.id, { answerKey: e.target.value })
-                          }
-                          placeholder="คำตอบที่คาดหวังหรือประเด็นสำคัญที่ควรตอบ"
-                          className="w-full text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-[#1a73e8] focus:outline-none p-2 rounded-md text-slate-700 dark:text-slate-300 resize-y"
-                        />
+                        <AnswerKeyField questionNumber={index + 1} value={q.answerKey}
+                          onChange={(answerKey) => updateQuestion(q.id, { answerKey })} />
                         <div className="flex flex-wrap items-center gap-2">
                           <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-dashed border-slate-300 px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
                             <ImagePlus size={14} aria-hidden="true" />
@@ -722,7 +696,7 @@ export default function CreateExam() {
                             <img src={image.dataUrl} alt={`ภาพแนวคำตอบข้อ ${index + 1} รูปที่ ${imageIndex + 1}`} className="h-20 w-full object-contain" />
                             <button type="button" disabled={isSaving || readingImages}
                               aria-label={`ลบภาพแนวคำตอบที่ ${imageIndex + 1} ของข้อ ${index + 1}`}
-                              onClick={() => updateQuestion(q.id, { answerKeyImages: q.answerKeyImages?.filter((_, i) => i !== imageIndex) })}
+                              onClick={async () => { if (await confirmAction("ลบภาพแนวคำตอบนี้หรือไม่?")) updateQuestion(q.id, { answerKeyImages: q.answerKeyImages?.filter((_, i) => i !== imageIndex) }); }}
                               className="absolute right-1 top-1 rounded border bg-background p-1 hover:bg-muted"><X size={13} /></button>
                           </figure>)}
                         </div>}

@@ -1,3 +1,4 @@
+import { confirmAction } from "@/components/ConfirmActionDialog";
 import { useEffect, useState } from "react";
 import { Users, Search, UserRound, MoreVertical, UserMinus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -60,7 +61,7 @@ export function RoomMembers({ roomId, token, canManage = false }: { roomId: stri
   const studentRows = students.slice((currentPage - 1) * 20, currentPage * 20);
 
   const removeMember = async (member: Member) => {
-    if (!window.confirm(`นำ “${member.name}” ออกจากห้องเรียนใช่หรือไม่`)) return;
+    if (!await confirmAction(`นำ “${member.name}” ออกจากห้องเรียนใช่หรือไม่`)) return;
     setRemovingId(member.id);
     try {
       const response = await fetch(`/api/rooms/${roomId}/members/${member.id}`, {

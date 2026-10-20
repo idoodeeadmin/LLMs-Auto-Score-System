@@ -1,3 +1,4 @@
+import { confirmAction } from "@/components/ConfirmActionDialog";
 import { PageLoading } from "@/components/RouteLoading";
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -146,7 +147,7 @@ export default function Profile() {
   };
 
   const handleDeleteAccount = async () => {
-    const confirmDelete = window.confirm("คุณแน่ใจหรือไม่ว่าต้องการลบบัญชี? ข้อมูลห้องเรียนและการสอบทั้งหมดของคุณจะถูกลบถาวรและไม่สามารถกู้คืนได้");
+    const confirmDelete = await confirmAction("คุณแน่ใจหรือไม่ว่าต้องการลบบัญชี? ข้อมูลห้องเรียนและการสอบทั้งหมดของคุณจะถูกลบถาวรและไม่สามารถกู้คืนได้");
     if (!confirmDelete) return;
 
     setIsLoading(true);

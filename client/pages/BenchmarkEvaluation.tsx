@@ -1,3 +1,4 @@
+import { confirmAction } from "@/components/ConfirmActionDialog";
 import { ContentSkeleton } from "@/components/RouteLoading";
 import React, { useState, useEffect, useRef } from "react";
 import Navbar from "@/components/Navbar";
@@ -253,7 +254,7 @@ export default function BenchmarkEvaluation() {
 
   // Reset Dataset to default 300
   const handleResetDefault = async () => {
-    if (!confirm("คุณต้องการรีเซ็ตชุดข้อมูลเป็นค่าเริ่มต้น 300 ตัวอย่างวิชา Data Structures หรือไม่?")) return;
+    if (!await confirmAction("คุณต้องการรีเซ็ตชุดข้อมูลเป็นค่าเริ่มต้น 300 ตัวอย่างวิชา Data Structures หรือไม่?")) return;
 
     try {
       const res = await fetch("/api/benchmark/reset", { method: "POST" });

@@ -37,6 +37,7 @@ const queryClient = new QueryClient();
 
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { ConfirmActionDialog } from "./components/ConfirmActionDialog";
 import { RouteLoading } from "./components/RouteLoading";
 
 function RouteExperience() {
@@ -99,6 +100,7 @@ export const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
+          <ConfirmActionDialog />
           <RouterProvider router={router} />
         </TooltipProvider>
       </AuthProvider>

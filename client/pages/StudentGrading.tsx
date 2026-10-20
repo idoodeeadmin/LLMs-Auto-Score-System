@@ -1,3 +1,4 @@
+import { confirmAction } from "@/components/ConfirmActionDialog";
 import { ContentSkeleton } from "@/components/RouteLoading";
 import { WorkspaceBreadcrumb } from "@/components/WorkspaceHeader";
 import { useState, useEffect } from "react";
@@ -134,9 +135,9 @@ export default function StudentGrading() {
   const hasUnsavedChanges = !!data && data.answers.some(answer =>
     teacherScores[String(answer.question_id)] !== (answer.teacher_score ?? answer.ai_score ?? 0) ||
     teacherComments[String(answer.question_id)] !== (answer.teacher_comment ?? ""));
-  const goTo = (path: string) => {
+  const goTo = async (path: string) => {
     if (isApproving) return;
-    if (hasUnsavedChanges && !window.confirm("คะแนนหรือความคิดเห็นที่แก้ไขยังไม่ได้บันทึก ต้องการออกจากหน้านี้และละทิ้งการแก้ไขหรือไม่?")) return;
+    if (hasUnsavedChanges && !await confirmAction("คะแนนหรือความคิดเห็นที่แก้ไขยังไม่ได้บันทึก ต้องการออกจากหน้านี้และละทิ้งการแก้ไขหรือไม่?")) return;
     navigate(path);
   };
   const queueIndex = reviewQueue.findIndex(student => String(student.student_id) === studentId);

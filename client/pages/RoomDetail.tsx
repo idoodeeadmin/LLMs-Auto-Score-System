@@ -1,3 +1,4 @@
+import { confirmAction } from "@/components/ConfirmActionDialog";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -28,6 +29,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { UserProfileMenu } from "@/components/UserProfileMenu";
@@ -300,7 +302,7 @@ export default function RoomDetail() {
   };
 
   const deleteAnnouncement = async (item: Announcement) => {
-    if (!window.confirm(`ลบประกาศ “${item.title}” ใช่หรือไม่`)) return;
+    if (!await confirmAction(`ลบประกาศ “${item.title}” ใช่หรือไม่`)) return;
     const response = await fetch(`/api/rooms/${roomId}/announcements/${item.id}`, {
       method: "DELETE",
       headers,
@@ -316,7 +318,7 @@ export default function RoomDetail() {
   };
 
   const deleteExam = async (exam: Exam) => {
-    if (!window.confirm(`ลบข้อสอบ “${exam.title}” และคำตอบที่เกี่ยวข้องทั้งหมดใช่หรือไม่`)) return;
+    if (!await confirmAction(`ลบข้อสอบ “${exam.title}” และคำตอบที่เกี่ยวข้องทั้งหมดใช่หรือไม่`)) return;
     const response = await fetch(`/api/rooms/${roomId}/exams/${exam.id}`, {
       method: "DELETE",
       headers,
@@ -591,8 +593,12 @@ function AnnouncementPost({
   onDelete: (item: Announcement) => void;
   onStats: (id: number) => void;
 }) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
   return (
-    <article id={`announcement-${item.id}`} className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-[#1E1E1E]">
+    <>
+    <article id={`announcement-${item.id}`} onClick={(event) => {
+      if (!(event.target as HTMLElement).closest("button, a, [role='menuitem']")) setDetailsOpen(true);
+    }} className="cursor-pointer rounded-xl border border-slate-200 bg-white shadow-sm transition-colors hover:border-primary/40 dark:border-slate-800 dark:bg-[#1E1E1E]">
       <div className="flex items-start gap-3 p-5">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
           <Megaphone size={18} />
@@ -601,7 +607,7 @@ function AnnouncementPost({
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-xs font-medium text-slate-500">ผู้สอนโพสต์ประกาศ</p>
-              <h3 className="mt-1 font-semibold text-slate-900 dark:text-white">{item.title}</h3>
+              <h3 className="mt-1 font-semibold text-slate-900 dark:text-white"><button type="button" onClick={() => setDetailsOpen(true)} className="text-left hover:text-primary">{item.title}</button></h3>
               <p className="mt-1 text-xs text-slate-400">{formatDate(item.updated_at || item.created_at)}{item.updated_at ? " · แก้ไขแล้ว" : ""}</p>
             </div>
             {isTeacher && (
@@ -619,9 +625,14 @@ function AnnouncementPost({
               </DropdownMenu>
             )}
           </div>
-          <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-700 dark:text-slate-300">{item.content}</p>
+          <p className="mt-4 line-clamp-3 whitespace-pre-wrap text-sm leading-7 text-slate-700 dark:text-slate-300">{item.content}</p>
           {!!item.attachments?.length && <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            {item.attachments.map(attachment => <a key={attachment.url} href={attachment.url} target="_blank" rel="noreferrer"
+            {item.attachments.map(attachment => attachment.type.startsWith("image/") ? (
+              <button key={attachment.url} type="button" onClick={() => setDetailsOpen(true)} aria-label={`ดูภาพ ${attachment.name} ในประกาศ`}
+                className="overflow-hidden rounded-lg border bg-muted/30 text-left hover:border-primary/40">
+                <img src={attachment.url} alt={attachment.name} className="h-48 w-full object-contain p-2" />
+              </button>
+            ) : <a key={attachment.url} href={attachment.url} target="_blank" rel="noreferrer"
               className="flex min-w-0 items-center gap-3 rounded-lg border p-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-900">
               {attachment.type.startsWith("image/")
                 ? <img src={attachment.url} alt="" className="h-10 w-10 rounded object-cover" />
@@ -629,10 +640,37 @@ function AnnouncementPost({
               <span className="min-w-0 flex-1 truncate">{attachment.name}</span>
             </a>)}
           </div>}
+          <button type="button" onClick={() => setDetailsOpen(true)} className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+            เปิดประกาศ <ChevronDown size={15} />
+          </button>
           {isTeacher && <p className="mt-4 text-xs text-slate-400">อ่านแล้ว {item.read_count || 0} คน</p>}
         </div>
       </div>
     </article>
+    <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+      <DialogContent className="max-h-[90vh] w-[calc(100%_-_2rem)] max-w-4xl overflow-y-auto rounded-xl p-5 sm:p-8">
+        <DialogHeader className="pr-6 text-left">
+          <DialogTitle className="break-words text-xl leading-relaxed">{item.title}</DialogTitle>
+          <DialogDescription>ประกาศจากผู้สอน · {formatDate(item.updated_at || item.created_at)}{item.updated_at ? " · แก้ไขแล้ว" : ""}</DialogDescription>
+        </DialogHeader>
+        <p className="whitespace-pre-wrap break-words text-sm leading-7">{item.content}</p>
+        {!!item.attachments?.length && <div className="space-y-5">
+          {item.attachments.map(attachment => attachment.type.startsWith("image/") ? (
+            <figure key={attachment.url} className="overflow-hidden rounded-lg border bg-muted/20">
+              <a href={attachment.url} target="_blank" rel="noreferrer" aria-label={`เปิดภาพเต็ม ${attachment.name}`} className="block cursor-zoom-in">
+                <img src={attachment.url} alt={attachment.name} className="max-h-[65vh] w-full object-contain p-2 sm:p-4" />
+              </a>
+              <figcaption className="border-t px-4 py-2 text-xs text-muted-foreground">กดที่ภาพเพื่อเปิดขนาดเต็ม</figcaption>
+            </figure>
+          ) : (
+            <a key={attachment.url} href={attachment.url} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-lg border p-4 text-sm hover:bg-muted">
+              <FileIcon size={20} className="shrink-0 text-primary" /><span className="break-all">{attachment.name}</span>
+            </a>
+          ))}
+        </div>}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
 
@@ -640,7 +678,7 @@ function AttachmentRow({ name, onRemove }: { name: string; onRemove: () => void 
   return <div className="flex items-center gap-2 text-sm">
     <FileIcon size={16} className="shrink-0 text-muted-foreground" />
     <span className="min-w-0 flex-1 truncate">{name}</span>
-    <button type="button" aria-label={`นำไฟล์ ${name} ออก`} onClick={onRemove} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
+    <button type="button" aria-label={`นำไฟล์ ${name} ออก`} onClick={async () => { if (await confirmAction(`นำไฟล์ “${name}” ออกหรือไม่?`)) onRemove(); }} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
       <X size={15} />
     </button>
   </div>;
@@ -693,6 +731,7 @@ function ExamPost({
                   )
                 )}
               </div>
+              {exam.description && <p className="mt-3 mb-2 line-clamp-2 whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">{exam.description}</p>}
               <h3 className="mt-1 truncate font-semibold text-slate-900 hover:text-emerald-800 dark:text-white dark:hover:text-emerald-300">{exam.title}</h3>
               <p className="mt-1 text-xs text-slate-400">{formatDate(exam.created_at)}</p>
             </button>
@@ -710,7 +749,6 @@ function ExamPost({
               </DropdownMenu>
             )}
           </div>
-          {exam.description && <p className="mt-4 line-clamp-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{exam.description}</p>}
           <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-500">
             <span>{exam.total_score} คะแนน</span>
             {exam.end_date && <span>ครบกำหนด {formatDate(exam.end_date)}</span>}
