@@ -128,3 +128,8 @@ qa_docx_*/
 /.builder/
 /*.xlsx
 /*.png
+/.slide-build/
+/.whitebox-build/
+/build_slides.mjs
+/build_whitebox.mjs
+

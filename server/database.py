@@ -337,10 +337,20 @@ def init_db():
         try:
             # Check if old_col exists
             cursor.execute(f"SHOW COLUMNS FROM {table} LIKE '{old_col}'")
+            if not cursor.fetchone():
+                return
+
+            # If new_col already exists, drop legacy old_col instead of failing to rename
+            cursor.execute(f"SHOW COLUMNS FROM {table} LIKE '{new_col}'")
             if cursor.fetchone():
-                print(f"Migrating: Renaming {old_col} to {new_col} in {table}")
-                cursor.execute(f"ALTER TABLE {table} CHANGE {old_col} {new_col} {col_type}")
+                print(f"Migrating: {new_col} already exists in {table}, dropping legacy {old_col}")
+                cursor.execute(f"ALTER TABLE {table} DROP COLUMN {old_col}")
                 conn.commit()
+                return
+
+            print(f"Migrating: Renaming {old_col} to {new_col} in {table}")
+            cursor.execute(f"ALTER TABLE {table} CHANGE {old_col} {new_col} {col_type}")
+            conn.commit()
         except Exception as e:
             print(f"Migration error ({table}.{old_col} -> {new_col}): {e}")
 

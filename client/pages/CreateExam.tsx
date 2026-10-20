@@ -1,4 +1,5 @@
 import { confirmAction } from "@/components/ConfirmActionDialog";
+import { promptQuotaFallback } from "@/components/QuotaExceededDialog";
 import { ExamEditorHeader, ExamScheduleSummary } from "@/components/ExamEditorHeader";
 import { WorkspaceBreadcrumb } from "@/components/WorkspaceHeader";
 import { AnswerKeyField } from "@/components/AnswerKeyField";
@@ -364,35 +365,103 @@ export default function CreateExam() {
     } finally { setSavingDraft(false); }
   };
 
-  const generateRubric = async (question: Question) => {
+  const generateRubric = async (
+    question: Question,
+    chosenModel?: "gemini-3.8-flash" | "gemini-3.5-flash"
+  ) => {
     if (generatingId !== null || readingImages || isSaving) return;
     if (!question.text.trim() && !question.images?.length) {
-      toast.error("กรอกโจทย์หรือแนบรูปก่อนสร้างเกณฑ์"); return;
+      toast.error("กรอกโจทย์หรือแนบรูปก่อนสร้างเกณฑ์");
+      return;
     }
     const score = Number(question.score);
-    if (!Number.isFinite(score) || score <= 0) { toast.error("ระบุคะแนนเต็มมากกว่า 0"); return; }
-    if ((question.answerKey.trim() || question.rubrics.some(r => r.name.trim() || r.description.trim())) &&
-      !await confirmAction("สร้างเกณฑ์ใหม่แทนแนวคำตอบและเกณฑ์เดิมของข้อนี้หรือไม่?")) return;
+    if (!Number.isFinite(score) || score <= 0) {
+      toast.error("ระบุคะแนนเต็มมากกว่า 0");
+      return;
+    }
+    if (
+      !chosenModel &&
+      (question.answerKey.trim() ||
+        question.rubrics.some((r) => r.name.trim() || r.description.trim())) &&
+      !(await confirmAction(
+        "สร้างเกณฑ์ใหม่แทนแนวคำตอบและเกณฑ์เดิมของข้อนี้หรือไม่?"
+      ))
+    )
+      return;
     setGeneratingId(question.id);
     try {
+      const targetModel = chosenModel || "gemini-3.8-flash";
       const response = await fetch("/api/ai/generate-rubric", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ question_text: question.text, total_score: score,
-          question_images_base64: question.images?.map(image => image.dataUrl) ?? [], tone: "moderate" }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          question_text: question.text,
+          total_score: score,
+          question_images_base64:
+            question.images?.map((image) => image.dataUrl) ?? [],
+          tone: "moderate",
+          model: targetModel,
+        }),
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "สร้างเกณฑ์ไม่สำเร็จ");
-      if (!Array.isArray(result.rubrics) || !result.rubrics.length) throw new Error("AI ไม่ส่งเกณฑ์กลับมา กรุณาลองใหม่");
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        const isQuota =
+          response.status === 429 ||
+          result?.detail?.error_code === "QUOTA_EXHAUSTED" ||
+          result?.error_code === "QUOTA_EXHAUSTED";
+        if (isQuota) {
+          setGeneratingId(null);
+          const choice = await promptQuotaFallback({
+            currentModel: "Gemini 3.8 Flash",
+            fallbackModel: "Gemini 3.5 Flash",
+          });
+          if (choice === "fallback_3_5") {
+            toast.info("กำลังสร้างเกณฑ์ด้วย Gemini 3.5 Flash...");
+            return await generateRubric(question, "gemini-3.5-flash");
+          } else if (choice === "retry") {
+            toast.info("กำลังลองสร้างเกณฑ์ด้วย Gemini 3.8 Flash อีกครั้ง...");
+            return await generateRubric(question, "gemini-3.8-flash");
+          }
+          return;
+        }
+        throw new Error(
+          typeof result.detail === "string"
+            ? result.detail
+            : result.detail?.message || "สร้างเกณฑ์ไม่สำเร็จ"
+        );
+      }
+
+      if (!Array.isArray(result.rubrics) || !result.rubrics.length)
+        throw new Error("AI ไม่ส่งเกณฑ์กลับมา กรุณาลองใหม่");
       updateQuestion(question.id, {
         answerKey: result.answer_key || "",
-        rubrics: result.rubrics.map((r: { name: string; description: string; score: number }, i: number) =>
-          ({ id: Date.now() + i, name: r.name || "", description: r.description || "", score: String(r.score ?? 0) })),
+        rubrics: result.rubrics.map(
+          (
+            r: { name: string; description: string; score: number },
+            i: number
+          ) => ({
+            id: Date.now() + i,
+            name: r.name || "",
+            description: r.description || "",
+            score: String(r.score ?? 0),
+          })
+        ),
       });
-      setShowDetails(current => ({ ...current, [question.id]: true }));
-      toast.success("สร้างเกณฑ์แล้ว กรุณาตรวจทานก่อนบันทึก");
-    } catch (error) { toast.error(error instanceof Error ? error.message : "สร้างเกณฑ์ไม่สำเร็จ"); }
-    finally { setGeneratingId(null); }
+      setShowDetails((current) => ({ ...current, [question.id]: true }));
+      const modelNote =
+        targetModel === "gemini-3.5-flash" ? " (Gemini 3.5 Flash)" : "";
+      toast.success(`สร้างเกณฑ์แล้ว${modelNote} กรุณาตรวจทานก่อนบันทึก`);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "สร้างเกณฑ์ไม่สำเร็จ"
+      );
+    } finally {
+      setGeneratingId(null);
+    }
   };
 
   const deleteQuestion = (qId: number) => {

@@ -102,6 +102,7 @@ class GenerateRubricRequest(BaseModel):
     total_score: float = Field(gt=0, allow_inf_nan=False)
     question_images_base64: Optional[List[str]] = Field(default=None, max_length=10)
     tone: Literal['simple', 'moderate', 'academic'] = 'moderate'
+    model: Optional[str] = None
 
 class QuestionBankCreate(BaseModel):
     text: str

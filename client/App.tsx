@@ -38,6 +38,7 @@ const queryClient = new QueryClient();
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ConfirmActionDialog } from "./components/ConfirmActionDialog";
+import { QuotaExceededDialog } from "./components/QuotaExceededDialog";
 import { RouteLoading } from "./components/RouteLoading";
 
 function RouteExperience() {
@@ -101,6 +102,7 @@ export const App = () => (
           <Toaster />
           <Sonner />
           <ConfirmActionDialog />
+          <QuotaExceededDialog />
           <RouterProvider router={router} />
         </TooltipProvider>
       </AuthProvider>

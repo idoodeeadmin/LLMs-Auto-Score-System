@@ -47,11 +47,37 @@ async def generate_rubric(req: GenerateRubricRequest, user: dict = Depends(get_c
             raise HTTPException(422, 'ไม่สามารถอ่านภาพโจทย์ได้ กรุณาแนบภาพใหม่')
         validate_upload_file(raw, content_type=mime)
         images.append((raw, mime))
+    target_model = req.model or GEMINI_MODEL
     try:
-        return await generate_rubric_with_gemini(req.question_text, req.total_score, req.tone, images)
+        return await generate_rubric_with_gemini(req.question_text, req.total_score, req.tone, images, model=target_model)
     except Exception as error:
-        logger.warning('Gemini rubric generation failed: %s', type(error).__name__)
-        raise HTTPException(502, 'สร้างเกณฑ์ด้วย Gemini ไม่สำเร็จ กรุณาลองใหม่หรือกรอกเกณฑ์ด้วยตนเอง')
+        status_code = getattr(getattr(error, "response", None), "status_code", None)
+        err_body = ""
+        if hasattr(error, "response") and error.response is not None:
+            try:
+                err_body = error.response.text
+            except Exception:
+                pass
+        logger.warning('Gemini rubric generation failed: %s (HTTP %s): %s', type(error).__name__, status_code, err_body[:300])
+
+        if status_code == 429 or 'RESOURCE_EXHAUSTED' in err_body.upper():
+            raise HTTPException(
+                status_code=429,
+                detail={
+                    "error_code": "QUOTA_EXHAUSTED",
+                    "message": f"โควต้าของโมเดล {target_model} เต็มชั่วคราว",
+                    "model": target_model,
+                    "suggested_fallback": "gemini-3.5-flash",
+                }
+            )
+
+        detail = 'สร้างเกณฑ์ด้วย Gemini ไม่สำเร็จ กรุณาลองใหม่หรือกรอกเกณฑ์ด้วยตนเอง'
+        if status_code in (401, 403) or (status_code == 400 and 'API_KEY' in err_body.upper()):
+            detail = 'สร้างเกณฑ์ด้วย Gemini ไม่สำเร็จ: API Key ไม่ถูกต้อง หรือไม่มีสิทธิ์เข้าถึง (กรุณาตรวจสอบ GEMINI_API_KEY บน Server)'
+        elif status_code == 404:
+            detail = f'สร้างเกณฑ์ด้วย Gemini ไม่สำเร็จ: ไม่พบ Model ของ Gemini ({target_model}) กรุณาตรวจสอบ GEMINI_MODEL บน Server'
+
+        raise HTTPException(502, detail)
 
 
 class WordCountRequest(BaseModel):
