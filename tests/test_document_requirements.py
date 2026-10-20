@@ -109,6 +109,23 @@ def test_300_words_allowed_301_rejected(word):
     assert caught.value.status_code == 422
 
 
+def test_thai_continuous_text_validation():
+    # Legitimate continuous Thai sentence without spaces (approx 150 chars, 30+ words)
+    thai_text = 'การเขียนโปรแกรมเชิงวัตถุเป็นแนวคิดในการพัฒนาซอฟต์แวร์ที่ช่วยให้สามารถจัดการความซับซ้อนของระบบได้อย่างมีประสิทธิภาพโดยการแบ่งโปรแกรมออกเป็นออบเจกต์'
+    count = validate_answer_text(thai_text)
+    assert count > 0
+
+    # Non-Thai continuous string > 60 chars should fail
+    with pytest.raises(HTTPException) as caught:
+        validate_answer_text('a' * 65)
+    assert caught.value.status_code == 422
+
+    # Repetitive Thai spam should fail
+    with pytest.raises(HTTPException) as caught:
+        validate_answer_text('ก' * 35)
+    assert caught.value.status_code == 422
+
+
 def test_word_count_endpoint_uses_same_segmentation(db):
     response = client_for().post('/api/ai/answer-word-count', json={'answers': {'11': 'คำตอบ Stack'}})
     assert response.json() == {'counts': {'11': count_answer_words('คำตอบ Stack')}, 'limit': 300}
