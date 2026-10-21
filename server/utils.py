@@ -201,7 +201,7 @@ def get_current_user(request: Request, authorization: Optional[str]=Header(None)
     token_version = payload.get('token_version', 0)
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT id, email, name, role, student_id, avatar_url, is_verified, token_version FROM users WHERE email = ?', (email,))
+    cursor.execute('SELECT id, email, name, role, student_id, avatar_url, is_verified, token_version, google_id, google_email FROM users WHERE email = ?', (email,))
     user = cursor.fetchone()
     conn.close()
     if not user:

@@ -660,6 +660,17 @@ async def link_google(request: FirebaseLoginRequest, current_user: dict=Depends(
     conn = get_db_connection()
     cursor = conn.cursor()
 
+    # Read the current link from the database while locking this account, so a
+    # stale auth snapshot or concurrent request cannot replace its Google UID.
+    cursor.execute('SELECT google_id, avatar_url FROM users WHERE id = ? FOR UPDATE', (current_user['id'],))
+    linked_user = cursor.fetchone()
+    if not linked_user:
+        conn.close()
+        raise HTTPException(status_code=404, detail='ไม่พบบัญชีผู้ใช้')
+    if linked_user['google_id'] and linked_user['google_id'] != google_uid:
+        conn.close()
+        raise HTTPException(status_code=400, detail='บัญชีของคุณได้ผูกกับ Google อื่นไปแล้ว ไม่สามารถเปลี่ยนได้')
+
     # Rule: Google 1 account -> Exactly 1 web account.
     # Check if this Google account is already linked to ANY OTHER user
     cursor.execute('SELECT id, email, name FROM users WHERE (google_id = ? OR google_email = ?) AND id != ?',
@@ -669,14 +680,9 @@ async def link_google(request: FirebaseLoginRequest, current_user: dict=Depends(
         conn.close()
         raise HTTPException(status_code=400, detail='บัญชี Google นี้ถูกผูกกับบัญชีอื่นในระบบแล้ว (1 บัญชี Google ผูกได้ 1 บัญชีเว็บเท่านั้น)')
 
-    # Check if this current user is already bound to a different Google account
-    if current_user.get('google_id') and current_user.get('google_id') != google_uid:
-        conn.close()
-        raise HTTPException(status_code=400, detail='บัญชีของคุณได้ผูกกับ Google อื่นไปแล้ว ไม่สามารถเปลี่ยนได้')
-
     cursor.execute('UPDATE users SET google_id = ?, google_email = ?, is_verified = 1 WHERE id = ?',
                    (google_uid, google_email, current_user['id']))
-    if google_picture and (not current_user.get('avatar_url')):
+    if google_picture and (not linked_user['avatar_url']):
         cursor.execute('UPDATE users SET avatar_url = ? WHERE id = ?', (google_picture, current_user['id']))
     conn.commit()
     conn.close()

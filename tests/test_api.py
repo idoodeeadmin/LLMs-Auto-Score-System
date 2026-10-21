@@ -85,6 +85,31 @@ def test_firebase_login_initializes_admin_lazily(mock_get_firebase_auth):
     assert response.json()["detail"] == "Firebase Admin SDK not configured"
     mock_get_firebase_auth.assert_called_once_with()
 
+
+@patch("server.routes.auth_routes.get_db_connection")
+@patch("server.routes.auth_routes.get_firebase_auth")
+def test_link_google_cannot_replace_existing_google_account(mock_firebase, mock_db):
+    override_get_current_user({"id": 1, "email": "first@example.com", "role": "student"})
+    mock_firebase.return_value.verify_id_token.return_value = {
+        "uid": "google-account-b", "email": "second@example.com"
+    }
+    cursor = mock_db.return_value.cursor.return_value
+    cursor.fetchone.return_value = {"google_id": "google-account-a", "avatar_url": None}
+
+    try:
+        response = client.post(
+            "/api/auth/link-google", json={"firebase_token": "verified-token"},
+            headers={"Authorization": "Bearer fake-token"},
+        )
+        assert response.status_code == 400
+        assert "ผูกกับ Google อื่น" in response.json()["detail"]
+        assert not any(
+            call.args[0].startswith("UPDATE users SET google_id")
+            for call in cursor.execute.call_args_list
+        )
+    finally:
+        clear_overrides()
+
 # --- Room Management Tests ---
 @patch("server.routes.room_routes.get_db_connection")
 def test_create_room(mock_db):
