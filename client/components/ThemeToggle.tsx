@@ -10,7 +10,7 @@ export function ThemeToggle() {
       variant="ghost"
       size="icon"
       onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-      className="rounded-full w-9 h-9 border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+      className="hidden sm:inline-flex rounded-full w-9 h-9 border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
       title={theme === "light" ? "ใช้โหมดมืด" : "ใช้โหมดสว่าง"}
       aria-label={theme === "light" ? "ใช้โหมดมืด" : "ใช้โหมดสว่าง"}
     >

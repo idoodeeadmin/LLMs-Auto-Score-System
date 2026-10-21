@@ -4,6 +4,7 @@ import json
 from fastapi import APIRouter, Depends, HTTPException
 
 from server.database import get_db_connection
+from server.time_utils import utc_timestamp
 from server.models import ExamDraftSave
 from server.utils import get_current_user, upload_to_cloudinary, validate_upload_file
 
@@ -69,6 +70,9 @@ def normalized_questions(payload, teacher_id, draft_id, allowed=()):
 
 def serialize(row):
     item = dict(row)
+    for field in ('created_at', 'updated_at'):
+        if item.get(field) is not None:
+            item[field] = utc_timestamp(item[field])
     try:
         item['questions'] = json.loads(item.get('questions') or '[]')
     except (TypeError, json.JSONDecodeError):

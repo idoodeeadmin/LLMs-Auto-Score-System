@@ -1,13 +1,16 @@
 import type { ReactNode } from "react";
-import { ArrowLeft, Settings, CalendarDays, ChevronRight } from "lucide-react";
+import { ArrowLeft, Settings, CalendarDays, ChevronRight, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { UserProfileMenu } from "@/components/UserProfileMenu";
 
-export function ExamEditorHeader({ mode, title, onTitleChange, dirty, busy, onBack, onSettings, children }: {
+export function ExamEditorHeader({ mode, title, onTitleChange, dirty, busy, onBack, onSettings, children, mobilePrimaryAction, mobileMenuItems = [] }: {
   mode: "create" | "edit"; dirty: boolean; busy: boolean;
   title: string; onTitleChange: (title: string) => void;
   onBack: () => void; onSettings: () => void; children: ReactNode;
+  mobilePrimaryAction: ReactNode;
+  mobileMenuItems?: { label: string; onSelect: () => void; disabled?: boolean }[];
 }) {
   return (
     <header className="exam-editor-header">
@@ -30,6 +33,22 @@ export function ExamEditorHeader({ mode, title, onTitleChange, dirty, busy, onBa
           <Settings size={16} /><span>ตั้งค่า</span>
         </Button>
         {children}
+      </div>
+      <div className="exam-editor-mobile-actions">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button type="button" variant="ghost" size="icon" aria-label="เมนูข้อสอบ" disabled={busy}>
+              <MoreVertical size={20} />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="z-[60] min-w-44">
+            <DropdownMenuItem onSelect={onSettings}><Settings size={16} className="mr-2" />ตั้งค่าข้อสอบ</DropdownMenuItem>
+            {mobileMenuItems.map((item) => (
+              <DropdownMenuItem key={item.label} disabled={item.disabled} onSelect={item.onSelect}>{item.label}</DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {mobilePrimaryAction}
       </div>
     </header>
   );

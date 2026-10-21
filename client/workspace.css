@@ -555,6 +555,7 @@
 }
 .exam-editor-navigation { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
 .exam-editor-actions { display: flex; align-items: center; gap: 8px; }
+.exam-editor-mobile-actions { display: none; }
 .exam-editor-account { display: flex; align-items: center; gap: 8px; order: 3; padding-left: 16px; border-left: 1px solid var(--work-line); }
 .workspace .exam-editor-header input.exam-document-title {
   display: block;
@@ -582,9 +583,23 @@
   .exam-editor-actions { grid-column: 1 / -1; justify-content: flex-end; padding-top: 10px; border-top: 1px solid var(--work-line); }
 }
 @media (max-width: 640px) {
-  .workspace:is(.create-exam-page, .edit-exam-page) .exam-editor-header { position: sticky; }
-  .exam-editor-actions { gap: 4px; }
-  .exam-editor-actions > button { padding-left: 10px; padding-right: 10px; font-size: 12px; }
+  .workspace:is(.create-exam-page, .edit-exam-page) .exam-editor-header {
+    display: flex;
+    position: sticky;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+  }
+  .exam-editor-navigation { gap: 4px; }
+  .exam-editor-navigation > div { min-width: 0; }
+  .exam-editor-account, .exam-editor-actions { display: none; }
+  .exam-editor-mobile-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+  .workspace .exam-editor-header input.exam-document-title { font-size: 15px; min-height: 30px; }
+  .exam-editor-navigation p[role="status"] { display: none; }
+  .workspace:is(.create-exam-page, .edit-exam-page) .document-page > :is(.workspace-breadcrumb, .page-heading, .page-description) { display: none; }
+  .workspace:is(.create-exam-page, .edit-exam-page) .document-page { padding-top: 8px; }
+  .workspace:is(.create-exam-page, .edit-exam-page) .work-summary { padding: 8px 0; margin-bottom: 12px; }
+  .workspace:is(.create-exam-page, .edit-exam-page) .work-summary > span:last-child { display: none; }
   .workspace .exam-title-field { margin-left: 16px; margin-right: 16px; }
   .workspace .exam-schedule-summary { width: calc(100% - 32px); margin-left: 16px; margin-right: 16px; }
 }

@@ -12,6 +12,7 @@ import uuid
 from urllib.parse import urlparse
 from typing import Optional, List
 from server.database import get_db_connection
+from server.time_utils import utc_timestamp
 from server.auth import get_password_hash, verify_password, create_access_token, decode_token
 from server.models import *
 from server.utils import check_rate_limit, upload_to_cloudinary, get_current_user, grading_queue, trigger_socket_notify, generate_class_code, _distribution_buckets, sanitize_csv_value
@@ -62,6 +63,9 @@ def decode_announcement_attachments(value):
 def serialize_announcement(row):
     item = dict(row)
     item['attachments'] = decode_announcement_attachments(item.get('attachments'))
+    for field in ('created_at', 'updated_at'):
+        if item.get(field) is not None:
+            item[field] = utc_timestamp(item[field])
     return item
 
 @router.post('')

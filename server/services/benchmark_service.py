@@ -137,7 +137,7 @@ def get_agreement_interpretation(qwk: float) -> Dict[str, str]:
         "range": "0.81 - 1.00" if qwk > 0.80 else "0.61 - 0.80" if qwk > 0.60 else "0.41 - 0.60" if qwk > 0.40 else "0.21 - 0.40" if qwk > 0.20 else "< 0.20"
     }
 
-def calculate_qwk(y_true: List[int], y_pred: List[int], min_rating: int = 0, max_rating: int = 5) -> float:
+def calculate_qwk(y_true: List[float], y_pred: List[float], min_rating: int = 0, max_rating: int = 5) -> float:
     """
     Pure-Python Quadratic Weighted Kappa (QWK)
     Identical result to sklearn.metrics.cohen_kappa_score(y_true, y_pred, weights='quadratic')
@@ -147,25 +147,11 @@ def calculate_qwk(y_true: List[int], y_pred: List[int], min_rating: int = 0, max
     if y_true == y_pred:
         return 1.0
 
-    k = max_rating - min_rating + 1
-    w = [[((i - j) ** 2) / ((k - 1) ** 2) for j in range(k)] for i in range(k)]
-
-    O = [[0] * k for _ in range(k)]
-    hist_true = [0] * k
-    hist_pred = [0] * k
-
-    for t, p in zip(y_true, y_pred):
-        ti = max(min_rating, min(max_rating, int(round(t)))) - min_rating
-        pi = max(min_rating, min(max_rating, int(round(p)))) - min_rating
-        O[ti][pi] += 1
-        hist_true[ti] += 1
-        hist_pred[pi] += 1
-
     n = len(y_true)
-    E = [[(hist_true[i] * hist_pred[j]) / n for j in range(k)] for i in range(k)]
-
-    num = sum(w[i][j] * O[i][j] for i in range(k) for j in range(k))
-    den = sum(w[i][j] * E[i][j] for i in range(k) for j in range(k))
+    # For equally spaced numeric ratings, the scale factor in quadratic
+    # weights cancels. Use the actual scores so half/quarter points survive.
+    num = sum((t - p) ** 2 for t, p in zip(y_true, y_pred)) / n
+    den = sum((t - p) ** 2 for t in y_true for p in y_pred) / (n * n)
 
     if den == 0:
         return 1.0 if num == 0 else 0.0
@@ -177,16 +163,14 @@ def calculate_mae(y_true: List[int], y_pred: List[int]) -> float:
         return 0.0
     return round(sum(abs(t - p) for t, p in zip(y_true, y_pred)) / len(y_true), 4)
 
-def calculate_confusion_matrix(y_true: List[int], y_pred: List[int], labels: Optional[List[int]] = None) -> Dict[str, Any]:
+def calculate_confusion_matrix(y_true: List[float], y_pred: List[float], labels: Optional[List[float]] = None) -> Dict[str, Any]:
     """Confusion Matrix for ratings (0 to 5)"""
     if labels is None:
-        labels = [0, 1, 2, 3, 4, 5]
+        labels = sorted(set(y_true) | set(y_pred)) if y_true else [0, 1, 2, 3, 4, 5]
     matrix = {r: {c: 0 for c in labels} for r in labels}
     for t, p in zip(y_true, y_pred):
-        ti = int(round(t))
-        pi = int(round(p))
-        if ti in matrix and pi in matrix[ti]:
-            matrix[ti][pi] += 1
+        if t in matrix and p in matrix[t]:
+            matrix[t][p] += 1
 
     grid = [[matrix[r][c] for c in labels] for r in labels]
     return {
@@ -508,20 +492,28 @@ def generate_default_benchmark_dataset() -> List[Dict[str, Any]]:
     return items
 
 def ensure_dataset_initialized() -> List[Dict[str, Any]]:
-    """Loads dataset from file or creates and saves default benchmark dataset"""
-    os.makedirs(DATA_DIR, exist_ok=True)
+    """Load an existing dataset without silently fabricating experiment results."""
     if os.path.exists(DATASET_PATH):
         try:
             with open(DATASET_PATH, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                if isinstance(data, list) and len(data) >= 30:
+                if isinstance(data, list):
                     return data
         except Exception:
             pass
 
-    default_data = generate_default_benchmark_dataset()
-    save_dataset(default_data)
-    return default_data
+    return []
+
+
+def dataset_source(items: List[Dict[str, Any]]) -> str:
+    if not items:
+        return 'none'
+    if len(items) == 300:
+        example = generate_default_benchmark_dataset()
+        if all(all(items[i].get(key) == example[i].get(key)
+                   for key in ('sample_id', 'question_no', 'student_answer')) for i in range(30)):
+            return 'demo'
+    return 'imported'
 
 def save_dataset(items: List[Dict[str, Any]]) -> None:
     """Save dataset to JSON"""
@@ -557,11 +549,11 @@ def compute_benchmark_metrics(items: Optional[List[Dict[str, Any]]] = None) -> D
             "confusion_matrix": calculate_confusion_matrix([], []),
             "modality_comparison": {"text": {}, "image": {}},
             "per_question": [],
-            "questions": CANONICAL_QUESTIONS
+            "questions": []
         }
 
-    y_true = [int(item["human_score"]) for item in valid_items]
-    y_pred = [int(item["ai_score"]) for item in valid_items]
+    y_true = [float(item["human_score"]) for item in valid_items]
+    y_pred = [float(item["ai_score"]) for item in valid_items]
 
     overall_qwk = calculate_qwk(y_true, y_pred)
     overall_mae = calculate_mae(y_true, y_pred)
@@ -582,8 +574,8 @@ def compute_benchmark_metrics(items: Optional[List[Dict[str, Any]]] = None) -> D
     def analyze_subset(subset: List[Dict[str, Any]]) -> Dict[str, Any]:
         if not subset:
             return {"count": 0, "qwk": 0.0, "mae": 0.0, "exact_pct": 0.0, "adjacent_pct": 0.0}
-        sub_t = [int(it["human_score"]) for it in subset]
-        sub_p = [int(it["ai_score"]) for it in subset]
+        sub_t = [float(it["human_score"]) for it in subset]
+        sub_p = [float(it["ai_score"]) for it in subset]
         sub_exact = sum(1 for t, p in zip(sub_t, sub_p) if t == p)
         sub_adj = sum(1 for t, p in zip(sub_t, sub_p) if abs(t - p) <= 1)
         sub_qwk = calculate_qwk(sub_t, sub_p)
@@ -603,12 +595,24 @@ def compute_benchmark_metrics(items: Optional[List[Dict[str, Any]]] = None) -> D
 
     # Per-question breakdown (Q1 to Q10)
     per_question = []
-    for q_meta in CANONICAL_QUESTIONS:
-        q_no = q_meta["question_no"]
+    question_numbers = sorted({int(it.get('question_no', 1)) for it in valid_items})
+    question_meta = {}
+    for item in valid_items:
+        q_no = int(item.get('question_no', 1))
+        question_meta.setdefault(q_no, {
+            'question_no': q_no,
+            'topic': item.get('topic') or f'ข้อ {q_no}',
+            'type': item.get('question_type') or item.get('answer_type') or 'text',
+            'max_score': item.get('max_score') or max(float(x['human_score']) for x in valid_items if int(x.get('question_no', 1)) == q_no),
+            'question_content': item.get('question_content') or '',
+            'rubric': item.get('rubric') or '',
+        })
+    for q_no in question_numbers:
+        q_meta = question_meta[q_no]
         q_items = [it for it in valid_items if it.get("question_no") == q_no]
         if q_items:
-            q_t = [int(it["human_score"]) for it in q_items]
-            q_p = [int(it["ai_score"]) for it in q_items]
+            q_t = [float(it["human_score"]) for it in q_items]
+            q_p = [float(it["ai_score"]) for it in q_items]
             q_qwk = calculate_qwk(q_t, q_p)
             q_mae = calculate_mae(q_t, q_p)
             q_exact = sum(1 for t, p in zip(q_t, q_p) if t == p)
@@ -650,15 +654,15 @@ def compute_benchmark_metrics(items: Optional[List[Dict[str, Any]]] = None) -> D
         "confusion_matrix": conf_matrix,
         "modality_comparison": modality_comparison,
         "per_question": per_question,
-        "questions": CANONICAL_QUESTIONS
+        "questions": list(question_meta.values())
     }
 
 def export_benchmark_excel() -> io.BytesIO:
     """
     Generate styled Excel workbook (.xlsx) containing:
     1. Summary_Metrics: Key indicators, agreement level, modality breakdown, confusion matrix
-    2. Dataset_QWK: 300 rows with full data
-    3. Exam_Questions: 10 Data Structures questions with rubrics
+    2. Dataset_QWK: imported rows with full data
+    3. Exam_Questions: questions present in the dataset
     """
     wb = openpyxl.Workbook()
     # Remove default sheet
@@ -694,6 +698,7 @@ def export_benchmark_excel() -> io.BytesIO:
     ws_summary["A1"].font = title_font
     ws_summary["A2"] = "วิชา Data Structures | การวัดผลด้วย Quadratic Weighted Kappa (QWK), MAE และ Confusion Matrix"
     ws_summary["A2"].font = subtitle_font
+    ws_summary["A3"] = "ข้อมูลจำลองสำหรับทดสอบหน้าจอ ไม่ใช่ผลทดลองจริง" if dataset_source(items) == 'demo' else "ข้อมูลจากไฟล์ที่นำเข้า"
 
     # Overview KPI Table
     ws_summary["A4"] = "1. ดัชนีชี้วัดภาพรวม (Overall Model Performance)"
@@ -708,7 +713,7 @@ def export_benchmark_excel() -> io.BytesIO:
         c.border = thin_border
 
     kpis = [
-        ("จำนวนตัวอย่างทั้งหมด (Total Samples)", f"{metrics['total_samples']} คำตอบ", "150 ข้อความ (Text) + 150 ลายมือ (Image)"),
+        ("จำนวนตัวอย่างทั้งหมด (Total Samples)", f"{metrics['total_samples']} คำตอบ", f"{metrics['modality_comparison']['text']['count']} ข้อความ + {metrics['modality_comparison']['image']['count']} ภาพ"),
         ("Quadratic Weighted Kappa (QWK)", f"{metrics['overall_qwk']:.4f}", f"{metrics['agreement']['level_th']}"),
         ("Mean Absolute Error (MAE)", f"{metrics['overall_mae']:.4f} คะแนน", "ความคลาดเคลื่อนเฉลี่ยไม่เกิน 0.35 คะแนน"),
         ("ความตรงกันสมบูรณ์ (Exact Agreement)", f"{metrics['exact_agreement_rate']}%", "คะแนนอาจารย์และ AI เท่ากันตรงเผง"),
@@ -800,10 +805,11 @@ def export_benchmark_excel() -> io.BytesIO:
     ws_dataset = wb.create_sheet(title="Dataset_QWK")
     ws_dataset.views.sheetView[0].showGridLines = True
 
-    ws_dataset["A1"] = "ตารางข้อมูลชุดทดสอบ 300 ตัวอย่าง (Dataset for QWK Evaluation)"
+    ws_dataset["A1"] = f"ตารางข้อมูลชุดทดสอบ {len(items)} ตัวอย่าง (Dataset for QWK Evaluation)"
     ws_dataset["A1"].font = title_font
-    ws_dataset["A2"] = "วิชา Data Structures | 150 ข้อความ + 150 ภาพลายมือ | คะแนนอาจารย์และ AI พร้อมความคิดเห็น"
+    ws_dataset["A2"] = "วิชา Data Structures | คะแนนอาจารย์และ AI พร้อมความคิดเห็น"
     ws_dataset["A2"].font = subtitle_font
+    ws_dataset["A3"] = "ข้อมูลจำลอง ไม่ใช่ผลทดลองจริง" if dataset_source(items) == 'demo' else "ข้อมูลจากไฟล์ที่นำเข้า"
 
     headers_ds = [
         ("sample_id", "รหัสตัวอย่าง", 14),
@@ -878,9 +884,9 @@ def export_benchmark_excel() -> io.BytesIO:
     ws_q = wb.create_sheet(title="Exam_Questions")
     ws_q.views.sheetView[0].showGridLines = True
 
-    ws_q["A1"] = "รายการโจทย์ข้อสอบและเกณฑ์การให้คะแนน 10 ข้อ (Data Structures Exam)"
+    ws_q["A1"] = f"รายการโจทย์ข้อสอบและเกณฑ์การให้คะแนน {len(metrics['questions'])} ข้อ (Data Structures Exam)"
     ws_q["A1"].font = title_font
-    ws_q["A2"] = "อ้างอิงข้อกำหนดระบบอัตนัย 10 ข้อ (1.3.5 / 3.8 / Gap G07 / AT18)"
+    ws_q["A2"] = "โจทย์ที่ปรากฏในชุดข้อมูลนี้"
     ws_q["A2"].font = subtitle_font
 
     q_headers = [
@@ -908,7 +914,7 @@ def export_benchmark_excel() -> io.BytesIO:
         col_letter = get_column_letter(col_idx)
         ws_q.column_dimensions[col_letter].width = width
 
-    for r_idx, q in enumerate(CANONICAL_QUESTIONS, 6):
+    for r_idx, q in enumerate(metrics['questions'], 6):
         is_zebra = (r_idx % 2 == 1)
         fill = zebra_fill if is_zebra else None
 
@@ -918,7 +924,7 @@ def export_benchmark_excel() -> io.BytesIO:
             q["topic"],
             q["max_score"],
             q["question_content"],
-            q["rubric"]
+            q.get("rubric", "")
         ]
 
         for c_idx, val in enumerate(row_vals, 1):
@@ -948,6 +954,11 @@ def import_benchmark_excel(file_bytes: bytes) -> Dict[str, Any]:
     """
     wb = openpyxl.load_workbook(filename=io.BytesIO(file_bytes), data_only=True)
     sheet = wb["Dataset_QWK"] if "Dataset_QWK" in wb.sheetnames else wb.active
+    rubric_meta = {}
+    if 'Exam_Rubrics' in wb.sheetnames:
+        for row in wb['Exam_Rubrics'].iter_rows(values_only=True):
+            if isinstance(row[0], int) and len(row) > 2 and isinstance(row[2], (int, float)):
+                rubric_meta[row[0]] = {'topic': str(row[1] or f'ข้อ {row[0]}'), 'max_score': float(row[2])}
 
     # Find header row
     header_row_idx = None
@@ -984,16 +995,21 @@ def import_benchmark_excel(file_bytes: bytes) -> Dict[str, Any]:
 
         if sample_id is None and h_score_val is None and ai_score_val is None:
             continue
+        if str(sample_id or '').startswith('(') and str(h_score_val or '').startswith('('):
+            continue
 
         try:
-            h_score = int(float(h_score_val)) if h_score_val is not None else 0
+            h_score = float(h_score_val) if h_score_val is not None else None
         except Exception:
-            h_score = 0
+            h_score = None
 
         try:
-            ai_score = int(float(ai_score_val)) if ai_score_val is not None else 0
+            ai_score = float(ai_score_val) if ai_score_val is not None else None
         except Exception:
-            ai_score = 0
+            ai_score = None
+
+        if h_score is None or ai_score is None:
+            raise ValueError(f"แถว {r}: คะแนนอาจารย์หรือคะแนน AI ไม่ถูกต้อง")
 
         q_no_val = get_val(["question_no", "ข้อที่", "ข้อ"], 1)
         try:
@@ -1019,9 +1035,10 @@ def import_benchmark_excel(file_bytes: bytes) -> Dict[str, Any]:
         new_items.append({
             "sample_id": str(sample_id or f"DS-{len(new_items)+1:03d}"),
             "question_no": q_no,
-            "question_type": q_meta["type"],
-            "question_content": q_meta["question_content"],
-            "topic": q_meta["topic"],
+            "question_type": str(get_val(["question_type"], q_meta["type"])),
+            "question_content": str(get_val(["question_content"], q_meta["question_content"])),
+            "topic": str(get_val(["topic", "หัวข้อ"], rubric_meta.get(q_no, {}).get('topic', f"ข้อ {q_no}"))),
+            "max_score": rubric_meta.get(q_no, {}).get('max_score'),
             "answer_type": a_type,
             "student_answer": student_ans,
             "transcription": transcription,

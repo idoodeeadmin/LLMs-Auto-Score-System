@@ -3,6 +3,7 @@ import json
 from fastapi import APIRouter, Depends, HTTPException
 
 from server.database import get_db_connection
+from server.time_utils import utc_timestamp
 from server.utils import get_current_user
 
 
@@ -16,7 +17,7 @@ def _serialize_notification(row: dict) -> dict:
         "message": row["message"],
         "link": row.get("link") or "/home",
         "is_read": bool(row.get("is_read")),
-        "created_at": row["created_at"].isoformat() if row.get("created_at") else None,
+        "created_at": utc_timestamp(row.get("created_at")),
     }
     raw_data = row.get("data")
     if raw_data:

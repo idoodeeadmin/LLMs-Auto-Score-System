@@ -94,6 +94,7 @@ const formatDate = (value?: string | null) => {
   return new Intl.DateTimeFormat("th-TH", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: "Asia/Bangkok",
   }).format(date);
 };
 

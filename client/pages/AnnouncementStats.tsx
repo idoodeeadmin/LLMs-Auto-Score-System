@@ -98,7 +98,7 @@ export default function AnnouncementStats() {
                         <span className="flex items-center gap-1 text-emerald-600 text-sm font-bold">
                           <CheckCircle2 size={16} /> อ่านแล้ว
                         </span>
-                        <span className="text-[10px] text-slate-400">{new Date(s.read_at).toLocaleString('th-TH')}</span>
+                        <span className="text-[10px] text-slate-400">{new Date(s.read_at).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}</span>
                       </div>
                     ) : (
                       <span className="flex items-center gap-1 text-slate-400 text-sm">

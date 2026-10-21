@@ -2,7 +2,7 @@ import { confirmAction } from "@/components/ConfirmActionDialog";
 import { PageLoading } from "@/components/RouteLoading";
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Camera, User, Loader2, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Camera, User, Loader2, CheckCircle2, Mail, ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,9 +19,22 @@ export default function Profile() {
   const [identityId, setIdentityId] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [countdown, setCountdown] = useState(0);
   const [avatarPreview, setAvatarPreview] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [countdown]);
 
   useEffect(() => {
     if (!isAuthLoading && (!token || !user)) {
@@ -49,13 +62,64 @@ export default function Profile() {
     }
   };
 
+  const handleRequestOtp = async () => {
+    if (!password) {
+      toast.error("กรุณากรอกรหัสผ่านใหม่ก่อนขอรหัส OTP");
+      return;
+    }
+    if (password.length < 8) {
+      toast.error("รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 8 ตัวอักษร");
+      return;
+    }
+    if (password !== confirmPassword) {
+      toast.error("รหัสผ่านใหม่และยืนยันรหัสผ่านไม่ตรงกัน");
+      return;
+    }
+
+    setIsSendingOtp(true);
+    try {
+      const res = await fetch("/api/auth/profile/request-password-otp", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setOtpSent(true);
+        setCountdown(60);
+        toast.success(data.message || "ส่งรหัส OTP ไปยังอีเมลเรียบร้อยแล้ว");
+        if (data.dev_otp) {
+          toast.info(`[Dev Mode] รหัส OTP ของคุณคือ: ${data.dev_otp}`, { duration: 10000 });
+        }
+      } else {
+        toast.error(data.detail || "ไม่สามารถส่งรหัส OTP ได้");
+      }
+    } catch (error) {
+      console.error("Request OTP error:", error);
+      toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) return;
 
-    if (password && password !== confirmPassword) {
-      toast.error("รหัสผ่านไม่ตรงกัน");
-      return;
+    if (password) {
+      if (password.length < 8) {
+        toast.error("รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 8 ตัวอักษร");
+        return;
+      }
+      if (password !== confirmPassword) {
+        toast.error("รหัสผ่านไม่ตรงกัน");
+        return;
+      }
+      if (!otp || otp.trim().length !== 6) {
+        toast.error("กรุณากรอกรหัส OTP 6 หลักที่ได้รับทางอีเมล");
+        return;
+      }
     }
 
     setIsLoading(true);
@@ -63,7 +127,10 @@ export default function Profile() {
       const formData = new FormData();
       if (name !== user?.name) formData.append("name", name);
       if (identityId.trim() !== (user?.studentId || "")) formData.append("student_id", identityId.trim());
-      if (password) formData.append("password", password);
+      if (password) {
+        formData.append("password", password.trim());
+        formData.append("otp", otp.trim());
+      }
       if (avatarFile) formData.append("avatar", avatarFile);
 
       // If nothing to update
@@ -90,6 +157,12 @@ export default function Profile() {
       const data = await response.json();
 
       if (response.ok) {
+        if (password) {
+          await logout();
+          toast.success("เปลี่ยนรหัสผ่านเรียบร้อย กรุณาเข้าสู่ระบบอีกครั้ง");
+          navigate("/");
+          return;
+        }
         toast.success("อัปเดตข้อมูลส่วนตัวเรียบร้อย");
 
         const updatePayload: any = {};
@@ -100,6 +173,9 @@ export default function Profile() {
         updateUser(updatePayload);
         setPassword("");
         setConfirmPassword("");
+        setOtp("");
+        setOtpSent(false);
+        setCountdown(0);
       } else {
         toast.error(data.detail || "เกิดข้อผิดพลาดในการอัปเดต");
       }
@@ -203,10 +279,111 @@ export default function Profile() {
             </div>
           </section>
           <section className="grid gap-6 border-t border-[var(--work-line)] py-8 sm:grid-cols-[190px_1fr]" aria-labelledby="password-title">
-            <div><h2 id="password-title" className="font-semibold">รหัสผ่าน</h2><p className="mt-2 text-sm leading-6 text-[var(--work-muted)]">เว้นว่างไว้หากไม่ต้องการเปลี่ยนรหัสผ่าน</p></div>
+            <div>
+              <h2 id="password-title" className="font-semibold">รหัสผ่าน</h2>
+              <p className="mt-2 text-sm leading-6 text-[var(--work-muted)]">เว้นว่างไว้หากไม่ต้องการเปลี่ยนรหัสผ่าน</p>
+            </div>
             <div className="space-y-5">
-              <div className="field"><label htmlFor="profile-password">รหัสผ่านใหม่</label><Input id="profile-password" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className="h-11" /></div>
-              <div className="field"><label htmlFor="profile-confirm">ยืนยันรหัสผ่านใหม่</label><Input id="profile-confirm" type="password" autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required={!!password} className="h-11" /></div>
+              <div className="field">
+                <label htmlFor="profile-password">รหัสผ่านใหม่</label>
+                <div className="relative">
+                  <Input
+                    id="profile-password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    placeholder="อย่างน้อย 8 ตัวอักษร"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-11 pr-10"
+                  />
+                  <button
+                    type="button"
+                    aria-label={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-2 text-[var(--work-muted)] hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="field">
+                <label htmlFor="profile-confirm">ยืนยันรหัสผ่านใหม่</label>
+                <div className="relative">
+                  <Input
+                    id="profile-confirm"
+                    type={showConfirmPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    placeholder="กรอกรหัสผ่านใหม่อีกครั้ง"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required={!!password}
+                    className="h-11 pr-10"
+                  />
+                  <button
+                    type="button"
+                    aria-label={showConfirmPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                    onClick={() => setShowConfirmPassword((v) => !v)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-2 text-[var(--work-muted)] hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {password && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20 space-y-3">
+                  <div className="flex items-start justify-between gap-3 flex-wrap sm:flex-nowrap">
+                    <div>
+                      <p className="text-sm font-medium text-emerald-900 dark:text-emerald-300 flex items-center gap-1.5">
+                        <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                        การยืนยันความปลอดภัยด้วย OTP
+                      </p>
+                      <p className="text-xs text-emerald-700/80 dark:text-emerald-400/80 mt-1">
+                        ระบบจะส่งรหัสยืนยัน 6 หลักไปยังอีเมล <b>{user.email}</b> ก่อนทำการเปลี่ยนรหัสผ่าน
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRequestOtp}
+                      disabled={isSendingOtp || countdown > 0}
+                      className="shrink-0 h-9 border-emerald-300 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-800 dark:text-emerald-200 dark:hover:bg-emerald-900/50 font-medium"
+                    >
+                      {isSendingOtp ? (
+                        <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> กำลังส่ง...</>
+                      ) : countdown > 0 ? (
+                        `ขอใหม่ใน (${countdown}s)`
+                      ) : otpSent ? (
+                        <><Mail className="mr-1.5 h-3.5 w-3.5" /> ส่งรหัส OTP อีกครั้ง</>
+                      ) : (
+                        <><Mail className="mr-1.5 h-3.5 w-3.5" /> ขอรหัส OTP ทางอีเมล</>
+                      )}
+                    </Button>
+                  </div>
+
+                  {otpSent && (
+                    <div className="pt-2 border-t border-emerald-200/60 dark:border-emerald-800/40">
+                      <label htmlFor="profile-otp" className="block text-xs font-medium text-emerald-900 dark:text-emerald-300 mb-1.5">
+                        รหัส OTP 6 หลักที่ได้รับทางอีเมล
+                      </label>
+                      <Input
+                        id="profile-otp"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={6}
+                        autoComplete="one-time-code"
+                        placeholder="123456"
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        className="h-11 max-w-[200px] font-mono text-center tracking-widest text-lg font-bold bg-white dark:bg-slate-900 border-emerald-300 focus-visible:ring-emerald-500"
+                        required
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </section>
           <div className="flex justify-end pb-8"><Button type="submit" disabled={isLoading} className="primary-action h-11 w-full sm:w-auto">{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}บันทึกการเปลี่ยนแปลง</Button></div>

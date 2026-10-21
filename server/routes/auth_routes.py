@@ -5,6 +5,7 @@ import smtplib
 import asyncio
 from datetime import datetime, timezone, timedelta
 import os
+import secrets
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -169,9 +170,79 @@ async def get_me(user: dict=Depends(get_current_user)):
      'avatarUrl': user.get('avatar_url', None), 'is_verified': user.get('is_verified', 0),
      'googleEmail': user.get('google_email', None), 'isGoogleLinked': bool(user.get('google_id'))}
 
+@router.post('/profile/request-password-otp')
+async def request_profile_password_otp(request: Request, user: dict = Depends(get_current_user)):
+    """Generate and send 6-digit OTP to user's email for password change verification"""
+    email = user.get('email')
+    if not email:
+        raise HTTPException(status_code=400, detail='ไม่พบบัญชีอีเมลของผู้ใช้งาน')
+    if not _IS_DEV_MODE and not all(os.getenv(key) for key in ('SMTP_HOST', 'SMTP_USER', 'SMTP_PASSWORD')):
+        raise HTTPException(status_code=503, detail='ระบบส่งอีเมลยังไม่พร้อมใช้งาน กรุณาลองใหม่ภายหลัง')
+
+    client_ip = _get_client_ip(request)
+    if not check_rate_limit(f"otp_profile:{user['id']}:{client_ip}", limit=5, window=300):
+        raise HTTPException(status_code=429, detail="คุณขอรหัส OTP ถี่เกินไป กรุณารอสักครู่แล้วลองใหม่อีกครั้ง")
+
+    otp_code = f"{secrets.randbelow(900000) + 100000}"
+    now_utc = datetime.now(timezone.utc)
+    expires_at = (now_utc + timedelta(minutes=15)).strftime('%Y-%m-%d %H:%M:%S')
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM password_resets WHERE user_id = ? AND token LIKE ?", (user['id'], 'otp:%'))
+        cursor.execute(
+            "INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)",
+            (user['id'], f"otp:{otp_code}", expires_at)
+        )
+        conn.commit()
+    except pymysql.err.Error as e:
+        conn.close()
+        raise HTTPException(status_code=500, detail=str(e))
+    conn.close()
+
+    subject = "รหัส OTP สำหรับยืนยันการเปลี่ยนรหัสผ่าน (Evaly Score)"
+    html_body = f"""
+        <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 500px; margin: auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+            <h2 style="color: #0f695b; margin-top: 0; font-size: 20px;">ยืนยันการเปลี่ยนรหัสผ่าน</h2>
+            <p style="color: #334155; line-height: 1.5;">เราได้รับการร้องขอให้เปลี่ยนรหัสผ่านสำหรับบัญชี <b>{email}</b></p>
+            <p style="color: #334155; line-height: 1.5;">กรุณานำรหัส OTP 6 หลักด้านล่างนี้ไปกรอกในหน้าโปรไฟล์เพื่อยืนยัน:</p>
+            <div style="background: #f0fdf4; border: 1px dashed #86efac; padding: 18px; text-align: center; border-radius: 8px; margin: 20px 0;">
+                <span style="font-size: 34px; font-weight: bold; letter-spacing: 8px; color: #166534; font-family: monospace;">{otp_code}</span>
+            </div>
+            <p style="color: #64748b; font-size: 13px; margin-bottom: 4px;">• รหัส OTP นี้มีอายุการใช้งาน 15 นาที</p>
+            <p style="color: #64748b; font-size: 13px; margin-top: 0;">• หากคุณไม่ได้เป็นผู้ร้องขอ กรุณาละเว้นอีเมลฉบับนี้</p>
+        </div>
+    """
+    if not _IS_DEV_MODE:
+        delivered = await asyncio.to_thread(_send_smtp_email_sync, email, subject, html_body)
+        if not delivered:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM password_resets WHERE user_id = ? AND token = ?', (user['id'], f'otp:{otp_code}'))
+            conn.commit()
+            conn.close()
+            raise HTTPException(status_code=503, detail='ส่งอีเมลยืนยันไม่สำเร็จ กรุณาลองใหม่ภายหลัง')
+    else:
+        print(f'[Profile password OTP, development only] User ID: {user["id"]}, code: {otp_code}')
+
+    response = {
+        "message": f"ส่งรหัส OTP ไปยังอีเมล {email} เรียบร้อยแล้ว (รหัสมีอายุ 15 นาที)"
+    }
+    if _IS_DEV_MODE:
+        response["dev_otp"] = otp_code
+    return response
+
 @router.put('/profile')
-async def update_profile(request: Request, name: str=Form(None), student_id: str=Form(None), password: str=Form(None), avatar: UploadFile=File(None), user: dict=Depends(get_current_user)):
-    # Distinguish an omitted identifier from an explicitly cleared optional field.
+async def update_profile(
+    request: Request,
+    name: str = Form(None),
+    student_id: str = Form(None),
+    password: str = Form(None),
+    otp: str = Form(None),
+    avatar: UploadFile = File(None),
+    user: dict = Depends(get_current_user)
+):
     profile_form = await request.form()
     if 'student_id' in profile_form:
         student_id = str(profile_form['student_id']).strip()
@@ -180,7 +251,7 @@ async def update_profile(request: Request, name: str=Form(None), student_id: str
     update_fields = []
     params = []
     avatar_filename = user.get('avatar_url')
-    
+
     if avatar:
         file_content = await avatar.read()
         validate_upload_file(file_content, content_type=avatar.content_type)
@@ -194,9 +265,46 @@ async def update_profile(request: Request, name: str=Form(None), student_id: str
     if student_id is not None:
         update_fields.append('student_id = ?')
         params.append(student_id.strip() or None)
+
     if password:
+        cleaned_password = password.strip()
+        if len(cleaned_password) < 8:
+            conn.close()
+            raise HTTPException(status_code=400, detail="รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 8 ตัวอักษร")
+
+        if not otp or not otp.strip():
+            conn.close()
+            raise HTTPException(status_code=400, detail="กรุณากรอกรหัส OTP ที่ได้รับทางอีเมลเพื่อยืนยันการเปลี่ยนรหัสผ่าน")
+        if not check_rate_limit(f"otp_profile_verify:{user['id']}", limit=10, window=900):
+            conn.close()
+            raise HTTPException(status_code=429, detail='ลองรหัส OTP มากเกินไป กรุณารอสักครู่แล้วลองใหม่')
+
+        otp_cleaned = otp.strip()
+        cursor.execute(
+            "SELECT id, expires_at FROM password_resets WHERE user_id = ? AND token = ? ORDER BY id DESC LIMIT 1",
+            (user['id'], f"otp:{otp_cleaned}")
+        )
+        otp_record = cursor.fetchone()
+        if not otp_record:
+            conn.close()
+            raise HTTPException(status_code=400, detail="รหัส OTP ไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง")
+
+        expires_at = otp_record['expires_at']
+        if isinstance(expires_at, str):
+            expires_at = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if datetime.now(timezone.utc) > expires_at:
+            cursor.execute("DELETE FROM password_resets WHERE id = ?", (otp_record['id'],))
+            conn.commit()
+            conn.close()
+            raise HTTPException(status_code=400, detail="รหัส OTP หมดอายุแล้ว กรุณาขอรหัสใหม่")
+
+        cursor.execute("DELETE FROM password_resets WHERE user_id = ? AND token LIKE ?", (user['id'], 'otp:%'))
         update_fields.append('password = ?')
-        params.append(get_password_hash(password))
+        params.append(get_password_hash(cleaned_password))
+        update_fields.append('token_version = token_version + 1')
+
     if avatar_filename and avatar_filename != user.get('avatar_url'):
         update_fields.append('avatar_url = ?')
         params.append(avatar_filename)
@@ -307,6 +415,8 @@ async def forgot_password(req: ForgotPasswordRequest):
 
 @router.post('/reset-password')
 async def reset_password(req: ResetPasswordRequest):
+    if req.token.startswith('otp:'):
+        raise HTTPException(status_code=400, detail='Invalid or expired reset token')
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('SELECT * FROM password_resets WHERE token = ?', (req.token,))

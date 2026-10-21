@@ -1,6 +1,9 @@
 import pytest
+from pathlib import Path
 from fastapi.testclient import TestClient
 from server.main import app
+from server.routes.benchmark_routes import require_benchmark_teacher
+from server.services import benchmark_service
 from server.services.benchmark_service import (
     calculate_qwk,
     calculate_mae,
@@ -12,8 +15,11 @@ from server.services.benchmark_service import (
 )
 
 @pytest.fixture
-def client():
-    return TestClient(app)
+def client(monkeypatch):
+    app.dependency_overrides[require_benchmark_teacher] = lambda: {'id': 1, 'role': 'teacher'}
+    monkeypatch.setattr(benchmark_service, 'ensure_dataset_initialized', benchmark_service.generate_default_benchmark_dataset)
+    yield TestClient(app)
+    app.dependency_overrides.pop(require_benchmark_teacher, None)
 
 def test_calculate_qwk_identical():
     # If predictions match perfectly, QWK must be 1.0
@@ -33,6 +39,33 @@ def test_calculate_mae():
     mae = calculate_mae(y_true, y_pred)
     # diffs: 1 + 0 + 1 + 0 + 1 = 3 / 5 = 0.6
     assert mae == 0.6
+
+
+def test_decimal_scores_are_not_truncated():
+    rows = [
+        {'human_score': 1.5, 'ai_score': 1.0, 'question_no': 1, 'answer_type': 'text'},
+        {'human_score': 0.5, 'ai_score': 1.0, 'question_no': 1, 'answer_type': 'text'},
+    ]
+    metrics = compute_benchmark_metrics(rows)
+    assert metrics['overall_mae'] == 0.5
+    assert metrics['overall_qwk'] == 0.0
+    assert metrics['confusion_matrix']['labels'] == [0.5, 1.0, 1.5]
+
+
+def test_project_workbook_import_keeps_204_real_rows_and_fractional_scores(monkeypatch):
+    workbook = Path(__file__).resolve().parents[1] / 'project_support/documents/ชุดข้อสอบใหม่/ชุดข้อสอบ_dataset.xlsx'
+    rows = []
+    monkeypatch.setattr(benchmark_service, 'save_dataset', lambda items: rows.extend(items))
+    metrics = benchmark_service.import_benchmark_excel(workbook.read_bytes())
+    assert len(rows) == metrics['total_samples'] == 204
+    assert len(metrics['per_question']) == 6
+    assert any(row['human_score'] % 1 or row['ai_score'] % 1 for row in rows)
+    assert next(q for q in metrics['questions'] if q['question_no'] == 1)['max_score'] == 2
+
+
+def test_benchmark_requires_login():
+    response = TestClient(app).get('/api/benchmark/dataset')
+    assert response.status_code in (401, 403)
 
 def test_calculate_confusion_matrix():
     y_true = [0, 1, 2, 3, 4, 5]
@@ -64,6 +97,7 @@ def test_benchmark_summary_api(client):
     payload = res.json()
     assert payload["success"] is True
     data = payload["data"]
+    assert data["dataset_source"] == "demo"
     assert data["total_samples"] == 300
     assert data["overall_qwk"] > 0.85
     assert data["overall_mae"] < 0.40

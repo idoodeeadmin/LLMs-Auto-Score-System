@@ -1,16 +1,24 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import io
 
 from server.services import benchmark_service
+from server.utils import get_current_user
 
-router = APIRouter(prefix="/api/benchmark", tags=["Benchmark & Model Evaluation"])
+def require_benchmark_teacher(user: dict = Depends(get_current_user)):
+    if user.get('role') != 'teacher':
+        raise HTTPException(status_code=403, detail='Only teachers can access benchmark data')
+    return user
+
+
+router = APIRouter(prefix="/api/benchmark", tags=["Benchmark & Model Evaluation"],
+                   dependencies=[Depends(require_benchmark_teacher)])
 
 class EvaluateRequestItem(BaseModel):
-    human_score: int
-    ai_score: int
+    human_score: float
+    ai_score: float
     question_no: Optional[int] = None
     answer_type: Optional[str] = "text"
 
@@ -28,6 +36,7 @@ async def get_benchmark_summary():
     """
     try:
         metrics = benchmark_service.compute_benchmark_metrics()
+        metrics['dataset_source'] = benchmark_service.dataset_source(benchmark_service.ensure_dataset_initialized())
         return {
             "success": True,
             "data": metrics
@@ -88,6 +97,7 @@ async def get_benchmark_dataset(
 
         return {
             "success": True,
+            "dataset_source": benchmark_service.dataset_source(items),
             "total": total,
             "page": page,
             "limit": limit,
@@ -168,7 +178,7 @@ async def reset_benchmark_dataset():
         metrics = benchmark_service.compute_benchmark_metrics(fresh_data)
         return {
             "success": True,
-            "message": "รีเซ็ตชุดข้อมูลเป็นค่าเริ่มต้น 300 ตัวอย่างเรียบร้อยแล้ว",
+            "message": "เปลี่ยนเป็นข้อมูลจำลอง 300 รายการเรียบร้อยแล้ว",
             "data": metrics
         }
     except Exception as e:

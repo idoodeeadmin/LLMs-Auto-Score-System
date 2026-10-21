@@ -9,6 +9,7 @@ import asyncio
 from typing import Optional, List
 
 from server.database import get_db_connection
+from server.time_utils import utc_timestamp
 from server.auth import get_password_hash, verify_password, create_access_token, decode_token
 from server.models import *
 from server.utils import check_rate_limit, upload_to_cloudinary, get_current_user, grading_queue, trigger_socket_notify
@@ -80,7 +81,7 @@ async def get_announcement_read_status(ann_id: int, user: dict=Depends(get_curre
     cursor.execute('\n        SELECT u.id, u.name, u.student_id, ar.read_at\n        FROM enrollments e\n        JOIN users u ON e.user_id = u.id\n        LEFT JOIN announcement_reads ar ON ar.announcement_id = ? AND ar.user_id = u.id\n        WHERE e.room_id = ?\n    ', (ann_id, room_id))
     status = cursor.fetchall()
     conn.close()
-    return [dict(s) for s in status]
+    return [{**dict(s), 'read_at': utc_timestamp(s.get('read_at'))} for s in status]
 
 @router.get('/api/submissions/me')
 async def get_all_my_submissions(user: dict=Depends(get_current_user)):

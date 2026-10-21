@@ -32,6 +32,7 @@ interface AnswerItem {
   ai_score: number;
   ai_feedback: string;
   ai_confidence?: "high" | "medium" | "low" | string;
+  quality_metrics?: { grading_failed?: boolean; manual_review_required?: boolean };
   teacher_score?: number | null;
   teacher_comment?: string | null;
 }
@@ -326,6 +327,9 @@ export default function StudentGrading() {
             {data.answers.map((ans, idx) => {
               const qIdStr = ans.question_id.toString();
               const currentScore = teacherScores[qIdStr] ?? ans.ai_score ?? 0;
+              const gradingFailed = Boolean(ans.quality_metrics?.grading_failed)
+                || ans.ai_feedback?.includes("ไม่สามารถเชื่อมต่อระบบ AI")
+                || ans.ai_feedback?.includes("ไม่สามารถอ่านภาพแนบได้ครบ");
               const currentComment = teacherComments[qIdStr] ?? "";
 
               return (
@@ -392,10 +396,18 @@ export default function StudentGrading() {
                       </span>
 
                       <div className="flex items-center gap-2 flex-wrap">
-                        {renderConfidenceBadge(ans.ai_confidence)}
-                        <span className="font-bold text-xs text-[#188038] dark:text-emerald-400">
-                          AI ให้คะแนน: {ans.ai_score} / {ans.max_score} คะแนน
-                        </span>
+                        {gradingFailed ? (
+                          <span className="rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-900">
+                            AI ตรวจไม่สำเร็จ · ผู้สอนต้องประเมินเอง
+                          </span>
+                        ) : (
+                          <>
+                            {renderConfidenceBadge(ans.ai_confidence)}
+                            <span className="font-bold text-xs text-[#188038] dark:text-emerald-400">
+                              AI ให้คะแนน: {ans.ai_score} / {ans.max_score} คะแนน
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
 

@@ -648,7 +648,10 @@ export default function EditExam() {
 
   return (
     <div className="workspace create-exam-page edit-exam-page">
-      <ExamEditorHeader mode="edit" title={examTitle} onTitleChange={setExamTitle} dirty={isDirty} busy={isLoading || isSaving} onBack={onBack} onSettings={() => setSettingsOpen(true)}>
+      <ExamEditorHeader mode="edit" title={examTitle} onTitleChange={setExamTitle} dirty={isDirty} busy={isLoading || isSaving} onBack={onBack} onSettings={() => setSettingsOpen(true)}
+        mobilePrimaryAction={<Button type="button" size="sm" disabled={isLoading || isSaving || readingImages || generatingId !== null} onClick={handleSave}>
+          {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}<span className="ml-1.5">บันทึก</span>
+        </Button>}>
           <Button type="button" className="gap-2" disabled={isLoading || isSaving || readingImages || generatingId !== null} onClick={handleSave}>
             {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}<span>{isSaving ? "กำลังบันทึก…" : "บันทึกการแก้ไข"}</span>
           </Button>
@@ -730,10 +733,10 @@ export default function EditExam() {
                       )}
                       </div>
                     </div>
-                    <div className="grid items-start gap-4 grid-cols-[minmax(0,1fr)_112px]">
+                    <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-[minmax(0,1fr)_112px]">
                     <QuestionTextField questionNumber={index + 1} value={q.text}
                       onChange={(text) => updateQuestion(q.id, { text })} />
-                    <div>
+                    <div className="w-28 sm:w-auto">
                       <label className="block space-y-1.5 text-sm font-medium text-slate-700 dark:text-slate-200">
                         <span>คะแนนเต็ม</span>
                         <div className="mt-1.5 flex h-11 items-center overflow-hidden rounded-lg border border-input bg-card px-3 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
@@ -747,7 +750,7 @@ export default function EditExam() {
                     </div>
                   </div>
 
-                  <div className="pl-6 space-y-3">
+                  <div className="space-y-3 sm:pl-6">
                     <div className="flex flex-wrap items-center gap-3">
                       <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-muted focus-within:ring-2 focus-within:ring-ring">
                         <ImagePlus size={16} aria-hidden="true" />

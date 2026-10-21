@@ -13,6 +13,7 @@ from server.exam_policy import (ensure_submission_window, parse_exam_time, valid
 from typing import Optional, List
 
 from server.database import get_db_connection
+from server.time_utils import utc_timestamp
 from server.auth import get_password_hash, verify_password, create_access_token, decode_token
 from server.models import *
 from server.utils import check_rate_limit, upload_to_cloudinary, get_current_user, grading_queue, trigger_socket_notify, _distribution_buckets, sanitize_csv_value, validate_upload_file, normalize_image_bytes
@@ -228,7 +229,7 @@ async def list_exams(room_id: int, user: dict=Depends(get_current_user)):
     cursor.execute('SELECT * FROM exams WHERE room_id = ? ORDER BY created_at DESC', (room_id,))
     exams = cursor.fetchall()
     conn.close()
-    return [dict(e) for e in exams]
+    return [{**dict(e), 'created_at': utc_timestamp(e['created_at'])} for e in exams]
 
 @router.get('/{exam_id}')
 async def get_exam(room_id: int, exam_id: int, user: dict=Depends(get_current_user)):
@@ -250,6 +251,7 @@ async def get_exam(room_id: int, exam_id: int, user: dict=Depends(get_current_us
     questions = cursor.fetchall()
     conn.close()
     result = dict(exam)
+    result['created_at'] = utc_timestamp(exam['created_at'])
     result['questions'] = []
     now = datetime.now(timezone.utc)
     result['server_time'] = now.isoformat()

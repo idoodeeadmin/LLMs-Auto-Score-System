@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import ImageModal from "@/components/ImageModal";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   BarChart3,
   Download,
@@ -61,6 +62,7 @@ interface QuestionMetric {
 }
 
 interface BenchmarkSummary {
+  dataset_source?: "none" | "demo" | "imported";
   total_samples: number;
   overall_qwk: number;
   overall_mae: number;
@@ -102,6 +104,8 @@ interface DatasetItem {
 }
 
 export default function BenchmarkEvaluation() {
+  const { token } = useAuth();
+  const authHeaders = { Authorization: `Bearer ${token ?? ""}` };
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -137,9 +141,10 @@ export default function BenchmarkEvaluation() {
 
   // Fetch summary
   const fetchSummary = async () => {
+    if (!token) return;
     setLoadingSummary(true);
     try {
-      const res = await fetch("/api/benchmark/summary");
+      const res = await fetch("/api/benchmark/summary", { headers: authHeaders });
       if (!res.ok) throw new Error("ไม่สามารถโหลดข้อมูล Benchmark ได้");
       const data = await res.json();
       if (data.success) {
@@ -158,6 +163,7 @@ export default function BenchmarkEvaluation() {
 
   // Fetch paginated dataset items
   const fetchDataset = async () => {
+    if (!token) return;
     setLoadingItems(true);
     try {
       const params = new URLSearchParams();
@@ -170,7 +176,7 @@ export default function BenchmarkEvaluation() {
       if (selectedConf !== "all") params.append("confidence", selectedConf);
       if (searchQuery.trim()) params.append("search", searchQuery.trim());
 
-      const res = await fetch(`/api/benchmark/dataset?${params.toString()}`);
+      const res = await fetch(`/api/benchmark/dataset?${params.toString()}`, { headers: authHeaders });
       if (!res.ok) throw new Error("ไม่สามารถโหลดชุดข้อมูลได้");
       const data = await res.json();
       if (data.success) {
@@ -191,11 +197,11 @@ export default function BenchmarkEvaluation() {
 
   useEffect(() => {
     fetchSummary();
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     fetchDataset();
-  }, [page, selectedQuestion, selectedModality, selectedDiff, selectedConf]);
+  }, [token, page, selectedQuestion, selectedModality, selectedDiff, selectedConf]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -213,8 +219,19 @@ export default function BenchmarkEvaluation() {
   };
 
   // Export Excel
-  const handleExportExcel = () => {
-    window.open("/api/benchmark/export", "_blank");
+  const handleExportExcel = async () => {
+    try {
+      const res = await fetch("/api/benchmark/export", { headers: authHeaders });
+      if (!res.ok) throw new Error("ดาวน์โหลดรายงานไม่สำเร็จ");
+      const url = URL.createObjectURL(await res.blob());
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "Benchmark_Report.xlsx";
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast({ title: "ดาวน์โหลดไม่สำเร็จ", description: String(error), variant: "destructive" });
+    }
   };
 
   // Import Excel
@@ -229,6 +246,7 @@ export default function BenchmarkEvaluation() {
       toast({ title: "กำลังอัปโหลดและประมวลผลไฟล์...", description: file.name });
       const res = await fetch("/api/benchmark/import", {
         method: "POST",
+        headers: authHeaders,
         body: formData,
       });
       const data = await res.json();
@@ -254,16 +272,16 @@ export default function BenchmarkEvaluation() {
 
   // Reset Dataset to default 300
   const handleResetDefault = async () => {
-    if (!await confirmAction("คุณต้องการรีเซ็ตชุดข้อมูลเป็นค่าเริ่มต้น 300 ตัวอย่างวิชา Data Structures หรือไม่?")) return;
+    if (!await confirmAction("การดำเนินการนี้จะแทนที่ชุดข้อมูลปัจจุบันด้วยข้อมูลจำลอง 300 รายการ ยืนยันหรือไม่?")) return;
 
     try {
-      const res = await fetch("/api/benchmark/reset", { method: "POST" });
+      const res = await fetch("/api/benchmark/reset", { method: "POST", headers: authHeaders });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "รีเซ็ตล้มเหลว");
 
       toast({
         title: "รีเซ็ตสำเร็จ",
-        description: "ระบบนำชุดข้อมูลมาตรฐาน 300 ตัวอย่างกลับมาแล้ว",
+        description: "ระบบนำข้อมูลจำลอง 300 รายการกลับมาแล้ว",
       });
       fetchSummary();
       setPage(1);
@@ -288,8 +306,8 @@ export default function BenchmarkEvaluation() {
         .map((line) => {
           const parts = line.split(/[,\s\t]+/);
           return {
-            human_score: parseInt(parts[0], 10),
-            ai_score: parseInt(parts[1], 10),
+            human_score: Number(parts[0]),
+            ai_score: Number(parts[1]),
           };
         })
         .filter((p) => !isNaN(p.human_score) && !isNaN(p.ai_score));
@@ -300,7 +318,7 @@ export default function BenchmarkEvaluation() {
 
       const res = await fetch("/api/benchmark/evaluate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({ items: pairs }),
       });
       const data = await res.json();
@@ -352,8 +370,15 @@ export default function BenchmarkEvaluation() {
                 การวัดผลความแม่นยำโมเดลตรวจข้อสอบอัตโนมัติ
               </h1>
               <p className="text-sm md:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
-                การประเมินความสอดคล้องระหว่างมนุษย์และ AI (Inter-rater Agreement) บนชุดข้อสอบวิชาโครงสร้างข้อมูล (Data Structures) รวม 300 คำตอบ (150 ข้อความพิมพ์ + 150 ภาพเขียนลายมือ) วัดผลด้วย Quadratic Weighted Kappa (QWK), MAE และ Confusion Matrix
+                การประเมินความสอดคล้องระหว่างคะแนนผู้สอนและ AI จากชุดข้อมูลที่นำเข้า วัดผลด้วย Quadratic Weighted Kappa (QWK), MAE และ Confusion Matrix
               </p>
+              {summary?.dataset_source !== "imported" && (
+                <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                  {summary?.dataset_source === "demo"
+                    ? "ขณะนี้แสดงข้อมูลจำลอง 300 รายการสำหรับทดสอบหน้าจอ ไม่ใช่ผลการทดลองจริง 204 คำตอบ"
+                    : "ยังไม่มีชุดข้อมูล Benchmark ที่นำเข้า กรุณานำเข้าไฟล์ผลการทดลองจริง"}
+                </p>
+              )}
             </div>
 
             {/* Action Buttons Toolbar */}
@@ -397,7 +422,7 @@ export default function BenchmarkEvaluation() {
                 size="sm"
                 onClick={handleResetDefault}
                 className="rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 h-10"
-                title="รีเซ็ตกลับเป็นค่าเริ่มต้น 300 ตัวอย่าง"
+                title="ใช้ข้อมูลจำลอง 300 รายการ"
               >
                 <RotateCcw size={14} />
               </Button>
@@ -435,7 +460,7 @@ export default function BenchmarkEvaluation() {
                 : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
             }`}
           >
-            ผลประเมินรายข้อ (Q1 - Q10)
+            ผลประเมินรายข้อ
           </button>
           <button
             onClick={() => setActiveTab("dataset")}
@@ -445,7 +470,7 @@ export default function BenchmarkEvaluation() {
                 : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
             }`}
           >
-            สำรวจชุดข้อมูล 300 ตัวอย่าง (Dataset Inspector)
+            สำรวจชุดข้อมูล ({summary?.total_samples ?? 0} ตัวอย่าง)
           </button>
         </div>
 
@@ -464,16 +489,15 @@ export default function BenchmarkEvaluation() {
                 </div>
                 <div>
                   <div className="text-3xl font-bold text-slate-900 dark:text-white">
-                    {summary?.total_samples ?? 300}
+                    {summary?.total_samples ?? 0}
                     <span className="text-sm font-normal text-slate-500 ml-1.5">คำตอบ</span>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    150 ข้อความพิมพ์ + 150 ภาพเขียนลายมือ
+                    {summary?.modality_comparison?.text?.count ?? 0} ข้อความ + {summary?.modality_comparison?.image?.count ?? 0} ภาพ
                   </p>
                 </div>
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
-                  <span>10 ข้อสอบอัตนัย</span>
-                  <span className="text-emerald-700 dark:text-emerald-400 font-medium">คะแนนเต็มข้อละ 5</span>
+                  <span>{summary?.per_question?.length ?? 0} ข้อสอบอัตนัย</span>
                 </div>
               </div>
 
@@ -789,10 +813,10 @@ export default function BenchmarkEvaluation() {
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <FileText size={20} className="text-emerald-600 dark:text-emerald-400" />
-                ผลการประเมินแยกตามรายข้อสอบ 10 ข้อ (Data Structures Exam Breakdown)
+                ผลการประเมินแยกตามรายข้อสอบ
               </h2>
               <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">
-                การกระจายตัวของค่า QWK, MAE และความแม่นยำในแต่ละหัวข้อของข้อสอบอัตนัย 10 ข้อ
+                ค่า QWK, MAE และความตรงกันของคะแนนในแต่ละข้อ
               </p>
             </div>
 
@@ -902,8 +926,8 @@ export default function BenchmarkEvaluation() {
                     }}
                     className="w-full text-xs h-9 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-2.5 py-1 text-slate-800 dark:text-slate-200"
                   >
-                    <option value="all">ทุกข้อ (1 - 10)</option>
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                    <option value="all">ทุกข้อ</option>
+                    {(summary?.per_question ?? []).map(({ question_no: num }) => (
                       <option key={num} value={num.toString()}>
                         ข้อที่ {num}
                       </option>

@@ -46,7 +46,7 @@ def _fallback_score(max_score: float, provider: str = "openai", model: Optional[
     return {
         "score": 0.0,
         "transcription": "",
-        "metrics": {"manual_review_required": True, "provider": provider, "model": model or OPENAI_MODEL, "prompt_version": PROMPT_VERSION},
+        "metrics": {"manual_review_required": True, "grading_failed": True, "provider": provider, "model": model or OPENAI_MODEL, "prompt_version": PROMPT_VERSION},
         "confidence": "low",
         "teacher_feedback": fb_teacher,
         "student_feedback": fb_student,

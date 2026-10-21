@@ -12,7 +12,7 @@ interface NavbarProps {
 }
 
 export default function Navbar({ isSticky = true }: NavbarProps) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   return (
     <header className={`app-navbar z-50 border-b bg-card px-3 py-2.5 md:px-4 ${isSticky ? "sticky top-0" : "relative"}`}>
       <div className="flex w-full items-center gap-3 md:gap-6">
@@ -23,7 +23,7 @@ export default function Navbar({ isSticky = true }: NavbarProps) {
           <span className="hidden sm:inline">Evaly</span>
         </Link>
 
-        <nav aria-label="เมนูหลัก" className="flex min-w-0 items-center gap-1">
+        <nav aria-label="เมนูหลัก" className="hidden sm:flex min-w-0 items-center gap-1">
           <NavLink
             to="/home"
             aria-label="ห้องเรียน"

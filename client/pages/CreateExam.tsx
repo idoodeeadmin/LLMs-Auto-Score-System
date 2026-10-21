@@ -598,7 +598,14 @@ export default function CreateExam() {
 
   return (
     <div className="workspace create-exam-page">
-      <ExamEditorHeader mode="create" title={examTitle} onTitleChange={setExamTitle} dirty={dirty} busy={!draftLoaded || savingDraft || isSaving} onBack={() => navigate(`/room/${roomId}`)} onSettings={() => setSettingsOpen(true)}>
+      <ExamEditorHeader mode="create" title={examTitle} onTitleChange={setExamTitle} dirty={dirty} busy={!draftLoaded || savingDraft || isSaving} onBack={() => navigate(`/room/${roomId}`)} onSettings={() => setSettingsOpen(true)}
+        mobileMenuItems={[
+          { label: "แบบร่างที่บันทึกไว้", disabled: !draftLoaded || savingDraft || isSaving, onSelect: () => { if (dirty) { toast.info("บันทึกฉบับร่างปัจจุบันก่อนเปิดแบบร่างชุดอื่น"); return; } setDraftPickerOpen(true); } },
+          { label: savingDraft ? "กำลังบันทึกร่าง…" : "บันทึกร่าง", disabled: !draftLoaded || savingDraft || isSaving || readingImages || generatingId !== null, onSelect: () => { void saveDraft(); } },
+        ]}
+        mobilePrimaryAction={<Button type="button" size="sm" disabled={!draftLoaded || isSaving || readingImages || savingDraft || generatingId !== null} onClick={handleSave}>
+          {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}<span className="ml-1.5">เผยแพร่</span>
+        </Button>}>
           <Button type="button" variant="ghost" aria-label="เปิดแบบร่างข้อสอบ" className="gap-2" disabled={!draftLoaded || savingDraft || isSaving}
             onClick={() => { if (dirty) { toast.info("บันทึกฉบับร่างปัจจุบันก่อนเปิดแบบร่างชุดอื่น"); return; } setDraftPickerOpen(true); }}>
             <Files size={16} /><span className="hidden sm:inline">แบบร่าง</span>
@@ -662,10 +669,10 @@ export default function CreateExam() {
                       <DeleteQuestionButton questionNumber={index + 1} onConfirm={() => deleteQuestion(q.id)} />
                       )}
                     </div>
-                    <div className="grid items-start gap-4 grid-cols-[minmax(0,1fr)_112px]">
+                    <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-[minmax(0,1fr)_112px]">
                     <QuestionTextField questionNumber={index + 1} value={q.text}
                       onChange={(text) => updateQuestion(q.id, { text })} />
-                    <div>
+                    <div className="w-28 sm:w-auto">
                       <label className="block space-y-1.5 text-sm font-medium text-slate-700 dark:text-slate-200">
                         <span>คะแนนเต็ม</span>
                         <div className="mt-1.5 flex h-11 items-center overflow-hidden rounded-lg border border-input bg-card px-3 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
@@ -679,7 +686,7 @@ export default function CreateExam() {
                     </div>
                   </div>
 
-                  <div className="pl-6 space-y-3">
+                  <div className="space-y-3 sm:pl-6">
                     <div className="flex flex-wrap items-center gap-3">
                       <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-muted focus-within:ring-2 focus-within:ring-ring">
                         <ImagePlus size={16} aria-hidden="true" />
@@ -990,7 +997,7 @@ export default function CreateExam() {
                     <span className="block truncate text-sm font-medium">{choice.draft.examTitle.trim() || "ยังไม่ได้ตั้งชื่อ"}</span>
                     <span className="mt-1 block text-xs text-muted-foreground">
                       {choice.draft.questions.length} ข้อ · แก้ไขล่าสุด {choice.draft.updatedAt
-                        ? new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short" }).format(new Date(choice.draft.updatedAt))
+                        ? new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" }).format(new Date(choice.draft.updatedAt))
                         : "ไม่ทราบเวลา"}
                     </span>
                   </button>

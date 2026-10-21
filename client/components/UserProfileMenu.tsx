@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
-import { History, Home, LogOut, User, UserCircle } from "lucide-react";
+import { History, Home, LogOut, Moon, Sun, User, UserCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +18,7 @@ interface UserProfileMenuProps {
 
 export function UserProfileMenu({ className = "", align = "end" }: UserProfileMenuProps) {
   const { user, logout } = useAuth();
+  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -85,6 +87,10 @@ export function UserProfileMenu({ className = "", align = "end" }: UserProfileMe
             </Link>
           </DropdownMenuItem>
         )}
+        <DropdownMenuItem className="cursor-pointer gap-2 sm:hidden" onSelect={() => setTheme(theme === "light" ? "dark" : "light")}>
+          {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
+          <span>{theme === "light" ? "โหมดมืด" : "โหมดสว่าง"}</span>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={handleLogout}

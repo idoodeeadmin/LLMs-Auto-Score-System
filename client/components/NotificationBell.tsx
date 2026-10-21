@@ -145,7 +145,7 @@ export function NotificationBell() {
                 </span>
                 {item.created_at && (
                   <span className="mt-1 block text-xs text-slate-400">
-                    {new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.created_at))}
+                    {new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" }).format(new Date(item.created_at))}
                   </span>
                 )}
               </span>
