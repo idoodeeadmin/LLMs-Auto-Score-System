@@ -79,3 +79,36 @@ def test_grading_review_flag_includes_medium_confidence(confidence, requires_rev
         _api_key_available=True, _transport=transport,
     ))
     assert result["metrics"]["manual_review_required"] is requires_review
+
+
+def test_image_prompt_separates_legibility_from_score():
+    transport = AsyncMock(return_value={
+        "score": 0.5, "confidence": "medium",
+        "teacher_feedback": "ตัวเลขท้ายบรรทัดอ่านไม่ชัด ควรตรวจต้นฉบับซ้ำ",
+        "student_feedback": "ตรวจคำตอบแล้ว", "transcription": "ผลคือ [อ่านไม่ชัด]",
+    })
+    result = asyncio.run(openai_grading.score_with_openai(
+        question_text="โจทย์", answer_text="", max_score=1,
+        image_bytes_list=[b"student-image"], image_mime_list=["image/png"],
+        _api_key_available=True, _transport=transport,
+    ))
+    prompt = transport.await_args.args[0][0]["text"]
+    assert "[อ่านไม่ชัด]" in prompt
+    assert "แยกจากคะแนน" in prompt
+    assert "ห้ามยกระดับ confidence เพราะคำตอบดูถูกหลักวิชา" in prompt
+    assert result["metrics"]["manual_review_required"] is True
+
+
+def test_unreadable_marker_prevents_high_confidence():
+    transport = AsyncMock(return_value={
+        "score": 0.5, "confidence": "high", "teacher_feedback": "ตรวจคำตอบแล้ว",
+        "student_feedback": "คำแนะนำ", "transcription": "คำตอบ [อ่านไม่ชัด]",
+    })
+    result = asyncio.run(openai_grading.score_with_openai(
+        question_text="โจทย์", answer_text="", max_score=1,
+        image_bytes_list=[b"student-image"], image_mime_list=["image/png"],
+        _api_key_available=True, _transport=transport,
+    ))
+    assert result["confidence"] == "medium"
+    assert result["metrics"]["manual_review_required"] is True
+    assert "ตรวจภาพต้นฉบับ" in result["teacher_feedback"]

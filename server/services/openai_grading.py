@@ -12,7 +12,7 @@ import httpx
 from server.services.review_policy import requires_review_for_confidence
 
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.6-luna").strip() or "gpt-5.6-luna"
-PROMPT_VERSION = "data-structures-v2"
+PROMPT_VERSION = "data-structures-v3-legibility"
 OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
 logger = logging.getLogger(__name__)
 
@@ -122,6 +122,39 @@ async def score_with_openai(
         )
 
     answer_key_section = f"## แนวคำตอบ\n{answer_key}\n" if answer_key else ""
+    if image_bytes_list and image_mime_list:
+        legibility_guidance = (
+            '5. การตรวจสอบความชัดเจนของลายมือและการถอดข้อความ (Handwriting Legibility Check - ต้องทำก่อนให้คะแนนอย่างเคร่งครัด):\n'
+            '5.1 ถอดข้อความ ตัวเลข สัญลักษณ์ และตำแหน่งในแผนภาพตามที่มองเห็นจริงลงใน transcription โดยรักษาคำเดิมและลำดับเดิม '
+            'ห้ามตีความ เรียบเรียง แก้คำผิด หรือเติมคำที่ไม่ปรากฏในภาพ หากบางคำอ่านไม่ได้หรือไม่ชัดเจนให้เขียน [อ่านไม่ชัด] ณ ตำแหน่งนั้น '
+            'ห้ามเดาคำ และห้ามใช้โจทย์ แนวคำตอบ หรือ rubric ช่วยเดาคำที่เขียนหวัด สะกดไม่ชัด หรืออ่านยาก\n'
+            '5.2 ตรวจสอบความชัดเจนของลายมือ (Handwriting Legibility Check) และกำหนด confidence จากความชัดเจนในการอ่านคำตอบลายมือแยกจากคะแนน: '
+            'หากภาพเบลอ ลายมืออ่านยาก ลายมือหวัด ตัวอักษรทับกันหรือเบียดชิด เส้นอักษรเขียนติดกัน มีรอยขีดฆ่า รอยดินสอ/หมึกจาง มีรอยเปื้อน หรือกำกวมจนไม่สามารถอ่านได้อย่างมั่นใจ 100% '
+            'ให้เลือก handwriting_status เป็น "hard_to_read_or_ambiguous" หรือ "mostly_illegible" และกำหนด confidence เป็น "medium" หรือ "low" ทันที '
+            '(ห้ามตอบ "high" เด็ดขาดหากลายมืออ่านยาก มีคำหวัด หรือภาพไม่ชัดเจน แม้จะพอเดาความหมายได้จากบริบทหรือแนวคำตอบ)\n'
+            '5.3 ข้อกำหนด confidence และ teacher_feedback:\n'
+            '    - หาก confidence เป็น medium หรือ low ใน teacher_feedback ต้องขึ้นต้นด้วยข้อความแจ้งเตือน: '
+            '"ลายมือหรือรูปภาพมีความชัดเจนน้อยเกินไป ขอให้อาจารย์ผู้สอนตรวจสอบและประเมินคะแนนซ้ำด้วยตนเอง" พร้อมอธิบายจุดที่ไม่ชัดเจน แล้วจึงอธิบายการให้คะแนนตามเกณฑ์\n'
+            '    - ตอบ confidence เป็น "high" และ handwriting_status เป็น "clear" ได้เฉพาะเมื่อข้อความหรือรายละเอียดภาพเขียนชัดเจน เป็นระเบียบ อ่านออกได้ง่ายทุกคำ ตัวอักษรไม่ทับกัน และมั่นใจ 100% เท่านั้น '
+            'ห้ามยกระดับ confidence เพราะคำตอบดูถูกหลักวิชา เดาได้จากบริบท หรือตรงกับแนวคำตอบ และห้ามลด confidence เพียงเพราะคำตอบผิดหรือได้คะแนนต่ำ'
+        )
+    else:
+        legibility_guidance = (
+            '5. สำหรับคำตอบข้อความ ให้กำหนด confidence จากความเพียงพอของข้อมูลที่ได้รับ'
+            'ต่อการตัดสินคะแนนตาม rubric หากมีข้อความกำกวมหรือขาดส่วนสำคัญให้ลดความมั่นใจ'
+        )
+
+    if image_bytes_list and image_mime_list:
+        prompt_closing = (
+            "หากมีภาพโจทย์ ภาพแนวคำตอบ หรือภาพคำตอบผู้เรียน ต้องอ่านภาพแต่ละประเภทตามหน้าที่ที่ระบุข้างต้นก่อนตัดสินคะแนน\n"
+            "หากภาพเบลอหรือลายมืออ่านยาก ลายมือหวัด หรือกำกวม ห้ามเดาหรือแก้คำตอบให้ถูก ให้ลด confidence เป็น medium หรือ low และแจ้งผู้สอนตามข้อ 5\n"
+            "ตอบกลับเป็น JSON เท่านั้น ห้ามมีข้อความนอก JSON โดยมี transcription, handwriting_status, confidence, score, teacher_feedback และ student_feedback"
+        )
+    else:
+        prompt_closing = (
+            "หากมีภาพโจทย์ ภาพแนวคำตอบ หรือภาพคำตอบผู้เรียน ต้องอ่านภาพแต่ละประเภทตามหน้าที่ที่ระบุข้างต้นก่อนตัดสินคะแนน\n"
+            "ตอบกลับเป็น JSON เท่านั้น ห้ามมีข้อความนอก JSON โดยมี score, confidence, teacher_feedback, student_feedback และ transcription"
+        )
 
     prompt = f"""คุณคือคุณครูผู้เชี่ยวชาญในการตรวจข้อสอบอัตนัยวิชาโครงสร้างข้อมูล (Data Structures)
 กรุณาประเมินคำตอบของนักเรียนโดยเน้นความถูกต้องของเนื้อหาเชิงเทคนิคเท่านั้น (ไม่ต้องสนใจความสวยงามของภาษา)
@@ -131,7 +164,7 @@ async def score_with_openai(
 2. อ่านภาพที่แนบตามหน้าที่ของภาพ: ถ้ามี "รูปภาพประกอบโจทย์" ให้อ่านข้อความ ข้อมูล และแผนภาพในภาพนั้นเพื่อทำความเข้าใจโจทย์ก่อนตรวจ แม้มีข้อความโจทย์กำกับอยู่ด้วย ถ้ามี "รูปภาพแนวคำตอบสำหรับใช้ตรวจ" ให้อ่านภาพนั้นจริงและใช้โครงสร้าง ค่าโหนด สัญลักษณ์ และเส้นเชื่อมในภาพเป็นแนวคำตอบประกอบเกณฑ์ ห้ามข้ามภาพแนวคำตอบแล้วตัดสินจากข้อความเฉลยเพียงอย่างเดียว จากนั้นจึงอ่าน "รูปภาพคำตอบของผู้เรียน" และเปรียบเทียบกับภาพแนวคำตอบและเกณฑ์ทีละจุด ห้ามสับสนภาพโจทย์หรือภาพแนวคำตอบกับคำตอบของผู้เรียน
 3. ตรวจสอบทิศทางของภาพแต่ละภาพ (Image Orientation): หากภาพถ่ายเอียง ตะแคงข้าง (เช่น หมุน 90 หรือ 270 องศา) หรือกลับหัว ให้ปรับมุมมองภาพนั้นให้อยู่ในแนวตั้งตรงตามหัวกระดาษและข้อความโจทย์ก่อนอ่าน ห้ามสับสนทิศทางบน-ล่าง-ซ้าย-ขวา โดยเฉพาะแผนภาพต้นไม้ ต้องดู Root (โหนดรากบนสุด) และกิ่งซ้าย-ขวาตามแนวตั้งที่ถูกต้องจริง
 4. วิเคราะห์คำตอบ: ตรวจสอบคำตอบของนักเรียนว่าตรงตามหลักการและลำดับขั้นตอนหรือไม่ หากมีภาพแนวคำตอบ ให้ระบุใน teacher_feedback ว่าภาพผู้เรียนตรงหรือผิดจากภาพแนวคำตอบที่ตำแหน่งใดอย่างชัดเจน อย่ากล่าวว่ากิ่งหรือโหนดผิดโดยไม่ชี้ตำแหน่งที่เปรียบเทียบ
-5. ตรวจสอบความชัดเจนของลายมือ (Handwriting Legibility Check): หากภาพเบลอ ลายมืออ่านยาก ตัวอักษรทับกัน หรือกำกวมจนไม่สามารถอ่านได้อย่างมั่นใจ 100% ให้ลด confidence เป็น "low" หรือ "medium" และระบุใน teacher_feedback ว่า "ลายมือหรือรูปภาพมีความชัดเจนน้อยเกินไป ขอให้อาจารย์ผู้สอนตรวจสอบและประเมินคะแนนซ้ำด้วยตนเอง"
+{legibility_guidance}
 {grading_guidance}
 
 ## ข้อกำหนดการให้ Feedback (ต้องให้ 2 ส่วนแยกกันอย่างชัดเจน):
@@ -152,9 +185,7 @@ async def score_with_openai(
 ## คำตอบของนักเรียน
 {answer_text.strip() if answer_text and answer_text.strip() else '(ไม่มีข้อความคำตอบ ให้วิเคราะห์จากภาพคำตอบที่แนบ)'}
 
-หากมีภาพโจทย์ ภาพแนวคำตอบ หรือภาพคำตอบผู้เรียน ต้องอ่านภาพแต่ละประเภทตามหน้าที่ที่ระบุข้างต้นก่อนตัดสินคะแนน
-หากภาพเบลอหรือลายมืออ่านยาก ให้ระบุใน teacher_feedback ว่าควรให้อาจารย์ตรวจสอบซ้ำ ห้ามเดาหรือแก้คำตอบให้ถูก
-ตอบกลับเป็น JSON เท่านั้น ห้ามมีข้อความนอก JSON โดยมี score, confidence, teacher_feedback, student_feedback และ transcription"""
+{prompt_closing}"""
 
     content = [{"type": "input_text", "text": prompt}]
     if q_image_bytes_list and q_image_mime_list:
@@ -164,21 +195,48 @@ async def score_with_openai(
         content.append({"type": "input_text", "text": "รูปภาพแนวคำตอบสำหรับใช้ตรวจเท่านั้น — อ่านภาพนี้และเปรียบเทียบตำแหน่งกับภาพผู้เรียน:"})
         content.extend(_image_content(data, mime) for data, mime in zip(answer_key_image_bytes_list, answer_key_image_mime_list))
     if image_bytes_list and image_mime_list:
-        content.append({"type": "input_text", "text": "รูปภาพคำตอบของผู้เรียน — ตรวจภาพนี้ตามโจทย์ เกณฑ์ และแนวคำตอบ:"})
+        content.append({"type": "input_text", "text": "รูปภาพคำตอบของผู้เรียน — ถอดข้อความตามที่เห็นจริงและตรวจสอบความชัดเจนของลายมืออย่างละเอียดก่อนให้คะแนน:"})
         content.extend(_image_content(data, mime) for data, mime in zip(image_bytes_list, image_mime_list))
 
-    schema = {
-        "type": "object",
-        "properties": {
-            "score": {"type": "number", "minimum": 0, "maximum": float(max_score)},
-            "confidence": {"type": "string", "enum": ["high", "medium", "low"]},
-            "teacher_feedback": {"type": "string"},
-            "student_feedback": {"type": "string"},
-            "transcription": {"type": "string"},
-        },
-        "required": ["score", "confidence", "teacher_feedback", "student_feedback", "transcription"],
-        "additionalProperties": False,
-    }
+
+    if image_bytes_list and image_mime_list:
+        schema = {
+            "type": "object",
+            "properties": {
+                "transcription": {
+                    "type": "string",
+                    "description": "ข้อความหรือสัญลักษณ์ที่ถอดได้จากภาพตามที่เห็นจริง ใส่ [อ่านไม่ชัด] ในจุดที่อ่านไม่ออก",
+                },
+                "handwriting_status": {
+                    "type": "string",
+                    "enum": ["clear", "hard_to_read_or_ambiguous", "mostly_illegible"],
+                    "description": "ความชัดเจนของลายมือ: clear=อ่านออกชัดเจน 100%, hard_to_read_or_ambiguous=ลายมือหวัด/อ่านยาก/ตัวอักษรทับกัน/เส้นติดกัน/ดินสอจาง/รอยเปื้อน/ขีดฆ่า/กำกวม, mostly_illegible=อ่านไม่ออกเป็นส่วนใหญ่",
+                },
+                "confidence": {
+                    "type": "string",
+                    "enum": ["high", "medium", "low"],
+                    "description": "high เมื่อ clear; medium เมื่อ hard_to_read_or_ambiguous; low เมื่อ mostly_illegible",
+                },
+                "score": {"type": "number", "minimum": 0, "maximum": float(max_score)},
+                "teacher_feedback": {"type": "string"},
+                "student_feedback": {"type": "string"},
+            },
+            "required": ["transcription", "handwriting_status", "confidence", "score", "teacher_feedback", "student_feedback"],
+            "additionalProperties": False,
+        }
+    else:
+        schema = {
+            "type": "object",
+            "properties": {
+                "score": {"type": "number", "minimum": 0, "maximum": float(max_score)},
+                "confidence": {"type": "string", "enum": ["high", "medium", "low"]},
+                "teacher_feedback": {"type": "string"},
+                "student_feedback": {"type": "string"},
+                "transcription": {"type": "string"},
+            },
+            "required": ["score", "confidence", "teacher_feedback", "student_feedback", "transcription"],
+            "additionalProperties": False,
+        }
     allowed_scores = kwargs.get("allowed_scores")
     if allowed_scores:
         allowed_scores = [float(score) for score in allowed_scores]
@@ -204,6 +262,23 @@ async def score_with_openai(
         if confidence not in ("high", "medium", "low") or not isinstance(data.get("transcription"), str):
             raise ValueError("Invalid grading result")
         transcription = data["transcription"]
+        handwriting_status = data.get("handwriting_status")
+        warning_prefix = "ลายมือหรือรูปภาพมีความชัดเจนน้อยเกินไป ขอให้อาจารย์ผู้สอนตรวจสอบและประเมินคะแนนซ้ำด้วยตนเอง"
+
+        if image_bytes_list:
+            if (
+                handwriting_status in ("hard_to_read_or_ambiguous", "mostly_illegible")
+                or "[อ่านไม่ชัด]" in transcription
+            ) and confidence == "high":
+                confidence = "medium" if handwriting_status != "mostly_illegible" else "low"
+
+            if confidence in ("medium", "low"):
+                if warning_prefix not in teacher_feedback:
+                    detail = " (คำถอดจากภาพมีส่วนที่อ่านไม่ชัด กรุณาตรวจภาพต้นฉบับก่อนยืนยันคะแนน)" if "[อ่านไม่ชัด]" in transcription else ""
+                    teacher_feedback = f"{warning_prefix}{detail}\n{teacher_feedback}".strip()
+                elif "[อ่านไม่ชัด]" in transcription and "ตรวจภาพต้นฉบับ" not in teacher_feedback:
+                    teacher_feedback += "\nคำถอดจากภาพมีส่วนที่อ่านไม่ชัด กรุณาตรวจภาพต้นฉบับก่อนยืนยันคะแนน"
+
         from server.exam_policy import count_answer_words, MAX_ANSWER_WORDS
         answer_words = count_answer_words((answer_text or "") + "\n" + transcription)
         over_limit = answer_words > MAX_ANSWER_WORDS
