@@ -54,6 +54,8 @@ def test_decimal_scores_are_not_truncated():
 
 def test_project_workbook_import_keeps_204_real_rows_and_fractional_scores(monkeypatch):
     workbook = Path(__file__).resolve().parents[1] / 'project_support/documents/ชุดข้อสอบใหม่/ชุดข้อสอบ_dataset.xlsx'
+    if not workbook.is_file():
+        pytest.skip('Project dataset is local and is not included in the Git repository')
     rows = []
     monkeypatch.setattr(benchmark_service, 'save_dataset', lambda items: rows.extend(items))
     metrics = benchmark_service.import_benchmark_excel(workbook.read_bytes())

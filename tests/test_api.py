@@ -132,7 +132,7 @@ def test_get_exams(mock_db):
     mock_conn.cursor.return_value = mock_cursor
     
     mock_cursor.fetchall.return_value = [
-        {"id": 101, "title": "Midterm Exam", "total_score": 50}
+        {"id": 101, "title": "Midterm Exam", "total_score": 50, "created_at": "2026-10-22 10:00:00"}
     ]
     
     response = client.get("/api/rooms/1/exams", headers={"Authorization": "Bearer fake-token"})
