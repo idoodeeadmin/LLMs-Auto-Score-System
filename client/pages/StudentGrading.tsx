@@ -32,7 +32,7 @@ interface AnswerItem {
   ai_score: number;
   ai_feedback: string;
   ai_confidence?: "high" | "medium" | "low" | string;
-  quality_metrics?: { grading_failed?: boolean; manual_review_required?: boolean };
+  quality_metrics?: { grading_failed?: boolean; manual_review_required?: boolean; transcription?: string };
   teacher_score?: number | null;
   teacher_comment?: string | null;
 }
@@ -384,6 +384,16 @@ export default function StudentGrading() {
                             </a>
                           ))}
                         </div>
+                        {ans.quality_metrics?.transcription?.trim() && (
+                          <details className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/60 px-4 py-3 dark:border-emerald-900 dark:bg-emerald-950/20">
+                            <summary className="cursor-pointer text-xs font-semibold text-[#17634f] dark:text-emerald-300">
+                              ดูข้อความที่ AI ถอดจากภาพ
+                            </summary>
+                            <p className="mt-3 whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-800 dark:text-slate-200">
+                              {ans.quality_metrics.transcription}
+                            </p>
+                          </details>
+                        )}
                       </div>
                     )}
                   </div>
