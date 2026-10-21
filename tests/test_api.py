@@ -110,6 +110,33 @@ def test_link_google_cannot_replace_existing_google_account(mock_firebase, mock_
     finally:
         clear_overrides()
 
+
+@pytest.mark.parametrize("google_id,credentials", [
+    ("google-account-a", {}),
+    (None, {}),
+    ("google-account-a", {"otp": "123456"}),
+])
+@patch("server.routes.auth_routes.get_db_connection")
+def test_delete_account_requires_fresh_verification(mock_db, google_id, credentials):
+    override_get_current_user({"id": 1, "email": "person@example.com", "role": "student"})
+    cursor = mock_db.return_value.cursor.return_value
+    cursor.fetchone.side_effect = [
+        {"id": 1, "password": "hashed-password", "google_id": google_id},
+        None,
+    ]
+    try:
+        response = client.request(
+            "DELETE", "/api/auth/account", json=credentials,
+            headers={"Authorization": "Bearer fake-token"},
+        )
+        assert response.status_code == 400
+        assert not any(
+            call.args[0].startswith("DELETE FROM users")
+            for call in cursor.execute.call_args_list
+        )
+    finally:
+        clear_overrides()
+
 # --- Room Management Tests ---
 @patch("server.routes.room_routes.get_db_connection")
 def test_create_room(mock_db):

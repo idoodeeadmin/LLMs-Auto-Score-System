@@ -62,6 +62,10 @@ class SetRoleRequest(BaseModel):
 class FirebaseLoginRequest(BaseModel):
     firebase_token: str
 
+class DeleteAccountRequest(BaseModel):
+    password: Optional[str] = None
+    otp: Optional[str] = None
+
 class QuestionInput(BaseModel):
     text: str
     score: float = Field(default=0, ge=0, allow_inf_nan=False)

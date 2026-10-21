@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
 import { auth } from "@/lib/firebase";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 
 export default function Profile() {
   const { user, token, updateUser, logout, isLoading: isAuthLoading } = useAuth();
@@ -28,6 +29,10 @@ export default function Profile() {
   const [avatarPreview, setAvatarPreview] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteSecret, setDeleteSecret] = useState("");
+  const [deleteOtpSent, setDeleteOtpSent] = useState(false);
+  const [deleteOtpBusy, setDeleteOtpBusy] = useState(false);
 
   useEffect(() => {
     if (countdown > 0) {
@@ -222,18 +227,39 @@ export default function Profile() {
     }
   };
 
-  const handleDeleteAccount = async () => {
-    const confirmDelete = await confirmAction("คุณแน่ใจหรือไม่ว่าต้องการลบบัญชี? ข้อมูลห้องเรียนและการสอบทั้งหมดของคุณจะถูกลบถาวรและไม่สามารถกู้คืนได้");
-    if (!confirmDelete) return;
+  const requestDeleteOtp = async () => {
+    setDeleteOtpBusy(true);
+    try {
+      const response = await fetch("/api/auth/account/request-delete-otp", {
+        method: "POST", headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "ส่งรหัส OTP ไม่สำเร็จ");
+      setDeleteOtpSent(true);
+      toast.success(data.message);
+      if (data.dev_otp) toast.info(`[Dev Mode] รหัส OTP: ${data.dev_otp}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "ส่งรหัส OTP ไม่สำเร็จ");
+    } finally {
+      setDeleteOtpBusy(false);
+    }
+  };
 
+  const handleDeleteAccount = async () => {
+    if (!deleteSecret.trim()) {
+      toast.error(user?.isGoogleLinked ? "กรุณากรอกรหัส OTP" : "กรุณากรอกรหัสผ่าน");
+      return;
+    }
     setIsLoading(true);
     try {
       const response = await fetch("/api/auth/account", {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify(user?.isGoogleLinked ? { otp: deleteSecret.trim() } : { password: deleteSecret }),
       });
 
       if (response.ok) {
+        setDeleteOpen(false);
         toast.success("ลบบัญชีของคุณเรียบร้อยแล้ว");
         logout();
         navigate("/");
@@ -415,9 +441,35 @@ export default function Profile() {
         </section>
         <section className="grid gap-6 border-t border-[var(--work-line)] py-8 sm:grid-cols-[190px_1fr]" aria-labelledby="delete-title">
           <h2 id="delete-title" className="font-semibold">ลบบัญชี</h2>
-          <div><p className="mb-4 text-sm leading-6 text-[var(--work-muted)]">ข้อมูลบัญชี ห้องเรียน และผลการสอบจะถูกลบถาวร และไม่สามารถกู้คืนได้</p><Button onClick={handleDeleteAccount} disabled={isLoading} type="button" variant="outline" className="border-red-300 text-red-700 hover:bg-red-50 hover:text-red-800 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950">ลบบัญชีถาวร</Button></div>
+          <div><p className="mb-4 text-sm leading-6 text-[var(--work-muted)]">ข้อมูลบัญชี ห้องเรียน และผลการสอบจะถูกลบถาวร และไม่สามารถกู้คืนได้</p><Button onClick={() => setDeleteOpen(true)} disabled={isLoading} type="button" variant="outline" className="border-red-300 text-red-700 hover:bg-red-50 hover:text-red-800 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950">ลบบัญชีถาวร</Button></div>
         </section>
       </main>
+      <AlertDialog open={deleteOpen} onOpenChange={(open) => { setDeleteOpen(open); if (!open) { setDeleteSecret(""); setDeleteOtpSent(false); } }}>
+        <AlertDialogContent className="max-w-md rounded-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>ยืนยันการลบบัญชีถาวร</AlertDialogTitle>
+            <AlertDialogDescription>ข้อมูลบัญชี ห้องเรียน และผลการสอบจะถูกลบถาวรและกู้คืนไม่ได้</AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3 py-2">
+            {user.isGoogleLinked ? (
+              <>
+                <p className="text-sm">ขอรหัส OTP ทางอีเมล {user.email} เพื่อยืนยันตัวตน</p>
+                <Button type="button" variant="outline" onClick={requestDeleteOtp} disabled={deleteOtpBusy || isLoading}>{deleteOtpBusy ? "กำลังส่ง…" : deleteOtpSent ? "ส่งรหัสอีกครั้ง" : "ขอรหัส OTP"}</Button>
+                <Input aria-label="รหัส OTP สำหรับลบบัญชี" inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="รหัส OTP 6 หลัก" value={deleteSecret} onChange={(e) => setDeleteSecret(e.target.value.replace(/\D/g, "").slice(0, 6))} />
+              </>
+            ) : (
+              <>
+                <p className="text-sm">กรอกรหัสผ่านปัจจุบันเพื่อยืนยันตัวตน</p>
+                <Input aria-label="รหัสผ่านปัจจุบันสำหรับลบบัญชี" type="password" autoComplete="current-password" value={deleteSecret} onChange={(e) => setDeleteSecret(e.target.value)} />
+              </>
+            )}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoading}>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction className="bg-red-600 text-white hover:bg-red-700" disabled={isLoading || !deleteSecret || (user.isGoogleLinked && (!deleteOtpSent || deleteSecret.length !== 6))} onClick={(event) => { event.preventDefault(); void handleDeleteAccount(); }}>{isLoading ? "กำลังลบ…" : "ยืนยันลบบัญชี"}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

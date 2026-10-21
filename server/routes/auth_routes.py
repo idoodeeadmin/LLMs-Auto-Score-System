@@ -447,15 +447,83 @@ async def reset_password(req: ResetPasswordRequest):
     conn.close()
     return {'message': 'Password has been successfully reset'}
 
+@router.post('/account/request-delete-otp')
+async def request_delete_account_otp(request: Request, user: dict = Depends(get_current_user)):
+    if not user.get('google_id'):
+        raise HTTPException(status_code=400, detail='บัญชีนี้ต้องยืนยันด้วยรหัสผ่าน')
+    if not _IS_DEV_MODE and not all(os.getenv(key) for key in ('SMTP_HOST', 'SMTP_USER', 'SMTP_PASSWORD')):
+        raise HTTPException(status_code=503, detail='ระบบส่งอีเมลยังไม่พร้อมใช้งาน')
+    if not check_rate_limit(f"otp_delete:{user['id']}:{_get_client_ip(request)}", limit=5, window=300):
+        raise HTTPException(status_code=429, detail='ขอรหัส OTP ถี่เกินไป กรุณารอสักครู่')
+
+    otp_code = f"{secrets.randbelow(900000) + 100000}"
+    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=15)).strftime('%Y-%m-%d %H:%M:%S')
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM password_resets WHERE user_id = ? AND token LIKE ?", (user['id'], 'delete:%'))
+        cursor.execute('INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)',
+                       (user['id'], f'delete:{otp_code}', expires_at))
+        conn.commit()
+    finally:
+        conn.close()
+
+    email = user['email']
+    subject = 'รหัส OTP สำหรับยืนยันการลบบัญชี Evaly'
+    body = (f'<p>มีการขอลบบัญชี {email} อย่างถาวร</p>'
+            f'<p>รหัสยืนยันของคุณคือ <b style="font-size:24px">{otp_code}</b></p>'
+            '<p>รหัสมีอายุ 15 นาที หากไม่ได้เป็นผู้ร้องขอ กรุณาละเว้นอีเมลนี้</p>')
+    if not _IS_DEV_MODE:
+        if not await asyncio.to_thread(_send_smtp_email_sync, email, subject, body):
+            conn = get_db_connection()
+            try:
+                cursor = conn.cursor()
+                cursor.execute('DELETE FROM password_resets WHERE user_id = ? AND token = ?',
+                               (user['id'], f'delete:{otp_code}'))
+                conn.commit()
+            finally:
+                conn.close()
+            raise HTTPException(status_code=503, detail='ส่งอีเมลยืนยันไม่สำเร็จ')
+    else:
+        print(f'[Delete account OTP, development only] User ID: {user["id"]}, code: {otp_code}')
+    result = {'message': f'ส่งรหัส OTP ไปยัง {email} แล้ว'}
+    if _IS_DEV_MODE:
+        result['dev_otp'] = otp_code
+    return result
+
 @router.delete('/account')
-async def delete_account(user: dict=Depends(get_current_user)):
-    """Permanently delete user account and all associated data"""
+async def delete_account(credentials: DeleteAccountRequest, user: dict=Depends(get_current_user)):
+    """Permanently delete an account after fresh password or email OTP verification."""
+    if not check_rate_limit(f"account_delete_verify:{user['id']}", limit=10, window=900):
+        raise HTTPException(status_code=429, detail='ยืนยันตัวตนผิดหลายครั้ง กรุณารอสักครู่')
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT id FROM users WHERE id = ?', (user['id'],))
-    if not cursor.fetchone():
+    cursor.execute('SELECT id, password, google_id FROM users WHERE id = ?', (user['id'],))
+    account = cursor.fetchone()
+    if not account:
         conn.close()
         raise HTTPException(status_code=404, detail='User not found')
+    if account['google_id']:
+        if not credentials.otp or not credentials.otp.isdigit() or len(credentials.otp) != 6:
+            conn.close()
+            raise HTTPException(status_code=400, detail='กรุณากรอกรหัส OTP 6 หลัก')
+        cursor.execute('SELECT id, expires_at FROM password_resets WHERE user_id = ? AND token = ? ORDER BY id DESC LIMIT 1',
+                       (user['id'], f'delete:{credentials.otp}'))
+        record = cursor.fetchone()
+        if not record:
+            conn.close()
+            raise HTTPException(status_code=400, detail='รหัส OTP ไม่ถูกต้อง')
+        expires_at = record['expires_at']
+        if isinstance(expires_at, str):
+            expires_at = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if datetime.now(timezone.utc) > expires_at:
+            conn.close()
+            raise HTTPException(status_code=400, detail='รหัส OTP หมดอายุแล้ว')
+    elif not credentials.password or not verify_password(credentials.password, account['password']):
+        conn.close()
+        raise HTTPException(status_code=400, detail='รหัสผ่านไม่ถูกต้อง')
     cursor.execute('DELETE FROM users WHERE id = ?', (user['id'],))
     conn.commit()
     conn.close()
