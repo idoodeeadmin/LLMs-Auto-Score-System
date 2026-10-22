@@ -331,10 +331,10 @@ export default function ExamView() {
                       </div>
                     )}
 
-                    {ans.ai_feedback && (
+                    {ans.student_feedback && (
                       <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-4 mt-2">
                         <p className="text-xs text-emerald-800 dark:text-emerald-300 font-medium mb-2">คำแนะนำจาก AI</p>
-                        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line">{ans.ai_feedback}</p>
+                        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line">{ans.student_feedback}</p>
                       </div>
                     )}
                     {ans.teacher_comment && (

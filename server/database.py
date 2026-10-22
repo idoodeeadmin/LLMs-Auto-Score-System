@@ -201,6 +201,7 @@ def init_db():
         answer_text TEXT,
         ai_score FLOAT DEFAULT 0,
         ai_feedback TEXT,
+        student_feedback TEXT,
         ai_confidence VARCHAR(50) DEFAULT 'medium',
         teacher_score FLOAT,
         teacher_comment TEXT,
@@ -310,6 +311,7 @@ def init_db():
     add_column_if_not_exists("users", "token_version INTEGER DEFAULT 0")
     add_column_if_not_exists("exams", "is_randomized TINYINT DEFAULT 0")
     add_column_if_not_exists("submission_answers", "quality_metrics TEXT")
+    add_column_if_not_exists("submission_answers", "student_feedback TEXT")
     add_column_if_not_exists("announcements", "updated_at DATETIME")
     add_column_if_not_exists("announcements", "attachments TEXT")
     add_column_if_not_exists("exam_drafts", "start_date VARCHAR(100)")

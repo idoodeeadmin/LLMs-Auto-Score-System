@@ -69,7 +69,7 @@ def db(monkeypatch):
         CREATE TABLE exams (id INTEGER PRIMARY KEY, room_id INTEGER, title TEXT, description TEXT, total_score REAL, start_date TEXT, end_date TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, is_randomized INTEGER DEFAULT 0, is_closed INTEGER DEFAULT 0);
         CREATE TABLE questions (id INTEGER PRIMARY KEY, exam_id INTEGER, text TEXT, score REAL, answer_key TEXT, rubrics TEXT, order_index INTEGER, image_paths TEXT, answer_key_image_paths TEXT, hide_rubric_from_students INTEGER DEFAULT 1);
         CREATE TABLE submissions (id INTEGER PRIMARY KEY, exam_id INTEGER, user_id INTEGER, status TEXT, total_score REAL DEFAULT 0, submitted_at TEXT, graded_by_ai INTEGER DEFAULT 0, UNIQUE(exam_id, user_id));
-        CREATE TABLE submission_answers (id INTEGER PRIMARY KEY, submission_id INTEGER, question_id INTEGER, answer_text TEXT, ai_score REAL, ai_feedback TEXT, ai_confidence TEXT, teacher_score REAL, teacher_comment TEXT, image_paths TEXT, quality_metrics TEXT, UNIQUE(submission_id, question_id));
+        CREATE TABLE submission_answers (id INTEGER PRIMARY KEY, submission_id INTEGER, question_id INTEGER, answer_text TEXT, ai_score REAL, ai_feedback TEXT, student_feedback TEXT, ai_confidence TEXT, teacher_score REAL, teacher_comment TEXT, image_paths TEXT, quality_metrics TEXT, UNIQUE(submission_id, question_id));
         CREATE TABLE notifications (id INTEGER PRIMARY KEY, user_id INTEGER, type TEXT, link TEXT, data TEXT);
         INSERT INTO users VALUES (101,'Student','student@example.test','001'), (102,'Other','other@example.test','002');
         INSERT INTO rooms VALUES (10,'Data Structures',1), (20,'Other Room',2);
@@ -241,6 +241,34 @@ def test_approve_preserves_existing_teacher_score_when_only_comment_changes(db):
     response=client_for('teacher',1).put('/api/rooms/10/exams/1/submissions/101/approve',json={'teacher_comments':{'11':'Reviewed'}})
     assert response.status_code == 200, response.text
     assert response.json()['total_score'] == 5
+
+
+def test_student_sees_only_edited_student_feedback_after_approval(db):
+    seed_submission(db, 'needs_review')
+    db.raw.execute("UPDATE submission_answers SET ai_feedback=?", ("[สำหรับผู้สอน]\nเหตุผลลับ\n\n[สำหรับนักเรียน]\nคำแนะนำเดิม",))
+    db.commit()
+    teacher = client_for('teacher', 1)
+    detail = teacher.get('/api/rooms/10/exams/1/submissions/101').json()
+    assert detail['answers'][0]['ai_teacher_feedback'] == 'เหตุผลลับ'
+    assert detail['answers'][0]['student_feedback'] == 'คำแนะนำเดิม'
+    approved = teacher.put('/api/rooms/10/exams/1/submissions/101/approve', json={
+        'teacher_scores': {'11': 4},
+        'student_feedbacks': {'11': 'คำแนะนำที่ผู้สอนแก้แล้ว'},
+    })
+    assert approved.status_code == 200, approved.text
+    own = client_for().get('/api/rooms/10/exams/1/submissions/me').json()['answers'][0]
+    assert own['student_feedback'] == 'คำแนะนำที่ผู้สอนแก้แล้ว'
+    assert own['ai_feedback'] is None
+    assert 'เหตุผลลับ' not in str(own)
+
+
+def test_legacy_combined_feedback_is_split_for_student(db):
+    seed_submission(db, 'approved')
+    db.raw.execute("UPDATE submission_answers SET ai_feedback=?", ("[สำหรับผู้สอน]\nเหตุผลลับ\n\n[สำหรับนักเรียน]\nฝึกเพิ่ม",))
+    db.commit()
+    own = client_for().get('/api/rooms/10/exams/1/submissions/me').json()['answers'][0]
+    assert own['student_feedback'] == 'ฝึกเพิ่ม'
+    assert 'เหตุผลลับ' not in str(own)
 
 
 def test_bulk_approval_skips_manual_review(db):

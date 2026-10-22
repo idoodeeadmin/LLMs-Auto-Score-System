@@ -31,6 +31,8 @@ interface AnswerItem {
   image_paths?: string[];
   ai_score: number;
   ai_feedback: string;
+  ai_teacher_feedback?: string;
+  student_feedback?: string;
   ai_confidence?: "high" | "medium" | "low" | string;
   quality_metrics?: { grading_failed?: boolean; manual_review_required?: boolean; transcription?: string };
   teacher_score?: number | null;
@@ -87,6 +89,7 @@ export default function StudentGrading() {
   const [teacherComments, setTeacherComments] = useState<{
     [qId: string]: string;
   }>({});
+  const [studentFeedbacks, setStudentFeedbacks] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const controller = new AbortController();
@@ -109,13 +112,16 @@ export default function StudentGrading() {
           // Initialize teacher score / comment with existing or AI scores
           const scores: { [qId: string]: number } = {};
           const comments: { [qId: string]: string } = {};
+          const feedbacks: Record<string, string> = {};
           detail.answers.forEach((ans) => {
             scores[ans.question_id.toString()] =
               ans.teacher_score ?? ans.ai_score ?? 0;
             comments[ans.question_id.toString()] = ans.teacher_comment ?? "";
+            feedbacks[ans.question_id.toString()] = ans.student_feedback ?? "";
           });
           setTeacherScores(scores);
           setTeacherComments(comments);
+          setStudentFeedbacks(feedbacks);
         } else {
           toast.error("ไม่พบข้อมูลการส่งข้อสอบของนิสิตคนนี้");
         }
@@ -135,7 +141,8 @@ export default function StudentGrading() {
 
   const hasUnsavedChanges = !!data && data.answers.some(answer =>
     teacherScores[String(answer.question_id)] !== (answer.teacher_score ?? answer.ai_score ?? 0) ||
-    teacherComments[String(answer.question_id)] !== (answer.teacher_comment ?? ""));
+    teacherComments[String(answer.question_id)] !== (answer.teacher_comment ?? "") ||
+    studentFeedbacks[String(answer.question_id)] !== (answer.student_feedback ?? ""));
   const goTo = async (path: string) => {
     if (isApproving) return;
     if (hasUnsavedChanges && !await confirmAction("คะแนนหรือความคิดเห็นที่แก้ไขยังไม่ได้บันทึก ต้องการออกจากหน้านี้และละทิ้งการแก้ไขหรือไม่?")) return;
@@ -173,6 +180,7 @@ export default function StudentGrading() {
           body: JSON.stringify({
             teacher_scores: teacherScores,
             teacher_comments: teacherComments,
+            student_feedbacks: studentFeedbacks,
           }),
         },
       );
@@ -421,11 +429,25 @@ export default function StudentGrading() {
                       </div>
                     </div>
 
-                    {ans.ai_feedback && (
+                    {ans.ai_teacher_feedback && (
                       <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed pl-5 border-l-2 border-slate-300 dark:border-slate-600 whitespace-pre-line">
-                        {ans.ai_feedback}
+                        {ans.ai_teacher_feedback}
                       </p>
                     )}
+                  </div>
+
+                  <div className="space-y-2 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
+                    <label htmlFor={`student-feedback-${ans.question_id}`} className="block text-xs font-bold text-emerald-900 dark:text-emerald-200">
+                      คำแนะนำจาก AI ที่จะส่งให้ผู้เรียน — แก้ไขได้
+                    </label>
+                    <Textarea
+                      id={`student-feedback-${ans.question_id}`}
+                      value={studentFeedbacks[qIdStr] ?? ""}
+                      onChange={(e) => setStudentFeedbacks((prev) => ({ ...prev, [qIdStr]: e.target.value }))}
+                      rows={4}
+                      maxLength={10000}
+                      placeholder="เขียนคำแนะนำที่ต้องการให้ผู้เรียนเห็น"
+                    />
                   </div>
 
                   {/* Teacher Override Inputs for this Question */}

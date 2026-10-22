@@ -136,6 +136,7 @@ class SubmitExamRequest(BaseModel):
 class ApproveSubmissionRequest(BaseModel):
     teacher_scores: Optional[dict] = None
     teacher_comments: Optional[dict] = None
+    student_feedbacks: Optional[dict] = None
 
 class BulkApproveRequest(BaseModel):
     student_ids: List[int]

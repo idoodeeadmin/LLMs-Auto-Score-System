@@ -139,7 +139,7 @@ async def grading_worker():
                 total_ai_score += ai_result['score']
                 confidences.append(ai_result['confidence'])
                 q_metrics = json.dumps({**ai_result.get('metrics', {}), 'transcription': ai_result.get('transcription', '')}, ensure_ascii=False)
-                cursor.execute('UPDATE submission_answers SET ai_score = ?, ai_feedback = ?, ai_confidence = ?, quality_metrics = ? WHERE id = ?', (ai_result['score'], ai_result['feedback'], ai_result['confidence'], q_metrics, ans['id']))
+                cursor.execute('UPDATE submission_answers SET ai_score = ?, ai_feedback = ?, student_feedback = ?, ai_confidence = ?, quality_metrics = ? WHERE id = ?', (ai_result['score'], ai_result['feedback'], ai_result.get('student_feedback', ''), ai_result['confidence'], q_metrics, ans['id']))
 
                 safe_print(f"AI Result ({GEMINI_MODEL}): Score = {ai_result['score']} / {q['score']} | Confidence = {ai_result['confidence']}")
                 safe_print(f"AI Feedback: {ai_result['feedback']}")

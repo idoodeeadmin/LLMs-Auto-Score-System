@@ -13,6 +13,7 @@ from server.exam_policy import (ensure_submission_window, parse_exam_time, valid
 from typing import Optional, List
 
 from server.database import get_db_connection
+from server.feedback import split_ai_feedback, feedback_for_student
 from server.time_utils import utc_timestamp
 from server.auth import get_password_hash, verify_password, create_access_token, decode_token
 from server.models import *
@@ -556,10 +557,12 @@ async def get_my_submission(room_id: int, exam_id: int, user: dict=Depends(get_c
     if not is_approved:
         # Mask total score until teacher approves
         submission['total_score'] = None
-    cursor.execute('\n        SELECT sa.answer_text, sa.image_paths, sa.ai_score, sa.ai_feedback, sa.teacher_score, sa.teacher_comment, sa.quality_metrics,\n               q.text AS question_text, q.score AS max_score, q.order_index, q.image_paths AS q_image_paths\n        FROM submission_answers sa\n        JOIN questions q ON sa.question_id = q.id\n        WHERE sa.submission_id = ?\n        ORDER BY q.order_index\n    ', (submission['id'],))
+    cursor.execute('\n        SELECT sa.answer_text, sa.image_paths, sa.ai_score, sa.ai_feedback, sa.student_feedback, sa.teacher_score, sa.teacher_comment, sa.quality_metrics,\n               q.text AS question_text, q.score AS max_score, q.order_index, q.image_paths AS q_image_paths\n        FROM submission_answers sa\n        JOIN questions q ON sa.question_id = q.id\n        WHERE sa.submission_id = ?\n        ORDER BY q.order_index\n    ', (submission['id'],))
     answers = []
     for a in cursor.fetchall():
         ad = dict(a)
+        ad['student_feedback'] = feedback_for_student(ad.get('student_feedback'), ad.get('ai_feedback')) if is_approved else None
+        ad['ai_feedback'] = None  # Never expose the instructor-only portion to students.
         try:
             ad['quality_metrics'] = json.loads(ad.get('quality_metrics') or '{}')
         except (TypeError, ValueError):
@@ -580,7 +583,6 @@ async def get_my_submission(room_id: int, exam_id: int, user: dict=Depends(get_c
             ad['q_image_paths'] = [ad['q_image_path']] if ad.get('q_image_path') else []
         if not is_approved:
             ad['ai_score'] = None
-            ad['ai_feedback'] = None
             ad['teacher_score'] = None
             ad['teacher_comment'] = None
             ad['quality_metrics'] = {}
@@ -608,10 +610,12 @@ async def get_student_submission(room_id: int, exam_id: int, student_id: int, us
     submission = dict(submission)
     cursor.execute('SELECT id, name, email, student_id AS student_code FROM users WHERE id = ?', (student_id,))
     student_info = dict(cursor.fetchone())
-    cursor.execute('\n        SELECT\n            sa.id, sa.question_id, sa.answer_text, sa.ai_score, sa.ai_feedback, sa.ai_confidence,\n            sa.teacher_score, sa.teacher_comment, sa.image_paths, sa.quality_metrics,\n            q.text AS question_text, q.score AS max_score, q.rubrics, q.answer_key, \n            q.order_index, q.image_paths AS q_image_paths\n        FROM submission_answers sa\n        JOIN questions q ON sa.question_id = q.id\n        WHERE sa.submission_id = ?\n        ORDER BY q.order_index\n    ', (submission['id'],))
+    cursor.execute('\n        SELECT\n            sa.id, sa.question_id, sa.answer_text, sa.ai_score, sa.ai_feedback, sa.ai_confidence,\n            sa.student_feedback, sa.teacher_score, sa.teacher_comment, sa.image_paths, sa.quality_metrics,\n            q.text AS question_text, q.score AS max_score, q.rubrics, q.answer_key, \n            q.order_index, q.image_paths AS q_image_paths\n        FROM submission_answers sa\n        JOIN questions q ON sa.question_id = q.id\n        WHERE sa.submission_id = ?\n        ORDER BY q.order_index\n    ', (submission['id'],))
     answers = []
     for a in cursor.fetchall():
         ad = dict(a)
+        ad['ai_teacher_feedback'], ai_student_feedback = split_ai_feedback(ad.get('ai_feedback'))
+        ad['student_feedback'] = ad.get('student_feedback') if ad.get('student_feedback') is not None else ai_student_feedback
         try:
             ad['quality_metrics'] = json.loads(ad.get('quality_metrics') or '{}')
         except (TypeError, ValueError):
@@ -663,7 +667,7 @@ async def approve_submission(request: Request, room_id: int, exam_id: int, stude
     cursor.execute('SELECT sa.*, q.score AS max_score FROM submission_answers sa JOIN questions q ON q.id = sa.question_id WHERE sa.submission_id = ?', (submission_id,))
     all_answers = cursor.fetchall()
     valid_ids = {str(a['question_id']) for a in all_answers}
-    if (set(body.teacher_scores or {}) | set(body.teacher_comments or {})) - valid_ids:
+    if (set(body.teacher_scores or {}) | set(body.teacher_comments or {}) | set(body.student_feedbacks or {})) - valid_ids:
         conn.close()
         raise HTTPException(422, 'หมายเลขคำถามไม่ตรงกับการส่งคำตอบนี้')
     for answer in all_answers:
@@ -680,6 +684,12 @@ async def approve_submission(request: Request, room_id: int, exam_id: int, stude
         q_id_str = str(ans['question_id'])
         t_score = body.teacher_scores.get(q_id_str) if body.teacher_scores else None
         t_comment = body.teacher_comments.get(q_id_str) if body.teacher_comments else None
+        student_feedback = (body.student_feedbacks or {}).get(q_id_str)
+        if student_feedback is not None:
+            if not isinstance(student_feedback, str) or len(student_feedback) > 10000:
+                conn.close()
+                raise HTTPException(422, 'คำแนะนำสำหรับผู้เรียนต้องเป็นข้อความไม่เกิน 10000 ตัวอักษร')
+            cursor.execute('UPDATE submission_answers SET student_feedback = ? WHERE id = ?', (student_feedback, ans['id']))
         if t_score is not None:
             cursor.execute('UPDATE submission_answers SET teacher_score = ?, teacher_comment = ? WHERE id = ?', (t_score, t_comment, ans['id']))
             total_teacher_score += float(t_score)
