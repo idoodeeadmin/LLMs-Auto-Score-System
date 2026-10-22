@@ -298,3 +298,74 @@ def _distribution_buckets(scores: list[float], total_score: float) -> dict:
     return buckets
 
 
+def get_char_display_width(ch: str) -> float:
+    """Return effective display width for character, ignoring zero-width Thai combining marks."""
+    code = ord(ch)
+    # Thai non-spacing combining vowels and tone marks:
+    if 0x0E31 <= code <= 0x0E3A or 0x0E47 <= code <= 0x0E4E:
+        return 0.0
+    # Thai base consonants & vowels:
+    elif 0x0E00 <= code <= 0x0E7F:
+        return 1.15
+    # Wide East Asian / Unicode characters:
+    elif code > 255:
+        return 1.4
+    else:
+        return 1.0
+
+
+def get_cell_visual_width(value) -> float:
+    """Calculate maximum visual line width for cell value."""
+    if value is None:
+        return 0.0
+    text = str(value)
+    lines = text.split('\n')
+    max_line_w = 0.0
+    for line in lines:
+        line_w = sum(get_char_display_width(ch) for ch in line)
+        if line_w > max_line_w:
+            max_line_w = line_w
+    return max_line_w
+
+
+def auto_fit_columns(ws, min_width: float = 13.0, max_width: float = 60.0, padding: float = 4.5):
+    """
+    Automatically adjust openpyxl worksheet column widths based on content length,
+    accounting for Thai characters, combining tone marks, multiline values, and filter icons.
+    """
+    try:
+        from openpyxl.utils import get_column_letter
+        from openpyxl.styles import Alignment
+    except ImportError:
+        return
+
+    for col in ws.columns:
+        if not col:
+            continue
+        col_letter = get_column_letter(col[0].column)
+        max_w = 0.0
+
+        for cell in col:
+            val = cell.value
+            if val is not None:
+                w = get_cell_visual_width(val)
+                # Extra weight for bold header cells
+                if cell.row == 1 and cell.font and getattr(cell.font, 'bold', False):
+                    w *= 1.15
+                if w > max_w:
+                    max_w = w
+
+        target_width = max(max_w + padding, min_width)
+        if target_width > max_width:
+            target_width = max_width
+            for cell in col:
+                if cell.row > 1 and cell.value and len(str(cell.value)) > 25:
+                    cur_align = cell.alignment
+                    cell.alignment = Alignment(
+                        horizontal=cur_align.horizontal if cur_align and cur_align.horizontal else 'left',
+                        vertical=cur_align.vertical if cur_align and cur_align.vertical else 'center',
+                        wrap_text=True
+                    )
+
+        ws.column_dimensions[col_letter].width = round(target_width, 1)
+

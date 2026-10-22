@@ -581,8 +581,6 @@ export default function CreateExam() {
 
       if (res && res.ok) {
         allowExit.current = true;
-        if (currentDraftId?.startsWith("local-")) await writeDraft(`${draftPrefix}${currentDraftId.slice(6)}`, undefined)
-          .catch(() => toast.warning("สร้างข้อสอบแล้ว แต่ลบแบบร่างเก่าไม่สำเร็จ"));
         toast.success("สร้างข้อสอบสำเร็จ!");
         navigate(`/room/${roomId}`);
       } else {

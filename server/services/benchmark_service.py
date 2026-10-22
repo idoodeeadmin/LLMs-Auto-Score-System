@@ -942,6 +942,14 @@ def export_benchmark_excel() -> io.BytesIO:
                 c.hyperlink = q["image_url"]
                 c.font = link_font
 
+    try:
+        from server.utils import auto_fit_columns
+        auto_fit_columns(ws_summary, min_width=14.0, max_width=60.0, padding=4.5)
+        auto_fit_columns(ws_dataset, min_width=13.0, max_width=65.0, padding=4.5)
+        auto_fit_columns(ws_q, min_width=12.0, max_width=65.0, padding=4.5)
+    except Exception as e:
+        print(f"[Benchmark Export] Auto-fit columns warning: {e}")
+
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)

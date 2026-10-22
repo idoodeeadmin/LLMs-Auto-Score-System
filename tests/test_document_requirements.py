@@ -304,7 +304,7 @@ def test_transcribed_answer_over_limit_requires_review(monkeypatch):
     monkeypatch.setenv('OPENAI_API_KEY','test')
     monkeypatch.setattr(openai_grading,'request_structured_output',AsyncMock(return_value={'score':5,'confidence':'high','feedback':'ok','transcription':'word ' * 301}))
     result=asyncio.run(openai_grading.score_with_openai('Stack','',5))
-    assert result['confidence'] == 'low' and result['metrics']['word_limit_exceeded']
+    assert result['metrics']['manual_review_required'] and result['metrics']['word_limit_exceeded']
 
 
 def test_incomplete_openai_result_falls_back(monkeypatch):

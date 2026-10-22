@@ -17,7 +17,7 @@ from server.feedback import split_ai_feedback, feedback_for_student
 from server.time_utils import utc_timestamp
 from server.auth import get_password_hash, verify_password, create_access_token, decode_token
 from server.models import *
-from server.utils import check_rate_limit, upload_to_cloudinary, get_current_user, grading_queue, trigger_socket_notify, _distribution_buckets, sanitize_csv_value, validate_upload_file, normalize_image_bytes
+from server.utils import check_rate_limit, upload_to_cloudinary, get_current_user, grading_queue, trigger_socket_notify, _distribution_buckets, sanitize_csv_value, validate_upload_file, normalize_image_bytes, auto_fit_columns
 import urllib.parse
 
 router = APIRouter(prefix="/api/rooms/{room_id}/exams", tags=["Exams"])
@@ -123,9 +123,6 @@ async def create_exam(room_id: int, exam: ExamCreate, user: dict=Depends(get_cur
             (room_id, exam.title, exam.description, total, exam.start_date, exam.end_date, exam.is_randomized))
         exam_id = cursor.lastrowid
         insert_questions(cursor, exam, exam_id, get_draft_images(cursor, exam.draft_id, room_id, user['id']))
-        if exam.draft_id is not None:
-            cursor.execute('DELETE FROM exam_drafts WHERE id = ? AND room_id = ? AND teacher_id = ?',
-                           (exam.draft_id, room_id, user['id']))
         conn.commit()
         cursor.execute('SELECT * FROM exams WHERE id = ?', (exam_id,))
         result = dict(cursor.fetchone())
@@ -472,7 +469,7 @@ async def get_exam_analytics(room_id: int, exam_id: int, user: dict=Depends(get_
 
 @router.get('/{exam_id}/export')
 async def export_exam_scores(room_id: int, exam_id: int, user: dict=Depends(get_current_user), file_format: str=Query(default='csv', alias='format')):
-    """Export exam results as CSV or XLSX."""
+    """Export exam results as CSV or XLSX with auto-fitted columns and clean formatting."""
     if user['role'] != 'teacher':
         raise HTTPException(status_code=403, detail='Only teachers can export scores')
     export_fmt = file_format.lower()
@@ -489,43 +486,206 @@ async def export_exam_scores(room_id: int, exam_id: int, user: dict=Depends(get_
     if not exam:
         conn.close()
         raise HTTPException(status_code=404, detail='Exam not found')
-    cursor.execute("\n        SELECT\n            u.id AS student_id,\n            u.name,\n            u.email,\n            u.student_id AS student_code,\n            COALESCE(s.status, 'missing') AS status,\n            s.total_score,\n            s.submitted_at\n        FROM enrollments e\n        JOIN users u ON u.id = e.user_id\n        LEFT JOIN submissions s ON s.exam_id = ? AND s.user_id = e.user_id\n        WHERE e.room_id = ?\n        ORDER BY u.name ASC\n    ", (exam_id, room_id))
+
+    cursor.execute("""
+        SELECT
+            u.id AS student_id,
+            u.name,
+            u.email,
+            u.student_id AS student_code,
+            COALESCE(s.status, 'missing') AS status,
+            s.id AS submission_id,
+            s.total_score,
+            s.submitted_at
+        FROM enrollments e
+        JOIN users u ON u.id = e.user_id
+        LEFT JOIN submissions s ON s.exam_id = ? AND s.user_id = e.user_id
+        WHERE e.room_id = ?
+        ORDER BY u.name ASC
+    """, (exam_id, room_id))
     rows = cursor.fetchall()
+
+    cursor.execute("""
+        SELECT id, order_index, text, score
+        FROM questions
+        WHERE exam_id = ?
+        ORDER BY order_index ASC
+    """, (exam_id,))
+    questions = cursor.fetchall()
+
+    # Pre-fetch question scores and answer details if questions exist
+    sub_ids = [r['submission_id'] for r in rows if r.get('submission_id')]
+    answers_map = {}
+    answers_detail = []
+    if sub_ids and questions:
+        placeholders = ','.join(['?'] * len(sub_ids))
+        cursor.execute(f"""
+            SELECT sa.submission_id, sa.question_id, COALESCE(sa.teacher_score, sa.ai_score, 0) AS score,
+                   sa.answer_text, sa.ai_feedback, sa.student_feedback, sa.teacher_comment
+            FROM submission_answers sa
+            WHERE sa.submission_id IN ({placeholders})
+        """, tuple(sub_ids))
+        for a in cursor.fetchall():
+            answers_map[(a['submission_id'], a['question_id'])] = a['score']
+            answers_detail.append(a)
+
     conn.close()
+
     safe_title = ''.join((ch if ch.isalnum() or ch in ('-', '_') else '_' for ch in exam['title']))
-    export_headers = ['รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'สถานะ', 'คะแนนที่ได้', 'คะแนนเต็ม', 'วันที่ส่ง (เวลาไทย)']
+
+    # Headers for overview sheet
+    q_headers = [f"ข้อ {q['order_index']} ({q['score']} คะแนน)" for q in questions] if questions else []
+    export_headers = ['รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'สถานะ'] + q_headers + ['คะแนนรวมที่ได้', 'คะแนนเต็ม', 'วันที่ส่ง (เวลาไทย)']
+
+    # Build data rows
+    row_records = []
+    for r in rows:
+        row_vals = [
+            sanitize_csv_value(r['student_code'] or '-'),
+            sanitize_csv_value(r['name']),
+            r['status']
+        ]
+        if questions:
+            for q in questions:
+                if r['status'] == 'missing':
+                    row_vals.append('-')
+                else:
+                    q_score = answers_map.get((r.get('submission_id'), q['id']), 0)
+                    row_vals.append(q_score)
+        row_vals.extend([
+            r['total_score'] if r['status'] != 'missing' and r['total_score'] is not None else 0,
+            exam['total_score'],
+            submitted_at_bangkok(r['submitted_at']) or '-'
+        ])
+        row_records.append(row_vals)
+
     if export_fmt == 'csv':
         output = io.StringIO()
         output.write('\ufeff')
         writer = csv.writer(output)
         writer.writerow(export_headers)
-        for r in rows:
-            writer.writerow([sanitize_csv_value(r['student_code']), sanitize_csv_value(r['name']), r['status'], r['total_score'], exam['total_score'], submitted_at_bangkok(r['submitted_at'])])
+        for r_vals in row_records:
+            writer.writerow(r_vals)
         csv_content = output.getvalue()
         output.close()
         ascii_fn = f'exam_{exam_id}_scores.csv'
         utf8_fn = urllib.parse.quote(f'exam_{exam_id}_{safe_title}_scores.csv')
         disposition = f'attachment; filename="{ascii_fn}"; filename*=UTF-8\'\'{utf8_fn}'
         return Response(content=csv_content, media_type='text/csv; charset=utf-8', headers={'Content-Disposition': disposition})
+
     try:
         from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     except Exception:
         raise HTTPException(status_code=500, detail='XLSX export requires openpyxl. Please install dependencies from server/requirements.txt')
+
     wb = Workbook()
-    from openpyxl.styles import Font, PatternFill, Alignment
+
+    # -------------------------------------------------------------
+    # SHEET 1: สรุปคะแนน (Scores Overview)
+    # -------------------------------------------------------------
     ws = wb.active
-    ws.title = 'scores'
+    ws.title = 'สรุปคะแนน'
+    ws.views.sheetView[0].showGridLines = True
     ws.append(export_headers)
-    header_fill = PatternFill(start_color='E2E8F0', end_color='E2E8F0', fill_type='solid')
+
+    header_font = Font(name="Segoe UI", size=11, bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="1E3A8A", end_color="1E3A8A", fill_type="solid")
+    data_font = Font(name="Segoe UI", size=10)
+    zebra_fill = PatternFill(start_color="F8FAFC", end_color="F8FAFC", fill_type="solid")
+    thin_side = Side(border_style="thin", color="CBD5E1")
+    thin_border = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
+
+    ws.row_dimensions[1].height = 28.0
+
     for col_idx in range(1, len(export_headers) + 1):
         cell = ws.cell(row=1, column=col_idx)
-        cell.font = Font(bold=True)
+        cell.font = header_font
         cell.fill = header_fill
-        cell.alignment = Alignment(horizontal='center')
-    for r in rows:
-        ws.append([sanitize_csv_value(r['student_code']), sanitize_csv_value(r['name']), r['status'], r['total_score'], exam['total_score'], submitted_at_bangkok(r['submitted_at'])])
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+        cell.border = thin_border
+
+    for r_idx, r_vals in enumerate(row_records, 2):
+        ws.row_dimensions[r_idx].height = 22.0
+        ws.append(r_vals)
+        is_zebra = (r_idx % 2 == 1)
+        fill = zebra_fill if is_zebra else None
+        for col_idx in range(1, len(r_vals) + 1):
+            cell = ws.cell(row=r_idx, column=col_idx)
+            cell.font = data_font
+            cell.border = thin_border
+            if fill:
+                cell.fill = fill
+            if col_idx == 2:  # Name
+                cell.alignment = Alignment(horizontal='left', vertical='center')
+            else:
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+
     ws.freeze_panes = 'A2'
     ws.auto_filter.ref = ws.dimensions
+    auto_fit_columns(ws, min_width=13.0, max_width=50.0, padding=4.5)
+
+    # -------------------------------------------------------------
+    # SHEET 2: รายละเอียดคำตอบและข้อเสนอแนะ (Answer Details)
+    # -------------------------------------------------------------
+    if questions and sub_ids and answers_detail:
+        ws_details = wb.create_sheet(title='รายละเอียดคำตอบ')
+        ws_details.views.sheetView[0].showGridLines = True
+        detail_headers = [
+            'รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'ข้อที่', 'โจทย์คำถาม',
+            'คะแนนที่ได้', 'คะแนนเต็ม', 'คำตอบนักศึกษา', 'ข้อเสนอแนะ AI/ผู้สอน'
+        ]
+        ws_details.append(detail_headers)
+        ws_details.row_dimensions[1].height = 28.0
+
+        sub_by_id = {r['submission_id']: r for r in rows if r.get('submission_id')}
+        q_by_id = {q['id']: q for q in questions}
+
+        for col_idx in range(1, len(detail_headers) + 1):
+            cell = ws_details.cell(row=1, column=col_idx)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.border = thin_border
+
+        d_row_idx = 2
+        for a in answers_detail:
+            student = sub_by_id.get(a['submission_id'])
+            q = q_by_id.get(a['question_id'])
+            if not student or not q:
+                continue
+
+            fb = a.get('teacher_comment') or a.get('ai_feedback') or a.get('student_feedback') or '-'
+            detail_vals = [
+                sanitize_csv_value(student['student_code'] or '-'),
+                sanitize_csv_value(student['name']),
+                f"ข้อ {q['order_index']}",
+                q.get('text') or '-',
+                a.get('score', 0),
+                q.get('score', 0),
+                a.get('answer_text') or '-',
+                fb
+            ]
+            ws_details.append(detail_vals)
+            ws_details.row_dimensions[d_row_idx].height = 24.0
+            is_zebra = (d_row_idx % 2 == 1)
+            fill = zebra_fill if is_zebra else None
+            for col_idx in range(1, len(detail_vals) + 1):
+                cell = ws_details.cell(row=d_row_idx, column=col_idx)
+                cell.font = data_font
+                cell.border = thin_border
+                if fill:
+                    cell.fill = fill
+                if col_idx in (1, 3, 5, 6):
+                    cell.alignment = Alignment(horizontal='center', vertical='center')
+                else:
+                    cell.alignment = Alignment(horizontal='left', vertical='center', wrap_text=(col_idx in (4, 7, 8)))
+            d_row_idx += 1
+
+        ws_details.freeze_panes = 'A2'
+        ws_details.auto_filter.ref = ws_details.dimensions
+        auto_fit_columns(ws_details, min_width=13.0, max_width=60.0, padding=4.5)
+
     bin_output = io.BytesIO()
     wb.save(bin_output)
     xlsx_bytes = bin_output.getvalue()

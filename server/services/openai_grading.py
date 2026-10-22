@@ -128,14 +128,14 @@ async def score_with_openai(
             '5.1 ถอดข้อความ ตัวเลข สัญลักษณ์ และตำแหน่งในแผนภาพตามที่มองเห็นจริงลงใน transcription โดยรักษาคำเดิมและลำดับเดิม '
             'ห้ามตีความ เรียบเรียง แก้คำผิด หรือเติมคำที่ไม่ปรากฏในภาพ หากบางคำอ่านไม่ได้หรือไม่ชัดเจนให้เขียน [อ่านไม่ชัด] ณ ตำแหน่งนั้น '
             'ห้ามเดาคำ และห้ามใช้โจทย์ แนวคำตอบ หรือ rubric ช่วยเดาคำที่เขียนหวัด สะกดไม่ชัด หรืออ่านยาก\n'
-            '5.2 ตรวจสอบความชัดเจนของลายมือ (Handwriting Legibility Check) และกำหนด confidence จากความชัดเจนในการอ่านคำตอบลายมือแยกจากคะแนน: '
+            '5.2 ตรวจสอบความชัดเจนของลายมือ (Handwriting Legibility Check) และกำหนดความมั่นใจด้านการอ่านภาพแยกจากความมั่นใจในการตัดสินคะแนน: '
             'หากภาพเบลอ ลายมืออ่านยาก ลายมือหวัด ตัวอักษรทับกันหรือเบียดชิด เส้นอักษรเขียนติดกัน มีรอยขีดฆ่า รอยดินสอ/หมึกจาง มีรอยเปื้อน หรือกำกวมจนไม่สามารถอ่านได้อย่างมั่นใจ 100% '
             'ให้เลือก handwriting_status เป็น "hard_to_read_or_ambiguous" หรือ "mostly_illegible" และกำหนด confidence เป็น "medium" หรือ "low" ทันที '
             '(ห้ามตอบ "high" เด็ดขาดหากลายมืออ่านยาก มีคำหวัด หรือภาพไม่ชัดเจน แม้จะพอเดาความหมายได้จากบริบทหรือแนวคำตอบ)\n'
             '5.3 ข้อกำหนด confidence และ teacher_feedback:\n'
-            '    - หาก confidence เป็น medium หรือ low ใน teacher_feedback ต้องขึ้นต้นด้วยข้อความแจ้งเตือน: '
+            '    - หาก confidence เป็น medium หรือ low เพราะอ่านภาพไม่ชัด ใน teacher_feedback ต้องขึ้นต้นด้วยข้อความแจ้งเตือน: '
             '"ลายมือหรือรูปภาพมีความชัดเจนน้อยเกินไป ขอให้อาจารย์ผู้สอนตรวจสอบและประเมินคะแนนซ้ำด้วยตนเอง" พร้อมอธิบายจุดที่ไม่ชัดเจน แล้วจึงอธิบายการให้คะแนนตามเกณฑ์\n'
-            '    - ตอบ confidence เป็น "high" และ handwriting_status เป็น "clear" ได้เฉพาะเมื่อข้อความหรือรายละเอียดภาพเขียนชัดเจน เป็นระเบียบ อ่านออกได้ง่ายทุกคำ ตัวอักษรไม่ทับกัน และมั่นใจ 100% เท่านั้น '
+            '    - ตอบ handwriting_status เป็น "clear" ได้เฉพาะเมื่อข้อความหรือรายละเอียดภาพเขียนชัดเจน เป็นระเบียบ อ่านออกได้ง่ายทุกคำ ตัวอักษรไม่ทับกันเท่านั้น '
             'ห้ามยกระดับ confidence เพราะคำตอบดูถูกหลักวิชา เดาได้จากบริบท หรือตรงกับแนวคำตอบ และห้ามลด confidence เพียงเพราะคำตอบผิดหรือได้คะแนนต่ำ'
         )
     else:
@@ -144,16 +144,32 @@ async def score_with_openai(
             'ต่อการตัดสินคะแนนตาม rubric หากมีข้อความกำกวมหรือขาดส่วนสำคัญให้ลดความมั่นใจ'
         )
 
+    decision_confidence_guidance = (
+        '7. กำหนด confidence จากความแน่ชัดของการตัดสินคะแนนด้วย ไม่ใช่ดูเพียงว่าอ่านคำตอบออกหรือไม่: '
+        'ก่อนตอบให้เปรียบเทียบคะแนนที่เป็นไปได้ตามเกณฑ์อย่างน้อยสองระดับที่ใกล้กัน แล้วระบุ grading_uncertainty: '
+        '"clear" เมื่อมีเพียงระดับเดียวที่หลักฐานรองรับ, "borderline" เมื่อมีมากกว่าหนึ่งระดับที่ยังมีเหตุผลรองรับ, '
+        '"insufficient_evidence" เมื่อข้อมูลสำคัญไม่พอจะตัดสินตามเกณฑ์ '
+        'หากข้อความหรือภาพตีความได้มากกว่าหนึ่งทาง โดยทางหนึ่งอาจได้คะแนน แต่อีกทางอาจไม่ได้คะแนน '
+        'หรือยังลังเลระหว่างคะแนนสองระดับที่ต่างกัน ให้ตั้ง grading_uncertainty เป็น "borderline" และ confidence เป็น "medium" ทันที '
+        'แม้จะอ่านข้อความหรือภาพได้ชัดเจน หากข้อมูลสำคัญขาดหายหรือกำกวมมากจนไม่สามารถตัดสินตามเกณฑ์ได้อย่างมีเหตุผล '
+        'ให้ตั้ง grading_uncertainty เป็น "insufficient_evidence" และ confidence เป็น "low" ให้ผู้สอนตรวจเอง '
+        'ใน teacher_feedback ให้ระบุจุดที่ไม่แน่ใจและระดับคะแนนที่เป็นไปได้ เพื่อให้ผู้สอนทบทวน '
+        'ห้ามตอบ "high" เมื่อยังลังเลในการให้หรือไม่ให้คะแนนหรือเลือกระดับคะแนน '
+        'แต่ถ้าคำตอบผิดหรือไม่ครบอย่างชัดเจนและเกณฑ์ตัดสินได้แน่ชัด สามารถตอบ "high" ได้ '
+        'สำหรับภาพ ให้ใช้ confidence ที่ต่ำกว่าระหว่างความชัดเจนในการอ่านภาพกับความแน่ชัดในการตัดสินคะแนน'
+    )
+
     if image_bytes_list and image_mime_list:
         prompt_closing = (
             "หากมีภาพโจทย์ ภาพแนวคำตอบ หรือภาพคำตอบผู้เรียน ต้องอ่านภาพแต่ละประเภทตามหน้าที่ที่ระบุข้างต้นก่อนตัดสินคะแนน\n"
             "หากภาพเบลอหรือลายมืออ่านยาก ลายมือหวัด หรือกำกวม ห้ามเดาหรือแก้คำตอบให้ถูก ให้ลด confidence เป็น medium หรือ low และแจ้งผู้สอนตามข้อ 5\n"
-            "ตอบกลับเป็น JSON เท่านั้น ห้ามมีข้อความนอก JSON โดยมี transcription, handwriting_status, confidence, score, teacher_feedback และ student_feedback"
+            "ตอบกลับเป็น JSON เท่านั้น ห้ามมีข้อความนอก JSON โดยมี transcription, handwriting_status, grading_uncertainty, confidence, score, teacher_feedback และ student_feedback"
         )
     else:
         prompt_closing = (
             "หากมีภาพโจทย์ ภาพแนวคำตอบ หรือภาพคำตอบผู้เรียน ต้องอ่านภาพแต่ละประเภทตามหน้าที่ที่ระบุข้างต้นก่อนตัดสินคะแนน\n"
-            "ตอบกลับเป็น JSON เท่านั้น ห้ามมีข้อความนอก JSON โดยมี score, confidence, teacher_feedback, student_feedback และ transcription"
+            "หากไม่มีภาพคำตอบของผู้เรียน ให้ส่ง transcription เป็นข้อความว่าง (\"\") เสมอ ห้ามคัดลอกข้อความคำตอบลงใน transcription\n"
+            "ตอบกลับเป็น JSON เท่านั้น ห้ามมีข้อความนอก JSON โดยมี score, grading_uncertainty, confidence, teacher_feedback, student_feedback และ transcription"
         )
 
     prompt = f"""คุณคือคุณครูผู้เชี่ยวชาญในการตรวจข้อสอบอัตนัยวิชาโครงสร้างข้อมูล (Data Structures)
@@ -166,6 +182,7 @@ async def score_with_openai(
 4. วิเคราะห์คำตอบ: ตรวจสอบคำตอบของนักเรียนว่าตรงตามหลักการและลำดับขั้นตอนหรือไม่ หากมีภาพแนวคำตอบ ให้ระบุใน teacher_feedback ว่าภาพผู้เรียนตรงหรือผิดจากภาพแนวคำตอบที่ตำแหน่งใดอย่างชัดเจน อย่ากล่าวว่ากิ่งหรือโหนดผิดโดยไม่ชี้ตำแหน่งที่เปรียบเทียบ
 {legibility_guidance}
 {grading_guidance}
+{decision_confidence_guidance}
 
 ## ข้อกำหนดการให้ Feedback (ต้องให้ 2 ส่วนแยกกันอย่างชัดเจน):
 1. teacher_feedback: ให้เหตุผลและคำอธิบายสำหรับผู้สอนว่าทำไมถึงประเมินคะแนนแบบนี้ตามเกณฑ์ rubric และแนวคำตอบ ระบุตำแหน่งและจุดที่นิสิตทำถูกหรือผิดอย่างละเอียด
@@ -212,16 +229,21 @@ async def score_with_openai(
                     "enum": ["clear", "hard_to_read_or_ambiguous", "mostly_illegible"],
                     "description": "ความชัดเจนของลายมือ: clear=อ่านออกชัดเจน 100%, hard_to_read_or_ambiguous=ลายมือหวัด/อ่านยาก/ตัวอักษรทับกัน/เส้นติดกัน/ดินสอจาง/รอยเปื้อน/ขีดฆ่า/กำกวม, mostly_illegible=อ่านไม่ออกเป็นส่วนใหญ่",
                 },
+                "grading_uncertainty": {
+                    "type": "string",
+                    "enum": ["clear", "borderline", "insufficient_evidence"],
+                    "description": "clear=หลักฐานรองรับคะแนนเดียว; borderline=มีสองระดับที่เป็นไปได้; insufficient_evidence=ข้อมูลไม่พอตัดสิน",
+                },
                 "confidence": {
                     "type": "string",
                     "enum": ["high", "medium", "low"],
-                    "description": "high เมื่อ clear; medium เมื่อ hard_to_read_or_ambiguous; low เมื่อ mostly_illegible",
+                    "description": "high เมื่ออ่านภาพและตัดสินคะแนนได้ชัดเจน; medium เมื่ออ่านยากหรือยังลังเลระหว่างคะแนน; low เมื่ออ่านไม่ได้เป็นส่วนใหญ่หรือข้อมูลไม่พอตัดสินคะแนน",
                 },
                 "score": {"type": "number", "minimum": 0, "maximum": float(max_score)},
                 "teacher_feedback": {"type": "string"},
                 "student_feedback": {"type": "string"},
             },
-            "required": ["transcription", "handwriting_status", "confidence", "score", "teacher_feedback", "student_feedback"],
+            "required": ["transcription", "handwriting_status", "grading_uncertainty", "confidence", "score", "teacher_feedback", "student_feedback"],
             "additionalProperties": False,
         }
     else:
@@ -229,12 +251,23 @@ async def score_with_openai(
             "type": "object",
             "properties": {
                 "score": {"type": "number", "minimum": 0, "maximum": float(max_score)},
-                "confidence": {"type": "string", "enum": ["high", "medium", "low"]},
+                "grading_uncertainty": {
+                    "type": "string",
+                    "enum": ["clear", "borderline", "insufficient_evidence"],
+                    "description": "clear=หลักฐานรองรับคะแนนเดียว; borderline=มีสองระดับที่เป็นไปได้; insufficient_evidence=ข้อมูลไม่พอตัดสิน",
+                },
+                "confidence": {
+                    "type": "string", "enum": ["high", "medium", "low"],
+                    "description": "medium เมื่อตีความได้หลายทางจนลังเลระหว่างคะแนน; low เมื่อข้อมูลไม่พอตัดสิน; high เฉพาะเมื่อตัดสินได้ชัดเจน",
+                },
                 "teacher_feedback": {"type": "string"},
                 "student_feedback": {"type": "string"},
-                "transcription": {"type": "string"},
+                "transcription": {
+                    "type": "string",
+                    "description": "ข้อความที่ถอดได้จากภาพคำตอบของผู้เรียน ปล่อยว่างเป็นข้อความเปล่า \"\" หากไม่มีรูปภาพคำตอบ",
+                },
             },
-            "required": ["score", "confidence", "teacher_feedback", "student_feedback", "transcription"],
+            "required": ["score", "grading_uncertainty", "confidence", "teacher_feedback", "student_feedback", "transcription"],
             "additionalProperties": False,
         }
     allowed_scores = kwargs.get("allowed_scores")
@@ -261,9 +294,19 @@ async def score_with_openai(
         confidence = data["confidence"]
         if confidence not in ("high", "medium", "low") or not isinstance(data.get("transcription"), str):
             raise ValueError("Invalid grading result")
+        grading_uncertainty = data.get("grading_uncertainty", "clear")
+        if grading_uncertainty not in ("clear", "borderline", "insufficient_evidence"):
+            raise ValueError("Invalid grading uncertainty")
+        if grading_uncertainty == "borderline" and confidence == "high":
+            confidence = "medium"
+        elif grading_uncertainty == "insufficient_evidence":
+            confidence = "low"
         transcription = data["transcription"]
         handwriting_status = data.get("handwriting_status")
         warning_prefix = "ลายมือหรือรูปภาพมีความชัดเจนน้อยเกินไป ขอให้อาจารย์ผู้สอนตรวจสอบและประเมินคะแนนซ้ำด้วยตนเอง"
+        decision_warning = "การตัดสินคะแนนตามเกณฑ์ยังไม่แน่ชัด ขอให้อาจารย์ผู้สอนทบทวนคำตอบและคะแนน"
+        if grading_uncertainty != "clear" and decision_warning not in teacher_feedback:
+            teacher_feedback = f"{decision_warning}\n{teacher_feedback}".strip()
 
         if image_bytes_list:
             if (
@@ -273,18 +316,40 @@ async def score_with_openai(
                 confidence = "medium" if handwriting_status != "mostly_illegible" else "low"
 
             if confidence in ("medium", "low"):
-                if warning_prefix not in teacher_feedback:
-                    detail = " (คำถอดจากภาพมีส่วนที่อ่านไม่ชัด กรุณาตรวจภาพต้นฉบับก่อนยืนยันคะแนน)" if "[อ่านไม่ชัด]" in transcription else ""
-                    teacher_feedback = f"{warning_prefix}{detail}\n{teacher_feedback}".strip()
-                elif "[อ่านไม่ชัด]" in transcription and "ตรวจภาพต้นฉบับ" not in teacher_feedback:
-                    teacher_feedback += "\nคำถอดจากภาพมีส่วนที่อ่านไม่ชัด กรุณาตรวจภาพต้นฉบับก่อนยืนยันคะแนน"
+                image_unclear = (
+                    handwriting_status in ("hard_to_read_or_ambiguous", "mostly_illegible")
+                    or "[อ่านไม่ชัด]" in transcription
+                )
+                if image_unclear:
+                    if warning_prefix not in teacher_feedback:
+                        detail = " (คำถอดจากภาพมีส่วนที่อ่านไม่ชัด กรุณาตรวจภาพต้นฉบับก่อนยืนยันคะแนน)" if "[อ่านไม่ชัด]" in transcription else ""
+                        teacher_feedback = f"{warning_prefix}{detail}\n{teacher_feedback}".strip()
+                    elif "[อ่านไม่ชัด]" in transcription and "ตรวจภาพต้นฉบับ" not in teacher_feedback:
+                        teacher_feedback += "\nคำถอดจากภาพมีส่วนที่อ่านไม่ชัด กรุณาตรวจภาพต้นฉบับก่อนยืนยันคะแนน"
+                elif decision_warning not in teacher_feedback:
+                    teacher_feedback = f"{decision_warning}\n{teacher_feedback}".strip()
 
         from server.exam_policy import count_answer_words, MAX_ANSWER_WORDS
-        answer_words = count_answer_words((answer_text or "") + "\n" + transcription)
+
+        # Avoid double-counting words when LLM echoes answer_text in transcription or when no images exist
+        clean_answer = (answer_text or "").strip()
+        clean_transcription = (transcription or "").strip()
+
+        if not clean_answer:
+            text_for_word_count = clean_transcription
+        elif not clean_transcription or clean_transcription == clean_answer or not image_bytes_list:
+            text_for_word_count = clean_answer
+        else:
+            text_for_word_count = f"{clean_answer}\n{clean_transcription}"
+
+        answer_words = count_answer_words(text_for_word_count)
         over_limit = answer_words > MAX_ANSWER_WORDS
         if over_limit:
-            confidence = "low"
-            teacher_feedback += f"\nคำตอบรวมข้อความที่อ่านจากภาพมี {answer_words} คำ เกิน {MAX_ANSWER_WORDS} คำ กรุณาให้ผู้สอนตรวจสอบ"
+            # เอาการบังคับลด confidence เป็น low ออก เพื่อรักษาความมั่นใจแท้จริงของโมเดล
+            if image_bytes_list and clean_transcription and clean_transcription != clean_answer:
+                teacher_feedback += f"\nคำตอบรวมข้อความที่อ่านจากภาพมี {answer_words} คำ เกิน {MAX_ANSWER_WORDS} คำ กรุณาให้ผู้สอนตรวจสอบ"
+            else:
+                teacher_feedback += f"\nคำตอบมีความยาว {answer_words} คำ เกิน {MAX_ANSWER_WORDS} คำ กรุณาให้ผู้สอนตรวจสอบ"
         
         combined_feedback = f"[สำหรับผู้สอน]\n{teacher_feedback}\n\n[สำหรับนักเรียน]\n{student_feedback}".strip() if student_feedback else teacher_feedback
         return {
@@ -294,6 +359,7 @@ async def score_with_openai(
             "student_feedback": student_feedback,
             "feedback": combined_feedback,
             "transcription": transcription,
+            "grading_uncertainty": grading_uncertainty,
             "rubric_breakdown": None,
             "metrics": {"provider": provider, "model": model, "prompt_version": PROMPT_VERSION,
                         "answer_word_count": answer_words, "word_limit_exceeded": over_limit,

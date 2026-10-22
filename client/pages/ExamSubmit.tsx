@@ -17,7 +17,9 @@ import {
   Upload,
   Info,
   FileText,
+  ZoomIn,
 } from "lucide-react";
+import ImageModal from "@/components/ImageModal";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -78,6 +80,10 @@ export default function ExamSubmit() {
   const [imagePreviews, setImagePreviews] = useState<{
     [qId: number]: string[];
   }>({});
+  const [modalImage, setModalImage] = useState<{
+    src: string;
+    alt?: string;
+  } | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -596,6 +602,37 @@ export default function ExamSubmit() {
                         </span>
                       </div>
 
+                      {/* Question Images if any */}
+                      {q.image_paths && q.image_paths.length > 0 && (
+                        <div className="space-y-1.5 pt-1">
+                          <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">รูปภาพประกอบโจทย์ (คลิกเพื่อขยายดู):</p>
+                          <div className="flex flex-wrap gap-2.5">
+                            {q.image_paths.map((src, qImgIdx) => (
+                              <div
+                                key={qImgIdx}
+                                className="relative group w-28 h-24 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 shadow-sm hover:shadow-md transition cursor-pointer"
+                                onClick={() =>
+                                  setModalImage({
+                                    src,
+                                    alt: `รูปภาพประกอบโจทย์ข้อที่ ${index + 1} รูปที่ ${qImgIdx + 1}`,
+                                  })
+                                }
+                                title="คลิกเพื่อขยายดูรูปภาพโจทย์"
+                              >
+                                <img
+                                  src={src}
+                                  alt={`โจทย์ข้อที่ ${index + 1} รูปที่ ${qImgIdx + 1}`}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                />
+                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                  <ZoomIn size={20} className="text-white drop-shadow-md" />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       {!q.hide_rubric_from_students && q.rubrics && q.rubrics.length > 0 && (
                         <details className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs dark:border-slate-700 dark:bg-slate-900/60">
                           <summary className="cursor-pointer font-semibold text-[#245b50] dark:text-[#91c7b8]">
@@ -701,18 +738,31 @@ export default function ExamSubmit() {
                             {previews.map((src, imgIdx) => (
                               <div
                                 key={imgIdx}
-                                className="relative group w-24 h-24 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800"
+                                className="relative group w-24 h-24 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 shadow-sm hover:shadow-md transition cursor-pointer"
+                                onClick={() =>
+                                  setModalImage({
+                                    src,
+                                    alt: `ภาพคำตอบข้อที่ ${index + 1} รูปที่ ${imgIdx + 1}`,
+                                  })
+                                }
+                                title="คลิกเพื่อขยายดูรูปภาพคำตอบ"
                               >
                                 <img
                                   src={src}
                                   alt={`ข้อ ${index + 1} รูปที่ ${imgIdx + 1}`}
-                                  className="w-full h-full object-cover"
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                                 />
+                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                  <ZoomIn size={18} className="text-white drop-shadow-md" />
+                                </div>
                                 <button
                                   type="button"
                                   aria-label={`ลบรูปที่ ${imgIdx + 1}`}
-                                  onClick={() => removeImage(q.id, imgIdx)}
-                                  className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 shadow-md hover:bg-red-700 transition"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeImage(q.id, imgIdx);
+                                  }}
+                                  className="absolute top-1 right-1 z-10 bg-red-600/90 hover:bg-red-700 text-white rounded-full p-1 shadow-md transition"
                                   title="ลบรูปนี้"
                                 >
                                   <X size={12} />
@@ -901,6 +951,13 @@ export default function ExamSubmit() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ImageModal
+        isOpen={Boolean(modalImage)}
+        onClose={() => setModalImage(null)}
+        src={modalImage?.src || ""}
+        alt={modalImage?.alt}
+      />
     </div>
   );
 }

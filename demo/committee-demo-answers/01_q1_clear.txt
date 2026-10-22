@@ -1,0 +1,2 @@
+Row-major คือ การหา address โดยเริ่มที่ Row (แถว)
+Column-major คือการหา address โดยเริ่มที่ Column (คอลัมน์)
