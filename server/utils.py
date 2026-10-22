@@ -170,19 +170,27 @@ async def trigger_socket_notify(user_id: int, notify_type: str, message: str, da
     except Exception as e:
         print(f'[Notification DB Error] {e}')
 
-    socket_url = f"http://localhost:{os.getenv('SOCKET_PORT', '3001')}/emit-notification"
+    socket_base_url = os.getenv('SOCKET_SERVER_URL', '').strip()
+    if not socket_base_url:
+        socket_base_url = (
+            'https://llms-auto-score-system-socket.onrender.com'
+            if os.getenv('RENDER') == 'true'
+            else f"http://localhost:{os.getenv('SOCKET_PORT', '3001')}"
+        )
+    socket_url = f"{socket_base_url.rstrip('/')}/emit-notification"
     socket_secret = os.getenv('SOCKET_INTERNAL_SECRET', '')
     try:
         async with httpx.AsyncClient() as client:
-            await client.post(
+            response = await client.post(
                 socket_url,
                 json={'userId': user_id, 'type': notify_type, 'message': message, 'data': data or {}},
                 headers={'X-Internal-Secret': socket_secret},
                 timeout=2.0
             )
-    except Exception:
-        # Node.js WebSocket server is offline or unreachable - notification is safely saved in DB
-        pass
+            response.raise_for_status()
+    except Exception as error:
+        # The notification remains in the database and is available on refresh.
+        print(f'[Notification Socket Error] {type(error).__name__}: {error}')
 
 def get_current_user(request: Request, authorization: Optional[str]=Header(None)):
     token = None

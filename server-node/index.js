@@ -22,7 +22,12 @@ if (!SOCKET_INTERNAL_SECRET) {
     console.warn('[WARN] SOCKET_INTERNAL_SECRET not set. /emit-notification endpoint will reject all requests.');
 }
 
-const CORS_ORIGINS = (process.env.CORS_ORIGINS || 'http://localhost:5173,http://localhost:8080').split(',').map(s => s.trim());
+const CORS_ORIGINS = [...new Set([
+    'https://llms-auto-score-systems.netlify.app',
+    'https://llms-auto-score-system.netlify.app',
+    ...(process.env.CORS_ORIGINS || 'http://localhost:5173,http://localhost:8080')
+        .split(',').map(s => s.trim()).filter(Boolean),
+])];
 
 app.use(cors({ origin: CORS_ORIGINS }));
 app.use(express.json());

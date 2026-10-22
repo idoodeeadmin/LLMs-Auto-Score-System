@@ -2,9 +2,9 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { toast } from "sonner";
 import { io } from "socket.io-client";
 
-const SOCKET_SERVER_URL = import.meta.env.PROD 
-  ? window.location.origin 
-  : "http://localhost:3001";
+const SOCKET_SERVER_URL = import.meta.env.VITE_SOCKET_URL || (import.meta.env.PROD
+  ? "https://llms-auto-score-system-socket.onrender.com"
+  : "http://localhost:3001");
 
 interface User {
   id: number;
@@ -44,19 +44,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const connectSocket = async () => {
       if (!user || !token) return;
       try {
-        const tokenResponse = await fetch("/api/auth/socket-token", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!tokenResponse.ok) throw new Error("Unable to create socket token");
-        const { socket_token: socketToken } = await tokenResponse.json();
-        if (disposed) return;
-
         currentSocket = io(SOCKET_SERVER_URL, {
           transports: ['websocket'],
-          reconnectionAttempts: 3,
-          auth: { token: socketToken },
+          reconnectionDelayMax: 10_000,
+          auth: async (callback) => {
+            try {
+              const tokenResponse = await fetch("/api/auth/socket-token", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              if (!tokenResponse.ok) throw new Error("Unable to create socket token");
+              const { socket_token: socketToken } = await tokenResponse.json();
+              callback({ token: socketToken });
+            } catch (error) {
+              console.warn("Unable to authenticate notification socket:", error);
+              callback({ token: "" });
+            }
+          },
         });
+        if (disposed) {
+          currentSocket.disconnect();
+          return;
+        }
         currentSocket.on("connect", () => {
           console.log("Connected to Real-time Notification Server");
         });
