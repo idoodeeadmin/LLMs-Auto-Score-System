@@ -856,7 +856,7 @@ export default function CreateExam() {
                                     />
                                   </td>
                                   <td className="py-1 px-2">
-                                    <input
+                                    <textarea
                                       value={r.description}
                                       onChange={(e) =>
                                         updateRubric(q.id, r.id, {
@@ -865,7 +865,8 @@ export default function CreateExam() {
                                       }
                                       aria-label={`คำอธิบายเกณฑ์ที่ ${rIdx + 1} ของข้อ ${index + 1}`}
                                       placeholder="คำอธิบายเกณฑ์..."
-                                      className="w-full bg-transparent border-none focus:outline-none text-xs text-slate-600 dark:text-slate-400"
+                                      rows={3}
+                                      className="block min-h-20 w-full resize-y bg-transparent border-none text-xs leading-relaxed text-slate-600 focus:outline-none dark:text-slate-400"
                                     />
                                   </td>
                                   <td className="py-1 text-center">
