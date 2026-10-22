@@ -11,7 +11,6 @@ import { toast } from "sonner";
 interface Member {
   id: number;
   name: string;
-  email: string;
   student_id?: string | null;
   avatar_url?: string | null;
   role: string;
@@ -53,7 +52,7 @@ export function RoomMembers({ roomId, token, canManage = false }: { roomId: stri
 
   const query = search.trim().toLocaleLowerCase();
   const filtered = members.filter(member =>
-    `${member.name} ${member.email} ${member.student_id ?? ""}`.toLocaleLowerCase().includes(query));
+    `${member.name} ${member.student_id ?? ""}`.toLocaleLowerCase().includes(query));
   const teachers = filtered.filter(member => member.role === "teacher");
   const students = filtered.filter(member => member.role !== "teacher");
   const pages = Math.max(1, Math.ceil(students.length / 20));
@@ -97,7 +96,7 @@ export function RoomMembers({ roomId, token, canManage = false }: { roomId: stri
         <div className="relative">
           <Search size={16} className="absolute left-3 top-3.5 text-muted-foreground" />
           <Input className="pl-9" aria-label="ค้นหาสมาชิก"
-            placeholder="ค้นหาชื่อ รหัสประจำตัว หรืออีเมล"
+            placeholder="ค้นหาชื่อหรือรหัสประจำตัว"
             value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} />
         </div>
         <div className="min-h-0 overflow-y-auto" aria-busy={loading}>
@@ -158,10 +157,9 @@ function MemberRow({ member, canRemove = false, removing = false, onRemove }: {
     </Avatar>
     <div className="min-w-0 flex-1">
       <p className="font-medium">{member.name}</p>
-      {member.student_id && <p className="text-sm text-muted-foreground">
+      {member.student_id && !member.student_id.includes("@") && <p className="text-sm text-muted-foreground">
           {isTeacher ? "รหัสผู้สอน" : "รหัสนิสิต"} {member.student_id}
         </p>}
-      <p className="break-all text-sm text-muted-foreground">{member.email}</p>
     </div>
     <div className="flex shrink-0 items-center gap-1">
       <span className="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">{isTeacher ? "ผู้สอน" : "นิสิต"}</span>

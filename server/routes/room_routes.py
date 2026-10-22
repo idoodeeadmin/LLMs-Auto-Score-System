@@ -214,10 +214,10 @@ async def get_room_members(room_id: int, user: dict=Depends(get_current_user)):
     if not cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=403, detail='Unauthorized')
-    cursor.execute('SELECT u.id, u.name, u.email, u.student_id, u.avatar_url FROM users u JOIN rooms r ON u.id = r.teacher_id WHERE r.id = ?', (room_id,))
+    cursor.execute('SELECT u.id, u.name, u.student_id, u.avatar_url FROM users u JOIN rooms r ON u.id = r.teacher_id WHERE r.id = ?', (room_id,))
     teacher_row = cursor.fetchone()
     teacher = {**dict(teacher_row), 'role': 'teacher', 'joined_at': None} if teacher_row else None
-    cursor.execute('\n        SELECT u.id, u.name, u.email, u.student_id, u.avatar_url, e.joined_at\n        FROM users u\n        JOIN enrollments e ON u.id = e.user_id\n        WHERE e.room_id = ?\n        ORDER BY e.joined_at DESC\n    ', (room_id,))
+    cursor.execute('\n        SELECT u.id, u.name, u.student_id, u.avatar_url, e.joined_at\n        FROM users u\n        JOIN enrollments e ON u.id = e.user_id\n        WHERE e.room_id = ?\n        ORDER BY e.joined_at DESC\n    ', (room_id,))
     members = cursor.fetchall()
     conn.close()
     result = []

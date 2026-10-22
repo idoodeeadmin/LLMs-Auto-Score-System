@@ -204,6 +204,26 @@ def test_get_rooms(mock_db):
     clear_overrides()
 
 # --- Exam & Question Bank Tests ---
+@patch("server.routes.room_routes.get_db_connection")
+def test_room_members_do_not_expose_login_emails(mock_db):
+    override_get_current_user({"id": 1, "role": "teacher"})
+    cursor = mock_db.return_value.cursor.return_value
+    cursor.fetchone.side_effect = [
+        {"id": 1},
+        {"id": 1, "name": "Teacher", "student_id": "teacher-01", "avatar_url": None},
+    ]
+    cursor.fetchall.return_value = [
+        {"id": 2, "name": "Student", "student_id": "student-01", "avatar_url": None, "joined_at": None},
+    ]
+    try:
+        response = client.get("/api/rooms/1/members")
+        assert response.status_code == 200
+        assert all("email" not in member for member in response.json())
+        assert all("u.email" not in call.args[0] for call in cursor.execute.call_args_list)
+    finally:
+        clear_overrides()
+
+
 @patch("server.routes.exam_routes.get_db_connection")
 def test_get_exams(mock_db):
     override_get_current_user({"id": 1, "role": "teacher"})

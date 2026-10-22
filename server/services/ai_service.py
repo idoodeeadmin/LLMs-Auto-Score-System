@@ -24,6 +24,7 @@ def safe_print(*args, **kwargs):
 from server.services.gemini_grading import GEMINI_MODEL, score_with_gemini
 from server.services.openai_grading import _fallback_score
 from server.services.review_policy import submission_requires_review
+from server.services.rubric_score_steps import allowed_total_scores
 
 from server.database import get_db_connection
 from server.utils import get_image_bytes, trigger_socket_notify, grading_queue
@@ -134,7 +135,7 @@ async def grading_worker():
                     ai_result = _fallback_score(q['score'], "gemini", GEMINI_MODEL)
                     ai_result['feedback'] = 'ไม่สามารถอ่านภาพแนบได้ครบ กรุณาให้ผู้สอนตรวจภาพต้นฉบับและประเมินด้วยตนเอง'
                 else:
-                    ai_result = await score_with_gemini(question_text=q.get('text') or '', answer_text=answer_text, max_score=q['score'], answer_key=q.get('answer_key'), rubrics=rubrics_data, image_bytes_list=img_list, image_mime_list=img_mime_list, q_image_bytes_list=q_img_list, q_image_mime_list=q_img_mime_list, answer_key_image_bytes_list=answer_key_img_list, answer_key_image_mime_list=answer_key_img_mime_list)
+                    ai_result = await score_with_gemini(question_text=q.get('text') or '', answer_text=answer_text, max_score=q['score'], answer_key=q.get('answer_key'), rubrics=rubrics_data, image_bytes_list=img_list, image_mime_list=img_mime_list, q_image_bytes_list=q_img_list, answer_key_image_bytes_list=answer_key_img_list, answer_key_image_mime_list=answer_key_img_mime_list, strict_rubric_enforcement=bool(rubrics_data), allowed_scores=allowed_total_scores(rubrics_data, q['score']))
                 total_ai_score += ai_result['score']
                 confidences.append(ai_result['confidence'])
                 q_metrics = json.dumps({**ai_result.get('metrics', {}), 'transcription': ai_result.get('transcription', '')}, ensure_ascii=False)
