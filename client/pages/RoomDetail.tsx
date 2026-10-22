@@ -35,6 +35,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { UserProfileMenu } from "@/components/UserProfileMenu";
 import { RoomStreamSkeleton } from "@/components/PageSkeletons";
 import { RoomMembers } from "@/components/RoomMembers";
+import { roomPalette } from "@/lib/roomPalette";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
@@ -357,11 +358,25 @@ export default function RoomDetail() {
       </header>
 
       <main className="mx-auto max-w-6xl px-3 pb-12 pt-5 sm:px-5">
-        <section className="relative mb-6 overflow-hidden rounded-xl bg-[#245b50] px-6 py-8 text-white shadow-sm sm:px-9 sm:py-10">
+        <section className="relative mb-6 overflow-hidden rounded-xl px-6 py-8 text-white shadow-sm sm:px-9 sm:py-10" style={{ background: roomPalette(room?.id ?? roomId ?? 0) }}>
+          {user?.role === "student" && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button type="button" aria-label="ตัวเลือกห้องเรียน" className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-lg border border-white/30 bg-black/15 text-white transition hover:bg-black/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:right-6 sm:top-6">
+                  <MoreVertical size={19} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem className="text-red-600 focus:text-red-700" onSelect={() => { setLeaveConfirmed(false); setLeaveDialogOpen(true); }}>
+                  <LogOut size={15} className="mr-2" /> ออกจากห้องเรียน
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           <div className="relative max-w-3xl">
-            <p className="mb-2 text-xs font-medium text-emerald-100">{room?.section || "พื้นที่การสอบ"}</p>
+            <p className="mb-2 text-xs font-medium text-white/80">{room?.section || "พื้นที่การสอบ"}</p>
             <h2 className="text-2xl font-semibold sm:text-3xl">{room?.name}</h2>
-            <p className="mt-3 text-sm text-emerald-50/85">
+            <p className="mt-3 text-sm text-white/80">
               ประกาศ งานที่มอบหมาย และความคืบหน้าของชั้นเรียน
             </p>
           </div>
@@ -406,30 +421,6 @@ export default function RoomDetail() {
               )}
             </div>
 
-            {user?.role === "student" && (
-              <details className="group rounded-xl border border-slate-200/70 bg-white/60 p-3 text-xs text-slate-500 dark:border-slate-800/70 dark:bg-[#1E1E1E]/60">
-                <summary className="flex cursor-pointer items-center justify-between text-[11px] font-medium text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 select-none">
-                  <span>ตัวเลือกเพิ่มเติมของห้องเรียน</span>
-                  <ChevronDown size={13} className="transition-transform group-open:rotate-180" />
-                </summary>
-                <div className="mt-2.5 border-t border-slate-100 pt-2.5 dark:border-slate-800">
-                  <p className="text-[11px] text-slate-400 mb-2 leading-relaxed">
-                    หากคุณลงทะเบียนผิดห้อง หรือไม่ประสงค์จะอยู่ในชั้นเรียนนี้:
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLeaveConfirmed(false);
-                      setLeaveDialogOpen(true);
-                    }}
-                    className="text-[11px] text-red-500/80 hover:text-red-600 hover:underline flex items-center gap-1.5 transition-colors"
-                  >
-                    <LogOut size={12} />
-                    ออกจากห้องเรียนนี้...
-                  </button>
-                </div>
-              </details>
-            )}
           </aside>
 
           <section className="min-w-0 space-y-4">

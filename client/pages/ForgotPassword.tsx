@@ -14,7 +14,6 @@ export default function ForgotPassword() {
   
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [devResetLink, setDevResetLink] = useState("");
   
   const navigate = useNavigate();
 
@@ -47,17 +46,8 @@ export default function ForgotPassword() {
       const data = await response.json();
 
       if (response.ok) {
-        if (data.reset_token) {
-           // Self recovery success! Direct navigate.
-           toast.success("ยืนยันตัวตนสำเร็จ! กรุณาตั้งรหัสผ่านใหม่");
-           navigate(`/reset-password?token=${data.reset_token}`);
-           return;
-        }
         setIsSuccess(true);
-        if (data.dev_reset_link) {
-          setDevResetLink(data.dev_reset_link);
-        }
-        toast.success("ส่งลิงก์รีเซ็ตรหัสผ่านเรียบร้อยแล้ว");
+        toast.success(data.message || "หากบัญชีมีอีเมลที่ยืนยันแล้ว กรุณาตรวจสอบกล่องข้อความ");
       } else {
         const errorMsg = typeof data.detail === "string" ? data.detail : (typeof data.message === "string" ? data.message : "เกิดข้อผิดพลาด");
         toast.error(errorMsg);
@@ -91,13 +81,13 @@ export default function ForgotPassword() {
           </div>
           <form onSubmit={handleResetRequest} className="space-y-5">
             <p className="text-sm leading-6 text-[var(--work-muted)]">
-              {recoveryMode === "email" ? "กรอกอีเมลที่ใช้สมัคร เราจะส่งลิงก์สำหรับตั้งรหัสผ่านใหม่ให้คุณ" : "กรอกบัญชีที่ใช้เข้าสู่ระบบ พร้อมชื่อหรือรหัสนิสิตที่ลงทะเบียนไว้"}
+              {recoveryMode === "email" ? "กรอกอีเมลที่ใช้สมัครหรืออีเมล Google ที่ผูกไว้ ระบบจะส่งลิงก์เฉพาะอีเมลที่ยืนยันแล้ว" : "กรอกอีเมลบัญชี พร้อมชื่อหรือรหัสนิสิต ระบบจะส่งลิงก์ไปยังอีเมลที่ยืนยันแล้ว"}
             </p>
             <div className="field">
-              <label htmlFor="recovery-email">{recoveryMode === "email" ? "อีเมล" : "อีเมล หรือรหัสผู้ใช้"}</label>
+              <label htmlFor="recovery-email">อีเมลบัญชีหรืออีเมล Google ที่ผูกไว้</label>
               <div className="relative">
                 <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--work-muted)]" />
-                <Input id="recovery-email" type={recoveryMode === "email" ? "email" : "text"} autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder={recoveryMode === "email" ? "name@example.com" : "อีเมลหรือรหัสผู้ใช้ของคุณ"} className="h-11 !pl-10" />
+                <Input id="recovery-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="name@example.com" className="h-11 !pl-10" />
               </div>
             </div>
             {recoveryMode === "id" && (
@@ -114,9 +104,8 @@ export default function ForgotPassword() {
       ) : (
         <div role="status" className="space-y-5">
           <CheckCircle2 className="h-8 w-8 text-[var(--work-accent)]" />
-          <h1 className="text-3xl font-semibold">ตรวจสอบอีเมลของคุณ</h1>
-          <p className="break-words text-sm leading-7 text-[var(--work-muted)]">ส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่ <span className="font-medium text-[var(--work-ink)]">{email}</span> แล้ว หากไม่พบอีเมล ลองตรวจสอบในจดหมายขยะ</p>
-          {devResetLink && <a href={devResetLink} className="block text-sm text-[var(--work-accent)] underline">เปิดลิงก์ตั้งรหัสผ่านใหม่ (โหมดนักพัฒนา)</a>}
+          <h1 className="text-3xl font-semibold">ตรวจสอบอีเมลสำหรับกู้คืน</h1>
+          <p className="break-words text-sm leading-7 text-[var(--work-muted)]">หากบัญชีมีอีเมลที่ยืนยันแล้ว ระบบจะส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่อีเมลนั้น กรุณาตรวจสอบกล่องข้อความและจดหมายขยะ</p>
           <Button onClick={() => navigate("/")} className="primary-action h-11 w-full">กลับไปเข้าสู่ระบบ</Button>
         </div>
       )}

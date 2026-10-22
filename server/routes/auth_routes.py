@@ -6,6 +6,7 @@ import asyncio
 from datetime import datetime, timezone, timedelta
 import os
 import secrets
+import re
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -15,6 +16,12 @@ from server.models import *
 from server.utils import check_rate_limit, get_firebase_auth, upload_to_cloudinary, get_current_user, validate_upload_file
 
 _IS_DEV_MODE = os.getenv('APP_ENV', 'development').lower() == 'development'
+
+def _is_local_dev(request: Request) -> bool:
+    """Never expose development verification secrets from a public server."""
+    loopback = {'localhost', '127.0.0.1', '::1'}
+    client_host = request.client.host if request.client else None
+    return _IS_DEV_MODE and request.url.hostname in loopback and client_host in loopback
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -100,7 +107,6 @@ async def register(user: UserRegister, request: Request):
     smtp_user = os.getenv('SMTP_USER')
     smtp_password = os.getenv('SMTP_PASSWORD')
 
-    dev_verify_link = None
     if smtp_host and smtp_user and smtp_password:
         body = f"""
             <h2>ยินดีต้อนรับสู่ Evaly Score</h2>
@@ -109,17 +115,15 @@ async def register(user: UserRegister, request: Request):
         """
         # Non-blocking async background task so registration responds in milliseconds
         asyncio.create_task(asyncio.to_thread(_send_smtp_email_sync, user.email, 'ยืนยันบัญชีอีเมล Evaly Score (Verify Email)', body))
-    else:
-        dev_verify_link = verify_link
 
-    if dev_verify_link or _IS_DEV_MODE:
+    if _is_local_dev(request):
         print(f'\n========== VERIFY EMAIL ==========')
         print(f'Verify Link: {verify_link}')
         print(f'==================================\n')
 
     msg_str = 'สมัครสมาชิกสำเร็จ กรุณาเข้าสู่ระบบ' if initial_is_verified else 'สมัครสมาชิกสำเร็จ กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชีของคุณ'
     response = {'message': msg_str}
-    if _IS_DEV_MODE:
+    if _is_local_dev(request):
         response['dev_verify_link'] = verify_link
     return response
 
@@ -138,7 +142,7 @@ async def login(user_data: UserLogin, request: Request, response: Response):
          headers={'WWW-Authenticate': 'Bearer'})
 
     require_verification = os.getenv('REQUIRE_EMAIL_VERIFICATION', 'false').lower() in ('true', '1')
-    if not user.get('is_verified') and not _IS_DEV_MODE and require_verification:
+    if not user.get('is_verified') and not _is_local_dev(request) and require_verification:
         raise HTTPException(status_code=403, detail='กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ (Please verify your email before logging in)')
 
     access_token = create_access_token(data={'sub': user['email'], 'token_version': user.get('token_version', 0)})
@@ -176,7 +180,7 @@ async def request_profile_password_otp(request: Request, user: dict = Depends(ge
     email = user.get('email')
     if not email:
         raise HTTPException(status_code=400, detail='ไม่พบบัญชีอีเมลของผู้ใช้งาน')
-    if not _IS_DEV_MODE and not all(os.getenv(key) for key in ('SMTP_HOST', 'SMTP_USER', 'SMTP_PASSWORD')):
+    if not _is_local_dev(request) and not all(os.getenv(key) for key in ('SMTP_HOST', 'SMTP_USER', 'SMTP_PASSWORD')):
         raise HTTPException(status_code=503, detail='ระบบส่งอีเมลยังไม่พร้อมใช้งาน กรุณาลองใหม่ภายหลัง')
 
     client_ip = _get_client_ip(request)
@@ -214,7 +218,7 @@ async def request_profile_password_otp(request: Request, user: dict = Depends(ge
             <p style="color: #64748b; font-size: 13px; margin-top: 0;">• หากคุณไม่ได้เป็นผู้ร้องขอ กรุณาละเว้นอีเมลฉบับนี้</p>
         </div>
     """
-    if not _IS_DEV_MODE:
+    if not _is_local_dev(request):
         delivered = await asyncio.to_thread(_send_smtp_email_sync, email, subject, html_body)
         if not delivered:
             conn = get_db_connection()
@@ -229,7 +233,7 @@ async def request_profile_password_otp(request: Request, user: dict = Depends(ge
     response = {
         "message": f"ส่งรหัส OTP ไปยังอีเมล {email} เรียบร้อยแล้ว (รหัสมีอายุ 15 นาที)"
     }
-    if _IS_DEV_MODE:
+    if _is_local_dev(request):
         response["dev_otp"] = otp_code
     return response
 
@@ -345,40 +349,29 @@ async def set_role(req: SetRoleRequest, user: dict=Depends(get_current_user)):
 
 @router.post('/forgot-password')
 async def forgot_password(req: ForgotPasswordRequest):
+    if not check_rate_limit(f"password_reset:{req.email.lower().strip()}", limit=5, window=3600):
+        raise HTTPException(status_code=429, detail='ขอรีเซ็ตรหัสผ่านถี่เกินไป กรุณารอสักครู่')
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT id, name, student_id FROM users WHERE email = ?', (req.email,))
+    cursor.execute('SELECT id, name, student_id, email, google_email, is_verified FROM users WHERE email = ? OR google_email = ?', (req.email, req.email))
     user = cursor.fetchone()
     if not user:
         conn.close()
-        return {'message': 'If that email exists, a password reset link has been generated.'}
+        return {'message': 'หากบัญชีนี้มีอีเมลที่ยืนยันแล้ว ระบบจะส่งลิงก์รีเซ็ตให้'}
     if req.name or req.student_id:
-        is_owner = False
-        if req.name and user['name'] and (req.name.strip().lower() == user['name'].strip().lower()):
-            is_owner = True
-        elif req.student_id and user['student_id'] and (req.student_id.strip().lower() == user['student_id'].strip().lower()):
-            is_owner = True
-        if not is_owner:
+        name_matches = bool(req.name and user['name'] and req.name.strip().lower() == user['name'].strip().lower())
+        id_matches = bool(req.student_id and user['student_id'] and req.student_id.strip().lower() == user['student_id'].strip().lower())
+        if not (name_matches or id_matches):
             conn.close()
             raise HTTPException(status_code=400, detail='คุณไม่ใช่เจ้าของบัญชี ชื่อหรือรหัสนิสิตไม่ตรงกับฐานข้อมูล')
-        import uuid
-        from datetime import datetime, timezone, timedelta
-        token = uuid.uuid4().hex
-        expires_at = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
-        cursor.execute('DELETE FROM password_resets WHERE user_id = ?', (user['id'],))
-        cursor.execute('INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)', (user['id'], token, expires_at))
-        conn.commit()
+    recovery_email = user['google_email'] or (user['email'] if user['is_verified'] else None)
+    if not recovery_email:
         conn.close()
-        reset_link = f"{os.getenv('FRONTEND_URL', 'http://localhost:8080')}/reset-password?token={token}"
-        print(f'\n========== IDENTITY VERIFIED RESET ==========')
-        print(f'Reset Link: {reset_link}')
-        print(f'=============================================\n')
-        response = {'message': 'ยืนยันตัวตนสำเร็จ! กรุณาตรวจสอบอีเมลเพื่อรีเซ็ตรหัสผ่าน'}
-        if _IS_DEV_MODE:
-            response['reset_token'] = token
-        return response
+        raise HTTPException(status_code=400, detail='บัญชีนี้ยังไม่มีอีเมลที่ยืนยันแล้วสำหรับกู้คืนรหัสผ่าน')
+    if not all(os.getenv(key) for key in ('SMTP_HOST', 'SMTP_USER', 'SMTP_PASSWORD')):
+        conn.close()
+        raise HTTPException(status_code=503, detail='ระบบส่งอีเมลยังไม่พร้อมใช้งาน กรุณาลองใหม่ภายหลัง')
     import uuid
-    from datetime import datetime, timezone, timedelta
     token = uuid.uuid4().hex
     now_utc = datetime.now(timezone.utc)
     expires_at = (now_utc + timedelta(hours=1)).isoformat()
@@ -388,34 +381,25 @@ async def forgot_password(req: ForgotPasswordRequest):
     conn.close()
     frontend_url = os.getenv('FRONTEND_URL', 'https://llms-auto-score-systems.netlify.app').rstrip('/')
     reset_link = f'{frontend_url}/reset-password?token={token}'
-    smtp_host = os.getenv('SMTP_HOST')
-    smtp_user = os.getenv('SMTP_USER')
-    smtp_password = os.getenv('SMTP_PASSWORD')
-    if smtp_host and smtp_user and smtp_password:
-        body = f"""
-            <h2>รีเซ็ตรหัสผ่าน Evaly Score</h2>
-            <p>เราได้รับการร้องขอให้รีเซ็ตรหัสผ่านสำหรับบัญชีของคุณ</p>
-            <p>กรุณาคลิกที่ลิงก์ด้านล่างเพื่อตั้งรหัสผ่านใหม่ (ลิงก์นี้มีอายุการใช้งาน 1 ชั่วโมง):</p>
-            <p><a href="{reset_link}">{reset_link}</a></p>
-            <p><br>หากคุณไม่ได้ร้องขอการรีเซ็ตรหัสผ่านนี้ กรุณาเพิกเฉยต่ออีเมลฉบับนี้</p>
-        """
-        asyncio.create_task(asyncio.to_thread(_send_smtp_email_sync, req.email, 'รีเซ็ตรหัสผ่าน Evaly Score (Password Reset)', body))
-        return {'message': 'ส่งลิงก์สำหรับรีเซ็ตรหัสผ่านไปยังอีเมลของคุณแล้ว กรุณาตรวจสอบกล่องข้อความ'}
-
-    print(f'\n========== FORGOT PASSWORD ==========')
-    print(f'Request for: {req.email}')
-    print(f'Reset Link: {reset_link}')
-    if not smtp_host:
-        print('Note: SMTP variables not configured in .env')
-    print(f'======================================\n')
-    response = {'message': 'หากมีบัญชีนี้ในระบบ ลิงก์รีเซ็ตรหัสผ่านจะถูกส่งไปที่อีเมลของคุณ'}
-    if _IS_DEV_MODE:
-        response['dev_reset_link'] = reset_link
-    return response
+    body = f"""
+        <h2>รีเซ็ตรหัสผ่าน Evaly Score</h2>
+        <p>เราได้รับการร้องขอให้รีเซ็ตรหัสผ่านสำหรับบัญชีของคุณ</p>
+        <p>กรุณาคลิกลิงก์ด้านล่างเพื่อตั้งรหัสผ่านใหม่ (ลิงก์มีอายุ 1 ชั่วโมง):</p>
+        <p><a href="{reset_link}">{reset_link}</a></p>
+        <p>หากคุณไม่ได้ร้องขอ กรุณาเพิกเฉยต่ออีเมลฉบับนี้</p>
+    """
+    if not await asyncio.to_thread(_send_smtp_email_sync, recovery_email, 'รีเซ็ตรหัสผ่าน Evaly Score', body):
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM password_resets WHERE user_id = ? AND token = ?', (user['id'], token))
+        conn.commit()
+        conn.close()
+        raise HTTPException(status_code=503, detail='ส่งอีเมลไม่สำเร็จ กรุณาลองใหม่ภายหลัง')
+    return {'message': 'หากบัญชีนี้มีอีเมลที่ยืนยันแล้ว ระบบจะส่งลิงก์รีเซ็ตให้'}
 
 @router.post('/reset-password')
 async def reset_password(req: ResetPasswordRequest):
-    if req.token.startswith('otp:'):
+    if not re.fullmatch(r'[0-9a-f]{32}', req.token):
         raise HTTPException(status_code=400, detail='Invalid or expired reset token')
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -426,8 +410,8 @@ async def reset_password(req: ResetPasswordRequest):
         raise HTTPException(status_code=400, detail='Invalid or expired reset token')
     from datetime import datetime, timezone
     try:
-        expires_at_str = reset_record['expires_at']
-        expires_at = datetime.fromisoformat(expires_at_str.replace('Z', '+00:00'))
+        expires_at_value = reset_record['expires_at']
+        expires_at = expires_at_value if isinstance(expires_at_value, datetime) else datetime.fromisoformat(expires_at_value.replace('Z', '+00:00'))
         if expires_at.tzinfo is None:
             expires_at = expires_at.replace(tzinfo=timezone.utc)
         now_utc = datetime.now(timezone.utc)
@@ -451,7 +435,7 @@ async def reset_password(req: ResetPasswordRequest):
 async def request_delete_account_otp(request: Request, user: dict = Depends(get_current_user)):
     if not user.get('google_id'):
         raise HTTPException(status_code=400, detail='บัญชีนี้ต้องยืนยันด้วยรหัสผ่าน')
-    if not _IS_DEV_MODE and not all(os.getenv(key) for key in ('SMTP_HOST', 'SMTP_USER', 'SMTP_PASSWORD')):
+    if not _is_local_dev(request) and not all(os.getenv(key) for key in ('SMTP_HOST', 'SMTP_USER', 'SMTP_PASSWORD')):
         raise HTTPException(status_code=503, detail='ระบบส่งอีเมลยังไม่พร้อมใช้งาน')
     if not check_rate_limit(f"otp_delete:{user['id']}:{_get_client_ip(request)}", limit=5, window=300):
         raise HTTPException(status_code=429, detail='ขอรหัส OTP ถี่เกินไป กรุณารอสักครู่')
@@ -473,7 +457,7 @@ async def request_delete_account_otp(request: Request, user: dict = Depends(get_
     body = (f'<p>มีการขอลบบัญชี {email} อย่างถาวร</p>'
             f'<p>รหัสยืนยันของคุณคือ <b style="font-size:24px">{otp_code}</b></p>'
             '<p>รหัสมีอายุ 15 นาที หากไม่ได้เป็นผู้ร้องขอ กรุณาละเว้นอีเมลนี้</p>')
-    if not _IS_DEV_MODE:
+    if not _is_local_dev(request):
         if not await asyncio.to_thread(_send_smtp_email_sync, email, subject, body):
             conn = get_db_connection()
             try:
@@ -487,7 +471,7 @@ async def request_delete_account_otp(request: Request, user: dict = Depends(get_
     else:
         print(f'[Delete account OTP, development only] User ID: {user["id"]}, code: {otp_code}')
     result = {'message': f'ส่งรหัส OTP ไปยัง {email} แล้ว'}
-    if _IS_DEV_MODE:
+    if _is_local_dev(request):
         result['dev_otp'] = otp_code
     return result
 
@@ -524,9 +508,17 @@ async def delete_account(credentials: DeleteAccountRequest, user: dict=Depends(g
     elif not credentials.password or not verify_password(credentials.password, account['password']):
         conn.close()
         raise HTTPException(status_code=400, detail='รหัสผ่านไม่ถูกต้อง')
-    cursor.execute('DELETE FROM users WHERE id = ?', (user['id'],))
-    conn.commit()
-    conn.close()
+    try:
+        # rooms.teacher_id uses ON DELETE SET NULL, so remove the teacher's
+        # rooms first; their exams and submissions cascade from the room.
+        cursor.execute('DELETE FROM rooms WHERE teacher_id = ?', (user['id'],))
+        cursor.execute('DELETE FROM users WHERE id = ?', (user['id'],))
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
     return {'message': 'Account deleted successfully'}
 
 @router.post('/verify-email')
@@ -540,8 +532,8 @@ async def verify_email(req: VerifyEmailRequest):
         raise HTTPException(status_code=400, detail='ลิงก์ยืนยันไม่ถูกต้องหรือหมดอายุแล้ว')
     from datetime import datetime, timezone
     try:
-        expires_at_str = record['expires_at']
-        expires_at = datetime.fromisoformat(expires_at_str.replace('Z', '+00:00'))
+        expires_at_value = record['expires_at']
+        expires_at = expires_at_value if isinstance(expires_at_value, datetime) else datetime.fromisoformat(expires_at_value.replace('Z', '+00:00'))
         if expires_at.tzinfo is None:
             expires_at = expires_at.replace(tzinfo=timezone.utc)
         if datetime.now(timezone.utc) > expires_at:
@@ -558,7 +550,7 @@ async def verify_email(req: VerifyEmailRequest):
     return {'message': 'ยืนยันอีเมลสำเร็จ'}
 
 @router.post('/resend-verification')
-async def resend_verification(req: ResendVerificationRequest):
+async def resend_verification(req: ResendVerificationRequest, request: Request):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('SELECT id, is_verified FROM users WHERE email = ?', (req.email,))
@@ -569,9 +561,11 @@ async def resend_verification(req: ResendVerificationRequest):
     if user['is_verified'] == 1:
         conn.close()
         raise HTTPException(status_code=400, detail='อีเมลนี้ได้รับการยืนยันแล้ว')
+    if not _is_local_dev(request) and not all(os.getenv(key) for key in ('SMTP_HOST', 'SMTP_USER', 'SMTP_PASSWORD')):
+        conn.close()
+        raise HTTPException(status_code=503, detail='ระบบส่งอีเมลยังไม่พร้อมใช้งาน กรุณาลองใหม่ภายหลัง')
     import uuid
     from datetime import datetime, timezone, timedelta
-    import os, smtplib
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
     token = uuid.uuid4().hex
@@ -594,13 +588,12 @@ async def resend_verification(req: ResendVerificationRequest):
         asyncio.create_task(asyncio.to_thread(_send_smtp_email_sync, req.email, 'ส่งซ้ำ - ยืนยันบัญชีอีเมล Evaly Score (Verify Email)', body))
         return {'message': 'ส่งลิงก์ยืนยันอีเมลสำเร็จ กรุณาตรวจสอบกล่องข้อความ'}
 
-    print(f'\n========== VERIFY EMAIL ==========')
-    print(f'Verify Link: {verify_link}')
-    print(f'==================================\n')
-    response = {'message': 'ส่งลิงก์ยืนยันอีเมลแล้ว กรุณาตรวจสอบกล่องข้อความ'}
-    if _IS_DEV_MODE:
-        response['dev_verify_link'] = verify_link
-    return response
+    if _is_local_dev(request):
+        print(f'\n========== VERIFY EMAIL ==========')
+        print(f'Verify Link: {verify_link}')
+        print(f'==================================\n')
+        return {'message': 'ส่งลิงก์ยืนยันอีเมลแล้ว', 'dev_verify_link': verify_link}
+    raise HTTPException(status_code=503, detail='ระบบส่งอีเมลยังไม่พร้อมใช้งาน กรุณาลองใหม่ภายหลัง')
 
 @router.post('/firebase-login', response_model=TokenResponse)
 async def firebase_login(request: FirebaseLoginRequest, req: Request, res: Response):

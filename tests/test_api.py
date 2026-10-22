@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 from server.main import app
 from server.utils import get_current_user
 import json
+from datetime import datetime, timedelta, timezone
 
 # Create a test client
 client = TestClient(app)
@@ -134,6 +135,34 @@ def test_delete_account_requires_fresh_verification(mock_db, google_id, credenti
             call.args[0].startswith("DELETE FROM users")
             for call in cursor.execute.call_args_list
         )
+    finally:
+        clear_overrides()
+
+
+@patch("server.routes.auth_routes.get_db_connection")
+def test_verify_email_accepts_database_datetime(mock_db):
+    cursor = mock_db.return_value.cursor.return_value
+    cursor.fetchone.return_value = {
+        "id": 3, "user_id": 7,
+        "expires_at": datetime.now(timezone.utc) + timedelta(hours=1),
+    }
+    response = client.post('/api/auth/verify-email', json={"token": "test-token"})
+    assert response.status_code == 200
+    assert any(call.args[0].startswith('UPDATE users SET is_verified')
+               for call in cursor.execute.call_args_list)
+
+
+@patch("server.routes.auth_routes.verify_password", return_value=True)
+@patch("server.routes.auth_routes.get_db_connection")
+def test_delete_teacher_account_removes_owned_rooms(mock_db, mock_verify):
+    override_get_current_user({"id": 1, "email": "teacher@example.test", "role": "teacher"})
+    cursor = mock_db.return_value.cursor.return_value
+    cursor.fetchone.return_value = {"id": 1, "password": "hash", "google_id": None}
+    try:
+        response = client.request("DELETE", "/api/auth/account", json={"password": "password"})
+        assert response.status_code == 200
+        statements = [call.args[0] for call in cursor.execute.call_args_list]
+        assert statements.index('DELETE FROM rooms WHERE teacher_id = ?') < statements.index('DELETE FROM users WHERE id = ?')
     finally:
         clear_overrides()
 
