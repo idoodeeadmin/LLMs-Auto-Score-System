@@ -342,6 +342,7 @@ def auto_fit_columns(ws, min_width: float = 13.0, max_width: float = 60.0, paddi
     accounting for Thai characters, combining tone marks, multiline values, and filter icons.
     """
     try:
+        import math
         from openpyxl.utils import get_column_letter
         from openpyxl.styles import Alignment
     except ImportError:
@@ -376,4 +377,21 @@ def auto_fit_columns(ws, min_width: float = 13.0, max_width: float = 60.0, paddi
                     )
 
         ws.column_dimensions[col_letter].width = round(target_width, 1)
+
+    # Excel does not auto-size row heights for wrapped cells written by openpyxl.
+    # A fixed row height hides most of the answer and feedback in the detail sheet.
+    for row in ws.iter_rows():
+        if row[0].row == 1:
+            continue
+        needed_lines = 1
+        for cell in row:
+            if cell.value is None or not cell.alignment or not cell.alignment.wrap_text:
+                continue
+            usable_width = max(ws.column_dimensions[cell.column_letter].width - padding, 1)
+            lines = sum(max(1, math.ceil(get_cell_visual_width(part) / usable_width))
+                        for part in str(cell.value).split('\n'))
+            needed_lines = max(needed_lines, lines)
+        if needed_lines > 1:
+            current_height = ws.row_dimensions[row[0].row].height or 0
+            ws.row_dimensions[row[0].row].height = min(409, max(current_height, needed_lines * 15 + 8))
 
