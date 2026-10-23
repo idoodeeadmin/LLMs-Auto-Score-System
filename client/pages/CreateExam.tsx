@@ -367,15 +367,22 @@ export default function CreateExam() {
       setDraftLoadError(null);
       setSavedSnapshot(JSON.stringify({ examTitle: savedValue.examTitle, examDescription: savedValue.examDescription, questions: savedValue.questions,
         startDateTime: savedValue.startDateTime ?? "", endDateTime: savedValue.endDateTime ?? "", isRandomized: savedValue.isRandomized ?? false }));
-      // The snapshot state updates on the next render; allow this URL change through the dirty-form blocker.
-      allowExit.current = true;
-      try {
-        navigate(`/room/${roomId}/create-exam?draft=${encodeURIComponent(id!)}`, { replace: true });
-      } finally {
-        allowExit.current = false;
-      }
       toast.success(id?.startsWith("cloud-") ? "บันทึกแบบร่างลงบัญชีแล้ว" : "บันทึกแบบร่างในเครื่องนี้แล้ว");
-      if (leave && blocker.state === "blocked") blocker.proceed();
+      if (leave) {
+        // Finish the navigation that opened the leave dialog. Changing the draft URL first
+        // resets that pending navigation and can report a false save failure.
+        allowExit.current = true;
+        if (blocker.state === "blocked") blocker.proceed();
+        else navigate(`/room/${roomId}`);
+      } else {
+        // The saved snapshot state updates on the next render; allow this URL change through.
+        allowExit.current = true;
+        try {
+          navigate(`/room/${roomId}/create-exam?draft=${encodeURIComponent(id!)}`, { replace: true });
+        } finally {
+          allowExit.current = false;
+        }
+      }
     } catch (error) {
       const reason = error instanceof Error ? error.message : "ไม่ทราบสาเหตุ";
       toast.error(`บันทึกแบบร่างไม่สำเร็จ: ${reason}`);
@@ -1057,7 +1064,7 @@ export default function CreateExam() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>บันทึกข้อสอบที่กำลังสร้างไว้ก่อนหรือไม่?</DialogTitle>
-            <DialogDescription>บันทึกแบบร่างพร้อมรูปแนบไว้ในเครื่องนี้ เพื่อกลับมาทำต่อในห้องเดิมได้</DialogDescription>
+            <DialogDescription>บันทึกแบบร่างลงบัญชี หากเชื่อมต่อไม่ได้จะสำรองไว้ในเบราว์เซอร์นี้</DialogDescription>
           </DialogHeader>
           {(readingImages || generatingId !== null || isSaving) && <p role="status" className="text-sm">กรุณารอการประมวลผลให้เสร็จก่อนออกจากหน้า</p>}
           <div className="flex flex-wrap justify-end gap-2">
