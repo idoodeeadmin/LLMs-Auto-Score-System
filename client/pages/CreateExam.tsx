@@ -199,7 +199,6 @@ export default function CreateExam() {
     const load = async () => {
       setDraftLoadError(null);
       const requestedId = new URLSearchParams(window.location.search).get("draft");
-      const startingNew = new URLSearchParams(window.location.search).has("new");
       let rows = await listDrafts<ExamDraft>(draftPrefix);
       const legacy = await readDraft<ExamDraft>(legacyDraftKey);
       if (legacy) {
@@ -231,10 +230,6 @@ export default function CreateExam() {
           setDraftLoadError(current => current ?? "ไม่พบแบบร่างที่เลือกในบัญชีหรือห้องนี้");
           setDraftPickerOpen(true);
         }
-      } else if (!startingNew && choices.length === 1) {
-        openDraft(choices[0].id, choices[0].draft, false);
-      } else if (!startingNew && choices.length > 1) {
-        setDraftPickerOpen(true);
       }
     };
     load().catch(() => { if (active) toast.error("อ่านแบบร่างไม่สำเร็จ"); })
