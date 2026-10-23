@@ -184,6 +184,7 @@ export default function CreateExam() {
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
   const [draftChoices, setDraftChoices] = useState<Array<{ id: string; draft: ExamDraft }>>([]);
   const [draftPickerOpen, setDraftPickerOpen] = useState(false);
+  const [draftLoadError, setDraftLoadError] = useState<string | null>(null);
   const snapshot = JSON.stringify({ examTitle, examDescription, questions, startDateTime, endDateTime, isRandomized });
   const [savedSnapshot, setSavedSnapshot] = useState(snapshot);
   const [draftLoaded, setDraftLoaded] = useState(false);
@@ -196,6 +197,7 @@ export default function CreateExam() {
   useEffect(() => {
     let active = true;
     const load = async () => {
+      setDraftLoadError(null);
       const requestedId = new URLSearchParams(window.location.search).get("draft");
       const startingNew = new URLSearchParams(window.location.search).has("new");
       let rows = await listDrafts<ExamDraft>(draftPrefix);
@@ -211,11 +213,12 @@ export default function CreateExam() {
       if (token) {
         try {
           const response = await fetch(`/api/rooms/${roomId}/exam-drafts`, { headers: { Authorization: `Bearer ${token}` } });
-          if (response.ok) {
-            const cloudRows: CloudExamDraft[] = await response.json();
-            cloudChoices = cloudRows.map(row => ({ id: `cloud-${row.id}`, draft: fromCloudDraft(row) }));
-          }
-        } catch { /* Keep browser drafts available while offline. */ }
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const cloudRows: CloudExamDraft[] = await response.json();
+          cloudChoices = cloudRows.map(row => ({ id: `cloud-${row.id}`, draft: fromCloudDraft(row) }));
+        } catch {
+          if (active) setDraftLoadError("โหลดแบบร่างจากระบบไม่สำเร็จ กรุณาลองใหม่ แบบร่างในเครื่องยังเปิดได้ตามปกติ");
+        }
       }
       if (!active) return;
       const choices = [...cloudChoices, ...rows.map(row => ({ id: `local-${row.key.slice(draftPrefix.length)}`, draft: row.value }))]
@@ -224,7 +227,10 @@ export default function CreateExam() {
       if (requestedId) {
         const selected = choices.find(choice => choice.id === requestedId);
         if (selected) openDraft(selected.id, selected.draft, false);
-        else toast.error("ไม่พบแบบร่างที่เลือก");
+        else {
+          setDraftLoadError(current => current ?? "ไม่พบแบบร่างที่เลือกในบัญชีหรือห้องนี้");
+          setDraftPickerOpen(true);
+        }
       } else if (!startingNew && choices.length === 1) {
         openDraft(choices[0].id, choices[0].draft, false);
       } else if (!startingNew && choices.length > 1) {
@@ -989,6 +995,10 @@ export default function CreateExam() {
             <DialogDescription>เลือกข้อสอบที่ยังทำไม่เสร็จเพื่อกลับมาแก้ต่อ หรือเริ่มข้อสอบชุดใหม่</DialogDescription>
           </DialogHeader>
           <div className="max-h-[55vh] min-h-44 overflow-y-auto px-6">
+            {draftLoadError && <div role="alert" className="mt-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              {draftLoadError}
+              <button type="button" className="ml-2 font-semibold underline" onClick={() => window.location.reload()}>ลองโหลดใหม่</button>
+            </div>}
             {draftChoices.length ? <div className="divide-y">
               {draftChoices.map(choice => (
                 <div key={choice.id} className="flex items-center gap-3 py-4">
@@ -1007,7 +1017,7 @@ export default function CreateExam() {
                   </button>
                 </div>
               ))}
-            </div> : <div className="flex min-h-44 flex-col items-center justify-center text-center">
+            </div> : !draftLoadError && <div className="flex min-h-44 flex-col items-center justify-center text-center">
               <Files size={24} className="mb-2 text-muted-foreground" />
               <p className="text-sm font-medium">ยังไม่มีแบบร่าง</p>
               <p className="mt-1 text-xs text-muted-foreground">แบบร่างที่บันทึกไว้จะแสดงที่นี่</p>
