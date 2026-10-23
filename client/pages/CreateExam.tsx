@@ -345,17 +345,18 @@ export default function CreateExam() {
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify(payload),
         });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.detail || "บันทึกแบบร่างออนไลน์ไม่สำเร็จ");
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : `เซิร์ฟเวอร์ตอบกลับ HTTP ${response.status}`);
         id = `cloud-${result.id}`;
         savedValue = fromCloudDraft(result);
         if (currentDraftId?.startsWith("local-")) await writeDraft(`${draftPrefix}${currentDraftId.slice(6)}`, undefined);
       } catch (error) {
-        if (currentDraftId?.startsWith("cloud-")) throw error;
-        const localId = currentDraftId?.startsWith("local-") ? currentDraftId.slice(6) : `draft-${Date.now()}`;
+        const localId = currentDraftId?.startsWith("local-") ? currentDraftId.slice(6)
+          : currentDraftId?.startsWith("cloud-") ? `backup-${currentDraftId.slice(6)}` : `draft-${Date.now()}`;
         await writeDraft(`${draftPrefix}${localId}`, value);
         id = `local-${localId}`;
-        toast.warning("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ จึงเก็บแบบร่างไว้ในเครื่องนี้ก่อน");
+        const reason = error instanceof Error ? error.message : "ไม่ทราบสาเหตุ";
+        toast.warning(`บันทึกออนไลน์ไม่สำเร็จ (${reason}) จึงเก็บแบบร่างไว้ในเบราว์เซอร์นี้ก่อน`);
       }
       setQuestions(savedValue.questions);
       setStartDateTime(savedValue.startDateTime ?? "");
@@ -375,8 +376,9 @@ export default function CreateExam() {
       }
       toast.success(id?.startsWith("cloud-") ? "บันทึกแบบร่างลงบัญชีแล้ว" : "บันทึกแบบร่างในเครื่องนี้แล้ว");
       if (leave && blocker.state === "blocked") blocker.proceed();
-    } catch {
-      toast.error("บันทึกแบบร่างไม่สำเร็จ โปรดตรวจสอบพื้นที่จัดเก็บของเบราว์เซอร์");
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "ไม่ทราบสาเหตุ";
+      toast.error(`บันทึกแบบร่างไม่สำเร็จ: ${reason}`);
     } finally { setSavingDraft(false); }
   };
 
