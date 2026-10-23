@@ -613,14 +613,14 @@ export default function CreateExam() {
     <div className="workspace create-exam-page">
       <ExamEditorHeader mode="create" title={examTitle} onTitleChange={setExamTitle} dirty={dirty} busy={!draftLoaded || savingDraft || isSaving} onBack={() => navigate(`/room/${roomId}`)} onSettings={() => setSettingsOpen(true)}
         mobileMenuItems={[
-          { label: "แบบร่างที่บันทึกไว้", disabled: !draftLoaded || savingDraft || isSaving, onSelect: () => { if (dirty) { toast.info("บันทึกฉบับร่างปัจจุบันก่อนเปิดแบบร่างชุดอื่น"); return; } setDraftPickerOpen(true); } },
+          { label: "แบบร่างที่บันทึกไว้", disabled: !draftLoaded || savingDraft || isSaving, onSelect: () => setDraftPickerOpen(true) },
           { label: savingDraft ? "กำลังบันทึกร่าง…" : "บันทึกร่าง", disabled: !draftLoaded || savingDraft || isSaving || readingImages || generatingId !== null, onSelect: () => { void saveDraft(); } },
         ]}
         mobilePrimaryAction={<Button type="button" size="sm" disabled={!draftLoaded || isSaving || readingImages || savingDraft || generatingId !== null} onClick={handleSave}>
           {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}<span className="ml-1.5">เผยแพร่</span>
         </Button>}>
           <Button type="button" variant="ghost" aria-label="เปิดแบบร่างข้อสอบ" className="gap-2" disabled={!draftLoaded || savingDraft || isSaving}
-            onClick={() => { if (dirty) { toast.info("บันทึกฉบับร่างปัจจุบันก่อนเปิดแบบร่างชุดอื่น"); return; } setDraftPickerOpen(true); }}>
+            onClick={() => setDraftPickerOpen(true)}>
             <Files size={16} /><span className="hidden sm:inline">แบบร่าง</span>
           </Button>
           <Button type="button" variant="outline" className="gap-2" disabled={!draftLoaded || savingDraft || isSaving || readingImages || generatingId !== null} onClick={() => saveDraft()}>
@@ -1011,7 +1011,13 @@ export default function CreateExam() {
             {draftChoices.length ? <div className="divide-y">
               {draftChoices.map(choice => (
                 <div key={choice.id} className="flex items-center gap-3 py-4">
-                  <button type="button" className="min-w-0 flex-1 text-left" onClick={() => openDraft(choice.id, choice.draft)}>
+                  <button type="button" className="min-w-0 flex-1 text-left" onClick={() => {
+                    if (dirty) {
+                      toast.info("บันทึกฉบับร่างปัจจุบันก่อนเปิดแบบร่างชุดอื่น");
+                      return;
+                    }
+                    openDraft(choice.id, choice.draft);
+                  }}>
                     <span className="block truncate text-sm font-medium">{choice.draft.examTitle.trim() || "ยังไม่ได้ตั้งชื่อ"}</span>
                     <span className="mt-1 block text-xs text-muted-foreground">
                       {choice.draft.questions.length} ข้อ · แก้ไขล่าสุด {choice.draft.updatedAt
@@ -1033,7 +1039,13 @@ export default function CreateExam() {
             </div>}
           </div>
           <div className="flex justify-end border-t px-6 py-4">
-            <Button onClick={startNewDraft}>สร้างข้อสอบชุดใหม่</Button>
+            <Button onClick={() => {
+              if (dirty) {
+                toast.info("บันทึกฉบับร่างปัจจุบันก่อนเริ่มข้อสอบชุดใหม่");
+                return;
+              }
+              startNewDraft();
+            }}>สร้างข้อสอบชุดใหม่</Button>
           </div>
         </DialogContent>
       </Dialog>
