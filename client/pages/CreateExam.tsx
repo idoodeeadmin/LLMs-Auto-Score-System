@@ -243,6 +243,7 @@ export default function CreateExam() {
   }, [draftPrefix, legacyDraftKey, roomId, token]);
 
   const openDraft = (id: string, draft: ExamDraft, notify = true) => {
+    setDraftLoadError(null);
     setCurrentDraftId(id);
     setExamTitle(draft.examTitle);
     setExamDescription(draft.examDescription);
@@ -261,6 +262,7 @@ export default function CreateExam() {
   };
 
   const startNewDraft = () => {
+    setDraftLoadError(null);
     setCurrentDraftId(null);
     setExamTitle("");
     setExamDescription("");
@@ -361,9 +363,16 @@ export default function CreateExam() {
       setIsRandomized(savedValue.isRandomized ?? false);
       setCurrentDraftId(id);
       setDraftChoices(current => [{ id: id!, draft: savedValue }, ...current.filter(choice => choice.id !== id && choice.id !== currentDraftId)]);
-      navigate(`/room/${roomId}/create-exam?draft=${encodeURIComponent(id!)}`, { replace: true });
+      setDraftLoadError(null);
       setSavedSnapshot(JSON.stringify({ examTitle: savedValue.examTitle, examDescription: savedValue.examDescription, questions: savedValue.questions,
         startDateTime: savedValue.startDateTime ?? "", endDateTime: savedValue.endDateTime ?? "", isRandomized: savedValue.isRandomized ?? false }));
+      // The snapshot state updates on the next render; allow this URL change through the dirty-form blocker.
+      allowExit.current = true;
+      try {
+        navigate(`/room/${roomId}/create-exam?draft=${encodeURIComponent(id!)}`, { replace: true });
+      } finally {
+        allowExit.current = false;
+      }
       toast.success(id?.startsWith("cloud-") ? "บันทึกแบบร่างลงบัญชีแล้ว" : "บันทึกแบบร่างในเครื่องนี้แล้ว");
       if (leave && blocker.state === "blocked") blocker.proceed();
     } catch {
