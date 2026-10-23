@@ -434,7 +434,7 @@ export default function RoomDetail() {
                     <button onClick={() => setComposerOpen(true)} className="flex-1 rounded-full border border-slate-300 px-5 py-2.5 text-left text-sm text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-900">
                       ประกาศบางอย่างให้ชั้นเรียน…
                     </button>
-                    <Button variant="outline" size="sm" onClick={() => navigate(`/room/${roomId}/create-exam`)} className="hidden sm:flex">
+                    <Button variant="outline" size="sm" onClick={() => navigate(`/room/${roomId}/create-exam?new=1`)} className="hidden sm:flex">
                       <ClipboardList size={15} className="mr-1.5" /> มอบหมายข้อสอบ
                     </Button>
                   </div>
@@ -486,7 +486,7 @@ export default function RoomDetail() {
             )}
 
             {user?.role === "teacher" && (
-              <Button onClick={() => navigate(`/room/${roomId}/create-exam`)} className="flex w-full sm:hidden">
+              <Button onClick={() => navigate(`/room/${roomId}/create-exam?new=1`)} className="flex w-full sm:hidden">
                 <Plus size={16} className="mr-2" /> มอบหมายข้อสอบ
               </Button>
             )}
